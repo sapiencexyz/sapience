@@ -31,7 +31,7 @@ export const ALL_POLYMARKET_RESOLVER_ADDRESSES: string[] =
 export const DEFAULT_SAPIENCE_API_URL = 'https://api.sapience.xyz';
 
 // Maximum end date window (in days) for fetching markets
-export const MAX_END_DATE_DAYS = 21;
+export const MAX_END_DATE_DAYS = 90;
 
 // Minimum volume threshold (in USD) for including markets
 export const MIN_VOLUME_THRESHOLD = 1_000;
@@ -47,8 +47,6 @@ export const ALWAYS_INCLUDE_PATTERNS = [
   /\bspx\b/i, // S&P 500 (ticker)
   /price of Bitcoin.+on \w+ \d+/i, // "Will the price of Bitcoin be... on January 28?"
   /price of Ethereum.+on \w+ \d+/i, // "Will the price of Ethereum be above... on January 28?"
-  /\bMaine\b/i, // Maine
-  /\bMichigan\b/i, // Michigan
 ];
 
 // Supplementary event tag slugs to fetch from /events endpoint

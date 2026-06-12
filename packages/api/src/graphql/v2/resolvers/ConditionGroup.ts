@@ -33,6 +33,15 @@ registerNodeTypeV2({
 export const ConditionGroup: ConditionGroupResolvers = {
   id: (parent) => toGlobalIdV2('ConditionGroup', String(parent.id)),
 
+  // Domain id (SCHEMA_GAPS G3): the keeper reads groups via GraphQL but
+  // writes via admin REST routes keyed by the numeric DB id.
+  groupId: (parent) => parent.id,
+
+  // Derived like v1: the DB stores only `negRiskMarketId`; its presence
+  // marks the group as a negative-risk basket.
+  negRisk: (parent) =>
+    Boolean((parent as { negRiskMarketId?: string | null }).negRiskMarketId),
+
   category: async (parent, _args, ctx) => {
     if (parent.categoryId == null) return null;
     if (ctx.loaders?.categoryById)
@@ -78,20 +87,36 @@ export const ConditionGroup: ConditionGroupResolvers = {
     // rather than NaN (which would slice to an empty page and emit "NaN").
     const skip = offsetFromCursor(args.after);
 
+    // A parent that arrived through the questions feed already carries
+    // its hydrated `condition` array, narrowed by the FEED's per-condition
+    // filters (hydrateItems in sdl/resolvers/queries/questions.ts) — honor
+    // it exactly like v1's resolver does, or filtered feed views would
+    // show every condition of the group instead of only the matching
+    // ones. Fresh fetches (node(), conditionGroups()) have no attached
+    // array and take the loader path.
+    const hydrated = (parent as { condition?: ConditionRow[] }).condition;
+
     // Conditions within a group order by displayOrder (nulls last) then
     // createdAt asc. Per-group sets are bounded; per-request loader
     // amortizes count+page across multiple parent rows in the same
     // selection.
-    const all: ConditionRow[] = ctx.loaders?.conditionsByGroupId
-      ? ((await ctx.loaders.conditionsByGroupId.load(parent.id)) ?? [])
-      : await prisma.condition.findMany({
-          where: { conditionGroupId: parent.id },
-          orderBy: [
-            { displayOrder: { sort: 'asc', nulls: 'last' } },
-            { createdAt: 'asc' },
-            { id: 'asc' },
-          ],
-        });
+    const loaded: ConditionRow[] = Array.isArray(hydrated)
+      ? hydrated
+      : ctx.loaders?.conditionsByGroupId
+        ? ((await ctx.loaders.conditionsByGroupId.load(parent.id)) ?? [])
+        : await prisma.condition.findMany({
+            where: { conditionGroupId: parent.id },
+            orderBy: [
+              { displayOrder: { sort: 'asc', nulls: 'last' } },
+              { createdAt: 'asc' },
+              { id: 'asc' },
+            ],
+          });
+    // Hidden conditions never leak through the nested connection — the
+    // same forced visibility rule as v1's ConditionGroup.conditions
+    // resolver. Filtered post-load so it holds on both the loader path
+    // and the direct-prisma fallback.
+    const all = loaded.filter((c) => c.public);
 
     const totalCount = all.length;
     const rows = all.slice(skip, skip + first + 1);

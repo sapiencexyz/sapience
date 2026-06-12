@@ -164,6 +164,13 @@ const fieldByResolvedVolumeKey: Record<VolumeKey, string> = {
 export interface RunQuestionsInput {
   take?: number | null;
   skip?: number | null;
+  /**
+   * Upper bound for the OFFSET. The keyset-aware callers keep the
+   * shared MAX_SKIP hardening (default); the plain v1 `questions`
+   * surface passes MAX_SAFE_INTEGER because staging deliberately
+   * reverted skip clamping there in #1802 — see the wrapper.
+   */
+  maxSkip?: number | null;
   search?: string | null;
   categorySlugs?: string[] | null;
   tag?: string | null;
@@ -181,6 +188,13 @@ export interface RunQuestionsInput {
   sortField?: QuestionSortField | null;
   sortDirection?: SortOrder | null;
   afterCursor?: QuestionCursor | null;
+  /**
+   * Restrict by *rendered* item type. `condition` admits ungrouped
+   * conditions plus single-condition groups (which hydration unwraps
+   * into standalone condition items); `group` admits only groups with
+   * 2+ matching conditions.
+   */
+  questionType?: QuestionItemType | null;
 }
 
 interface NormalizedArgs {
@@ -202,6 +216,7 @@ interface NormalizedArgs {
   sortField: string;
   sortDirectionRaw: 'ASC' | 'DESC';
   afterCursor: QuestionCursor | null;
+  questionType: QuestionItemType | null;
   volumeKey: VolumeKey;
   useWindowedSimilarMarketVolume: boolean;
   /**
@@ -254,7 +269,7 @@ const normalizeArgs = (args: RunQuestionsInput): NormalizedArgs => {
 
   return {
     take: clampTake(args.take, { defaultTake: 50, maxTake: 100 }),
-    skip: clampSkip(args.skip),
+    skip: clampSkip(args.skip, { maxSkip: args.maxSkip ?? undefined }),
     search: args.search?.slice(0, 200) ?? null,
     categorySlugs: args.categorySlugs?.slice(0, 50) ?? null,
     tag: args.tag?.slice(0, 200) ?? null,
@@ -271,6 +286,7 @@ const normalizeArgs = (args: RunQuestionsInput): NormalizedArgs => {
     sortField,
     sortDirectionRaw: args.sortDirection === 'asc' ? 'ASC' : 'DESC',
     afterCursor: args.afterCursor ?? null,
+    questionType: args.questionType ?? null,
     volumeKey,
     useWindowedSimilarMarketVolume,
     requiresConditionJoin:
@@ -460,8 +476,19 @@ const buildSortFragments = (
     ? Prisma.sql`COALESCE(MAX(c."endTime"), 0)`
     : Prisma.sql`cg."maxEndTime"`;
 
+  // `questionType` filters by *rendered* item type: single-condition
+  // groups unwrap into standalone condition items at hydration, so
+  // `condition` admits only groups with exactly one matching condition
+  // and `group` admits only groups with 2+.
+  const groupCountHaving =
+    n.questionType === QuestionItemType.Condition
+      ? Prisma.sql`HAVING COUNT(c.id) = 1`
+      : n.questionType === QuestionItemType.Group
+        ? Prisma.sql`HAVING COUNT(c.id) >= 2`
+        : Prisma.sql`HAVING COUNT(c.id) > 0`;
+
   const groupByClause = n.requiresConditionJoin
-    ? Prisma.sql`GROUP BY cg.id HAVING COUNT(c.id) > 0`
+    ? Prisma.sql`GROUP BY cg.id ${groupCountHaving}`
     : Prisma.empty;
 
   const condSortValue =
@@ -611,24 +638,22 @@ const fetchSortedItems = async (
     ? Prisma.empty
     : Prisma.sql`OFFSET ${n.skip}`;
 
-  return prisma.$queryRaw<SortedItemRow[]>`
-    WITH combined AS (
-      -- Part A: Active groups
-      SELECT
-        'group' as item_type,
-        cg.id as group_id,
-        NULL::text as condition_id,
-        ${sort.groupSortValue} as sort_value,
-        ${sort.groupPredictionCount} as prediction_count,
-        ${sort.groupEndTime} as end_time
-      FROM condition_group cg
-      ${sort.groupConditionJoin}
-      WHERE cg."publicConditionCount" > 0
-        ${search.groupSearch}
-        ${search.groupCategory}
-        ${search.groupTag}
-      ${sort.groupByClause}
+  // Without the condition join, the denormalized public count stands in
+  // for COUNT(c.id) in the questionType restriction — consistent with
+  // the hydration-time unwrap, whose `conditionWhere` is just
+  // `public: true` when no per-condition filters are active.
+  const groupPublicCountFilter = n.requiresConditionJoin
+    ? Prisma.empty
+    : n.questionType === QuestionItemType.Condition
+      ? Prisma.sql`AND cg."publicConditionCount" = 1`
+      : n.questionType === QuestionItemType.Group
+        ? Prisma.sql`AND cg."publicConditionCount" >= 2`
+        : Prisma.empty;
 
+  const ungroupedConditionsPart =
+    n.questionType === QuestionItemType.Group
+      ? Prisma.empty
+      : Prisma.sql`
       UNION ALL
 
       -- Part B: Ungrouped conditions
@@ -645,7 +670,28 @@ const fetchSortedItems = async (
         ${filters.conditionFilters}
         ${search.condSearch}
         ${search.condCategory}
-        ${search.condTag}
+        ${search.condTag}`;
+
+  return prisma.$queryRaw<SortedItemRow[]>`
+    WITH combined AS (
+      -- Part A: Active groups
+      SELECT
+        'group' as item_type,
+        cg.id as group_id,
+        NULL::text as condition_id,
+        ${sort.groupSortValue} as sort_value,
+        ${sort.groupPredictionCount} as prediction_count,
+        ${sort.groupEndTime} as end_time
+      FROM condition_group cg
+      ${sort.groupConditionJoin}
+      WHERE cg."publicConditionCount" > 0
+        ${groupPublicCountFilter}
+        ${search.groupSearch}
+        ${search.groupCategory}
+        ${search.groupTag}
+      ${sort.groupByClause}
+
+      ${ungroupedConditionsPart}
     )
     SELECT item_type, group_id, condition_id, prediction_count, sort_value, end_time
     FROM combined
@@ -859,6 +905,15 @@ export const runQuestionsData = async (
   let skip = n.skip;
   let hasMore = false;
 
+  // The SQL count restriction and the hydration unwrap can disagree
+  // when aggregates drift (trigger lag), so enforce the requested
+  // rendered type after unwrapping too — the refill loop below tops the
+  // page back up after any drops.
+  const matchesRequestedType = (entry: HydratedQuestion) =>
+    n.questionType == null ||
+    (entry.item as { questionType?: QuestionItemType }).questionType ===
+      n.questionType;
+
   while (hydrated.length < n.take) {
     const remaining = n.take - hydrated.length;
     const sortedItems = await fetchSortedItems({
@@ -871,7 +926,11 @@ export const runQuestionsData = async (
     const pageItems = sortedItems.slice(0, remaining);
     if (pageItems.length === 0) break;
 
-    hydrated.push(...(await hydrateItems(pageItems, conditionWhere)));
+    hydrated.push(
+      ...(await hydrateItems(pageItems, conditionWhere)).filter(
+        matchesRequestedType
+      )
+    );
 
     const lastPageItem = pageItems[pageItems.length - 1];
     afterCursor = {
@@ -908,8 +967,13 @@ export const questions: NonNullable<QueryResolvers['questions']> = async (
   args
 ) => {
   const { items } = await runQuestionsData({
-    take: args.take,
+    // #1802 semantics, clobbered by the 1804 merge and restored here:
+    // the v1 surface bounds take to [1, 100] itself (take <= 0 degrades
+    // to a single row, not the runner's 50-row default) and passes skip
+    // through unbounded (no MAX_SKIP cap).
+    take: Math.max(1, Math.min(args.take, 100)),
     skip: args.skip,
+    maxSkip: Number.MAX_SAFE_INTEGER,
     search: args.search ?? null,
     categorySlugs: args.categorySlugs ?? null,
     tag: args.tag ?? null,
@@ -923,6 +987,10 @@ export const questions: NonNullable<QueryResolvers['questions']> = async (
     similarMarketVolumeWindow: args.similarMarketVolumeWindow ?? null,
     sortField: args.sortField ?? null,
     sortDirection: args.sortDirection ?? null,
+    // Must be forwarded explicitly like every other arg — omitting it
+    // silently no-ops the filter (RunQuestionsInput.questionType is
+    // optional), as the 2026-06-11 staging regression proved.
+    questionType: args.questionType ?? null,
   });
   return items;
 };

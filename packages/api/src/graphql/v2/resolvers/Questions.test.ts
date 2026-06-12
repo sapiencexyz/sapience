@@ -220,6 +220,36 @@ describe('questions (v2)', () => {
     );
   });
 
+  it('maps v2 questionType CONDITION/CONDITION_GROUP to the v1 QuestionItemType', async () => {
+    await callResolver(questions)(
+      null,
+      { first: 10, filter: { questionType: 'CONDITION' } },
+      {},
+      null
+    );
+    expect(mockRunQuestionsData).toHaveBeenCalledWith(
+      expect.objectContaining({ questionType: 'condition' })
+    );
+
+    mockRunQuestionsData.mockClear();
+    await callResolver(questions)(
+      null,
+      { first: 10, filter: { questionType: 'CONDITION_GROUP' } },
+      {},
+      null
+    );
+    expect(mockRunQuestionsData).toHaveBeenCalledWith(
+      expect.objectContaining({ questionType: 'group' })
+    );
+  });
+
+  it('passes questionType: null to the runner when the filter omits it', async () => {
+    await callResolver(questions)(null, { first: 10 }, {}, null);
+    expect(mockRunQuestionsData).toHaveBeenCalledWith(
+      expect.objectContaining({ questionType: null })
+    );
+  });
+
   it('passes resolvers / categorySlugs / search / tag through unchanged', async () => {
     await callResolver(questions)(
       null,

@@ -4,6 +4,7 @@ import { fromGlobalIdV2 } from '../relay/nodeRegistry';
 
 const mockPrisma = vi.hoisted(() => ({
   user: { findUnique: vi.fn(), findMany: vi.fn(), count: vi.fn() },
+  $queryRaw: vi.fn(),
 }));
 
 vi.mock('../../../core/db', () => ({ default: mockPrisma }));
@@ -123,6 +124,55 @@ describe('Account (v2)', () => {
       null
     );
     expect(result.id).toBe(7);
+  });
+});
+
+describe('Account.stats (v2)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockPrisma.$queryRaw.mockResolvedValue([{ total: '0' }]);
+  });
+
+  it('sums position + Prediction volume for the lowercased address into stats.totalVolume', async () => {
+    mockPrisma.$queryRaw.mockResolvedValueOnce([
+      { total: '123000000000000000000' },
+    ]);
+    const stats = await callResolver<{ totalVolume: bigint }>(
+      (Account as Record<string, unknown>).stats
+    )({ address: ADDRESS.toUpperCase() }, {}, ctx, null);
+    expect(stats.totalVolume).toBe(123000000000000000000n);
+
+    // prisma.$queryRaw is a tagged template: call args are
+    // [TemplateStringsArray, ...interpolated values].
+    expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1);
+    const [strings, ...values] = mockPrisma.$queryRaw.mock.calls[0];
+    const sql = (strings as readonly string[]).join('?');
+    expect(sql).toContain('FROM position');
+    expect(sql).toContain('FROM "Prediction"');
+    expect(values).toContain(ADDRESS);
+    expect(values).not.toContain(ADDRESS.toUpperCase());
+  });
+
+  it('returns totalVolume 0 (not null) for a zero-activity account', async () => {
+    // Defensive shape: the aggregate always yields one row in Postgres, but
+    // the resolver must coalesce an empty result to "0" like v1 does.
+    mockPrisma.$queryRaw.mockResolvedValueOnce([]);
+    const stats = await callResolver<{ totalVolume: bigint }>(
+      (Account as Record<string, unknown>).stats
+    )({ address: ADDRESS }, {}, ctx, null);
+    expect(stats.totalVolume).not.toBeNull();
+    expect(stats.totalVolume).toBe(0n);
+  });
+
+  it('resolves stats for a synthesized parent without touching the User table (G6)', async () => {
+    // A synthesized account carries only { address, createdAt } — stats must
+    // resolve from the address alone, no User row required.
+    mockPrisma.$queryRaw.mockResolvedValueOnce([{ total: '42' }]);
+    const stats = await callResolver<{ totalVolume: bigint }>(
+      (Account as Record<string, unknown>).stats
+    )({ address: ADDRESS, createdAt: new Date(0) }, {}, ctx, null);
+    expect(stats.totalVolume).toBe(42n);
+    expect(mockPrisma.user.findUnique).not.toHaveBeenCalled();
   });
 });
 

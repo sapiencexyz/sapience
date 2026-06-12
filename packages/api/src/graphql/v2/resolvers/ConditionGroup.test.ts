@@ -43,6 +43,33 @@ describe('ConditionGroup (v2)', () => {
     });
   });
 
+  it('groupId exposes the numeric DB id for keeper read→REST-write round-trips (SCHEMA_GAPS G3)', async () => {
+    const groupId = await callResolver<number>(ConditionGroup.groupId)(
+      { id: 7, name: 'My Group' },
+      {},
+      {},
+      null
+    );
+    expect(groupId).toBe(7);
+  });
+
+  it('negRisk derives from negRiskMarketId presence, mirroring v1', async () => {
+    const withMarket = await callResolver<boolean>(ConditionGroup.negRisk)(
+      { id: 1, negRiskMarketId: '0xabc' },
+      {},
+      {},
+      null
+    );
+    const withoutMarket = await callResolver<boolean>(ConditionGroup.negRisk)(
+      { id: 2, negRiskMarketId: null },
+      {},
+      {},
+      null
+    );
+    expect(withMarket).toBe(true);
+    expect(withoutMarket).toBe(false);
+  });
+
   it('totals collapses denormalized counters into one struct', () => {
     type Totals = {
       publicConditionCount: number;
@@ -91,7 +118,10 @@ describe('ConditionGroup (v2)', () => {
   });
 
   it('ConditionGroup.conditions: a non-numeric after cursor resets to offset 0', async () => {
-    const condRows = Array.from({ length: 5 }, (_, i) => ({ id: `0xc${i}` }));
+    const condRows = Array.from({ length: 5 }, (_, i) => ({
+      id: `0xc${i}`,
+      public: true,
+    }));
     mockPrisma.condition.findMany.mockResolvedValueOnce(condRows);
     // A keyset cursor minted under a different orderBy (or a tampered value)
     // has a non-numeric `k`.
@@ -104,6 +134,53 @@ describe('ConditionGroup (v2)', () => {
     // ... and emitted cursors must stay numeric, not "NaN".
     expect(decodeCursor(conn.edges[0].cursor)?.k).toBe('0');
     expect(decodeCursor(conn.edges[1].cursor)?.k).toBe('1');
+  });
+
+  it('ConditionGroup.conditions: hidden conditions never leak (v1 visibility rule)', async () => {
+    mockPrisma.condition.findMany.mockResolvedValueOnce([
+      { id: '0xpub1', public: true },
+      { id: '0xpriv', public: false },
+      { id: '0xpub2', public: true },
+    ]);
+    const conn = await callResolver<{
+      nodes: { id: string }[];
+      totalCount: number;
+    }>(ConditionGroup.conditions)(
+      { id: 1, name: 'g' },
+      { first: 50 },
+      {},
+      null
+    );
+    expect(conn.nodes.map((c) => c.id)).toEqual(['0xpub1', '0xpub2']);
+    // totalCount counts only visible rows — private rows must not be
+    // inferable from the count either.
+    expect(conn.totalCount).toBe(2);
+  });
+
+  it('ConditionGroup.conditions: honors a feed-hydrated condition array (no refetch)', async () => {
+    // The questions feed attaches the FEED-FILTERED conditions to each
+    // group row (hydrateItems); the resolver must serve that narrowed set
+    // instead of refetching the whole group — v1 parity for filtered
+    // group cards. The visibility rule still applies on top.
+    const conn = await callResolver<{
+      nodes: { id: string }[];
+      totalCount: number;
+    }>(ConditionGroup.conditions)(
+      {
+        id: 1,
+        name: 'g',
+        condition: [
+          { id: '0xmatch1', public: true },
+          { id: '0xpriv', public: false },
+        ],
+      },
+      { first: 50 },
+      {},
+      null
+    );
+    expect(conn.nodes.map((c) => c.id)).toEqual(['0xmatch1']);
+    expect(conn.totalCount).toBe(1);
+    expect(mockPrisma.condition.findMany).not.toHaveBeenCalled();
   });
 
   it('conditionGroups(orderBy OPEN_INTEREST): a non-numeric after cursor emits numeric cursors', async () => {

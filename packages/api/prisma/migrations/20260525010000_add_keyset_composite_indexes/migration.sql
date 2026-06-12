@@ -4,31 +4,34 @@
 -- <op> ? OR (orderField = ? AND idField <op> ?)) keyset predicate as a
 -- pure index range scan.
 --
--- Production note: CREATE INDEX without CONCURRENTLY takes a brief
--- ACCESS EXCLUSIVE lock. Run during a low-traffic window, or rewrite
--- each to CREATE INDEX CONCURRENTLY outside a transaction if running
--- against a busy prod database.
+-- CONCURRENTLY: these tables take live writes; a plain CREATE INDEX
+-- holds an ACCESS EXCLUSIVE lock for the whole build. Prisma Migrate
+-- runs these statements outside a transaction, so CONCURRENTLY is
+-- safe here (same pattern as the 20260208000000 condition-market-
+-- filter-index migration). If a build fails it leaves an INVALID
+-- index that IF NOT EXISTS will then skip — DROP INDEX it before
+-- re-running.
 
-CREATE INDEX IF NOT EXISTS "IDX_attestation_time_uid"
+CREATE INDEX CONCURRENTLY IF NOT EXISTS "IDX_attestation_time_uid"
   ON "attestation" ("time", "uid");
 
-CREATE INDEX IF NOT EXISTS "IDX_condition_endtime_id"
+CREATE INDEX CONCURRENTLY IF NOT EXISTS "IDX_condition_endtime_id"
   ON "condition" ("endTime", "id");
 
-CREATE INDEX IF NOT EXISTS "IDX_prediction_createdat_id"
+CREATE INDEX CONCURRENTLY IF NOT EXISTS "IDX_prediction_createdat_id"
   ON "Prediction" ("createdAt", "id");
 
-CREATE INDEX IF NOT EXISTS "IDX_position_updatedat_id"
+CREATE INDEX CONCURRENTLY IF NOT EXISTS "IDX_position_updatedat_id"
   ON "Position" ("updatedAt", "id");
 
-CREATE INDEX IF NOT EXISTS "IDX_claim_redeemedat_id"
+CREATE INDEX CONCURRENTLY IF NOT EXISTS "IDX_claim_redeemedat_id"
   ON "Claim" ("redeemedAt", "id");
 
-CREATE INDEX IF NOT EXISTS "IDX_close_burnedat_id"
+CREATE INDEX CONCURRENTLY IF NOT EXISTS "IDX_close_burnedat_id"
   ON "Close" ("burnedAt", "id");
 
-CREATE INDEX IF NOT EXISTS "IDX_secondary_trade_executedat_tradehash"
+CREATE INDEX CONCURRENTLY IF NOT EXISTS "IDX_secondary_trade_executedat_tradehash"
   ON "secondary_trade" ("executedAt", "tradeHash");
 
-CREATE INDEX IF NOT EXISTS "IDX_collateral_transfer_timestamp_id"
+CREATE INDEX CONCURRENTLY IF NOT EXISTS "IDX_collateral_transfer_timestamp_id"
   ON "collateral_transfer" ("timestamp", "id");

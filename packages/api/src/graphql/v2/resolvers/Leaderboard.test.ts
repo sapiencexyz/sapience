@@ -7,6 +7,7 @@ vi.mock('./queries/accountStats', () => ({
 }));
 
 import { leaderboard, accountRank } from './queries/leaderboard';
+import { Ranking } from './Ranking';
 
 const callResolver = <TResult = unknown>(resolver: unknown) =>
   resolver as (
@@ -74,5 +75,23 @@ describe('Account.rank (v2)', () => {
       null
     );
     expect(result).toBeNull();
+  });
+});
+
+describe('Ranking.pnlFormatted (v2)', () => {
+  const resolve = (parent: { pnl: bigint | null }) =>
+    callResolver<string>(Ranking.pnlFormatted)(parent, {}, {}, null);
+
+  it('scales the wUSDe-wei pnl down by 18 decimals into a v1-shaped string', () => {
+    // 123.456 wUSDe = 123456000000000000000 wei.
+    expect(resolve({ pnl: 123456000000000000000n })).toBe('123.456');
+  });
+
+  it('preserves the sign for losses', () => {
+    expect(resolve({ pnl: -5_000000000000000000n })).toBe('-5');
+  });
+
+  it('returns "0" when pnl is null (non-PNL ranking row)', () => {
+    expect(resolve({ pnl: null })).toBe('0');
   });
 });

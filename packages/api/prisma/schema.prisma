@@ -686,7 +686,9 @@ model Claim {
 
   chainId         Int
   marketAddress   String   @db.VarChar
-  predictionId    String   @db.VarChar
+  /// On-chain pickConfigId of the redeemed position. Historically mislabeled
+  /// `predictionId`; it has never stored a Prediction.predictionId.
+  pickConfigId    String   @db.VarChar
   holder          String   @db.VarChar
   positionToken   String   @db.VarChar
   tokensBurned    String   @db.VarChar
@@ -705,7 +707,7 @@ model Claim {
   @@unique([chainId, txHash, logIndex], map: "UQ_claim_chain_tx_log")
   @@index([chainId, marketAddress], map: "IDX_claim_chain_market")
   @@index([holder], map: "IDX_claim_holder")
-  @@index([predictionId], map: "IDX_claim_prediction")
+  @@index([pickConfigId], map: "IDX_claim_pick_config")
   @@index([redeemedAt], map: "IDX_claim_redeemed_at")
   // Keyset paging for Query.claims orderBy (redeemedAt, id) DESC.
   @@index([redeemedAt, id], map: "IDX_claim_redeemedat_id")
@@ -798,10 +800,11 @@ model CollateralTransfer {
   @@map("collateral_transfer")
 }
 
-/// Materialized top-N tag list for `Query.popularTags`. Refreshed by the
-/// keeper on the same cadence as condition_group aggregates; the
-/// resolver reads from this table instead of running the
-/// `unnest(tags)` aggregation against `condition` on every miss.
+/// Materialized top-N tag list for `Query.popularTags` (v1) and
+/// `Query.tags` (v2). No scheduled refresher exists: the resolvers
+/// refresh it inline when its newest `refreshedAt` is older than
+/// POPULAR_TAGS_MAX_AGE_MS, instead of running the `unnest(tags)`
+/// aggregation against `condition` on every miss.
 model PopularTag {
   tag         String   @id @db.VarChar
   rank        Int

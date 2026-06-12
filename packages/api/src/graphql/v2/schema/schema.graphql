@@ -150,16 +150,35 @@ type Account implements Node & AddressEntity {
     intervalSeconds: Int
   ): CollateralBalanceConnection!
 
-  # DEFERRED — not built yet: an account PnL surface mirroring the vault's:
-  #   stats: AccountStat!
+  """
+  Aggregate statistics for this account. Cheap to resolve; always present.
+  """
+  stats: AccountStat!
+
+  # DEFERRED — not built yet: the rest of the account stats surface beyond
+  # `stats.totalVolume` (which ships, G6): PnL/accuracy fields on
+  # `AccountStat`, and
   #   statsHistory(first, after, filter): AccountStatConnection!
-  # This is the "return on deployed" (trading-performance) home — the same
-  # cumulative-PnL numerator a vault plots against total assets, but measured
-  # against the account's deployed capital (collateral in open positions).
-  # Big lift: no per-account time-series source exists today (accountStats.ts
-  # produces only a windowed leaderboard aggregate, not a bucketed series),
-  # and per-account deployed-collateral-over-time isn't tracked at all — it
-  # would need a new per-account snapshot writer + table. No consumer yet.
+  # That series is the "return on deployed" (trading-performance) home — the
+  # same cumulative-PnL numerator a vault plots against total assets, but
+  # measured against the account's deployed capital (collateral in open
+  # positions). Big lift: no per-account time-series source exists today
+  # (accountStats.ts produces only a windowed leaderboard aggregate, not a
+  # bucketed series), and per-account deployed-collateral-over-time isn't
+  # tracked at all — it would need a new per-account snapshot writer + table.
+  # No consumer yet.
+}
+
+"""
+Aggregate statistics for an account. Volume-only today; extends with
+realized PnL / accuracy if a full per-account PnL surface is built (see
+the DEFERRED note on `Account`).
+"""
+type AccountStat {
+  """
+  Cumulative trade volume across all of this account's activity, wei.
+  """
+  totalVolume: BigInt!
 }
 
 type AccountEdge {
@@ -407,6 +426,69 @@ input IntRangeFilter {
 }
 
 # -----------------------------------------------
+# Forecast (Phase 4)
+# -----------------------------------------------
+
+"""
+An EAS forecast attestation — a user's probability forecast on a
+condition. Identified publicly by the EAS attestation `uid` (the
+`/forecast/<uid>` deep-link id). Forecasts are a separate timeline from
+the Prediction/Trade activity feed and are intentionally NOT part of
+the `ActivityItem` union (matches v1's design).
+"""
+type Forecast implements Node {
+  id: ID!
+  """
+  EAS attestation uid — the public, shareable domain id.
+  """
+  uid: String!
+  attester: Address!
+  """
+  Nullable — the attestation's conditionId column is nullable.
+  """
+  conditionId: Bytes
+  condition: Condition
+  """
+  The forecast value — the attestation's prediction STRING column (a
+  probability string), NOT a binary outcome.
+  """
+  value: String!
+  comment: String
+  schemaId: String!
+  """
+  From the attestation time column.
+  """
+  attestedAt: UnixSeconds!
+}
+
+type ForecastEdge {
+  cursor: String!
+  node: Forecast!
+}
+
+type ForecastConnection {
+  edges: [ForecastEdge!]!
+  nodes: [Forecast!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input ForecastFilter {
+  attester: Address
+  conditionIds: [Bytes!]
+  schemaId: String
+}
+
+enum ForecastOrderField {
+  ATTESTED_AT
+}
+
+input ForecastOrder {
+  field: ForecastOrderField!
+  direction: OrderDirection!
+}
+
+# -----------------------------------------------
 # Trade (Phase 5)
 # -----------------------------------------------
 
@@ -536,6 +618,26 @@ type Condition implements Node {
   outcome: ConditionOutcome
 
   """
+  Whether this condition has settled. v1-compat convenience derived from
+  `outcome` (true when `outcome != null`); saves consumers re-deriving
+  resolution state from the enum.
+  """
+  settled: Boolean!
+
+  """
+  Whether this condition settled decisively to YES. v1-compat convenience
+  derived from `outcome` (true when `outcome == YES`).
+  """
+  resolvedToYes: Boolean!
+
+  """
+  Whether this condition settled non-decisively (void / tie / unresolvable).
+  v1-compat convenience derived from `outcome` (true when
+  `outcome == NON_DECISIVE`).
+  """
+  nonDecisive: Boolean!
+
+  """
   Cumulative on-chain open interest, wei.
   """
   openInterest: BigInt!
@@ -560,6 +662,30 @@ type Condition implements Node {
   Bundled similar-market signal from external sources (Polymarket).
   """
   similarMarket: SimilarMarket
+
+  """
+  Flat mirror of `similarMarket.volume` — all-time external trading volume
+  (USD). v1-compat convenience: v1 exposed these as flat string-indexed
+  columns, so the flat form is kept alongside the nested `similarMarket`
+  value type. `0` when no similar-market signal is present.
+  """
+  similarMarketVolume: Float!
+  """Flat mirror of `similarMarket.volume1h`. `0` when no signal is present."""
+  similarMarketVolume1h: Float!
+  """Flat mirror of `similarMarket.volume4h`. `0` when no signal is present."""
+  similarMarketVolume4h: Float!
+  """Flat mirror of `similarMarket.volume24h`. `0` when no signal is present."""
+  similarMarketVolume24h: Float!
+  """Flat mirror of `similarMarket.volume7d`. `0` when no signal is present."""
+  similarMarketVolume7d: Float!
+  """Flat mirror of `similarMarket.volumeFiltered1h`. `0` when no signal is present."""
+  similarMarketVolumeFiltered1h: Float!
+  """Flat mirror of `similarMarket.volumeFiltered4h`. `0` when no signal is present."""
+  similarMarketVolumeFiltered4h: Float!
+  """Flat mirror of `similarMarket.volumeFiltered24h`. `0` when no signal is present."""
+  similarMarketVolumeFiltered24h: Float!
+  """Flat mirror of `similarMarket.volumeFiltered7d`. `0` when no signal is present."""
+  similarMarketVolumeFiltered7d: Float!
 }
 
 enum ConditionOutcome {
@@ -607,8 +733,26 @@ type ConditionConnection {
 
 input ConditionFilter {
   conditionIds: [Bytes!]
+  """
+  Match any of these resolver (oracle) contract addresses (case-insensitive).
+  """
+  resolvers: [Address!]
   chainId: Int
+  """
+  Restrict to a single category slug. Superseded by `categorySlugs` —
+  when both are provided, `categorySlugs` wins.
+  """
   categorySlug: String
+  """
+  Restrict to conditions whose category slug is in this set. OR within
+  the set, AND with every other filter. Supersedes `categorySlug`.
+  """
+  categorySlugs: [String!]
+  """
+  `true` → only conditions with no parent group; `false` → only grouped.
+  Omit for both.
+  """
+  ungrouped: Boolean
   """
   Restrict to settled (`outcome` non-null) / unsettled (null).
   """
@@ -624,7 +768,8 @@ input ConditionFilter {
   """
   tags: [String!]
   """
-  Substring search across `question` / `description`, case-insensitive.
+  Substring search across `question` / `shortName` / `description`,
+  case-insensitive.
   """
   search: String
   endTime: IntRangeFilter
@@ -654,12 +799,32 @@ constituent conditions.
 """
 type ConditionGroup implements Node {
   id: ID!
+
+  """
+  Numeric DB id — the group's domain id (PLAN.md). Exists for the
+  keeper's read→REST-write round-trip (SCHEMA_GAPS G3); admin REST
+  routes key groups by this id.
+  """
+  groupId: Int!
   name: String!
   """
   External market URLs (typically Polymarket links) associated with this
   group, aggregated across its constituent conditions.
   """
   similarMarkets: [String!]!
+
+  """
+  Polymarket event id this group is keyed by — the canonical
+  (source, externalEventId) identity. Null for groups created before
+  event-keying or from non-Polymarket sources.
+  """
+  externalEventId: String
+
+  """
+  Whether this group is a negative-risk basket. Derived: true when the
+  group carries a `negRiskMarketId` (the id itself stays admin-only).
+  """
+  negRisk: Boolean!
   createdAt: DateTimeISO!
 
   category: Category
@@ -759,12 +924,25 @@ type PickConfiguration implements Node {
   resolvedAt: UnixSeconds
   result: SettlementResult
 
+  """
+  Convenience boolean: `true` once the configuration has a terminal
+  `result` (any non-null `SettlementResult`, including `NON_DECISIVE`).
+  Mirrors the v1 resolved flag that v2 dropped when `result` became
+  nullable.
+  """
+  resolved: Boolean!
+
   endsAt: UnixSeconds
 
   totalPredictorCollateral: BigInt!
   totalCounterpartyCollateral: BigInt!
   claimedPredictorCollateral: BigInt!
   claimedCounterpartyCollateral: BigInt!
+
+  """
+  Whether this configuration belongs to a legacy market.
+  """
+  isLegacy: Boolean!
 
   picks: [Pick!]!
 }
@@ -873,6 +1051,13 @@ type Prediction implements Node {
   settledAt: UnixSeconds
   result: SettlementResult
 
+  """
+  Convenience boolean: `true` once the prediction has a terminal `result`
+  (any non-null `SettlementResult`, including `NON_DECISIVE`). Mirrors the
+  v1 settled flag that v2 dropped when `result` became nullable.
+  """
+  settled: Boolean!
+
   predictorClaimable: BigInt
   counterpartyClaimable: BigInt
 
@@ -881,6 +1066,11 @@ type Prediction implements Node {
   settleTxHash: Bytes32
 
   refCode: String
+
+  """
+  Whether this prediction was made on a legacy market.
+  """
+  isLegacy: Boolean!
 
   pickConfig: PickConfiguration
 }
@@ -935,10 +1125,15 @@ input PredictionOrder {
 # -----------------------------------------------
 
 """
-Position-token balance held by `holder` on a specific pick configuration.
-The synthesized sell-event row format from v1 doesn't carry forward; v2
-returns raw balance rows. Cost-basis / realized-PnL surfaces will land
-behind opt-in fields in a later phase.
+Position-token balance held by `holder` on a specific pick configuration,
+synthesized exactly the way v1's `positionsPage` items are (G5): each raw
+balance row's event stream (primary mints + secondary trades) is walked
+with a running weighted-average cost, emitting one SOLD row per secondary
+sale on an unsettled pick configuration plus an OPEN row while balance
+remains (or once the configuration settles). Zero-balance unsettled rows
+with no sales (off-platform transfers/burns) are dropped — which is why a
+`positions` page can be empty while `pageInfo.hasNextPage` is still true;
+always page on `pageInfo`, never on `edges` length.
 """
 type Position implements Node {
   id: ID!
@@ -959,12 +1154,75 @@ type Position implements Node {
   side: Side!
 
   """
-  Number of position tokens still held, wei (18 decimals).
+  Number of position tokens still held, wei (18 decimals). Always 0 on
+  SOLD rows.
   """
   balance: BigInt!
 
+  """
+  Collateral the holder put in for this position, wei. On a SOLD row this
+  is the cost basis allocated to the sold shares at sale time. Null only
+  where v1 returns null: when the (remaining) cost basis is zero, and on
+  rows not produced by the `positions` synthesis (single `position(id:)` /
+  `node()` lookups return the raw balance row).
+  """
+  userCollateral: BigInt
+
+  """
+  Total payout claimable/claimed for this position, wei — the holder's
+  share of every prediction pool they minted into. Null until resolvable
+  (no holder-side mints found, or outside the `positions` synthesis).
+  """
+  totalPayout: BigInt
+
+  """
+  Realized PnL = sale proceeds − allocated cost basis, wei. Set on SOLD
+  rows only; null on OPEN rows (v1 parity — settlement PnL on resolved
+  rows is derived downstream from `totalPayout` and `userCollateral`).
+  """
+  realizedPnl: BigInt
+
+  """
+  Row discriminator for the synthesized event stream. v1 encoded SOLD
+  rows implicitly in the row id's shape (`<rowId>-sell-<tradeHash>`);
+  v2 makes the distinction explicit.
+  """
+  status: PositionStatus!
+
+  """
+  The holder's prediction for this pick configuration — the first
+  holder-side prediction by row order, exactly the semantics behind v1's
+  `pickConfig.predictionId` (sdl/resolvers/queries/escrow.ts). Resolves
+  the CLAIM-permalink round trip in one query.
+  """
+  prediction: Prediction
+
   createdAt: DateTimeISO!
+  """
+  On SOLD rows, the executed-at time of the sale; otherwise the raw row's
+  last update.
+  """
   updatedAt: DateTimeISO!
+}
+
+"""
+Lifecycle discriminator for a synthesized position row. v1's row stream
+only distinguishes open/parent rows from synthesized sell rows — claims
+are deliberately not part of the synthesis (redeem() requires a settled
+pick configuration, whose PnL the settlement flow already covers), so
+there is intentionally no CLAIMED member.
+"""
+enum PositionStatus {
+  """
+  Balance row — still held, or settled (settlement-PnL flow applies).
+  """
+  OPEN
+  """
+  Synthesized row for one secondary sale on an unsettled pick
+  configuration: `balance` is 0, `userCollateral` carries the allocated
+  cost basis and `realizedPnl` the proceeds minus that basis.
+  """
+  SOLD
 }
 
 """
@@ -985,7 +1243,18 @@ type PositionEdge {
 type PositionConnection {
   edges: [PositionEdge!]!
   nodes: [Position!]!
+  """
+  `hasNextPage` is raw-row truth: a page whose rows all synthesized away
+  still reports `true` (and an advancing `endCursor`) while more
+  underlying rows exist.
+  """
   pageInfo: PageInfo!
+  """
+  Count of underlying positions surfaced by the synthesis — v1
+  `positionCount` semantics (zero-balance unsettled rows excluded).
+  Synthesized SOLD rows are not counted, so this can differ from the
+  number of nodes across all pages.
+  """
   totalCount: Int!
 }
 
@@ -1033,7 +1302,12 @@ type Claim implements Node {
   id: ID!
   chainId: Int!
   escrow: Address!
-  predictionId: Bytes32!
+  """
+  On-chain pickConfigId of the redeemed position. The underlying column
+  was historically mislabeled `predictionId`; it has never stored a
+  `Prediction.predictionId`.
+  """
+  pickConfigId: Bytes32!
   holder: Address!
   positionToken: Address!
   tokensBurned: BigInt!
@@ -1060,7 +1334,8 @@ type ClaimConnection {
 input ClaimFilter {
   chainId: Int
   holder: Address
-  predictionId: Bytes32
+  "Match claims redeeming positions of this pickConfigId."
+  pickConfigId: Bytes32
 }
 
 """
@@ -1213,14 +1488,20 @@ secondary-market `Trade`. v2 returns the union directly; v1 wrapped
 each item in an `Activity` envelope, which forced clients to dereference
 through `.source` to get the entity. Here the union is the wire shape.
 
-`Forecast` is intentionally not in the union — see the v1 design doc's
-"Activity model" section. Forecasts are a separate timeline.
+`Forecast` exists as its own entity (`Query.forecasts`) but is
+intentionally not in the union — forecasts are a separate timeline,
+matching v1 (see the v1 design doc's "Activity model" section).
 """
 union ActivityItem = Prediction | Trade
 
 type ActivityEdge {
   cursor: String!
   node: ActivityItem!
+  """
+  The interleave sort key of this edge: `Trade.executedAt` for trades,
+  epoch seconds of `Prediction.createdAt` for predictions.
+  """
+  timestamp: UnixSeconds!
 }
 
 """
@@ -1296,10 +1577,23 @@ the rest are null.
 type Ranking {
   account: Account!
   rank: Int!
-  """Lifetime Brier-derived accuracy score (0–1). Populated for `ACCURACY`."""
+  """
+  Lifetime accuracy score — the average time-weighted Brier-derived
+  error (`avg(twError)`), the SAME raw, unbounded scale v1's
+  `accuracyScore` used (NOT 0–1; fixture-typical values are in the
+  hundreds). Render it the way v1 did. A future rescale to 0–1 would be
+  a breaking display change — the parity suite pins the raw scale and
+  fails loudly if the server ever rescales.
+  """
   accuracy: Float
   """Net profit/loss in wUSDe wei (signed). Populated for `PNL`."""
   pnl: BigInt
+  """
+  `pnl` pre-scaled to a v1-shaped decimal string via `formatUnits(pnl, 18)`
+  — a convenience so leaderboard/profile consumers don't divide by 1e18
+  themselves. `"0"` when `pnl` is null (non-`PNL` rankings).
+  """
+  pnlFormatted: String!
   """Total trade volume in wUSDe wei. Populated for `VOLUME`."""
   volume: BigInt
   """PnL / volume ratio. Populated for `ROI`."""
@@ -1588,6 +1882,23 @@ input QuestionFilter {
   the group's conditions. Inclusive on both bounds.
   """
   endsAt: IntRangeFilter
+  """
+  Restrict to one side of the `QuestionItem` union, by *rendered* kind:
+  `CONDITION` returns items that resolve to a standalone Condition
+  (ungrouped conditions plus single-condition groups, which the feed
+  unwraps); `CONDITION_GROUP` returns multi-condition ConditionGroups
+  only. Both kinds when omitted.
+  """
+  questionType: QuestionItemKind
+}
+
+"""
+Which side of the `QuestionItem` union a feed item resolves to. Values
+mirror the union's member type names.
+"""
+enum QuestionItemKind {
+  CONDITION
+  CONDITION_GROUP
 }
 
 """
@@ -1653,8 +1964,9 @@ type QuestionConnection {
 A tag attached to public conditions. Not a Node — the `name` itself is
 the natural key, so refetch by globalId would be redundant.
 
-`conditionCount` is the denormalized usage count maintained by the
-keeper's `popular_tag` refresh; treat it as near-real-time.
+`conditionCount` is the denormalized usage count from the `popular_tag`
+materialization, which reads refresh when it goes stale (~hourly);
+treat it as near-real-time.
 """
 type Tag {
   name: String!
@@ -1766,8 +2078,9 @@ type Query {
   protocol: Protocol!
 
   """
-  Tags attached to public conditions, backed by the keeper-refreshed
-  `popular_tag` materialization. Default order is `CONDITION_COUNT DESC`
+  Tags attached to public conditions, backed by the `popular_tag`
+  materialization (refreshed lazily by reads when older than ~1h).
+  Default order is `CONDITION_COUNT DESC`
   with `first: 20` — the canonical "popular tags" feed. Sort by `NAME`
   for an alphabetical browse.
   """
@@ -1940,6 +2253,22 @@ type Query {
     filter: TradeFilter
     orderBy: TradeOrder
   ): TradeConnection!
+
+  """
+  Look up a single forecast attestation by its EAS `uid`.
+  """
+  forecast(uid: String!): Forecast
+
+  """
+  Relay-shaped connection over EAS forecast attestations. Defaults to
+  `ATTESTED_AT DESC`, keyset on `(time, uid)`.
+  """
+  forecasts(
+    first: Int = 50
+    after: String
+    filter: ForecastFilter
+    orderBy: ForecastOrder
+  ): ForecastConnection!
 
   """
   Look up a single category by its integer primary key.

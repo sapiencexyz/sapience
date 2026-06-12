@@ -1,6 +1,7 @@
 /**
- * `Query.tags` — Relay connection over the keeper-refreshed
- * `popular_tag` materialization.
+ * `Query.tags` — Relay connection over the `popular_tag`
+ * materialization (kept alive by reads — see the staleness note in
+ * the v1 tags module, the canonical home of the refresh logic).
  *
  * The materialized set is small (currently capped at the top ~20 by
  * usage in `refreshPopularTags`); paging happens in-memory after the
@@ -10,7 +11,10 @@
  */
 
 import prisma from '../../../../core/db';
-import { refreshPopularTags } from '../../../sdl/resolvers/queries/tags';
+import {
+  isPopularTagsStale,
+  refreshPopularTags,
+} from '../../../sdl/resolvers/queries/tags';
 import { CACHE_HINTS, setCacheHint } from '../../cacheHints';
 import { decodeCursor, encodeCursor } from '../../relay/cursor';
 import { clampTake } from '../../relay/pagination';
@@ -39,9 +43,9 @@ export const tags: NonNullable<QueryResolvers['tags']> = async (
   // ≤20 rows in practice — pull the whole materialization, sort + slice
   // in memory rather than encoding a keyset over `(count, tag)`.
   let rows = await prisma.popularTag.findMany();
-  if (rows.length === 0) {
-    // Cold start (fresh deploy, before the keeper's first refreshPopularTags):
-    // compute + materialize inline so the surface isn't temporarily empty.
+  if (isPopularTagsStale(rows)) {
+    // Empty (fresh deploy) or older than POPULAR_TAGS_MAX_AGE_MS: there is
+    // no scheduled refresher, so reads keep the materialization alive.
     // Mirrors v1's popularTags fallback.
     await refreshPopularTags();
     rows = await prisma.popularTag.findMany();

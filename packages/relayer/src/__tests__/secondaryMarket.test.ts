@@ -23,6 +23,7 @@ import {
   handleSecondaryListingsRequest,
   type SecondaryHandlerContext,
 } from '../secondaryMarketHandlers';
+import { config } from '../config';
 
 // ============================================================================
 // Fixtures
@@ -729,6 +730,54 @@ describe('SecondaryMarketHandlers', () => {
       );
       expect(error).toBeDefined();
       expect(error!.payload.error).toContain('INVALID_SIGNATURE');
+    });
+
+    it('rejects over-cap bids before SDK signature validation', async () => {
+      const { validateSecondaryBid } = await import(
+        '@sapience/sdk/auction/secondaryValidation'
+      );
+      (validateSecondaryBid as ReturnType<typeof vi.fn>).mockClear();
+
+      const sellerClient = createMockClient();
+      const subs = createMockSubs();
+      const ctx = createMockCtx(sellerClient);
+      await handleSecondaryAuctionStart(
+        sellerClient,
+        createListing(),
+        subs,
+        ctx
+      );
+      const ack = findMsg(
+        sellerClient._messages,
+        (m) => m.type === 'secondary.auction.ack' && !!m.payload.auctionId
+      );
+      const auctionId = ack!.payload.auctionId as string;
+
+      const buyerClient = createMockClient();
+      buyerClient.bidCounts = new Map([
+        [`secondary:${auctionId}`, config.MAX_BIDS_PER_CONNECTION_PER_AUCTION],
+      ]);
+
+      const failed = await handleSecondaryBidSubmit(
+        buyerClient,
+        {
+          auctionId,
+          buyer: '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+          price: '600000000000000000',
+          buyerNonce: 1,
+          buyerDeadline: futureDeadline,
+          buyerSignature: '0x' + 'cd'.repeat(65),
+        },
+        subs
+      );
+
+      expect(failed).toBe(false);
+      expect(validateSecondaryBid).not.toHaveBeenCalled();
+      const error = findMsg(
+        buyerClient._messages,
+        (m) => m.type === 'secondary.bid.ack' && !!m.payload.error
+      );
+      expect(error!.payload.error).toBe('bid_rejected');
     });
 
     it('does not call verifyBuyerSignature separately (SDK validation covers it)', async () => {

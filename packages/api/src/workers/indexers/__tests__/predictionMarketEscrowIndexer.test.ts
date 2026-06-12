@@ -603,7 +603,7 @@ describe('PredictionMarketEscrowIndexer', () => {
       const create = upsertArg.create;
       expect(create.chainId).toBe(42161);
       expect(create.marketAddress).toBe(CONTRACT_ADDRESS.toLowerCase());
-      expect(create.predictionId).toBe(PICK_CONFIG_ID.toLowerCase());
+      expect(create.pickConfigId).toBe(PICK_CONFIG_ID.toLowerCase());
       expect(create.holder).toBe(PREDICTOR.toLowerCase());
       expect(create.positionToken).toBe(POSITION_TOKEN.toLowerCase());
       expect(create.tokensBurned).toBe('1000000000000000000');

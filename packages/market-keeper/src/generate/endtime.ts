@@ -103,8 +103,139 @@ const CITY_TZ_OFFSET: Record<string, number> = {
   nairobi: 3,
 };
 
+// Map timezone abbreviations to IANA zone names. Intl.DateTimeFormat picks
+// the right DST variant (EST vs EDT, CST vs CDT, GMT vs BST) automatically
+// from any given calendar date in that zone — so we never hard-code the
+// summer/winter offset and stop being wrong half the year.
+const TZ_ABBR_TO_IANA: Record<string, string> = {
+  ET: 'America/New_York',
+  EST: 'America/New_York',
+  EDT: 'America/New_York',
+  CT: 'America/Chicago',
+  CST: 'America/Chicago',
+  CDT: 'America/Chicago',
+  MT: 'America/Denver',
+  MST: 'America/Denver',
+  MDT: 'America/Denver',
+  PT: 'America/Los_Angeles',
+  PST: 'America/Los_Angeles',
+  PDT: 'America/Los_Angeles',
+  UTC: 'UTC',
+  GMT: 'Europe/London',
+  CET: 'Europe/Berlin',
+  CEST: 'Europe/Berlin',
+  JST: 'Asia/Tokyo',
+  KST: 'Asia/Seoul',
+};
+
 export function parseMonth(s: string): number {
   return MONTH_MAP[s.toLowerCase().replace(/\.$/, '')] ?? 0;
+}
+
+/**
+ * Compute the UTC offset (in hours) of `ianaZone` on the given calendar date.
+ * DST-aware: returns -5 for America/New_York on 2028-11-07 (EST), -4 on
+ * 2028-07-04 (EDT). Backed by Intl.DateTimeFormat which carries the IANA
+ * tzdata, so DST transition rules stay correct without us hand-coding them.
+ *
+ * Samples at noon UTC to avoid edge cases near midnight on DST transition
+ * days (when 02:00 local time either repeats or skips).
+ */
+export function getDstAwareOffsetHours(
+  year: number,
+  month: number,
+  day: number,
+  ianaZone: string
+): number {
+  const testUtcMs = Date.UTC(year, month - 1, day, 12, 0, 0);
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: ianaZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(new Date(testUtcMs));
+  const part = (t: string): number => {
+    const p = parts.find((x) => x.type === t);
+    return p ? parseInt(p.value, 10) : 0;
+  };
+  let ph = part('hour');
+  if (ph === 24) ph = 0; // some zones format midnight as "24" in en-US
+  const localAsUtcMs = Date.UTC(
+    part('year'),
+    part('month') - 1,
+    part('day'),
+    ph,
+    part('minute'),
+    0
+  );
+  return Math.round((localAsUtcMs - testUtcMs) / 3600000);
+}
+
+/**
+ * Detect an IANA timezone from an explicit abbreviation in `text` (e.g. "ET",
+ * "PST", "GMT"). Case-sensitive on the abbrev to avoid matching substrings
+ * inside other uppercase words. Returns null if no abbreviation is present.
+ */
+export function detectTzIana(text: string): string | null {
+  // Longer first so "EDT"/"EST" win over "ET" when both are present.
+  const ordered = Object.keys(TZ_ABBR_TO_IANA).sort(
+    (a, b) => b.length - a.length
+  );
+  for (const abbr of ordered) {
+    if (new RegExp(`\\b${abbr}\\b`).test(text)) return TZ_ABBR_TO_IANA[abbr];
+  }
+  return null;
+}
+
+/**
+ * DST-aware replacement for the old `detectTzOffset` callsite pattern.
+ * Detects an IANA zone from the text and returns the actual offset hours
+ * for `year-month-day` (so EST in winter, EDT in summer, GMT vs BST, etc.).
+ * Returns null when no recognised timezone abbreviation is in the text;
+ * callers chain it with `??` for their tier-specific fallback.
+ */
+export function tzOffsetForDate(
+  text: string,
+  year: number,
+  month: number,
+  day: number
+): number | null {
+  const iana = detectTzIana(text);
+  if (!iana) return null;
+  return getDstAwareOffsetHours(year, month, day, iana);
+}
+
+/**
+ * Infer a sensible IANA timezone from the *subject* of a market when no
+ * explicit timezone is named. US political/sports/legal markets get
+ * America/New_York; UK political markets get Europe/London. The intent is
+ * narrow — only for the "scheduled event with no time given" fallback in
+ * tier 2b. Adding zones here is fine; just keep the keywords specific enough
+ * that a passing mention ("London startup raises round") won't override the
+ * actual market subject.
+ */
+export function inferContextZone(text: string): string | null {
+  const t = text.toLowerCase();
+  // UK first — its keywords are more specific so unlikely to collide with US.
+  if (
+    /\b(uk|u\.k\.|united kingdom|british|britain|parliament|house of commons|downing street|whitehall|westminster|prime minister)\b/.test(
+      t
+    )
+  ) {
+    return 'Europe/London';
+  }
+  if (
+    /\b(u\.s\.|usa|u\.s\.a|united states|american|president|presidential|senate|senator|congress|congressional|house of representatives|supreme court|federal reserve|white house|electoral|inauguration|governor|nfl|nba|mlb|nhl|ncaa|wnba)\b/.test(
+      t
+    ) ||
+    /\bus\b/.test(t)
+  ) {
+    return 'America/New_York';
+  }
+  return null;
 }
 
 /**
@@ -275,9 +406,10 @@ export function extractEndTime(
     const timePart = m[4] + (m[5] ? ' ' + m[5] : '');
     const tzStr = m[6] ?? '';
     const parsed = parseTimeStr(timePart);
-    const tzOff = tzStr
-      ? (detectTzOffset(tzStr) ?? detectTzOffset(question) ?? -4)
-      : (detectTzOffset(question) ?? -4);
+    const tzOff =
+      (tzStr ? tzOffsetForDate(tzStr, yr, mon, day) : null) ??
+      tzOffsetForDate(question, yr, mon, day) ??
+      -4;
     if (parsed) {
       if (out) out.tier = '0';
       return toTs(yr, mon, day, parsed.h, parsed.m, tzOff);
@@ -296,7 +428,7 @@ export function extractEndTime(
     const timePart = m[4];
     const tzStr = m[5] ?? '';
     const parsed = parseTimeStr(timePart);
-    const tzOff = tzStr ? (detectTzOffset(tzStr) ?? -5) : -5;
+    const tzOff = (tzStr ? tzOffsetForDate(tzStr, yr, mon, day) : null) ?? -5;
     if (parsed) {
       if (out) out.tier = '1a';
       return toTs(yr, mon, day, parsed.h, parsed.m, tzOff);
@@ -315,7 +447,7 @@ export function extractEndTime(
     const timePart = m[4];
     const tzStr = m[5] ?? '';
     const parsed = parseTimeStr(timePart);
-    const tzOff = tzStr ? (detectTzOffset(tzStr) ?? 0) : 0;
+    const tzOff = (tzStr ? tzOffsetForDate(tzStr, yr, mon, day) : null) ?? 0;
     if (parsed) {
       if (out) out.tier = '1c';
       return toTs(yr, mon, day, parsed.h, parsed.m, tzOff);
@@ -334,10 +466,57 @@ export function extractEndTime(
     const timePart = m[4];
     const tzStr = m[5] ?? '';
     const parsed = parseTimeStr(timePart);
-    const tzOff = tzStr ? (detectTzOffset(tzStr) ?? 0) : 0;
+    const tzOff = (tzStr ? tzOffsetForDate(tzStr, yr, mon, day) : null) ?? 0;
     if (parsed) {
       if (out) out.tier = '1d';
       return toTs(yr, mon, day, parsed.h, parsed.m, tzOff);
+    }
+  }
+
+  // ── Tier 1e: "by [Month Day][, Year][,] [HH:MM] AM/PM [TZ]" ───────────────
+  // Free-form deadline phrases in the description that don't say "resolves"
+  // but do specify a Month Day + AM/PM time. Example (Ryanair):
+  //   "...enters into an agreement to buy Ryanair by June 30, 2026, 11:59 PM ET"
+  // The AM/PM requirement is the safety net — without it, "by 5" or "by 30"
+  // would false-match. The trailing comma after year is tolerated because
+  // descriptions commonly use "by Month Day, Year, HH:MM PM TZ" with the
+  // double-comma punctuation.
+  //
+  // Guard against the Class-C cancellation-fallback pattern: descriptions
+  // like "If the World Cup is canceled or has not been completed by Oct 13,
+  // 2026, 11:59 PM this market will resolve to 'Other'" name a date that
+  // ISN'T the resolution deadline — it's the fallback. We skip any "by
+  // [date]" whose resolution outcome (within ~200 chars after) is "Other".
+  // Iterate through matches so a real deadline AFTER the fallback in the
+  // same description still gets picked up.
+  {
+    const tier1eRe = new RegExp(
+      `\\bby\\s+(${MONTHS})\\s+(\\d{1,2})(?:st|nd|rd|th)?,?\\s*(\\d{4})?,?\\s*(?:at\\s+)?(\\d{1,2}(?::\\d{2})?\\s*(?:AM|PM|am|pm))\\s*([A-Z]{2,4})?`,
+      'gi'
+    );
+    let mm: RegExpExecArray | null;
+    while ((mm = tier1eRe.exec(cleanDesc)) !== null) {
+      const after = cleanDesc.slice(
+        mm.index + mm[0].length,
+        mm.index + mm[0].length + 200
+      );
+      // Cancellation-fallback: skip if the resolution outcome nearby is "Other".
+      // Polymarket descriptions use curly quotes (U+2018/2019, U+201C/201D)
+      // around outcomes, so include those in the optional-quote char class.
+      if (/resolve\s+to\s+["'‘’“”]?(?:Other|other)["'‘’“”]?/.test(after)) {
+        continue;
+      }
+      const mon = parseMonth(mm[1]);
+      const day = parseInt(mm[2]);
+      const yr = mm[3] ? parseInt(mm[3]) : extractYear(mon, day);
+      const timePart = mm[4];
+      const tzStr = mm[5] ?? '';
+      const parsed = parseTimeStr(timePart);
+      const tzOff = (tzStr ? tzOffsetForDate(tzStr, yr, mon, day) : null) ?? 0;
+      if (parsed) {
+        if (out) out.tier = '1e';
+        return toTs(yr, mon, day, parsed.h, parsed.m, tzOff);
+      }
     }
   }
 
@@ -353,7 +532,7 @@ export function extractEndTime(
     const timePart = m[4];
     const tzStr = m[5] ?? '';
     const parsed = parseTimeStr(timePart);
-    const tzOff = tzStr ? (detectTzOffset(tzStr) ?? 0) : 0;
+    const tzOff = (tzStr ? tzOffsetForDate(tzStr, yr, mon, day) : null) ?? 0;
     const sportDur = detectSportDuration(combined);
     if (parsed) {
       if (out) out.tier = '2a';
@@ -373,7 +552,21 @@ export function extractEndTime(
     const yr = m[3] ? parseInt(m[3]) : extractYear(mon, day);
     const sportDur = detectSportDuration(combined);
     if (out) out.tier = '2b';
-    return toTs(yr, mon, day, 23, 59) + Math.floor((sportDur ?? 4) * 3600);
+    if (sportDur !== null) {
+      // Sports market: existing behavior — stamp 23:59 UTC and add a pad
+      // representing typical game length. Treated as an opaque integer
+      // adjustment, not a timezone math — the offset is "absorbed" by the
+      // pad in practice (4h pad ≈ end-of-day ET converted to UTC).
+      return toTs(yr, mon, day, 23, 59) + Math.floor(sportDur * 3600);
+    }
+    // Non-sports scheduled event: stamp 23:59 in an explicit-or-inferred
+    // timezone, DST-aware. US-themed → ET; UK-themed → London; fallback UTC.
+    // No sport-duration pad — there's no game to wait through.
+    const explicit = detectTzIana(combined);
+    const contextual = explicit ? null : inferContextZone(combined);
+    const iana = explicit ?? contextual;
+    const tzOff = iana ? getDstAwareOffsetHours(yr, mon, day, iana) : 0;
+    return toTs(yr, mon, day, 23, 59, tzOff);
   }
 
   // ── Tier 2c: "scheduled for YYYY-MM-DD" (ISO date) ────────────────────────
@@ -384,7 +577,14 @@ export function extractEndTime(
     const day = parseInt(m[3]);
     const sportDur = detectSportDuration(combined);
     if (out) out.tier = '2c';
-    return toTs(yr, mon, day, 23, 59) + Math.floor((sportDur ?? 4) * 3600);
+    if (sportDur !== null) {
+      return toTs(yr, mon, day, 23, 59) + Math.floor(sportDur * 3600);
+    }
+    const explicit = detectTzIana(combined);
+    const contextual = explicit ? null : inferContextZone(combined);
+    const iana = explicit ?? contextual;
+    const tzOff = iana ? getDstAwareOffsetHours(yr, mon, day, iana) : 0;
+    return toTs(yr, mon, day, 23, 59, tzOff);
   }
 
   // ── Tier 3a: "resolves by [Month Day]" date only (description only) ────────
@@ -485,7 +685,7 @@ export function extractEndTime(
     const timePart = m[3];
     const tzStr = m[4] ?? '';
     const parsed = parseTimeStr(timePart);
-    const tzOff = tzStr ? (detectTzOffset(tzStr) ?? 0) : 0;
+    const tzOff = (tzStr ? tzOffsetForDate(tzStr, yr, mon, day) : null) ?? 0;
     if (parsed) {
       if (out) out.tier = '4c';
       return toTs(yr, mon, day, parsed.h, parsed.m, tzOff);

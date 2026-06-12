@@ -274,6 +274,10 @@ export const activity: NonNullable<QueryResolvers['activity']> = async (
 
   const edges = pageRows.map((r) => ({
     node: r.row,
+    // The interleave sort key, exposed per-edge (`ActivityEdge.timestamp`)
+    // so clients render a uniform feed time without recomputing the
+    // Trade-seconds vs Prediction-DateTime normalization themselves.
+    timestamp: r.ts,
     cursor: encodeCursor({
       k: String(r.ts),
       id: `${r.kind}:${r.sortId}`,

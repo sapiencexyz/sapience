@@ -70,6 +70,8 @@ export type Account = AddressEntity &
     id: Scalars['ID']['output'];
     /** This account's ranking on a chosen metric, or `null` when unranked. */
     ranking?: Maybe<Ranking>;
+    /** Aggregate statistics for this account. Cheap to resolve; always present. */
+    stats: AccountStat;
   };
 
 /**
@@ -145,6 +147,17 @@ export type AccountOrder = {
 export type AccountOrderField = 'CREATED_AT';
 
 /**
+ * Aggregate statistics for an account. Volume-only today; extends with
+ * realized PnL / accuracy if a full per-account PnL surface is built (see
+ * the DEFERRED note on `Account`).
+ */
+export type AccountStat = {
+  __typename?: 'AccountStat';
+  /** Cumulative trade volume across all of this account's activity, wei. */
+  totalVolume: Scalars['BigInt']['output'];
+};
+
+/**
  * Relay-shaped connection over the interleaved Prediction + Trade feed.
  * `nodes` is omitted because unions don't share a field set; clients
  * should select through `edges { node { ... } }` with inline fragments.
@@ -161,6 +174,11 @@ export type ActivityEdge = {
   __typename?: 'ActivityEdge';
   cursor: Scalars['String']['output'];
   node: ActivityItem;
+  /**
+   * The interleave sort key of this edge: `Trade.executedAt` for trades,
+   * epoch seconds of `Prediction.createdAt` for predictions.
+   */
+  timestamp: Scalars['UnixSeconds']['output'];
 };
 
 export type ActivityFilter = {
@@ -180,8 +198,9 @@ export type ActivityFilter = {
  * each item in an `Activity` envelope, which forced clients to dereference
  * through `.source` to get the entity. Here the union is the wire shape.
  *
- * `Forecast` is intentionally not in the union — see the v1 design doc's
- * "Activity model" section. Forecasts are a separate timeline.
+ * `Forecast` exists as its own entity (`Query.forecasts`) but is
+ * intentionally not in the union — forecasts are a separate timeline,
+ * matching v1 (see the v1 design doc's "Activity model" section).
  */
 export type ActivityItem = Prediction | Trade;
 
@@ -274,8 +293,13 @@ export type Claim = Node & {
   holder: Scalars['Address']['output'];
   id: Scalars['ID']['output'];
   logIndex: Scalars['Int']['output'];
+  /**
+   * On-chain pickConfigId of the redeemed position. The underlying column
+   * was historically mislabeled `predictionId`; it has never stored a
+   * `Prediction.predictionId`.
+   */
+  pickConfigId: Scalars['Bytes32']['output'];
   positionToken: Scalars['Address']['output'];
-  predictionId: Scalars['Bytes32']['output'];
   redeemedAt: Scalars['UnixSeconds']['output'];
   refCode?: Maybe<Scalars['String']['output']>;
   tokensBurned: Scalars['BigInt']['output'];
@@ -299,7 +323,8 @@ export type ClaimEdge = {
 export type ClaimFilter = {
   chainId?: InputMaybe<Scalars['Int']['input']>;
   holder?: InputMaybe<Scalars['Address']['input']>;
-  predictionId?: InputMaybe<Scalars['Bytes32']['input']>;
+  /** Match claims redeeming positions of this pickConfigId. */
+  pickConfigId?: InputMaybe<Scalars['Bytes32']['input']>;
 };
 
 export type ClaimOrder = {
@@ -492,6 +517,12 @@ export type Condition = Node & {
   id: Scalars['ID']['output'];
   /** Visibility — false hides this condition from public listing surfaces. */
   isPublic: Scalars['Boolean']['output'];
+  /**
+   * Whether this condition settled non-decisively (void / tie / unresolvable).
+   * v1-compat convenience derived from `outcome` (true when
+   * `outcome == NON_DECISIVE`).
+   */
+  nonDecisive: Scalars['Boolean']['output'];
   /** Cumulative on-chain open interest, wei. */
   openInterest: Scalars['BigInt']['output'];
   optionName?: Maybe<Scalars['String']['output']>;
@@ -502,12 +533,46 @@ export type Condition = Node & {
    */
   outcome?: Maybe<ConditionOutcome>;
   question: Scalars['String']['output'];
+  /**
+   * Whether this condition settled decisively to YES. v1-compat convenience
+   * derived from `outcome` (true when `outcome == YES`).
+   */
+  resolvedToYes: Scalars['Boolean']['output'];
   /** Resolver (oracle) contract address that settles this condition. */
   resolver: Scalars['Address']['output'];
+  /**
+   * Whether this condition has settled. v1-compat convenience derived from
+   * `outcome` (true when `outcome != null`); saves consumers re-deriving
+   * resolution state from the enum.
+   */
+  settled: Scalars['Boolean']['output'];
   settledAt?: Maybe<Scalars['UnixSeconds']['output']>;
   shortName?: Maybe<Scalars['String']['output']>;
   /** Bundled similar-market signal from external sources (Polymarket). */
   similarMarket?: Maybe<SimilarMarket>;
+  /**
+   * Flat mirror of `similarMarket.volume` — all-time external trading volume
+   * (USD). v1-compat convenience: v1 exposed these as flat string-indexed
+   * columns, so the flat form is kept alongside the nested `similarMarket`
+   * value type. `0` when no similar-market signal is present.
+   */
+  similarMarketVolume: Scalars['Float']['output'];
+  /** Flat mirror of `similarMarket.volume1h`. `0` when no signal is present. */
+  similarMarketVolume1h: Scalars['Float']['output'];
+  /** Flat mirror of `similarMarket.volume4h`. `0` when no signal is present. */
+  similarMarketVolume4h: Scalars['Float']['output'];
+  /** Flat mirror of `similarMarket.volume7d`. `0` when no signal is present. */
+  similarMarketVolume7d: Scalars['Float']['output'];
+  /** Flat mirror of `similarMarket.volume24h`. `0` when no signal is present. */
+  similarMarketVolume24h: Scalars['Float']['output'];
+  /** Flat mirror of `similarMarket.volumeFiltered1h`. `0` when no signal is present. */
+  similarMarketVolumeFiltered1h: Scalars['Float']['output'];
+  /** Flat mirror of `similarMarket.volumeFiltered4h`. `0` when no signal is present. */
+  similarMarketVolumeFiltered4h: Scalars['Float']['output'];
+  /** Flat mirror of `similarMarket.volumeFiltered7d`. `0` when no signal is present. */
+  similarMarketVolumeFiltered7d: Scalars['Float']['output'];
+  /** Flat mirror of `similarMarket.volumeFiltered24h`. `0` when no signal is present. */
+  similarMarketVolumeFiltered24h: Scalars['Float']['output'];
   tags: Array<Scalars['String']['output']>;
 };
 
@@ -526,7 +591,16 @@ export type ConditionEdge = {
 };
 
 export type ConditionFilter = {
+  /**
+   * Restrict to a single category slug. Superseded by `categorySlugs` —
+   * when both are provided, `categorySlugs` wins.
+   */
   categorySlug?: InputMaybe<Scalars['String']['input']>;
+  /**
+   * Restrict to conditions whose category slug is in this set. OR within
+   * the set, AND with every other filter. Supersedes `categorySlug`.
+   */
+  categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
   conditionIds?: InputMaybe<Array<Scalars['Bytes']['input']>>;
   endTime?: InputMaybe<IntRangeFilter>;
@@ -536,12 +610,22 @@ export type ConditionFilter = {
    * both; listing surfaces default to public-only when this is omitted.
    */
   public?: InputMaybe<Scalars['Boolean']['input']>;
-  /** Substring search across `question` / `description`, case-insensitive. */
+  /** Match any of these resolver (oracle) contract addresses (case-insensitive). */
+  resolvers?: InputMaybe<Array<Scalars['Address']['input']>>;
+  /**
+   * Substring search across `question` / `shortName` / `description`,
+   * case-insensitive.
+   */
   search?: InputMaybe<Scalars['String']['input']>;
   /** Restrict to settled (`outcome` non-null) / unsettled (null). */
   settled?: InputMaybe<Scalars['Boolean']['input']>;
   /** Restrict to conditions tagged with at least one of these. */
   tags?: InputMaybe<Array<Scalars['String']['input']>>;
+  /**
+   * `true` → only conditions with no parent group; `false` → only grouped.
+   * Omit for both.
+   */
+  ungrouped?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 /**
@@ -556,8 +640,25 @@ export type ConditionGroup = Node & {
   /** Conditions in this group, ordered by `displayOrder` then `createdAt`. */
   conditions: ConditionConnection;
   createdAt: Scalars['DateTimeISO']['output'];
+  /**
+   * Polymarket event id this group is keyed by — the canonical
+   * (source, externalEventId) identity. Null for groups created before
+   * event-keying or from non-Polymarket sources.
+   */
+  externalEventId?: Maybe<Scalars['String']['output']>;
+  /**
+   * Numeric DB id — the group's domain id (PLAN.md). Exists for the
+   * keeper's read→REST-write round-trip (SCHEMA_GAPS G3); admin REST
+   * routes key groups by this id.
+   */
+  groupId: Scalars['Int']['output'];
   id: Scalars['ID']['output'];
   name: Scalars['String']['output'];
+  /**
+   * Whether this group is a negative-risk basket. Derived: true when the
+   * group carries a `negRiskMarketId` (the id itself stays admin-only).
+   */
+  negRisk: Scalars['Boolean']['output'];
   /**
    * External market URLs (typically Polymarket links) associated with this
    * group, aggregated across its constituent conditions.
@@ -664,6 +765,60 @@ export type FloatFilter = {
   lte?: InputMaybe<Scalars['Float']['input']>;
 };
 
+/**
+ * An EAS forecast attestation — a user's probability forecast on a
+ * condition. Identified publicly by the EAS attestation `uid` (the
+ * `/forecast/<uid>` deep-link id). Forecasts are a separate timeline from
+ * the Prediction/Trade activity feed and are intentionally NOT part of
+ * the `ActivityItem` union (matches v1's design).
+ */
+export type Forecast = Node & {
+  __typename?: 'Forecast';
+  /** From the attestation time column. */
+  attestedAt: Scalars['UnixSeconds']['output'];
+  attester: Scalars['Address']['output'];
+  comment?: Maybe<Scalars['String']['output']>;
+  condition?: Maybe<Condition>;
+  /** Nullable — the attestation's conditionId column is nullable. */
+  conditionId?: Maybe<Scalars['Bytes']['output']>;
+  id: Scalars['ID']['output'];
+  schemaId: Scalars['String']['output'];
+  /** EAS attestation uid — the public, shareable domain id. */
+  uid: Scalars['String']['output'];
+  /**
+   * The forecast value — the attestation's prediction STRING column (a
+   * probability string), NOT a binary outcome.
+   */
+  value: Scalars['String']['output'];
+};
+
+export type ForecastConnection = {
+  __typename?: 'ForecastConnection';
+  edges: Array<ForecastEdge>;
+  nodes: Array<Forecast>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
+export type ForecastEdge = {
+  __typename?: 'ForecastEdge';
+  cursor: Scalars['String']['output'];
+  node: Forecast;
+};
+
+export type ForecastFilter = {
+  attester?: InputMaybe<Scalars['Address']['input']>;
+  conditionIds?: InputMaybe<Array<Scalars['Bytes']['input']>>;
+  schemaId?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type ForecastOrder = {
+  direction: OrderDirection;
+  field: ForecastOrderField;
+};
+
+export type ForecastOrderField = 'ATTESTED_AT';
+
 /** Range filter for an integer/UnixSeconds field; both bounds inclusive. */
 export type IntRangeFilter = {
   gte?: InputMaybe<Scalars['Int']['input']>;
@@ -734,9 +889,18 @@ export type PickConfiguration = Node & {
    */
   escrow: Scalars['Address']['output'];
   id: Scalars['ID']['output'];
+  /** Whether this configuration belongs to a legacy market. */
+  isLegacy: Scalars['Boolean']['output'];
   pickConfigId: Scalars['Bytes32']['output'];
   picks: Array<Pick>;
   predictorToken?: Maybe<Scalars['Address']['output']>;
+  /**
+   * Convenience boolean: `true` once the configuration has a terminal
+   * `result` (any non-null `SettlementResult`, including `NON_DECISIVE`).
+   * Mirrors the v1 resolved flag that v2 dropped when `result` became
+   * nullable.
+   */
+  resolved: Scalars['Boolean']['output'];
   /**
    * Settlement timestamp; `null` until the underlying conditions resolve
    * and this configuration is closed out.
@@ -780,14 +944,22 @@ export type PickConfigurationOrderField =
   | 'RESOLVED_AT';
 
 /**
- * Position-token balance held by `holder` on a specific pick configuration.
- * The synthesized sell-event row format from v1 doesn't carry forward; v2
- * returns raw balance rows. Cost-basis / realized-PnL surfaces will land
- * behind opt-in fields in a later phase.
+ * Position-token balance held by `holder` on a specific pick configuration,
+ * synthesized exactly the way v1's `positionsPage` items are (G5): each raw
+ * balance row's event stream (primary mints + secondary trades) is walked
+ * with a running weighted-average cost, emitting one SOLD row per secondary
+ * sale on an unsettled pick configuration plus an OPEN row while balance
+ * remains (or once the configuration settles). Zero-balance unsettled rows
+ * with no sales (off-platform transfers/burns) are dropped — which is why a
+ * `positions` page can be empty while `pageInfo.hasNextPage` is still true;
+ * always page on `pageInfo`, never on `edges` length.
  */
 export type Position = Node & {
   __typename?: 'Position';
-  /** Number of position tokens still held, wei (18 decimals). */
+  /**
+   * Number of position tokens still held, wei (18 decimals). Always 0 on
+   * SOLD rows.
+   */
   balance: Scalars['BigInt']['output'];
   chainId: Scalars['Int']['output'];
   createdAt: Scalars['DateTimeISO']['output'];
@@ -796,21 +968,69 @@ export type Position = Node & {
   pickConfig?: Maybe<PickConfiguration>;
   pickConfigId: Scalars['Bytes32']['output'];
   /**
+   * The holder's prediction for this pick configuration — the first
+   * holder-side prediction by row order, exactly the semantics behind v1's
+   * `pickConfig.predictionId` (sdl/resolvers/queries/escrow.ts). Resolves
+   * the CLAIM-permalink round trip in one query.
+   */
+  prediction?: Maybe<Prediction>;
+  /**
+   * Realized PnL = sale proceeds − allocated cost basis, wei. Set on SOLD
+   * rows only; null on OPEN rows (v1 parity — settlement PnL on resolved
+   * rows is derived downstream from `totalPayout` and `userCollateral`).
+   */
+  realizedPnl?: Maybe<Scalars['BigInt']['output']>;
+  /**
    * Which side of the pick configuration this position is on. Derived
    * from `token` against `pickConfig.predictorToken` / `counterpartyToken`,
    * exposed directly so clients don't have to reconstruct the comparison.
    */
   side: Side;
+  /**
+   * Row discriminator for the synthesized event stream. v1 encoded SOLD
+   * rows implicitly in the row id's shape (`<rowId>-sell-<tradeHash>`);
+   * v2 makes the distinction explicit.
+   */
+  status: PositionStatus;
   /** ERC-20 position token contract. */
   token: Scalars['Address']['output'];
+  /**
+   * Total payout claimable/claimed for this position, wei — the holder's
+   * share of every prediction pool they minted into. Null until resolvable
+   * (no holder-side mints found, or outside the `positions` synthesis).
+   */
+  totalPayout?: Maybe<Scalars['BigInt']['output']>;
+  /**
+   * On SOLD rows, the executed-at time of the sale; otherwise the raw row's
+   * last update.
+   */
   updatedAt: Scalars['DateTimeISO']['output'];
+  /**
+   * Collateral the holder put in for this position, wei. On a SOLD row this
+   * is the cost basis allocated to the sold shares at sale time. Null only
+   * where v1 returns null: when the (remaining) cost basis is zero, and on
+   * rows not produced by the `positions` synthesis (single `position(id:)` /
+   * `node()` lookups return the raw balance row).
+   */
+  userCollateral?: Maybe<Scalars['BigInt']['output']>;
 };
 
 export type PositionConnection = {
   __typename?: 'PositionConnection';
   edges: Array<PositionEdge>;
   nodes: Array<Position>;
+  /**
+   * `hasNextPage` is raw-row truth: a page whose rows all synthesized away
+   * still reports `true` (and an advancing `endCursor`) while more
+   * underlying rows exist.
+   */
   pageInfo: PageInfo;
+  /**
+   * Count of underlying positions surfaced by the synthesis — v1
+   * `positionCount` semantics (zero-balance unsettled rows excluded).
+   * Synthesized SOLD rows are not counted, so this can differ from the
+   * number of nodes across all pages.
+   */
   totalCount: Scalars['Int']['output'];
 };
 
@@ -842,6 +1062,23 @@ export type PositionOrder = {
 export type PositionOrderField = 'CREATED_AT' | 'UPDATED_AT';
 
 /**
+ * Lifecycle discriminator for a synthesized position row. v1's row stream
+ * only distinguishes open/parent rows from synthesized sell rows — claims
+ * are deliberately not part of the synthesis (redeem() requires a settled
+ * pick configuration, whose PnL the settlement flow already covers), so
+ * there is intentionally no CLAIMED member.
+ */
+export type PositionStatus =
+  /** Balance row — still held, or settled (settlement-PnL flow applies). */
+  | 'OPEN'
+  /**
+   * Synthesized row for one secondary sale on an unsettled pick
+   * configuration: `balance` is 0, `userCollateral` carries the allocated
+   * cost basis and `realizedPnl` the proceeds minus that basis.
+   */
+  | 'SOLD';
+
+/**
  * Escrow-based prediction — a two-sided bet between a predictor and a
  * counterparty, settled by the pick configuration's underlying condition(s).
  * Identified by its on-chain `predictionId`.
@@ -859,6 +1096,8 @@ export type Prediction = Node & {
   createdAt: Scalars['DateTimeISO']['output'];
   escrow: Scalars['Address']['output'];
   id: Scalars['ID']['output'];
+  /** Whether this prediction was made on a legacy market. */
+  isLegacy: Scalars['Boolean']['output'];
   pickConfig?: Maybe<PickConfiguration>;
   predictionId: Scalars['Bytes32']['output'];
   predictor: Scalars['Address']['output'];
@@ -873,6 +1112,12 @@ export type Prediction = Node & {
   refCode?: Maybe<Scalars['String']['output']>;
   result?: Maybe<SettlementResult>;
   settleTxHash?: Maybe<Scalars['Bytes32']['output']>;
+  /**
+   * Convenience boolean: `true` once the prediction has a terminal `result`
+   * (any non-null `SettlementResult`, including `NON_DECISIVE`). Mirrors the
+   * v1 settled flag that v2 dropped when `result` became nullable.
+   */
+  settled: Scalars['Boolean']['output'];
   /** Settlement timestamp; `null` until the prediction settles on-chain. */
   settledAt?: Maybe<Scalars['UnixSeconds']['output']>;
 };
@@ -1066,6 +1311,13 @@ export type Query = {
    * DESC` are common alternates.
    */
   conditions: ConditionConnection;
+  /** Look up a single forecast attestation by its EAS `uid`. */
+  forecast?: Maybe<Forecast>;
+  /**
+   * Relay-shaped connection over EAS forecast attestations. Defaults to
+   * `ATTESTED_AT DESC`, keyset on `(time, uid)`.
+   */
+  forecasts: ForecastConnection;
   /**
    * Account leaderboard ranked by `metric`. PnL / Volume / ROI accept a
    * `filter.timestamp` window; Accuracy is lifetime-aggregated and ignores
@@ -1115,8 +1367,9 @@ export type Query = {
    */
   questions: QuestionConnection;
   /**
-   * Tags attached to public conditions, backed by the keeper-refreshed
-   * `popular_tag` materialization. Default order is `CONDITION_COUNT DESC`
+   * Tags attached to public conditions, backed by the `popular_tag`
+   * materialization (refreshed lazily by reads when older than ~1h).
+   * Default order is `CONDITION_COUNT DESC`
    * with `first: 20` — the canonical "popular tags" feed. Sort by `NAME`
    * for an alphabetical browse.
    */
@@ -1226,6 +1479,17 @@ export type QueryConditionsArgs = {
   filter?: InputMaybe<ConditionFilter>;
   first?: InputMaybe<Scalars['Int']['input']>;
   orderBy?: InputMaybe<ConditionOrder>;
+};
+
+export type QueryForecastArgs = {
+  uid: Scalars['String']['input'];
+};
+
+export type QueryForecastsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<ForecastFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<ForecastOrder>;
 };
 
 export type QueryLeaderboardArgs = {
@@ -1351,6 +1615,14 @@ export type QuestionFilter = {
   endsAt?: InputMaybe<IntRangeFilter>;
   /** Range over the Polymarket-derived `estimatedPrice` 0–1 probability. */
   estimatedPrice?: InputMaybe<FloatFilter>;
+  /**
+   * Restrict to one side of the `QuestionItem` union, by *rendered* kind:
+   * `CONDITION` returns items that resolve to a standalone Condition
+   * (ungrouped conditions plus single-condition groups, which the feed
+   * unwraps); `CONDITION_GROUP` returns multi-condition ConditionGroups
+   * only. Both kinds when omitted.
+   */
+  questionType?: InputMaybe<QuestionItemKind>;
   /** Resolution-status filter; defaults to ALL when omitted. */
   resolutionStatus?: InputMaybe<ResolutionStatus>;
   /**
@@ -1380,6 +1652,12 @@ export type QuestionFilter = {
  * type via inline fragments.
  */
 export type QuestionItem = Condition | ConditionGroup;
+
+/**
+ * Which side of the `QuestionItem` union a feed item resolves to. Values
+ * mirror the union's member type names.
+ */
+export type QuestionItemKind = 'CONDITION' | 'CONDITION_GROUP';
 
 export type QuestionOrder = {
   direction: OrderDirection;
@@ -1426,10 +1704,23 @@ export type QuestionOrderField =
 export type Ranking = {
   __typename?: 'Ranking';
   account: Account;
-  /** Lifetime Brier-derived accuracy score (0–1). Populated for `ACCURACY`. */
+  /**
+   * Lifetime accuracy score — the average time-weighted Brier-derived
+   * error (`avg(twError)`), the SAME raw, unbounded scale v1's
+   * `accuracyScore` used (NOT 0–1; fixture-typical values are in the
+   * hundreds). Render it the way v1 did. A future rescale to 0–1 would be
+   * a breaking display change — the parity suite pins the raw scale and
+   * fails loudly if the server ever rescales.
+   */
   accuracy?: Maybe<Scalars['Float']['output']>;
   /** Net profit/loss in wUSDe wei (signed). Populated for `PNL`. */
   pnl?: Maybe<Scalars['BigInt']['output']>;
+  /**
+   * `pnl` pre-scaled to a v1-shaped decimal string via `formatUnits(pnl, 18)`
+   * — a convenience so leaderboard/profile consumers don't divide by 1e18
+   * themselves. `"0"` when `pnl` is null (non-`PNL` rankings).
+   */
+  pnlFormatted: Scalars['String']['output'];
   rank: Scalars['Int']['output'];
   /** PnL / volume ratio. Populated for `ROI`. */
   roi?: Maybe<Scalars['Float']['output']>;
@@ -1517,8 +1808,9 @@ export type SimilarMarket = {
  * A tag attached to public conditions. Not a Node — the `name` itself is
  * the natural key, so refetch by globalId would be redundant.
  *
- * `conditionCount` is the denormalized usage count maintained by the
- * keeper's `popular_tag` refresh; treat it as near-real-time.
+ * `conditionCount` is the denormalized usage count from the `popular_tag`
+ * materialization, which reads refresh when it goes stale (~hourly);
+ * treat it as near-real-time.
  */
 export type Tag = {
   __typename?: 'Tag';

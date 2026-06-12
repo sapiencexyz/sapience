@@ -9,9 +9,9 @@ const mockPrisma = vi.hoisted(() => ({
 
 vi.mock('../../../core/db', () => ({ default: mockPrisma }));
 
+import { encodeCursor } from '../relay/cursor';
 import { ActivityItem } from './Activity';
 import { activity } from './queries/activity';
-import { encodeCursor } from '../relay/cursor';
 
 const callResolver = <TResult = unknown>(resolver: unknown) =>
   resolver as (
@@ -203,6 +203,36 @@ describe('activity (v2)', () => {
     expect(
       result.edges.map((e) => e.node.predictionId ?? e.node.tradeHash)
     ).toEqual(['0xp_new', '0xt_mid', '0xp_old']);
+  });
+
+  it('edges expose the interleave sort key as timestamp (trade = executedAt, prediction = floor(createdAt epoch))', async () => {
+    const tradeExecutedAt = Math.floor(
+      new Date('2026-01-02T00:00:00Z').getTime() / 1000
+    );
+    // Subsecond createdAt: the edge timestamp must floor to whole seconds —
+    // the same normalization the interleave sort and cursor key use.
+    const predictionCreatedAt = new Date('2026-01-03T00:00:00.750Z');
+    mockPrisma.prediction.findMany.mockResolvedValueOnce([
+      { predictionId: '0xp', createdAt: predictionCreatedAt },
+    ]);
+    mockPrisma.secondaryTrade.findMany.mockResolvedValueOnce([
+      { tradeHash: '0xt', executedAt: tradeExecutedAt },
+    ]);
+
+    const result = await callResolver<{
+      edges: {
+        node: { predictionId?: string; tradeHash?: string };
+        timestamp: number;
+      }[];
+    }>(activity)(null, { first: 10 }, {}, null);
+
+    const byId = new Map(
+      result.edges.map((e) => [activityRowId(e.node), e.timestamp])
+    );
+    expect(byId.get('0xp')).toBe(
+      Math.floor(predictionCreatedAt.getTime() / 1000)
+    );
+    expect(byId.get('0xt')).toBe(tradeExecutedAt);
   });
 
   it('paging after a TRADE cursor excludes same-timestamp predictions (no cross-page duplication)', async () => {

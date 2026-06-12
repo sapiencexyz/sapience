@@ -8,6 +8,8 @@
     "build": "tsc",
     "generate": "tsx scripts/generate.ts",
     "generate:dry-run": "LLM_ENABLED=false tsx scripts/generate.ts --dry-run",
+    "add-events": "tsx scripts/add-events.ts",
+    "add-events:dry-run": "LLM_ENABLED=false tsx scripts/add-events.ts --dry-run",
     "settle-polymarket": "tsx scripts/settle-polymarket.ts",
     "settle-polymarket:dry-run": "tsx scripts/settle-polymarket.ts --dry-run",
     "settle-polymarket:execute": "tsx scripts/settle-polymarket.ts --execute",
@@ -29,6 +31,13 @@
     "refresh-metadata": "tsx scripts/refresh-metadata.ts",
     "refresh-metadata:dry-run": "tsx scripts/refresh-metadata.ts --dry-run",
     "smoke-endtime-llm": "tsx scripts/smoke-endtime-llm.ts",
+    "labeler:fetch": "tsx src/labeler/fetch.ts",
+    "labeler:fetch-weather": "tsx src/labeler/fetch-weather.ts",
+    "labeler:fetch-sports": "tsx src/labeler/fetch-sports.ts",
+    "labeler:validate-game": "tsx src/labeler/validate-game.ts",
+    "labeler:fetch-llm-endtimes": "tsx src/labeler/fetch-llm-endtimes.ts",
+    "labeler:serve": "tsx src/labeler/serve.ts",
+    "labeler:score": "tsx src/labeler/score.ts",
     "cleanup-polymarket": "tsx scripts/cleanup-polymarket.ts",
     "cleanup-polymarket:dry-run": "tsx scripts/cleanup-polymarket.ts --dry-run",
     "cleanup-polymarket:execute": "tsx scripts/cleanup-polymarket.ts --execute",
@@ -42,20 +51,21 @@
   },
   "dependencies": {
     "@sapience/sdk": "workspace:*",
+    "chrono-node": "^2.9.1",
     "dotenv": "16.4.5",
     "viem": "2.47.2"
   },
   "devDependencies": {
-    "vitest": "3.0.0",
-    "tsx": "4.19.2",
     "@eslint/js": "9.18.0",
     "@types/node": "20.17.10",
     "eslint": "9.15.0",
     "eslint-plugin-import": "2.32.0",
     "globals": "15.11.0",
     "prettier": "3.3.3",
+    "tsx": "4.19.2",
     "typescript": "5.8.3",
-    "typescript-eslint": "8.21.0"
+    "typescript-eslint": "8.21.0",
+    "vitest": "3.0.0"
   },
   "engines": {
     "node": ">=22.12",

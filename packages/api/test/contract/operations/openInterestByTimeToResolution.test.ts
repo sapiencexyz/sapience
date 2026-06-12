@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { GET_OPEN_INTEREST_BY_TIME_TO_RESOLUTION } from '@sapience/sdk/queries';
+import { GET_OPEN_INTEREST_BY_TIME_TO_RESOLUTION } from '../fixtures/v1-operations';
 import { executeOperation } from '../../helpers/testApollo';
 
 interface TTRResult {

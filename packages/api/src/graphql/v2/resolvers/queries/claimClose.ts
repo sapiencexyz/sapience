@@ -49,8 +49,8 @@ export const claims: NonNullable<QueryResolvers['claims']> = async (
   const where: Prisma.ClaimWhereInput = {};
   if (args.filter?.chainId != null) where.chainId = args.filter.chainId;
   if (args.filter?.holder) where.holder = args.filter.holder.toLowerCase();
-  if (args.filter?.predictionId)
-    where.predictionId = args.filter.predictionId.toLowerCase();
+  if (args.filter?.pickConfigId)
+    where.pickConfigId = args.filter.pickConfigId.toLowerCase();
 
   const cursor = args.after ? decodeCursor(args.after) : null;
   const cursorWhere = cursor

@@ -4,7 +4,7 @@ import { isAddress } from 'viem';
 import { formatUnits } from './_prediction-helpers';
 import { getGraphQLEndpointV2 } from '~/lib/data/graphql';
 import { mainnetClient } from '~/lib/utils/util';
-import { getEnsAvatarUrlForAddress } from '~/lib/ens/avatar';
+import { getEnsAvatarUrlForAddress } from '~/lib/ens/avatar.server';
 import { SCHEMA_UID } from '~/lib/constants';
 
 // ---------- GraphQL queries (v2 transport) ----------
