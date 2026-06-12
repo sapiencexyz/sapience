@@ -13,21 +13,23 @@ import { extname, join, normalize, resolve, sep } from 'node:path';
 import { env } from './config.js';
 import { fairnessCommitment, poolSecret } from './draw.js';
 import { activePool, handleRequest } from './handler.js';
+import { NETWORKS } from './network.js';
 import { minterAddress } from './receipt.js';
 import type { Hex } from 'viem';
 
-{
-  const pool = activePool();
+for (const network of NETWORKS) {
+  const pool = activePool(network);
   console.log(
-    `[bingo-server] pool=${pool.poolId} cutoff=${new Date(pool.cutoff * 1000).toISOString()} ` +
+    `[bingo-server] ${network}: pool=${pool.poolId} cutoff=${new Date(pool.cutoff * 1000).toISOString()} ` +
       `conditions=${pool.conditions.length} commitment=${fairnessCommitment(
         poolSecret(env.SERVER_SECRET as Hex, pool.poolId),
       )}`,
   );
 }
-void minterAddress().then((a) =>
+// Same key → same smart-account address on both networks; one log line.
+void minterAddress('main').then((a) =>
   console.log(
-    `[receipt] minter smart account: ${a} — must be the contract's minter`,
+    `[receipt] minter smart account: ${a} — must be the contracts' minter`,
   ),
 );
 

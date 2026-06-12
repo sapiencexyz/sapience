@@ -29,9 +29,11 @@ import {
 import { signerToEcdsaValidator } from '@zerodev/ecdsa-validator';
 import { getEntryPoint, KERNEL_V3_1 } from '@zerodev/sdk/constants';
 import { env } from './config.js';
-import { CHAIN, CHAIN_ID, getPublicClient, zeroDevUrl } from './session.js';
+import { NETWORK_CONFIG, type Network } from './network.js';
+import { chainFor, getPublicClient, zeroDevUrl } from './session.js';
 
-const RECEIPT_ADDRESS = env.RECEIPT_CONTRACT_ADDRESS as Address;
+const receiptAddress = (network: Network): Address =>
+  NETWORK_CONFIG[network].receiptContract;
 
 const RECEIPT_ABI = [
   {
@@ -122,14 +124,17 @@ type CardMetaTuple = readonly [
   boolean, // referralPaid
 ];
 
-let minterClientPromise: Promise<KernelAccountClient> | null = null;
+const minterClients = new Map<Network, Promise<KernelAccountClient>>();
 
 /** Kernel smart account owned by MINTER_PRIVATE_KEY, sending through the
- *  ZeroDev bundler + paymaster (sponsored gas). Built once, lazily. */
-function getMinterClient(): Promise<KernelAccountClient> {
-  if (!minterClientPromise) {
-    minterClientPromise = (async () => {
-      const publicClient = getPublicClient();
+ *  ZeroDev bundler + paymaster (sponsored gas). Built once per network,
+ *  lazily — same key, same smart-account address on both chains. */
+function getMinterClient(network: Network): Promise<KernelAccountClient> {
+  let p = minterClients.get(network);
+  if (!p) {
+    p = (async () => {
+      const chain = chainFor(network);
+      const publicClient = getPublicClient(network);
       const signer = privateKeyToAccount(env.MINTER_PRIVATE_KEY as Hex);
       const entryPoint = getEntryPoint('0.7');
       const validator = await signerToEcdsaValidator(publicClient, {
@@ -142,14 +147,14 @@ function getMinterClient(): Promise<KernelAccountClient> {
         plugins: { sudo: validator },
         kernelVersion: KERNEL_V3_1,
       });
-      const url = zeroDevUrl(CHAIN_ID);
+      const url = zeroDevUrl(chain.id);
       const paymasterClient = createZeroDevPaymasterClient({
-        chain: CHAIN,
+        chain,
         transport: http(url),
       });
       return createKernelAccountClient({
         account,
-        chain: CHAIN,
+        chain,
         bundlerTransport: http(url),
         paymaster: {
           getPaymasterData: async (userOperation) =>
@@ -157,13 +162,14 @@ function getMinterClient(): Promise<KernelAccountClient> {
         },
       });
     })();
+    minterClients.set(network, p);
   }
-  return minterClientPromise;
+  return p;
 }
 
 /** The minter smart-account address — set this as `minter` on the contract. */
-export async function minterAddress(): Promise<Address> {
-  const client = await getMinterClient();
+export async function minterAddress(network: Network): Promise<Address> {
+  const client = await getMinterClient(network);
   const a = client.account?.address;
   if (!a) throw new Error('Minter client has no account');
   return a;
@@ -176,11 +182,12 @@ export function poolHash(poolId: string): Hex {
 /** How many cards the player holds in the pool (= the next mintable
  *  cardIndex; indexes are strictly sequential). */
 export async function cardCount(
+  network: Network,
   poolId: string,
   player: Address,
 ): Promise<number> {
-  const n = (await getPublicClient().readContract({
-    address: RECEIPT_ADDRESS,
+  const n = (await getPublicClient(network).readContract({
+    address: receiptAddress(network),
     abi: RECEIPT_ABI,
     functionName: 'cardCount',
     args: [poolHash(poolId), player],
@@ -190,12 +197,13 @@ export async function cardCount(
 
 /** The already-minted receipt id for (pool, player, cardIndex), or null. */
 export async function receiptTokenId(
+  network: Network,
   poolId: string,
   player: Address,
   cardIndex: number,
 ): Promise<bigint | null> {
-  const id = (await getPublicClient().readContract({
-    address: RECEIPT_ADDRESS,
+  const id = (await getPublicClient(network).readContract({
+    address: receiptAddress(network),
     abi: RECEIPT_ABI,
     functionName: 'tokenOfPlayerPoolIndex',
     args: [poolHash(poolId), player, cardIndex],
@@ -205,14 +213,15 @@ export async function receiptTokenId(
 
 /** The chain's record of one (pool, player, cardIndex) submission. */
 export async function chainSubmission(
+  network: Network,
   poolId: string,
   player: Address,
   cardIndex: number,
 ): Promise<ChainSubmission | null> {
-  const tokenId = await receiptTokenId(poolId, player, cardIndex);
+  const tokenId = await receiptTokenId(network, poolId, player, cardIndex);
   if (tokenId == null) return null;
-  const meta = (await getPublicClient().readContract({
-    address: RECEIPT_ADDRESS,
+  const meta = (await getPublicClient(network).readContract({
+    address: receiptAddress(network),
     abi: RECEIPT_ABI,
     functionName: 'cardMeta',
     args: [tokenId],
@@ -234,12 +243,14 @@ export async function chainSubmission(
 
 /** Every submission ever, from CardReceiptMinted events + current paid
  *  flags. The admin's payout worklist — no server records involved. */
-export async function allChainSubmissions(): Promise<ChainSubmission[]> {
-  const publicClient = getPublicClient();
+export async function allChainSubmissions(
+  network: Network,
+): Promise<ChainSubmission[]> {
+  const publicClient = getPublicClient(network);
   const logs = await publicClient.getLogs({
-    address: RECEIPT_ADDRESS,
+    address: receiptAddress(network),
     event: CARD_MINTED_EVENT,
-    fromBlock: BigInt(env.LOG_FROM_BLOCK),
+    fromBlock: BigInt(NETWORK_CONFIG[network].logFromBlock),
     toBlock: 'latest',
   });
   return Promise.all(
@@ -255,7 +266,7 @@ export async function allChainSubmissions(): Promise<ChainSubmission[]> {
         referrer,
       } = log.args;
       const meta = (await publicClient.readContract({
-        address: RECEIPT_ADDRESS,
+        address: receiptAddress(network),
         abi: RECEIPT_ABI,
         functionName: 'cardMeta',
         args: [tokenId!],
@@ -283,6 +294,7 @@ export async function allChainSubmissions(): Promise<ChainSubmission[]> {
  *  strict-sequential CardIndexMismatch is the backstop). Throws on failure
  *  (no record, no card). */
 export async function mintReceipt(params: {
+  network: Network;
   player: Address;
   poolId: string;
   cardIndex: number;
@@ -292,18 +304,23 @@ export async function mintReceipt(params: {
   ref: Address | null;
 }): Promise<ChainSubmission> {
   const read = () =>
-    chainSubmission(params.poolId, params.player, params.cardIndex);
+    chainSubmission(
+      params.network,
+      params.poolId,
+      params.player,
+      params.cardIndex,
+    );
   const existing = await read();
   if (existing) return existing;
 
-  const client = await getMinterClient();
+  const client = await getMinterClient(params.network);
   const account = client.account;
   if (!account) throw new Error('Minter client has no account');
   try {
     const opHash = await client.sendUserOperation({
       callData: await account.encodeCalls([
         {
-          to: RECEIPT_ADDRESS,
+          to: receiptAddress(params.network),
           value: 0n,
           data: encodeFunctionData({
             abi: RECEIPT_ABI,

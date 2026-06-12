@@ -188,9 +188,11 @@ async function request<T>(
 ): Promise<T> {
   const controller = new AbortController();
   const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+  // One backend serves both networks; every request says which one it's for.
+  const sep = path.includes('?') ? '&' : '?';
   let res: Response;
   try {
-    res = await fetch(`${loadServerUrl()}${path}`, {
+    res = await fetch(`${loadServerUrl()}${path}${sep}network=${NETWORK}`, {
       ...init,
       signal: controller.signal,
     });

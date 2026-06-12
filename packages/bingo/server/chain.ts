@@ -1,5 +1,6 @@
 // On-chain read helpers: which lines are funded, how cells resolved.
 // Chain state is the ONLY source of truth — the server keeps no records.
+// Every read is per network; the same code serves staging and main.
 
 import { parseAbi, parseAbiItem, type Address, type Hex } from 'viem';
 import {
@@ -11,17 +12,26 @@ import {
   predictionMarketEscrow as escrowAddresses,
   collateralToken as collateralAddresses,
 } from '@sapience/sdk/contracts';
-import { env } from './config.js';
-import { CHAIN_ID, getPublicClient } from './session.js';
+import { NETWORK_CONFIG, type Network } from './network.js';
+import { chainFor, getPublicClient } from './session.js';
 import { buildLines, type Line } from './lines.js';
 import type { PoolCondition } from './types.js';
 
-export const ESCROW_ADDRESS = escrowAddresses[CHAIN_ID]?.address as
-  | Address
-  | undefined;
-export const COLLATERAL_ADDRESS = collateralAddresses[CHAIN_ID]?.address as
-  | Address
-  | undefined;
+export function escrowAddress(network: Network): Address {
+  const a = escrowAddresses[chainFor(network).id]?.address as
+    | Address
+    | undefined;
+  if (!a) throw new Error(`Escrow not configured for ${network}`);
+  return a;
+}
+
+export function collateralAddress(network: Network): Address {
+  const a = collateralAddresses[chainFor(network).id]?.address as
+    | Address
+    | undefined;
+  if (!a) throw new Error(`Collateral not configured for ${network}`);
+  return a;
+}
 
 const RESOLVER_ABI = parseAbi([
   'function getResolution(bytes conditionId) view returns (bool isResolved, (uint256 yesWeight, uint256 noWeight) outcome)',
@@ -59,14 +69,14 @@ export interface FundedPrediction {
  *  funded" record — it survives the player redeeming (burning) the
  *  position. One getLogs call replaces what a journal would track. */
 export async function fundedPredictions(
+  network: Network,
   player: Address,
 ): Promise<FundedPrediction[]> {
-  if (!ESCROW_ADDRESS) throw new Error('Escrow not configured');
-  const logs = await getPublicClient().getLogs({
-    address: ESCROW_ADDRESS,
+  const logs = await getPublicClient(network).getLogs({
+    address: escrowAddress(network),
     event: PREDICTION_CREATED_EVENT,
     args: { predictor: player },
-    fromBlock: BigInt(env.LOG_FROM_BLOCK),
+    fromBlock: BigInt(NETWORK_CONFIG[network].logFromBlock),
     toBlock: 'latest',
   });
   const out: FundedPrediction[] = [];
@@ -105,13 +115,14 @@ export function lineIsFunded(
 
 /** Per-line funded flags for one card, in line order. */
 export async function fundedLineFlags(
+  network: Network,
   player: Address,
   cells: readonly PoolCondition[],
   yesMask: number,
   tag: Hex,
   stakePerLineWei: bigint,
 ): Promise<boolean[]> {
-  const funded = await fundedPredictions(player);
+  const funded = await fundedPredictions(network, player);
   return buildLines().map((line) =>
     lineIsFunded(funded, linePicks(line, cells, yesMask), tag, stakePerLineWei),
   );
@@ -122,10 +133,11 @@ export type CellOutcome = 'pending' | 'yes' | 'no' | 'tie';
 /** Decisive-or-pending view of a single condition, resolver reverts treated
  *  as pending (same fail-soft rule the old contract used). */
 export async function cellResolution(
+  network: Network,
   resolver: Address,
   conditionId: Hex,
 ): Promise<CellOutcome> {
-  const publicClient = getPublicClient();
+  const publicClient = getPublicClient(network);
   try {
     const [ok, outcome] = (await publicClient.readContract({
       address: resolver,

@@ -1,10 +1,11 @@
-// staging/main network switch. NETWORK=main targets Ethereal mainnet
-// (production); the default, staging, targets Ethereal testnet. Everything
-// chain-shaped (chain object, relayer, log-scan floor) hangs off this one
-// knob — contract addresses come from @sapience/sdk/contracts keyed by
-// chain id, so they switch with it.
+// The server serves BOTH networks from one deployment: every request picks
+// staging (Ethereal testnet) or main (Ethereal mainnet) via a `network`
+// query param, and signed session payloads carry their own chainId. Each
+// network's deployment facts are hardcoded here — chain, relayer, receipt
+// contract, log-scan floor; escrow/collateral come from
+// @sapience/sdk/contracts keyed by chain id.
 
-import type { Chain } from 'viem';
+import type { Address, Chain } from 'viem';
 import {
   etherealChain,
   etherealTestnetChain,
@@ -12,30 +13,45 @@ import {
 
 export type Network = 'staging' | 'main';
 
+export const NETWORKS: readonly Network[] = ['staging', 'main'];
+
+/** Parses an (optional) network name; empty/undefined = staging so requests
+ *  from clients that predate the switch keep working. */
 export function resolveNetwork(raw: string | undefined): Network {
   if (raw === undefined || raw === '' || raw === 'staging') return 'staging';
   if (raw === 'main') return 'main';
-  throw new Error(`NETWORK must be 'staging' or 'main', got '${raw}'`);
+  throw new Error(`network must be 'staging' or 'main', got '${raw}'`);
 }
 
 export interface NetworkConfig {
   chain: Chain;
   relayerWsUrl: string;
-  /** Default lower bound for on-chain log scans (the network's
-   *  BingoCardReceipt deploy block). undefined = no safe default;
-   *  LOG_FROM_BLOCK becomes required at boot. */
-  defaultLogFromBlock: number | undefined;
+  /** BingoCardReceipt — the network's submission record + payout rail. */
+  receiptContract: Address;
+  /** Lower bound for on-chain log scans = the receipt's deploy block. */
+  logFromBlock: number;
 }
 
 export const NETWORK_CONFIG: Record<Network, NetworkConfig> = {
   staging: {
     chain: etherealTestnetChain,
     relayerWsUrl: 'wss://relayer.staging.sapience.xyz/auction',
-    defaultLogFromBlock: 4828264,
+    receiptContract: '0x67fB8B733Fe4E523d7d491785A86748a4ee9112c',
+    logFromBlock: 4828264,
   },
   main: {
     chain: etherealChain,
     relayerWsUrl: 'wss://relayer.sapience.xyz/auction',
-    defaultLogFromBlock: 5041801,
+    receiptContract: '0xdb89F60983C7f943FD683Da0c3F6418d38e3732d',
+    logFromBlock: 5041801,
   },
 };
+
+/** The network a chain id belongs to, or null — used to route serialized
+ *  sessions (which carry their chainId) to the right chain. */
+export function networkForChainId(chainId: number): Network | null {
+  for (const n of NETWORKS) {
+    if (NETWORK_CONFIG[n].chain.id === chainId) return n;
+  }
+  return null;
+}

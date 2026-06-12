@@ -24,25 +24,33 @@ import {
   linePicks,
 } from './chain.js';
 import { buildLines, LINES_PER_CARD } from './lines.js';
+import { NETWORK_CONFIG, resolveNetwork, type Network } from './network.js';
 import { loadPools, parsePools, poolIsOpen } from './pool.js';
 import { cardCount, chainSubmission, mintReceipt } from './receipt.js';
-import { CHAIN_ID, restoreSessionClient } from './session.js';
+import { chainFor, restoreSessionClient } from './session.js';
 import { prepareCollateral, submitLine } from './submitLine.js';
 import type { PoolConfig, SerializedSession } from './types.js';
 import bundledStagingPools from '../pool.json' with { type: 'json' };
 import bundledMainPools from '../pool.main.json' with { type: 'json' };
 
 // Pools are deployment config, loaded once per process. Last entry = active.
-// The committed pool file is bundled into the build (works on serverless,
+// The committed pool files are bundled into the build (works on serverless,
 // no filesystem needed); conditions are chain-specific, so each network has
-// its own file. POOL_PATH overrides with a file on disk.
-const bundledPools =
-  env.NETWORK === 'main' ? bundledMainPools : bundledStagingPools;
-const pools = env.POOL_PATH
-  ? loadPools(env.POOL_PATH)
-  : parsePools(bundledPools);
-const poolById = new Map(pools.map((p) => [p.poolId, p]));
-export const activePool = (): PoolConfig => pools[pools.length - 1];
+// its own file. POOL_PATH overrides the STAGING file with one on disk.
+const poolsFor: Record<Network, PoolConfig[]> = {
+  staging: env.POOL_PATH
+    ? loadPools(env.POOL_PATH)
+    : parsePools(bundledStagingPools),
+  main: parsePools(bundledMainPools),
+};
+const poolById: Record<Network, Map<string, PoolConfig>> = {
+  staging: new Map(poolsFor.staging.map((p) => [p.poolId, p])),
+  main: new Map(poolsFor.main.map((p) => [p.poolId, p])),
+};
+export const activePool = (network: Network): PoolConfig => {
+  const pools = poolsFor[network];
+  return pools[pools.length - 1];
+};
 
 const secretFor = (poolId: string): Hex =>
   poolSecret(env.SERVER_SECRET as Hex, poolId);
@@ -101,15 +109,26 @@ function isAdmin(req: IncomingMessage): boolean {
 }
 
 /** Resolves the pool a request targets: explicit poolId or the active one. */
-function resolvePool(poolId: string | null): PoolConfig {
-  if (!poolId) return activePool();
-  const pool = poolById.get(poolId);
+function resolvePool(network: Network, poolId: string | null): PoolConfig {
+  if (!poolId) return activePool(network);
+  const pool = poolById[network].get(poolId);
   if (!pool) throw new HttpError(404, `Unknown pool ${poolId}`);
   return pool;
 }
 
+/** The network a request targets: `network` query param, default staging
+ *  (clients that predate the switch). */
+function resolveRequestNetwork(url: URL): Network {
+  try {
+    return resolveNetwork(url.searchParams.get('network') ?? undefined);
+  } catch (e) {
+    throw new HttpError(400, e instanceof Error ? e.message : 'bad network');
+  }
+}
+
 /** Validates + restores the session the client sent with this request. */
 async function sessionFor(
+  network: Network,
   player: Address,
   session: SerializedSession | undefined,
 ) {
@@ -123,7 +142,7 @@ async function sessionFor(
     throw new HttpError(400, 'session does not belong to player');
   }
   try {
-    return await restoreSessionClient(session);
+    return await restoreSessionClient(session, network);
   } catch (e) {
     throw new HttpError(
       401,
@@ -138,6 +157,7 @@ export async function handleApi(
   url: URL,
 ): Promise<boolean> {
   const route = `${req.method} ${url.pathname}`;
+  const network = resolveRequestNetwork(url);
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204, {
@@ -155,15 +175,15 @@ export async function handleApi(
   }
 
   if (route === 'GET /api/pool') {
-    const pool = resolvePool(url.searchParams.get('poolId'));
+    const pool = resolvePool(network, url.searchParams.get('poolId'));
     json(res, 200, {
       poolId: pool.poolId,
-      /** Which network this server is on — lets a frontend pointed at the
-       *  wrong backend detect the mismatch instead of failing weirdly. */
-      network: env.NETWORK,
-      chainId: CHAIN_ID,
+      /** Echo of the network this response describes — lets the frontend
+       *  cross-check it's talking about the chain it thinks it is. */
+      network,
+      chainId: chainFor(network).id,
       /** 1-based position in the pool list — display ordinal. */
-      poolNumber: pools.indexOf(pool) + 1,
+      poolNumber: poolsFor[network].indexOf(pool) + 1,
       cutoff: pool.cutoff,
       open: poolIsOpen(pool),
       conditions: pool.conditions,
@@ -171,7 +191,7 @@ export async function handleApi(
       referralBps: pool.referralBps,
       minCardPriceWei: pool.minCardPriceWei,
       fairnessCommitment: fairnessCommitment(secretFor(pool.poolId)),
-      receiptContract: env.RECEIPT_CONTRACT_ADDRESS,
+      receiptContract: NETWORK_CONFIG[network].receiptContract,
     });
     return true;
   }
@@ -184,7 +204,7 @@ export async function handleApi(
         'uint32(cardIndex)); ' +
         'layout = partial Fisher-Yates over pool conditions, ' +
         'rehashing keccak256(seed ‖ pad32(i)) per step',
-      pools: pools.map((pool) => ({
+      pools: poolsFor[network].map((pool) => ({
         poolId: pool.poolId,
         cutoff: pool.cutoff,
         commitment: fairnessCommitment(secretFor(pool.poolId)),
@@ -201,14 +221,14 @@ export async function handleApi(
       json(res, 400, { error: 'player query param required' });
       return true;
     }
-    const pool = resolvePool(url.searchParams.get('poolId'));
+    const pool = resolvePool(network, url.searchParams.get('poolId'));
     const rawIndex = url.searchParams.get('cardIndex');
     const cardIndex = rawIndex == null ? 0 : Number(rawIndex);
     if (!Number.isInteger(cardIndex) || cardIndex < 0) {
       json(res, 400, { error: 'cardIndex must be a non-negative integer' });
       return true;
     }
-    const count = await cardCount(pool.poolId, player);
+    const count = await cardCount(network, pool.poolId, player);
     // Indexes are sequential: existing cards plus a preview of the next one.
     if (cardIndex > count) {
       json(res, 404, {
@@ -218,7 +238,7 @@ export async function handleApi(
     }
     const submission =
       cardIndex < count
-        ? await chainSubmission(pool.poolId, player, cardIndex)
+        ? await chainSubmission(network, pool.poolId, player, cardIndex)
         : null;
     // Submitted cards use the chain-stamped seed; the next card derives.
     const seed =
@@ -227,6 +247,7 @@ export async function handleApi(
     const cells = drawCells(pool.conditions, seed);
     const funded = submission
       ? await fundedLineFlags(
+          network,
           player,
           cells,
           submission.yesMask,
@@ -264,12 +285,12 @@ export async function handleApi(
       json(res, 400, { error: 'player query param required' });
       return true;
     }
-    const pool = resolvePool(url.searchParams.get('poolId'));
-    const count = await cardCount(pool.poolId, player);
-    const funded = count > 0 ? await fundedPredictions(player) : [];
+    const pool = resolvePool(network, url.searchParams.get('poolId'));
+    const count = await cardCount(network, pool.poolId, player);
+    const funded = count > 0 ? await fundedPredictions(network, player) : [];
     const cards = await Promise.all(
       Array.from({ length: count }, async (_, i) => {
-        const sub = await chainSubmission(pool.poolId, player, i);
+        const sub = await chainSubmission(network, pool.poolId, player, i);
         if (!sub) return null;
         const cells = drawCells(pool.conditions, sub.seed);
         const tag = cardTag(pool.poolId, player, i);
@@ -309,7 +330,7 @@ export async function handleApi(
       session?: SerializedSession;
     }>(req);
     const { player, cardIndex, yesMask, cardPriceWei, ref } = body;
-    const pool = activePool();
+    const pool = activePool(network);
     if (!player || !isAddress(player)) {
       json(res, 400, { error: 'player required' });
       return true;
@@ -359,11 +380,11 @@ export async function handleApi(
     // The session isn't needed to mint the receipt (the minter does that),
     // but requiring a valid one here means a card can't be locked in for a
     // player the backend could never fund lines for.
-    const sessionClient = await sessionFor(player, body.session);
+    const sessionClient = await sessionFor(network, player, body.session);
 
     // Indexes are strictly sequential: a retry of an existing index is
     // idempotent, the next index is a new card, anything beyond is stale.
-    const count = await cardCount(pool.poolId, player);
+    const count = await cardCount(network, pool.poolId, player);
     if (cardIndex > count) {
       json(res, 409, {
         error: `cardIndex ${cardIndex} is not next (expected ${count})`,
@@ -373,6 +394,7 @@ export async function handleApi(
 
     const seed = cardSeed(secretFor(pool.poolId), pool.poolId, player, cardIndex);
     const submission = await mintReceipt({
+      network,
       player,
       poolId: pool.poolId,
       cardIndex,
@@ -393,7 +415,7 @@ export async function handleApi(
     }
     // Wrap + approve for the WHOLE card now, in one UserOp, so the 10
     // concurrent line requests that follow don't each race their own prep.
-    await prepareCollateral(sessionClient, player, price);
+    await prepareCollateral(network, sessionClient, player, price);
     json(res, 200, {
       poolId: pool.poolId,
       cardIndex,
@@ -434,12 +456,17 @@ export async function handleApi(
       json(res, 400, { error: `lineIndex must be 0..${LINES_PER_CARD - 1}` });
       return true;
     }
-    const pool = resolvePool(body.poolId ?? null);
+    const pool = resolvePool(network, body.poolId ?? null);
     if (!poolIsOpen(pool)) {
       json(res, 409, { error: 'Pool is closed (cutoff passed)' });
       return true;
     }
-    const submission = await chainSubmission(pool.poolId, player, cardIndex);
+    const submission = await chainSubmission(
+      network,
+      pool.poolId,
+      player,
+      cardIndex,
+    );
     if (!submission) {
       json(res, 409, { error: 'No submission — POST /api/card/submit first' });
       return true;
@@ -451,6 +478,7 @@ export async function handleApi(
     // Monotonic funded check (escrow events): never double-mint a line,
     // even after the player redeemed (burned) the position.
     const funded = await fundedLineFlags(
+      network,
       player,
       cells,
       submission.yesMask,
@@ -461,9 +489,10 @@ export async function handleApi(
       json(res, 200, { lineIndex, funded: true, alreadyFunded: true });
       return true;
     }
-    const sessionClient = await sessionFor(player, body.session);
+    const sessionClient = await sessionFor(network, player, body.session);
     try {
       const result = await submitLine({
+        network,
         sessionClient,
         smartAccountAddress: player,
         cells,
@@ -499,7 +528,7 @@ export async function handleApi(
       return true;
     }
     try {
-      const session = await siweLogin(body.message, body.signature as Hex);
+      const session = await siweLogin(network, body.message, body.signature as Hex);
       json(res, 200, session);
     } catch (e) {
       json(res, 401, {
@@ -514,7 +543,7 @@ export async function handleApi(
       json(res, 401, { error: 'Unauthorized' });
       return true;
     }
-    const rows = await allEntitlements(pools);
+    const rows = await allEntitlements(network, poolsFor[network]);
     const totalBonus = rows.reduce(
       (s, r) => s + BigInt(r.bonusOwedWei ?? '0'),
       0n,
@@ -524,7 +553,7 @@ export async function handleApi(
       0n,
     );
     json(res, 200, {
-      poolId: activePool().poolId,
+      poolId: activePool(network).poolId,
       rows,
       totalBonusOwedWei: totalBonus.toString(),
       totalReferralOwedWei: totalReferral.toString(),

@@ -1,52 +1,13 @@
 [
   {
-    "poolId": "world-cup-2026-jun13-main",
-    "cutoff": 1781290800,
+    "poolId": "world-cup-2026-jun13-v2",
+    "cutoff": 1781312400,
     "minCardPriceWei": "1000000000000000000",
     "referralBps": 200,
     "multiplierBps": [
       0, 0, 20000, 30000, 40000, 50000, 100000, 250000, 500000, 750000, 1000000
     ],
     "conditions": [
-      {
-        "conditionId": "0x802adc7238db42d431521f625b2a367954d04ebf8836109257dd4a3b961c6108",
-        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
-        "shortName": "Canada wins Jun 12?",
-        "question": "Will Canada win on 2026-06-12?",
-        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-        "endTime": 1781337540
-      },
-      {
-        "conditionId": "0x7100ab95b70e1c300a74453214a5e605112c7cc7f5404961b740b4871609622e",
-        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
-        "shortName": "CND/BSN O2.5",
-        "question": "Will Canada vs Bosnia and Herzegovina total be over 2.5?",
-        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-        "endTime": 1781290800
-      },
-      {
-        "conditionId": "0x5dc7bc1b2e7319e11c4c2ba8d540bab0dff827deec0bf206ece6d78e2d7c379c",
-        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
-        "shortName": "BTTS CND/BSN",
-        "question": "Will both Canada and Bosnia and Herzegovina score?",
-        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-        "endTime": 1781301540
-      },
-      {
-        "conditionId": "0xfcb12b55e7eb928596de872a9021431ad07a6f33e1347302077db2abd9f55a76",
-        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
-        "shortName": "Canada scores first vs Bosnia-Herzegovina?",
-        "question": "Canada to score first vs. Bosnia-Herzegovina?",
-        "endTime": 1781301540
-      },
-      {
-        "conditionId": "0x01a9acebabf4fffcc62787087ee9f94f65b45dfa5d4c5ae638356573a52e79e6",
-        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
-        "shortName": "Jonathan David 1+ goals?",
-        "question": "Jonathan David: 1+ goals",
-        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/worldcup-goal-props/can-jonathan-david.png",
-        "endTime": 1781301540
-      },
       {
         "conditionId": "0x26c10c27cde58e2d6214d65ab562d8142d34723b3b6ec3f40836d24f6d22dfc9",
         "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
@@ -86,12 +47,76 @@
         "endTime": 1781323140
       },
       {
+        "conditionId": "0xa154758b650b1a264703c5131e62a19f7470c6b6386524f22df39911faa082ca",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "UNI -1.5",
+        "question": "United States covers -1.5 spread vs Paraguay?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781312400
+      },
+      {
+        "conditionId": "0x6b864f35765706986a861d22fcc207872062186ddcb5fbc20275e991b20ff6ab",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Will Switzerland win on 2026-06-13?",
+        "question": "Will Switzerland win on 2026-06-13?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781377200
+      },
+      {
+        "conditionId": "0x4b4aaf41eb45e461759f44f8bb3a56c0056ae8b186f0b3e504643ee4e42b90ae",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "QTR/SWT O1.5",
+        "question": "Will Qatar vs Switzerland total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781384399
+      },
+      {
+        "conditionId": "0x22bc30327ba8ca5a6c7a15808b63c2a8c5e00ebfd7536b74d2689992f4ba8a67",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "QTR/SWT O2.5",
+        "question": "Will Qatar vs Switzerland total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781377200
+      },
+      {
+        "conditionId": "0xe18ea2b820d1c22fae26618c421e232a328a64ece012c41fad272cadc344eeb3",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "QTR/SWT O3.5",
+        "question": "Will Qatar vs Switzerland total be over 3.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781377200
+      },
+      {
+        "conditionId": "0x641ae15780fd0d5feeffac3a17de3fac0de69524edc37a464485babd6cb380d7",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "BTTS QTR/SWT",
+        "question": "Will both Qatar and Switzerland score?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781387940
+      },
+      {
+        "conditionId": "0x5238b69e57442973c13be38c5a71937cc33e1ce89a65e16e1158f233a9a767e5",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "SWT -1.5",
+        "question": "Switzerland covers -1.5 spread vs Qatar?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781377200
+      },
+      {
         "conditionId": "0xa75053ffa630e41fdc08a0885fe0614716ecb13061ac460914bfe498038d5364",
         "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
         "shortName": "Will Brazil win on 2026-06-13?",
         "question": "Will Brazil win on 2026-06-13?",
         "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
         "endTime": 1781388000
+      },
+      {
+        "conditionId": "0xcddc6fe9b41456a4b1e19d7d85f300cc242da72d9c8d267876faa57a8cf7835a",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "BRZ/MRC O1.5",
+        "question": "Will Brazil vs Morocco total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781398740
       },
       {
         "conditionId": "0x0a8418fdab57de8ce4e0c6042810fc635fb7d5718a86d10104fcd0d8cc5f6be9",
@@ -125,46 +150,6 @@
         "endTime": 1781398740
       },
       {
-        "conditionId": "0x6b864f35765706986a861d22fcc207872062186ddcb5fbc20275e991b20ff6ab",
-        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
-        "shortName": "Will Switzerland win on 2026-06-13?",
-        "question": "Will Switzerland win on 2026-06-13?",
-        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-        "endTime": 1781377200
-      },
-      {
-        "conditionId": "0x22bc30327ba8ca5a6c7a15808b63c2a8c5e00ebfd7536b74d2689992f4ba8a67",
-        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
-        "shortName": "QTR/SWT O2.5",
-        "question": "Will Qatar vs Switzerland total be over 2.5?",
-        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-        "endTime": 1781377200
-      },
-      {
-        "conditionId": "0x641ae15780fd0d5feeffac3a17de3fac0de69524edc37a464485babd6cb380d7",
-        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
-        "shortName": "BTTS QTR/SWT",
-        "question": "Will both Qatar and Switzerland score?",
-        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-        "endTime": 1781387940
-      },
-      {
-        "conditionId": "0x5238b69e57442973c13be38c5a71937cc33e1ce89a65e16e1158f233a9a767e5",
-        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
-        "shortName": "SWT -1.5",
-        "question": "Switzerland covers -1.5 spread vs Qatar?",
-        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-        "endTime": 1781377200
-      },
-      {
-        "conditionId": "0x4b4aaf41eb45e461759f44f8bb3a56c0056ae8b186f0b3e504643ee4e42b90ae",
-        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
-        "shortName": "QTR/SWT O1.5",
-        "question": "Will Qatar vs Switzerland total be over 1.5?",
-        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
-        "endTime": 1781384399
-      },
-      {
         "conditionId": "0x1f2bb0bfc3c7b3c9ab678ce9e89cf68bd6daa83385c4834f669cb00c540276f2",
         "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
         "shortName": "Will Scotland win on 2026-06-13?",
@@ -193,6 +178,13 @@
         "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
         "shortName": "Scotland scores first vs Haiti?",
         "question": "Scotland to score first vs. Haiti?",
+        "endTime": 1781409540
+      },
+      {
+        "conditionId": "0x3a54472dad1050fca268a9d9dbc3dde9eae308a7f0f69f69eec51592e982f96b",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Scotland leading at halftime?",
+        "question": "Scotland leading at halftime?",
         "endTime": 1781409540
       },
       {
@@ -240,6 +232,14 @@
         "shortName": "Australia leads (HT)?",
         "question": "Australia leading at halftime?",
         "endTime": 1781420340
+      },
+      {
+        "conditionId": "0xabe9409c7689330a494271bb810a2c1017aa78feb0d2828ea8ee75cbd20eaf21",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Australia & T\u00fcrkiye both score (1H)?",
+        "question": "Australia vs. T\u00fcrkiye: Both Teams to Score in First Half",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "endTime": 1781409600
       }
     ]
   }

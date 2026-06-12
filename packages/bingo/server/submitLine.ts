@@ -21,15 +21,11 @@ import {
 import { prepareAuctionRFQ } from '@sapience/sdk/auction/initiate';
 import { validateBidOnChain } from '@sapience/sdk/auction/validation';
 import { createEscrowAuctionWs } from '@sapience/sdk/relayer/escrowAuctionWs';
-import { env } from './config.js';
 import { cardTag } from './draw.js';
-import {
-  COLLATERAL_ADDRESS,
-  ESCROW_ADDRESS,
-  linePicks,
-} from './chain.js';
+import { collateralAddress, escrowAddress, linePicks } from './chain.js';
 import { buildLines } from './lines.js';
-import { CHAIN, CHAIN_ID } from './session.js';
+import { NETWORK_CONFIG, type Network } from './network.js';
+import { chainFor } from './session.js';
 import type { PoolCondition } from './types.js';
 
 const BID_WAIT_MS = 45_000;
@@ -52,6 +48,7 @@ const WUSDE_DEPOSIT_ABI = [
 ] as const;
 
 export interface SubmitLineParams {
+  network: Network;
   sessionClient: KernelAccountClient;
   smartAccountAddress: Address;
   /** The card's 16 dealt cells, in cell order. */
@@ -101,17 +98,18 @@ interface FullBid {
  * this is the retry/partial fallback.
  */
 export async function prepareCollateral(
+  network: Network,
   sessionClient: KernelAccountClient,
   smartAccountAddress: Address,
   stakeWei: bigint,
   nonceKey?: bigint,
 ): Promise<void> {
-  if (!ESCROW_ADDRESS || !COLLATERAL_ADDRESS) {
-    throw new Error('Escrow/collateral not configured for Ethereal');
-  }
+  const ESCROW_ADDRESS = escrowAddress(network);
+  const COLLATERAL_ADDRESS = collateralAddress(network);
+  const chain = chainFor(network);
   const publicClient = createPublicClient({
-    chain: CHAIN,
-    transport: http(CHAIN.rpcUrls.default.http[0]),
+    chain,
+    transport: http(chain.rpcUrls.default.http[0]),
   });
   const [nativeBalance, wusdeBalance, allowance] = await Promise.all([
     publicClient.getBalance({ address: smartAccountAddress }),
@@ -190,6 +188,7 @@ export async function submitLine(
   params: SubmitLineParams,
 ): Promise<{ lineId: string; txHash: string | null }> {
   const {
+    network,
     sessionClient,
     smartAccountAddress,
     cells,
@@ -199,6 +198,8 @@ export async function submitLine(
     cardIndex,
     poolId,
   } = params;
+  const chain = chainFor(network);
+  const chainId = chain.id;
 
   if (cells.length !== 16) throw new Error('Need 16 dealt cells');
   const tag = `[line ${poolId}#${cardIndex}/${lineIndex} ${smartAccountAddress.slice(0, 8)}]`;
@@ -207,16 +208,14 @@ export async function submitLine(
   if (!line) throw new Error(`lineIndex must be 0..${allLines.length - 1}`);
   const account = sessionClient.account;
   if (!account) throw new Error('Session client has no account');
-  if (!ESCROW_ADDRESS || !COLLATERAL_ADDRESS) {
-    throw new Error('Escrow/collateral not configured for Ethereal');
-  }
-  const escrowAddress = ESCROW_ADDRESS;
-  const collateralAddress = COLLATERAL_ADDRESS;
+  const escrow = escrowAddress(network);
+  const collateral = collateralAddress(network);
 
   // Fallback prep on a per-(card, line) nonce key (collision-safe under
   // concurrent line requests, including across two cards funding at once);
   // usually a no-op because submit prepped the whole card.
   await prepareCollateral(
+    network,
     sessionClient,
     smartAccountAddress,
     stakePerLineWei,
@@ -225,8 +224,8 @@ export async function submitLine(
   const HINT_LARGE = (1n << 255n) - 1n;
 
   const publicClient = createPublicClient({
-    chain: CHAIN,
-    transport: http(CHAIN.rpcUrls.default.http[0]),
+    chain,
+    transport: http(chain.rpcUrls.default.http[0]),
   });
 
   const picksForLine = linePicks(line, cells, yesMask);
@@ -239,7 +238,7 @@ export async function submitLine(
   let onBids: ((bids: FullBid[]) => void) | null = null;
   let onExpired: ((err: Error) => void) | null = null;
 
-  const ws = await createEscrowAuctionWs(env.RELAYER_WS_URL, {
+  const ws = await createEscrowAuctionWs(NETWORK_CONFIG[network].relayerWsUrl, {
     onAuctionStarted: (details) => {
       if (
         String(details.predictor).toLowerCase() !==
@@ -279,7 +278,7 @@ export async function submitLine(
       picks: picksForLine,
       predictorCollateral: stakePerLineWei,
       predictor: smartAccountAddress,
-      chainId: CHAIN_ID,
+      chainId,
       nonce: predictorNonce,
       signIntent: async (typedData) =>
         sessionClient.signTypedData(
@@ -387,9 +386,9 @@ export async function submitLine(
                 })),
               },
               {
-                chainId: CHAIN_ID,
-                predictionMarketAddress: escrowAddress,
-                collateralTokenAddress: collateralAddress,
+                chainId,
+                predictionMarketAddress: escrow,
+                collateralTokenAddress: collateral,
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 publicClient: publicClient as any,
                 failOpen: false,
@@ -443,8 +442,8 @@ export async function submitLine(
       counterparty: resolved.counterparty,
       predictorNonce: BigInt(predictorNonce),
       predictorDeadline: BigInt(payload.predictorDeadline),
-      verifyingContract: escrowAddress,
-      chainId: CHAIN_ID,
+      verifyingContract: escrow,
+      chainId,
     });
 
     const predictorSignature = await sessionClient.signTypedData({
@@ -481,9 +480,9 @@ export async function submitLine(
         // lineIsFunded. Replaces the old constant 'bingo' tag.
         refCode: cardTag(poolId, smartAccountAddress, cardIndex),
       },
-      predictionMarketAddress: escrowAddress,
-      collateralTokenAddress: collateralAddress,
-      chainId: CHAIN_ID,
+      predictionMarketAddress: escrow,
+      collateralTokenAddress: collateral,
+      chainId,
       currentWusdeBalance: HINT_LARGE,
       currentAllowance: HINT_LARGE,
     });

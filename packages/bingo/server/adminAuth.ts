@@ -13,6 +13,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { Address, Hex } from 'viem';
 import { parseSiweMessage } from 'viem/siwe';
 import { env } from './config.js';
+import { NETWORK_CONFIG, type Network } from './network.js';
 import { getPublicClient } from './session.js';
 
 const NONCE_TTL_MS = 5 * 60_000;
@@ -36,10 +37,10 @@ function hmac(payload: string): string {
 
 /** The wallet allowed to sign in: ADMIN_ADDRESS env if set, else the
  *  receipt contract's owner() (the treasury that pays bonuses). */
-export async function resolveAdminAddress(): Promise<Address> {
+export async function resolveAdminAddress(network: Network): Promise<Address> {
   if (env.ADMIN_ADDRESS) return env.ADMIN_ADDRESS as Address;
-  return (await getPublicClient().readContract({
-    address: env.RECEIPT_CONTRACT_ADDRESS as Address,
+  return (await getPublicClient(network).readContract({
+    address: NETWORK_CONFIG[network].receiptContract,
     abi: OWNER_ABI,
     functionName: 'owner',
   })) as Address;
@@ -68,6 +69,7 @@ function verifyNonce(nonce: string): boolean {
 /** Verifies a SIWE message + signature from the admin wallet and returns a
  *  bearer token. Throws Error with a user-facing message on any failure. */
 export async function siweLogin(
+  network: Network,
   message: string,
   signature: Hex,
 ): Promise<{ token: string; address: Address; expiresAt: number }> {
@@ -77,14 +79,14 @@ export async function siweLogin(
   }
   if (!parsed.address) throw new Error('SIWE message missing address');
 
-  const admin = await resolveAdminAddress();
+  const admin = await resolveAdminAddress(network);
   if (parsed.address.toLowerCase() !== admin.toLowerCase()) {
     throw new Error('Not the treasury/admin wallet');
   }
 
   // verifySiweMessage checks signature (EOA + ERC-1271/6492), expiry,
   // not-before, and that the embedded fields match the raw message.
-  const valid = await getPublicClient().verifySiweMessage({
+  const valid = await getPublicClient(network).verifySiweMessage({
     message,
     signature,
   });

@@ -20,6 +20,7 @@ import {
   type FundedPrediction,
 } from './chain.js';
 import { buildLines, LINES_PER_CARD } from './lines.js';
+import type { Network } from './network.js';
 import { allChainSubmissions, type ChainSubmission } from './receipt.js';
 import type { EntitlementRow, PoolConfig } from './types.js';
 
@@ -44,19 +45,21 @@ export const newCaches = (): EntitlementCaches => ({
 });
 
 function fundedFor(
+  network: Network,
   caches: EntitlementCaches,
   player: Address,
 ): Promise<FundedPrediction[]> {
   const key = player.toLowerCase();
   let p = caches.funded.get(key);
   if (!p) {
-    p = fundedPredictions(player);
+    p = fundedPredictions(network, player);
     caches.funded.set(key, p);
   }
   return p;
 }
 
 function resolutionFor(
+  network: Network,
   caches: EntitlementCaches,
   resolver: Address,
   conditionId: Hex,
@@ -64,13 +67,14 @@ function resolutionFor(
   const key = `${resolver.toLowerCase()}:${conditionId.toLowerCase()}`;
   let p = caches.resolutions.get(key);
   if (!p) {
-    p = cellResolution(resolver, conditionId);
+    p = cellResolution(network, resolver, conditionId);
     caches.resolutions.set(key, p);
   }
   return p;
 }
 
 async function lineStates(
+  network: Network,
   pool: PoolConfig,
   submission: ChainSubmission,
   caches: EntitlementCaches,
@@ -81,10 +85,10 @@ async function lineStates(
   const tag = cardTag(pool.poolId, submission.player, submission.cardIndex);
   const stakePerLineWei =
     BigInt(submission.cardPriceWei) / BigInt(LINES_PER_CARD);
-  const funded = await fundedFor(caches, submission.player);
+  const funded = await fundedFor(network, caches, submission.player);
 
   const resolutions = await Promise.all(
-    cells.map((c) => resolutionFor(caches, c.resolver, c.conditionId)),
+    cells.map((c) => resolutionFor(network, caches, c.resolver, c.conditionId)),
   );
 
   return lines.map((line) => {
@@ -112,11 +116,12 @@ async function lineStates(
 }
 
 export async function entitlementFor(
+  network: Network,
   pool: PoolConfig,
   submission: ChainSubmission,
   caches: EntitlementCaches = newCaches(),
 ): Promise<EntitlementRow> {
-  const states = await lineStates(pool, submission, caches);
+  const states = await lineStates(network, pool, submission, caches);
   const fundedStates = states.filter((s) => s.funded);
   const linesFunded = fundedStates.length;
   const complete = linesFunded === LINES_PER_CARD;
@@ -166,6 +171,7 @@ export async function entitlementFor(
 /** Every submission on the chain, joined against the configured pools — the
  *  admin payout worklist. */
 export async function allEntitlements(
+  network: Network,
   pools: readonly PoolConfig[],
 ): Promise<EntitlementRow[]> {
   const byId = new Map(pools.map((p) => [p.poolId, p]));
@@ -173,10 +179,10 @@ export async function allEntitlements(
   const rows: EntitlementRow[] = [];
   // Sequential on purpose: the caches collapse most RPC fan-out, but each
   // new player/condition still costs reads.
-  for (const s of await allChainSubmissions()) {
+  for (const s of await allChainSubmissions(network)) {
     const pool = byId.get(s.poolId);
     if (!pool) continue; // pool no longer in config — not resolvable
-    rows.push(await entitlementFor(pool, s, caches));
+    rows.push(await entitlementFor(network, pool, s, caches));
   }
   return rows;
 }

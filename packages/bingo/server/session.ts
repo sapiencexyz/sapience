@@ -2,9 +2,10 @@
 // (packages/bingo/src/lib/session/sessionKeyManager.ts). The session key's
 // call policy only permits wUSDe deposit/approve(escrow) and escrow
 // mint/redeem — the backend can turn the player's balance into the player's
-// positions and nothing else.
+// positions and nothing else. Sessions carry their chainId, and every
+// restore is pinned to the network the request claims to be for.
 
-import { createPublicClient, http } from 'viem';
+import { createPublicClient, http, type Chain } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import {
   createKernelAccountClient,
@@ -18,16 +19,18 @@ import { env } from './config.js';
 import { NETWORK_CONFIG, type Network } from './network.js';
 import type { SerializedSession } from './types.js';
 
-export const CHAIN = NETWORK_CONFIG[env.NETWORK as Network].chain;
-export const CHAIN_ID = CHAIN.id;
-
 const ENTRY_POINT = getEntryPoint('0.7');
 const KERNEL_VERSION = KERNEL_V3_1;
 
-export function getPublicClient() {
+export function chainFor(network: Network): Chain {
+  return NETWORK_CONFIG[network].chain;
+}
+
+export function getPublicClient(network: Network) {
+  const chain = chainFor(network);
   return createPublicClient({
-    chain: CHAIN,
-    transport: http(CHAIN.rpcUrls.default.http[0]),
+    chain,
+    transport: http(chain.rpcUrls.default.http[0]),
   });
 }
 
@@ -35,8 +38,15 @@ export function zeroDevUrl(chainId: number): string {
   return `https://rpc.zerodev.app/api/v3/${env.ZERODEV_PROJECT_ID}/chain/${chainId}`;
 }
 
-export function validateSerializedSession(s: SerializedSession): string | null {
-  if (s.chainId !== CHAIN_ID) return `wrong chainId ${s.chainId}`;
+export function validateSerializedSession(
+  s: SerializedSession,
+  network: Network,
+): string | null {
+  // The session must be for the network this request claims to act on —
+  // a staging session can never drive mainnet funds or vice versa.
+  if (s.chainId !== chainFor(network).id) {
+    return `session chainId ${s.chainId} is not ${network}`;
+  }
   if (!s.etherealApproval) return 'missing approval';
   if (!s.sessionPrivateKey?.startsWith('0x')) return 'missing session key';
   if (!s.config?.smartAccountAddress) return 'missing smart account address';
@@ -46,11 +56,13 @@ export function validateSerializedSession(s: SerializedSession): string | null {
 
 export async function restoreSessionClient(
   serialized: SerializedSession,
+  network: Network,
 ): Promise<KernelAccountClient> {
-  const err = validateSerializedSession(serialized);
+  const err = validateSerializedSession(serialized, network);
   if (err) throw new Error(`Invalid session: ${err}`);
+  const chain = chainFor(network);
 
-  const publicClient = getPublicClient();
+  const publicClient = getPublicClient(network);
   const sessionKeyAccount = privateKeyToAccount(serialized.sessionPrivateKey);
   const sessionKeySigner = await toECDSASigner({ signer: sessionKeyAccount });
 
@@ -69,14 +81,14 @@ export async function restoreSessionClient(
     throw new Error('Session account does not match claimed smart account');
   }
 
-  const url = zeroDevUrl(CHAIN_ID);
+  const url = zeroDevUrl(chain.id);
   const paymasterClient = createZeroDevPaymasterClient({
-    chain: CHAIN,
+    chain,
     transport: http(url),
   });
   return createKernelAccountClient({
     account,
-    chain: CHAIN,
+    chain,
     bundlerTransport: http(url),
     paymaster: {
       getPaymasterData: async (userOperation) =>

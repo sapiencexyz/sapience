@@ -1,10 +1,5 @@
 import 'dotenv/config';
 import { cleanEnv, makeValidator, num, str } from 'envalid';
-import { NETWORK_CONFIG, resolveNetwork } from './network.js';
-
-// Resolved before cleanEnv so the network can drive other vars' defaults.
-const network = resolveNetwork(process.env.NETWORK);
-const networkDefaults = NETWORK_CONFIG[network];
 
 const hex32 = makeValidator<string>((v) => {
   if (!/^0x[0-9a-fA-F]{64}$/.test(v)) {
@@ -19,16 +14,6 @@ const nonEmpty = makeValidator<string>((v) => {
   return v;
 });
 
-const address = makeValidator<string>((v) => {
-  // Catch copy-paste artifacts (trailing dots, whitespace) at boot instead
-  // of as confusing viem errors at request time.
-  const t = v.trim();
-  if (!/^0x[0-9a-fA-F]{40}$/.test(t)) {
-    throw new Error('must be a 0x-prefixed 20-byte address');
-  }
-  return t;
-});
-
 const addressOrEmpty = makeValidator<string>((v) => {
   const t = v.trim();
   if (t && !/^0x[0-9a-fA-F]{40}$/.test(t)) {
@@ -37,10 +22,10 @@ const addressOrEmpty = makeValidator<string>((v) => {
   return t;
 });
 
+// Per-network facts (chain, relayer, receipt contract, log-scan floor) are
+// NOT env vars — they're hardcoded in network.ts; one deployment serves
+// both networks. The env is only secrets + deployment plumbing.
 export const env = cleanEnv(process.env, {
-  /** 'staging' (Ethereal testnet, default) or 'main' (Ethereal mainnet).
-   *  Switches the chain, relayer, bundled pool file, and log-scan floor. */
-  NETWORK: str({ choices: ['staging', 'main'] as const, default: 'staging' }),
   PORT: num({ default: 3200 }),
   /** 0x-prefixed 32-byte hex MASTER fairness secret. Each pool's secret is
    *  derived as keccak(master ‖ poolId); cards are dealt as
@@ -54,29 +39,20 @@ export const env = cleanEnv(process.env, {
   /** Wallet allowed to SIWE-login as admin. Empty = resolve on-chain as the
    *  receipt contract's owner() (the treasury that pays bonuses). */
   ADMIN_ADDRESS: addressOrEmpty({ default: '' }),
-  /** Optional pool config file override: one pool object or an array of
-   *  pools (last = active). Empty (default) = use the pool.json committed
-   *  next to the code, which is bundled into serverless builds. */
+  /** Optional STAGING pool file override: one pool object or an array of
+   *  pools (last = active). Empty (default) = the committed pool.json. The
+   *  main network always uses the committed pool.main.json. */
   POOL_PATH: str({ default: '' }),
-  RELAYER_WS_URL: str({ default: networkDefaults.relayerWsUrl }),
   /** Built Vite frontend to serve at / (SPA fallback; node entry only — on
    *  Vercel the platform serves the static build). The dir not existing is
    *  fine in dev — run the Vite dev server instead, it proxies /api. */
   STATIC_DIR: str({ default: 'dist' }),
+  /** One project for both networks (enable both chains + gas policies). */
   ZERODEV_PROJECT_ID: str({
     default: '88765cdf-f8a9-4b80-92e5-60ef51c94751',
   }),
-  /** BingoCardReceipt NFT — REQUIRED: it is the system's database (the
-   *  durable record of every submission and the payout rail). */
-  RECEIPT_CONTRACT_ADDRESS: address(),
-  /** Hot wallet authorized as the receipt contract's minter. */
+  /** Hot wallet whose ZeroDev smart account is the receipt contracts'
+   *  minter — the SAME smart-account address on both networks (kernel
+   *  accounts are deterministic), so one key serves both. */
   MINTER_PRIVATE_KEY: hex32(),
-  /** Lower bound for on-chain log scans (receipt + escrow events). Defaults
-   *  to the network's BingoCardReceipt deploy block — override only when
-   *  pointing at a different receipt contract. */
-  LOG_FROM_BLOCK: num(
-    networkDefaults.defaultLogFromBlock === undefined
-      ? {}
-      : { default: networkDefaults.defaultLogFromBlock },
-  ),
 });
