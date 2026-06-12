@@ -42,7 +42,7 @@ const DEPOSIT_WHITELIST: `0x${string}`[] = [
   '0x7BB4e4E4674c625b23C550A74cfcfF9Ec50064F3',
 ];
 
-const DEPOSIT_CAP = 10000;
+const DEPOSIT_CAP = 20000;
 
 type VaultOption = {
   address: `0x${string}`;
