@@ -103,6 +103,7 @@ export async function prepareCollateral(
   smartAccountAddress: Address,
   stakeWei: bigint,
   nonceKey?: bigint,
+  ensureSessionOp = false,
 ): Promise<void> {
   const ESCROW_ADDRESS = escrowAddress(network);
   const COLLATERAL_ADDRESS = collateralAddress(network);
@@ -156,7 +157,24 @@ export async function prepareCollateral(
       value: 0n,
     });
   }
-  if (calls.length === 0) return;
+  if (calls.length === 0) {
+    if (!ensureSessionOp) return;
+    // Nothing to wrap/approve, but the submit step must still send ONE
+    // session op serially: a fresh session key's first op ENABLES the
+    // permission on the kernel account, consuming its enable nonce. If we
+    // return here, the 10 concurrent line mints all carry enable data and
+    // only one survives — the rest revert AA23 InvalidNonce (0x756688fe).
+    // A repeated max-approve is an allowed, idempotent way to enable.
+    calls.push({
+      to: COLLATERAL_ADDRESS,
+      data: encodeFunctionData({
+        abi: erc20Abi,
+        functionName: 'approve',
+        args: [ESCROW_ADDRESS, (1n << 255n) - 1n],
+      }),
+      value: 0n,
+    });
+  }
 
   const account = sessionClient.account;
   if (!account) throw new Error('Session client has no account');

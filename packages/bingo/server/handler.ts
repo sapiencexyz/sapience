@@ -415,7 +415,10 @@ export async function handleApi(
     }
     // Wrap + approve for the WHOLE card now, in one UserOp, so the 10
     // concurrent line requests that follow don't each race their own prep.
-    await prepareCollateral(network, sessionClient, player, price);
+    // ensureSessionOp: even when collateral is already prepared, send one
+    // op so a fresh session key gets ENABLED here, serially — not by 10
+    // concurrent line mints racing the kernel's enable nonce.
+    await prepareCollateral(network, sessionClient, player, price, undefined, true);
     json(res, 200, {
       poolId: pool.poolId,
       cardIndex,
@@ -489,11 +492,10 @@ export async function handleApi(
       json(res, 200, { lineIndex, funded: true, alreadyFunded: true });
       return true;
     }
-    const sessionClient = await sessionFor(network, player, body.session);
-    try {
-      const result = await submitLine({
+    const runLine = async () =>
+      submitLine({
         network,
-        sessionClient,
+        sessionClient: await sessionFor(network, player, body.session),
         smartAccountAddress: player,
         cells,
         yesMask: submission.yesMask,
@@ -502,6 +504,21 @@ export async function handleApi(
         cardIndex,
         poolId: pool.poolId,
       });
+    try {
+      let result;
+      try {
+        result = await runLine();
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        // 0x756688fe = kernel InvalidNonce: this op lost the session-enable
+        // race to a concurrent line. The winner enabled the permission, so
+        // a fresh session restore (which sees it enabled) succeeds.
+        if (!msg.includes('0x756688fe')) throw e;
+        console.warn(
+          `[bingo-server] line ${lineIndex} lost the session-enable race, retrying`,
+        );
+        result = await runLine();
+      }
       json(res, 200, {
         lineIndex,
         funded: true,
