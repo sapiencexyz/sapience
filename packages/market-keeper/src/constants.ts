@@ -54,6 +54,17 @@ export const ALWAYS_INCLUDE_PATTERNS = [
 // We add the tags here and we can fetch them.
 export const SUPPLEMENTARY_EVENT_TAGS = ['earnings'];
 
+// Keeper-owned tags that are NOT sourced from Polymarket event data
+// (currently just "Today", maintained by refresh-imminent-tag). The metadata
+// refresh diff must PRESERVE these on existing conditions rather than stripping
+// them via its full-array tag replace — otherwise every run removes "Today" in
+// refresh-metadata and only re-adds it later in refresh-imminent-tag, leaving a
+// window where the tag is missing (and dropping it entirely if a step in
+// between fails). The literal is duplicated from refresh-imminent-tag's
+// TODAY_TAG (constants can't import the feature module without a cycle); a unit
+// test in metadata-updates.test.ts guards them against drifting apart.
+export const KEEPER_INTERNAL_TAGS = new Set<string>(['Today']);
+
 // Relist configuration
 export const RELIST_LOOKBACK_DAYS = 30;
 export const RELIST_FORWARD_DAYS = 3;
