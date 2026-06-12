@@ -2,7 +2,7 @@
 export {
   type AttestationCondition,
   type AttestationData,
-  ATTESTATION_BY_UID_QUERY,
+  FORECAST_BY_UID_QUERY,
   d18ToPercentage,
   fetchAttestationByUid,
 } from '~/lib/data/forecasts';

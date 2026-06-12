@@ -831,7 +831,7 @@ export default function ActivityTable({
             {filteredItems.map((item) =>
               item.type === 'prediction' ? (
                 <PredictionActivityRow
-                  key={`pred-${item.prediction.id}`}
+                  key={`pred-${item.prediction.predictionId}`}
                   item={item}
                   collateralSymbol={collateralSymbol}
                   conditionsMap={conditionsMap}
