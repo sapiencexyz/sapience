@@ -30,7 +30,8 @@ vi.mock('~/hooks/useRestrictedJurisdiction', () => ({
 }));
 
 vi.mock('~/hooks/contract/usePassiveLiquidityVault', () => ({
-  usePassiveLiquidityVault: () => mockUsePassiveLiquidityVault(),
+  usePassiveLiquidityVault: (args: unknown) =>
+    mockUsePassiveLiquidityVault(args),
 }));
 
 vi.mock('~/hooks/blockchain/useCurrentAddress', () => ({
@@ -38,7 +39,8 @@ vi.mock('~/hooks/blockchain/useCurrentAddress', () => ({
 }));
 
 vi.mock('~/hooks/graphql/useAnalytics', () => ({
-  useProtocolStats: () => mockUseProtocolStats(),
+  useProtocolStats: (vaultAddress: string | undefined) =>
+    mockUseProtocolStats(vaultAddress),
   getProtocolTvlWei: (
     stat: { escrowBalance?: string; vaultAvailableAssets?: string } | null
   ) =>
@@ -163,6 +165,7 @@ vi.mock('lucide-react', () => ({
 }));
 
 vi.mock('viem', () => ({
+  isAddress: (value: string) => /^0x[a-fA-F0-9]{40}$/.test(value),
   parseUnits: (value: string, decimals: number) => {
     const n = Number(value);
     if (!Number.isFinite(n)) return 0n;
@@ -343,7 +346,7 @@ describe('VaultsPageContent geofence', () => {
     expect(depositBtn).not.toBeDisabled();
   });
 
-  it('renders the single-leg vault tab instead of the options vault tab', () => {
+  it('keeps the options vault tab visible and single-leg hidden from tabs', () => {
     mockUseRestrictedJurisdiction.mockReturnValue({
       isRestricted: false,
       isPermitLoading: false,
@@ -360,11 +363,34 @@ describe('VaultsPageContent geofence', () => {
       screen.getByRole('button', { name: 'Edge Vault' })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Single Leg Vault' })
+      screen.getByRole('button', { name: 'Options Vault' })
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: 'Options Vault' })
+      screen.queryByRole('button', { name: 'Single Leg Vault' })
     ).not.toBeInTheDocument();
+  });
+
+  it('accepts an arbitrary vault address from the URL without rewriting it', () => {
+    const customVault = '0x0000000000000000000000000000000000000abc';
+    mockSearchParamsToString.mockReturnValue(`address=${customVault}`);
+    mockUseRestrictedJurisdiction.mockReturnValue({
+      isRestricted: false,
+      isPermitLoading: false,
+      permitData: { permitted: true },
+      permitError: null,
+    });
+
+    render(<VaultsPageContent />);
+
+    expect(screen.getByText('Custom Vault')).toBeInTheDocument();
+    expect(mockRouterReplace).not.toHaveBeenCalled();
+    expect(
+      mockUsePassiveLiquidityVault.mock.calls.some(
+        ([args]) =>
+          (args as { vaultAddress?: string }).vaultAddress === customVault
+      )
+    ).toBe(true);
+    expect(mockUseProtocolStats).toHaveBeenCalledWith(customVault);
   });
 
   it('defaults to the first vault tab without rewriting the URL when no address query param is present', () => {

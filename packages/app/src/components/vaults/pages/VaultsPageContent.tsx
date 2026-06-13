@@ -3,6 +3,7 @@
 import {
   predictionMarketVault,
   predictionMarketVaultStrategyB,
+  pythPredictionMarketVault,
   singleLegVault,
 } from '@sapience/sdk/contracts';
 import { Button } from '@sapience/ui/components/ui/button';
@@ -16,7 +17,7 @@ import {
 } from '@sapience/ui/components/ui/tabs';
 import { Clock } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { parseUnits } from 'viem';
+import { isAddress, parseUnits } from 'viem';
 import { formatDuration, intervalToDuration } from 'date-fns';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -77,8 +78,10 @@ const VaultsPageContent = () => {
         'Edge Vault',
       ],
       [
-        singleLegVault[VAULT_CHAIN_ID]?.address as `0x${string}` | undefined,
-        'Single Leg Vault',
+        pythPredictionMarketVault[VAULT_CHAIN_ID]?.address as
+          | `0x${string}`
+          | undefined,
+        'Options Vault',
       ],
     ];
     return entries
@@ -92,8 +95,15 @@ const VaultsPageContent = () => {
     const match = vaultOptions.find(
       (v) => normalizeAddress(v.address) === queryVault
     );
-    return match ?? vaultOptions[0];
-  }, [queryVault, vaultOptions]);
+    if (match) return match;
+    if (hasVaultQueryParam && isAddress(queryVault)) {
+      return {
+        address: queryVault,
+        label: 'Custom Vault',
+      } satisfies VaultOption;
+    }
+    return vaultOptions[0];
+  }, [queryVault, hasVaultQueryParam, vaultOptions]);
 
   useEffect(() => {
     if (!selectedVault || !hasVaultQueryParam) return;
@@ -119,16 +129,21 @@ const VaultsPageContent = () => {
   const selectedVaultValue = selectedVault?.address ?? '';
   const collateralSymbol = COLLATERAL_SYMBOLS[VAULT_CHAIN_ID] || 'testUSDe';
 
-  // Separate reads for each of the (up to) three vaults so the Vault Rewards
-  // calc can sum across all vaults regardless of which tab is selected. Hooks
-  // must be called unconditionally, so missing addresses are handled inside
-  // the hook via the `enabled` flag.
+  // Separate reads for each configured vault so the Vault Rewards calc can sum
+  // across all vaults regardless of which tab is selected. Hooks must be called
+  // unconditionally, so missing addresses are handled inside the hook via the
+  // `enabled` flag.
   const coreAddr = predictionMarketVault[VAULT_CHAIN_ID]?.address;
+  const optionsAddr = pythPredictionMarketVault[VAULT_CHAIN_ID]?.address;
   const singleLegAddr = singleLegVault[VAULT_CHAIN_ID]?.address;
   const edgeAddr = predictionMarketVaultStrategyB[VAULT_CHAIN_ID]?.address;
 
   const coreVault = usePassiveLiquidityVault({
     vaultAddress: coreAddr,
+    chainId: VAULT_CHAIN_ID,
+  });
+  const optionsVault = usePassiveLiquidityVault({
+    vaultAddress: optionsAddr,
     chainId: VAULT_CHAIN_ID,
   });
   const singleLegVaultData = usePassiveLiquidityVault({
@@ -141,6 +156,7 @@ const VaultsPageContent = () => {
   });
 
   const { data: coreStats } = useProtocolStats(coreAddr);
+  const { data: optionsStats } = useProtocolStats(optionsAddr);
   const { data: singleLegStats } = useProtocolStats(singleLegAddr);
   const { data: edgeStats } = useProtocolStats(edgeAddr);
 
@@ -630,6 +646,7 @@ const VaultsPageContent = () => {
     // tab is selected — sum TVL across all deployed vaults.
     const vaultEntries = [
       [coreVault.vaultData, coreStats] as const,
+      [optionsVault.vaultData, optionsStats] as const,
       [singleLegVaultData.vaultData, singleLegStats] as const,
       [edgeVault.vaultData, edgeStats] as const,
     ];
@@ -686,9 +703,11 @@ const VaultsPageContent = () => {
     };
   }, [
     coreVault.vaultData,
+    optionsVault.vaultData,
     singleLegVaultData.vaultData,
     edgeVault.vaultData,
     coreStats,
+    optionsStats,
     singleLegStats,
     edgeStats,
     formatAssetAmount,
