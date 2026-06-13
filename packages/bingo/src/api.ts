@@ -16,6 +16,7 @@ export interface BingoConditionDetail {
   question: string;
   shortName?: string | null;
   optionName?: string | null;
+  estimatedPrice?: number | null;
   /** Estimated resolution time (unix seconds). */
   endTime?: number | null;
   similarMarketImage?: string | null;
@@ -291,6 +292,7 @@ const BY_IDS_QUERY = /* GraphQL */ `
       question
       shortName
       optionName
+      estimatedPrice
       endTime
       similarMarketImage
     }
@@ -327,6 +329,7 @@ export async function fetchConditionsByIds(
       question: c.question,
       shortName: c.shortName ?? null,
       optionName: c.optionName ?? null,
+      estimatedPrice: c.estimatedPrice ?? null,
       endTime: c.endTime ?? null,
       similarMarketImage: c.similarMarketImage ?? null,
     });

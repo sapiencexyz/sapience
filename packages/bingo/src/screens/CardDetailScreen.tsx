@@ -125,6 +125,11 @@ function fmtEndTime(unixSeconds: number): string {
   });
 }
 
+function fmtOdds(price?: number | null): string | null {
+  if (typeof price !== 'number' || !Number.isFinite(price)) return null;
+  return `${Math.round(price * 100)}%`;
+}
+
 /** Gross payout if a line hits = the whole prediction pool (stake + counterparty). */
 function fmtWin(wei: bigint): string {
   const n = Number(wei) / 1e18;
@@ -733,6 +738,7 @@ export default function CardDetailScreen({ cardId }: Props) {
                   const yes = isPicked && (pickedSides & (1 << i)) !== 0;
                   const no = isPicked && (pickedSides & (1 << i)) === 0;
                   const detail = conditionDetails.get(id.toLowerCase());
+                  const odds = fmtOdds(detail?.estimatedPrice);
                   return (
                     <div key={i} className="bingo-cell">
                       {detail?.similarMarketImage && (
@@ -761,6 +767,7 @@ export default function CardDetailScreen({ cardId }: Props) {
                       >
                         {detail?.shortName ?? detail?.question ?? id}
                       </div>
+                      {odds && <div className="cell-odds">Odds {odds}</div>}
                       <div className="bingo-side-toggle">
                         <button
                           type="button"
@@ -832,6 +839,7 @@ export default function CardDetailScreen({ cardId }: Props) {
                 {card.conditionIds.map((id, idx) => {
                   const yes = (card.cellSides & (1 << idx)) !== 0;
                   const detail = conditionDetails.get(id.toLowerCase());
+                  const odds = fmtOdds(detail?.estimatedPrice);
                   const row = Math.floor(idx / 4);
                   const col = idx % 4;
                   const highlighted =
@@ -901,6 +909,7 @@ export default function CardDetailScreen({ cardId }: Props) {
                       >
                         {detail?.shortName ?? detail?.question ?? id}
                       </div>
+                      {odds && <div className="cell-odds">Odds {odds}</div>}
                       <div className="locked-pick">{yes ? 'YES' : 'NO'}</div>
                     </article>
                   );
