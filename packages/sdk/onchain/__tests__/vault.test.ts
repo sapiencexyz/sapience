@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { parseAbi } from 'viem';
+import { parseAbi, decodeFunctionData } from 'viem';
 import type { Abi } from 'abitype';
 import type { Address } from 'viem';
 import {
@@ -235,8 +235,9 @@ describe('buildDepositCalls', () => {
     expect(calls).toHaveLength(1);
   });
 
-  test('share calculation correctness with pps=2', () => {
-    // amount=10, pps=2 → expected shares = 10e18 * 1e18 / 2e18 = 5e18
+  test('share calculation applies 10 bps buffer with pps=2', () => {
+    // amount=10, pps=2 → raw shares would be 5e18; with the 10 bps buffer
+    // the request asks for 10e18 * 1e18 * 10000 / (2e18 * 10010)
     const calls = buildDepositCalls({
       amount: '10',
       assetAddress,
@@ -247,8 +248,13 @@ describe('buildDepositCalls', () => {
       currentAllowance: 100_000_000_000_000_000_000n,
     });
     expect(calls).toHaveLength(1);
-    // The requestDeposit calldata is encoded — just verify it doesn't throw
-    expect(calls[0].data).toBeTruthy();
+    const decoded = decodeFunctionData({
+      abi: vaultAbi,
+      data: calls[0].data,
+    });
+    expect(decoded.functionName).toBe('requestDeposit');
+    expect(decoded.args?.[0]).toBe(10_000_000_000_000_000_000n);
+    expect(decoded.args?.[1]).toBe(4_995_004_995_004_995_004n);
   });
 });
 
