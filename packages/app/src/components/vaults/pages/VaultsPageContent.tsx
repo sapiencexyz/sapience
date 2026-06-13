@@ -94,7 +94,7 @@ const VaultsPageContent = () => {
       | `0x${string}`
       | undefined;
     return singleLegAddr
-      ? [...vaultOptions, { address: singleLegAddr, label: 'Single Leg Vault' }]
+      ? [...vaultOptions, { address: singleLegAddr, label: 'Singles Vault' }]
       : vaultOptions;
   }, [VAULT_CHAIN_ID, vaultOptions]);
 

@@ -365,7 +365,7 @@ describe('VaultsPageContent geofence', () => {
       screen.getByRole('button', { name: 'Options Vault' })
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: 'Single Leg Vault' })
+      screen.queryByRole('button', { name: 'Singles Vault' })
     ).not.toBeInTheDocument();
   });
 
@@ -381,7 +381,7 @@ describe('VaultsPageContent geofence', () => {
 
     render(<VaultsPageContent />);
 
-    expect(screen.getByText('Single Leg Vault')).toBeInTheDocument();
+    expect(screen.getByText('Singles Vault')).toBeInTheDocument();
     expect(mockRouterReplace).not.toHaveBeenCalled();
     expect(
       mockUsePassiveLiquidityVault.mock.calls.some(
