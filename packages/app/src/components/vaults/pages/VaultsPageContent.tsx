@@ -77,12 +77,6 @@ const VaultsPageContent = () => {
           | undefined,
         'Edge Vault',
       ],
-      [
-        pythPredictionMarketVault[VAULT_CHAIN_ID]?.address as
-          | `0x${string}`
-          | undefined,
-        'Options Vault',
-      ],
     ];
     return entries
       .filter((entry): entry is [`0x${string}`, string] => Boolean(entry[0]))
@@ -90,12 +84,22 @@ const VaultsPageContent = () => {
   }, [VAULT_CHAIN_ID]);
 
   const knownVaultOptions = useMemo<VaultOption[]>(() => {
-    const singleLegAddr = singleLegVault[VAULT_CHAIN_ID]?.address as
-      | `0x${string}`
-      | undefined;
-    return singleLegAddr
-      ? [...vaultOptions, { address: singleLegAddr, label: 'Singles Vault' }]
-      : vaultOptions;
+    const hiddenEntries: Array<[`0x${string}` | undefined, string]> = [
+      [
+        pythPredictionMarketVault[VAULT_CHAIN_ID]?.address as
+          | `0x${string}`
+          | undefined,
+        'Options Vault',
+      ],
+      [
+        singleLegVault[VAULT_CHAIN_ID]?.address as `0x${string}` | undefined,
+        'Singles Vault',
+      ],
+    ];
+    const hiddenVaultOptions = hiddenEntries
+      .filter((entry): entry is [`0x${string}`, string] => Boolean(entry[0]))
+      .map(([address, label]) => ({ address, label }));
+    return [...vaultOptions, ...hiddenVaultOptions];
   }, [VAULT_CHAIN_ID, vaultOptions]);
 
   const queryVault = normalizeAddress(searchParams.get(VAULT_QUERY_PARAM));

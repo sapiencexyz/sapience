@@ -345,7 +345,7 @@ describe('VaultsPageContent geofence', () => {
     expect(depositBtn).not.toBeDisabled();
   });
 
-  it('keeps the options vault tab visible and single-leg hidden from tabs', () => {
+  it('hides the options and singles vaults from tabs', () => {
     mockUseRestrictedJurisdiction.mockReturnValue({
       isRestricted: false,
       isPermitLoading: false,
@@ -362,8 +362,8 @@ describe('VaultsPageContent geofence', () => {
       screen.getByRole('button', { name: 'Edge Vault' })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Options Vault' })
-    ).toBeInTheDocument();
+      screen.queryByRole('button', { name: 'Options Vault' })
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Singles Vault' })
     ).not.toBeInTheDocument();
@@ -390,6 +390,26 @@ describe('VaultsPageContent geofence', () => {
       )
     ).toBe(true);
     expect(mockUseProtocolStats).toHaveBeenCalledWith(singleLegVault);
+  });
+
+  it('accepts the hidden options vault address from the URL without showing its tab', () => {
+    const optionsVault = '0xOptionsVault';
+    mockSearchParamsToString.mockReturnValue(`address=${optionsVault}`);
+    mockUseRestrictedJurisdiction.mockReturnValue({
+      isRestricted: false,
+      isPermitLoading: false,
+      permitData: { permitted: true },
+      permitError: null,
+    });
+
+    render(<VaultsPageContent />);
+
+    expect(screen.getByText('Options Vault')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Options Vault' })
+    ).not.toBeInTheDocument();
+    expect(mockRouterReplace).not.toHaveBeenCalled();
+    expect(mockUseProtocolStats).toHaveBeenCalledWith(optionsVault);
   });
 
   it('rewrites an unknown vault address to the default vault', () => {
