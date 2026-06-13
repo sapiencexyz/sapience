@@ -4,6 +4,7 @@ import {
   predictionMarketVault,
   predictionMarketVaultStrategyB,
   pythPredictionMarketVault,
+  singleLegVault,
 } from '@sapience/sdk/contracts';
 import { Button } from '@sapience/ui/components/ui/button';
 import { Card, CardContent } from '@sapience/ui/components/ui/card';
@@ -76,26 +77,39 @@ const VaultsPageContent = () => {
           | undefined,
         'Edge Vault',
       ],
-      [
-        pythPredictionMarketVault[VAULT_CHAIN_ID]?.address as
-          | `0x${string}`
-          | undefined,
-        'Options Vault',
-      ],
     ];
     return entries
       .filter((entry): entry is [`0x${string}`, string] => Boolean(entry[0]))
       .map(([address, label]) => ({ address, label }));
   }, [VAULT_CHAIN_ID]);
 
+  const knownVaultOptions = useMemo<VaultOption[]>(() => {
+    const hiddenEntries: Array<[`0x${string}` | undefined, string]> = [
+      [
+        pythPredictionMarketVault[VAULT_CHAIN_ID]?.address as
+          | `0x${string}`
+          | undefined,
+        'Options Vault',
+      ],
+      [
+        singleLegVault[VAULT_CHAIN_ID]?.address as `0x${string}` | undefined,
+        'Singles Vault',
+      ],
+    ];
+    const hiddenVaultOptions = hiddenEntries
+      .filter((entry): entry is [`0x${string}`, string] => Boolean(entry[0]))
+      .map(([address, label]) => ({ address, label }));
+    return [...vaultOptions, ...hiddenVaultOptions];
+  }, [VAULT_CHAIN_ID, vaultOptions]);
+
   const queryVault = normalizeAddress(searchParams.get(VAULT_QUERY_PARAM));
   const hasVaultQueryParam = queryVault !== '';
   const selectedVault = useMemo(() => {
-    const match = vaultOptions.find(
+    const match = knownVaultOptions.find(
       (v) => normalizeAddress(v.address) === queryVault
     );
     return match ?? vaultOptions[0];
-  }, [queryVault, vaultOptions]);
+  }, [queryVault, knownVaultOptions, vaultOptions]);
 
   useEffect(() => {
     if (!selectedVault || !hasVaultQueryParam) return;
