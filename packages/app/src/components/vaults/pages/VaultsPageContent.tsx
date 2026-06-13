@@ -17,7 +17,7 @@ import {
 } from '@sapience/ui/components/ui/tabs';
 import { Clock } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { isAddress, parseUnits } from 'viem';
+import { parseUnits } from 'viem';
 import { formatDuration, intervalToDuration } from 'date-fns';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -63,7 +63,7 @@ const VaultsPageContent = () => {
   const searchParams = useSearchParams();
   const VAULT_CHAIN_ID = DEFAULT_CHAIN_ID;
 
-  const vaultOptions = useMemo<VaultOption[]>(() => {
+  const visibleVaultOptions = useMemo<VaultOption[]>(() => {
     const entries: Array<[`0x${string}` | undefined, string]> = [
       [
         predictionMarketVault[VAULT_CHAIN_ID]?.address as
@@ -89,21 +89,26 @@ const VaultsPageContent = () => {
       .map(([address, label]) => ({ address, label }));
   }, [VAULT_CHAIN_ID]);
 
+  const knownVaultOptions = useMemo<VaultOption[]>(() => {
+    const singleLegAddr = singleLegVault[VAULT_CHAIN_ID]?.address as
+      | `0x${string}`
+      | undefined;
+    return singleLegAddr
+      ? [
+          ...visibleVaultOptions,
+          { address: singleLegAddr, label: 'Single Leg Vault' },
+        ]
+      : visibleVaultOptions;
+  }, [VAULT_CHAIN_ID, visibleVaultOptions]);
+
   const queryVault = normalizeAddress(searchParams.get(VAULT_QUERY_PARAM));
   const hasVaultQueryParam = queryVault !== '';
   const selectedVault = useMemo(() => {
-    const match = vaultOptions.find(
+    const match = knownVaultOptions.find(
       (v) => normalizeAddress(v.address) === queryVault
     );
-    if (match) return match;
-    if (hasVaultQueryParam && isAddress(queryVault)) {
-      return {
-        address: queryVault,
-        label: 'Custom Vault',
-      } satisfies VaultOption;
-    }
-    return vaultOptions[0];
-  }, [queryVault, hasVaultQueryParam, vaultOptions]);
+    return match ?? visibleVaultOptions[0];
+  }, [queryVault, knownVaultOptions, visibleVaultOptions]);
 
   useEffect(() => {
     if (!selectedVault || !hasVaultQueryParam) return;
@@ -722,7 +727,7 @@ const VaultsPageContent = () => {
           </h1>
           <Tabs value={selectedVaultValue} onValueChange={handleVaultChange}>
             <TabsList className="h-auto p-1">
-              {vaultOptions.map((option) => (
+              {visibleVaultOptions.map((option) => (
                 <TabsTrigger
                   key={option.address}
                   value={option.address}

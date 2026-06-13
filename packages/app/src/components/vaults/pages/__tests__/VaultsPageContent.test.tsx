@@ -165,7 +165,6 @@ vi.mock('lucide-react', () => ({
 }));
 
 vi.mock('viem', () => ({
-  isAddress: (value: string) => /^0x[a-fA-F0-9]{40}$/.test(value),
   parseUnits: (value: string, decimals: number) => {
     const n = Number(value);
     if (!Number.isFinite(n)) return 0n;
@@ -370,9 +369,9 @@ describe('VaultsPageContent geofence', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('accepts an arbitrary vault address from the URL without rewriting it', () => {
-    const customVault = '0x0000000000000000000000000000000000000abc';
-    mockSearchParamsToString.mockReturnValue(`address=${customVault}`);
+  it('accepts a hidden known/indexed vault address from the URL without rewriting it', () => {
+    const singleLegVault = '0xSingleLegVault';
+    mockSearchParamsToString.mockReturnValue(`address=${singleLegVault}`);
     mockUseRestrictedJurisdiction.mockReturnValue({
       isRestricted: false,
       isPermitLoading: false,
@@ -382,15 +381,33 @@ describe('VaultsPageContent geofence', () => {
 
     render(<VaultsPageContent />);
 
-    expect(screen.getByText('Custom Vault')).toBeInTheDocument();
+    expect(screen.getByText('Single Leg Vault')).toBeInTheDocument();
     expect(mockRouterReplace).not.toHaveBeenCalled();
     expect(
       mockUsePassiveLiquidityVault.mock.calls.some(
         ([args]) =>
-          (args as { vaultAddress?: string }).vaultAddress === customVault
+          (args as { vaultAddress?: string }).vaultAddress === singleLegVault
       )
     ).toBe(true);
-    expect(mockUseProtocolStats).toHaveBeenCalledWith(customVault);
+    expect(mockUseProtocolStats).toHaveBeenCalledWith(singleLegVault);
+  });
+
+  it('rewrites an unknown vault address to the default vault', () => {
+    const unknownVault = '0x0000000000000000000000000000000000000abc';
+    mockSearchParamsToString.mockReturnValue(`address=${unknownVault}`);
+    mockUseRestrictedJurisdiction.mockReturnValue({
+      isRestricted: false,
+      isPermitLoading: false,
+      permitData: { permitted: true },
+      permitError: null,
+    });
+
+    render(<VaultsPageContent />);
+
+    expect(screen.queryByText('Custom Vault')).not.toBeInTheDocument();
+    expect(mockRouterReplace).toHaveBeenCalledWith('/vaults?address=0xvault', {
+      scroll: false,
+    });
   });
 
   it('defaults to the first vault tab without rewriting the URL when no address query param is present', () => {
