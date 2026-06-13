@@ -82,6 +82,11 @@
       "import": "./dist/types/graphql.mjs",
       "require": "./dist/types/graphql.js"
     },
+    "./types/graphql.v2": {
+      "types": "./dist/types/graphql.v2.d.ts",
+      "import": "./dist/types/graphql.v2.mjs",
+      "require": "./dist/types/graphql.v2.js"
+    },
     "./types/escrow": {
       "types": "./dist/types/escrow.d.ts",
       "import": "./dist/types/escrow.mjs",
@@ -146,8 +151,8 @@
   },
   "scripts": {
     "prepare": "pnpm run build:lib",
-    "dev": "tsup index.ts auction/encoding.ts auction/escrowEncoding.ts auction/escrowSigning.ts auction/simulate.ts auction/secondarySigning.ts auction/secondaryValidation.ts auction/validation.ts auction/gossipValidation.ts auction/bidPreprocessor.ts auction/initiate.ts auction/buildAuctionPayload.ts auction/decodePredictedOutcomes.ts relayer/escrowAuctionWs.ts abis/index.ts constants/index.ts contracts/index.ts contracts/addresses.ts queries/index.ts queries/client/graphqlClient.ts types/index.ts types/escrow.ts types/secondary.ts types/graphql.ts session/index.ts utils/index.ts --format cjs,esm --dts --watch",
-    "build:lib": "tsup index.ts auction/encoding.ts auction/escrowEncoding.ts auction/escrowSigning.ts auction/simulate.ts auction/secondarySigning.ts auction/secondaryValidation.ts auction/validation.ts auction/gossipValidation.ts auction/bidPreprocessor.ts auction/initiate.ts auction/buildAuctionPayload.ts auction/decodePredictedOutcomes.ts relayer/escrowAuctionWs.ts abis/index.ts constants/index.ts contracts/index.ts contracts/addresses.ts queries/index.ts queries/client/graphqlClient.ts types/index.ts types/escrow.ts types/secondary.ts types/graphql.ts session/index.ts utils/index.ts --format cjs,esm --dts --tsconfig tsconfig.build.json",
+    "dev": "tsup index.ts auction/encoding.ts auction/escrowEncoding.ts auction/escrowSigning.ts auction/simulate.ts auction/secondarySigning.ts auction/secondaryValidation.ts auction/validation.ts auction/gossipValidation.ts auction/bidPreprocessor.ts auction/initiate.ts auction/buildAuctionPayload.ts auction/decodePredictedOutcomes.ts relayer/escrowAuctionWs.ts abis/index.ts constants/index.ts contracts/index.ts contracts/addresses.ts queries/index.ts queries/client/graphqlClient.ts types/index.ts types/escrow.ts types/secondary.ts types/graphql.ts types/graphql.v2.ts session/index.ts utils/index.ts --format cjs,esm --dts --watch",
+    "build:lib": "tsup index.ts auction/encoding.ts auction/escrowEncoding.ts auction/escrowSigning.ts auction/simulate.ts auction/secondarySigning.ts auction/secondaryValidation.ts auction/validation.ts auction/gossipValidation.ts auction/bidPreprocessor.ts auction/initiate.ts auction/buildAuctionPayload.ts auction/decodePredictedOutcomes.ts relayer/escrowAuctionWs.ts abis/index.ts constants/index.ts contracts/index.ts contracts/addresses.ts queries/index.ts queries/client/graphqlClient.ts types/index.ts types/escrow.ts types/secondary.ts types/graphql.ts types/graphql.v2.ts session/index.ts utils/index.ts --format cjs,esm --dts --tsconfig tsconfig.build.json",
     "build": "pnpm run build:lib",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix --quiet && pnpm format",
