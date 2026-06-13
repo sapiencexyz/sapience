@@ -337,42 +337,59 @@ export async function handleApi(
     return true;
   }
 
-  // Summary of all the player's cards in a pool — drives the card selector
-  // and the "new card" button.
+  // Summary of the player's cards across ALL pools — receipts outlive pool
+  // rotation, so the card strip must keep showing them after rollover. The
+  // active-pool fields (poolId/cardCount/cards) drive the new-card flow.
   if (route === 'GET /api/cards') {
     const player = url.searchParams.get('player');
     if (!player || !isAddress(player)) {
       json(res, 400, { error: 'player query param required' });
       return true;
     }
-    const pool = resolvePool(network, url.searchParams.get('poolId'));
-    const count = await cardCount(network, pool.poolId, player);
-    const funded = count > 0 ? await fundedPredictions(network, player) : [];
-    const cards = await Promise.all(
-      Array.from({ length: count }, async (_, i) => {
-        const sub = await chainSubmission(network, pool.poolId, player, i);
-        if (!sub) return null;
-        const cells = drawCells(pool.conditions, sub.seed);
-        const tag = cardTag(pool.poolId, player, i);
-        const stake = BigInt(sub.cardPriceWei) / BigInt(LINES_PER_CARD);
-        const linesFunded = buildLines().filter((l) =>
-          lineIsFunded(funded, linePicks(l, cells, sub.yesMask), tag, stake),
-        ).length;
-        return {
-          cardIndex: i,
-          receiptTokenId: sub.tokenId.toString(),
-          yesMask: sub.yesMask,
-          cardPriceWei: sub.cardPriceWei,
-          submittedAt: sub.submittedAt * 1000,
-          linesFunded,
-        };
+    const pools = poolsFor[network];
+    const active = resolvePool(network, url.searchParams.get('poolId'));
+    const counts = await Promise.all(
+      pools.map((p) => cardCount(network, p.poolId, player)),
+    );
+    const funded = counts.some((c) => c > 0)
+      ? await fundedPredictions(network, player)
+      : [];
+    const perPool = await Promise.all(
+      pools.map(async (pool, pi) => {
+        const cards = await Promise.all(
+          Array.from({ length: counts[pi] }, async (_, i) => {
+            const sub = await chainSubmission(network, pool.poolId, player, i);
+            if (!sub) return null;
+            const cells = drawCells(pool.conditions, sub.seed);
+            const tag = cardTag(pool.poolId, player, i);
+            const stake = BigInt(sub.cardPriceWei) / BigInt(LINES_PER_CARD);
+            const linesFunded = buildLines().filter((l) =>
+              lineIsFunded(funded, linePicks(l, cells, sub.yesMask), tag, stake),
+            ).length;
+            return {
+              poolId: pool.poolId,
+              poolNumber: pi + 1,
+              poolOpen: poolIsOpen(pool),
+              cardIndex: i,
+              receiptTokenId: sub.tokenId.toString(),
+              yesMask: sub.yesMask,
+              cardPriceWei: sub.cardPriceWei,
+              submittedAt: sub.submittedAt * 1000,
+              linesFunded,
+            };
+          }),
+        );
+        return cards.filter((c): c is NonNullable<typeof c> => c != null);
       }),
     );
+    const activeIdx = pools.indexOf(active);
     json(res, 200, {
-      poolId: pool.poolId,
-      open: poolIsOpen(pool),
-      cardCount: count,
-      cards: cards.filter(Boolean),
+      poolId: active.poolId,
+      poolNumber: activeIdx + 1,
+      open: poolIsOpen(active),
+      cardCount: counts[activeIdx],
+      cards: perPool[activeIdx],
+      allCards: perPool.flat(),
     });
     return true;
   }

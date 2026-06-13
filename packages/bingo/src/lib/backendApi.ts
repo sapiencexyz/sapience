@@ -162,11 +162,25 @@ export interface CardSummary {
   linesFunded: number;
 }
 
-export interface CardsResponse {
+/** A card tagged with the pool it belongs to (the cross-pool list). */
+export interface PoolCardSummary extends CardSummary {
   poolId: string;
+  /** 1-based display ordinal of the pool. */
+  poolNumber: number;
+  poolOpen: boolean;
+}
+
+export interface CardsResponse {
+  /** Active pool — drives the new-card flow. */
+  poolId: string;
+  /** Optional: backends that predate the cross-pool list omit these. */
+  poolNumber?: number;
   open: boolean;
   cardCount: number;
+  /** Cards in the ACTIVE pool only (the fill-previous gate's scope). */
   cards: CardSummary[];
+  /** Every card the player holds, across all pools. */
+  allCards?: PoolCardSummary[];
 }
 
 export interface SubmitLineResponse {
@@ -222,8 +236,10 @@ async function request<T>(
 // API
 // ---------------------------------------------------------------------------
 
-export function fetchPool(): Promise<PoolResponse> {
-  return request<PoolResponse>('/api/pool');
+export function fetchPool(poolId?: string): Promise<PoolResponse> {
+  return request<PoolResponse>(
+    poolId ? `/api/pool?poolId=${encodeURIComponent(poolId)}` : '/api/pool',
+  );
 }
 
 export function fetchCard(
@@ -278,9 +294,11 @@ export function submitCard(params: {
 }
 
 /** Funds one line (auction + mint), synchronously. Idempotent — an
- *  already-funded line returns immediately. */
+ *  already-funded line returns immediately. poolId pins the card's pool
+ *  (defaults to the active pool server-side). */
 export function submitLine(params: {
   player: Address;
+  poolId?: string;
   cardIndex: number;
   lineIndex: number;
   session: SerializedSession;

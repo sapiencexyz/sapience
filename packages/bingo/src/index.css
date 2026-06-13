@@ -1311,6 +1311,83 @@ button.quick-pick:hover {
   color: var(--no);
 }
 
+/* ---------- card strip (all cards across pools) ---------- */
+.card-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.card-strip-pool {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.card-strip-label {
+  flex: 0 0 auto;
+  min-width: 3.4rem;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.card-strip-chips {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.card-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.32rem;
+  padding: 0.3rem 0.55rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--r-sm);
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition:
+    color 0.15s,
+    border-color 0.15s,
+    background 0.15s;
+}
+
+.card-chip:hover {
+  color: var(--text);
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.card-chip-sub {
+  font-size: 0.66rem;
+  color: var(--text-muted);
+}
+
+.card-chip.filled .card-chip-sub {
+  color: var(--yes);
+}
+
+.card-chip.current {
+  color: #0a0a0c;
+  background: var(--text);
+  border-color: transparent;
+  font-weight: 600;
+}
+
+.card-chip.current .card-chip-sub {
+  color: inherit;
+  opacity: 0.65;
+}
+
+.card-chip-new {
+  border-style: dashed;
+}
+
 /* ---------- admin ---------- */
 .admin-row {
   display: flex;

@@ -18,6 +18,7 @@ import {
   submitLine,
   type CardResponse,
   type CardsResponse,
+  type PoolCardSummary,
   type PoolResponse,
 } from '../lib/backendApi';
 import {
@@ -221,10 +222,14 @@ export default function CardDetailScreen() {
   // Per-cell resolution vs the declared side, once the card is complete.
   const [cellStatus, setCellStatus] = useState<Record<number, CellStatus>>({});
 
-  // Pool config (multipliers, min card price) — fetched once.
+  // Pool config (multipliers, min card price). In receipt view the card can
+  // belong to an OLD pool — fetch THAT pool (once the card tells us which),
+  // not the active one, so the header and bonus curve match the card.
+  const viewedPoolId = viewOnly ? card?.poolId : undefined;
   useEffect(() => {
+    if (viewOnly && !viewedPoolId) return; // wait for the card to load
     let stop = false;
-    fetchPool()
+    fetchPool(viewedPoolId)
       .then((p) => {
         if (!stop) setPool(p);
       })
@@ -234,7 +239,7 @@ export default function CardDetailScreen() {
     return () => {
       stop = true;
     };
-  }, []);
+  }, [viewOnly, viewedPoolId]);
 
   // Default the price input to the pool minimum once known.
   useEffect(() => {
@@ -243,21 +248,32 @@ export default function CardDetailScreen() {
   }, [pool, priceTouched]);
 
   // Resolve which card to show + keep the card list fresh: ?card=N wins,
-  // otherwise default to the player's latest submitted card.
+  // otherwise default to the player's latest submitted card. Also runs in
+  // receipt view — the strip of the viewer's own cards needs the list.
   useEffect(() => {
-    if (!player || viewOnly) return;
+    if (!player) return;
     let stop = false;
     const tick = async () => {
       try {
         const s = await fetchCards(player);
         if (stop) return;
         setCardsSummary(s);
-        setCardIndex((cur) =>
-          cur ?? cardIndexFromUrl() ?? Math.max(0, s.cardCount - 1),
-        );
+        // Clamp to the active pool's valid range — a stale ?card=N link
+        // (e.g. bookmarked before a pool rollover) lands on the fresh card
+        // instead of 404ing forever.
+        if (!viewOnly) {
+          setCardIndex((cur) =>
+            Math.min(
+              cur ?? cardIndexFromUrl() ?? Math.max(0, s.cardCount - 1),
+              s.cardCount,
+            ),
+          );
+        }
       } catch {
         // Card list is auxiliary; the card poll surfaces real errors.
-        if (!stop) setCardIndex((cur) => cur ?? cardIndexFromUrl() ?? 0);
+        if (!stop && !viewOnly) {
+          setCardIndex((cur) => cur ?? cardIndexFromUrl() ?? 0);
+        }
       }
     };
     void tick();
@@ -266,7 +282,7 @@ export default function CardDetailScreen() {
       stop = true;
       window.clearInterval(interval);
     };
-  }, [player, refreshKey]);
+  }, [player, viewOnly, refreshKey]);
 
   // Reset per-card state when switching cards — lineIds repeat across cards.
   useEffect(() => {
@@ -378,11 +394,19 @@ export default function CardDetailScreen() {
     (l) => !lineDone(l) && lineRuns[l.lineId]?.status === 'failed',
   );
 
+  // The signed-in player IS this card's player — write actions (fund,
+  // claim) hang off this, so a receipt permalink works as the owner's own
+  // card page too, not just a spectator view.
+  const isOwner =
+    !!player && !!card && player.toLowerCase() === card.player.toLowerCase();
+
   // Funds the given lines: one synchronous backend request each, all in
-  // parallel. Idempotent — the backend skips already-funded lines.
+  // parallel. Idempotent — the backend skips already-funded lines. The
+  // card's own poolId/cardIndex are used (not the selector state) so this
+  // works on receipt permalinks as well.
   const fundLines = async (indices: number[]) => {
     const session = loadSession();
-    if (!player || !session || !card || cardIndex == null) return;
+    if (!player || !session || !card) return;
     const lineIds = card.lines.map((l) => l.lineId);
     setActionError(null);
     setLineRuns((p) => {
@@ -393,7 +417,13 @@ export default function CardDetailScreen() {
     await Promise.allSettled(
       indices.map(async (i) => {
         try {
-          await submitLine({ player, cardIndex, lineIndex: i, session });
+          await submitLine({
+            player,
+            poolId: card.poolId,
+            cardIndex: card.cardIndex,
+            lineIndex: i,
+            session,
+          });
           setLineRuns((p) => ({ ...p, [lineIds[i]]: { status: 'done' } }));
         } catch (e) {
           setLineRuns((p) => ({
@@ -656,6 +686,39 @@ export default function CardDetailScreen() {
     (l) => lineOutcomes[l.id]?.resolved && lineOutcomes[l.id]?.predictorWon,
   ).length;
 
+  // Card strip: every card the player holds, across all pools, grouped by
+  // pool (newest first). Old pools' cards stay reachable after rollover —
+  // chips link to receipt permalinks, which never go stale. The active
+  // pool's group also carries the "+ new card" chip while it's open.
+  const activePoolNumber = cardsSummary?.poolNumber ?? 1;
+  const stripGroups = useMemo(() => {
+    if (!cardsSummary) return [];
+    const all: PoolCardSummary[] =
+      cardsSummary.allCards ??
+      // Backend predating the cross-pool list: active pool only.
+      cardsSummary.cards.map((c) => ({
+        ...c,
+        poolId: cardsSummary.poolId,
+        poolNumber: activePoolNumber,
+        poolOpen: cardsSummary.open,
+      }));
+    const byPool = new Map<
+      number,
+      { poolId: string; cards: PoolCardSummary[] }
+    >();
+    for (const c of all) {
+      const g = byPool.get(c.poolNumber) ?? { poolId: c.poolId, cards: [] };
+      g.cards.push(c);
+      byPool.set(c.poolNumber, g);
+    }
+    if (cardsSummary.open && !byPool.has(activePoolNumber)) {
+      byPool.set(activePoolNumber, { poolId: cardsSummary.poolId, cards: [] });
+    }
+    return [...byPool.entries()]
+      .sort((a, b) => b[0] - a[0])
+      .map(([poolNumber, g]) => ({ poolNumber, ...g }));
+  }, [cardsSummary, activePoolNumber]);
+
   const injected = connectors.find((c) => c.id === 'injected');
 
   // A session is required: it identifies the player (smart account) and lets
@@ -760,41 +823,71 @@ export default function CardDetailScreen() {
         <section className="screen admin-section">{sessionPrompt}</section>
       )}
 
-      {/* Card selector — only once the player has at least one submitted
-          card; a first-time player just sees their fresh card below. */}
-      {!viewOnly && player && cardsSummary && cardsSummary.cardCount > 0 && (
+      {/* Card strip — every card the player holds, across all pools.
+          Chips are receipt permalinks (?receipt=N), so they survive pool
+          rotation and double as share URLs. Hidden until the player owns at
+          least one card; a first-timer just sees their fresh card below. */}
+      {player && cardsSummary && stripGroups.some((g) => g.cards.length > 0) && (
         <section className="screen admin-section">
-          <div className="admin-row" style={{ flexWrap: 'wrap', gap: 8 }}>
-            {cardsSummary.cards.map((c) => (
-              <button
-                key={c.cardIndex}
-                type="button"
-                className={c.cardIndex === cardIndex ? 'primary' : 'ghost'}
-                onClick={() => selectCard(c.cardIndex)}
-              >
-                Card #{c.cardIndex + 1} · {c.linesFunded}/10
-              </button>
+          <div className="card-strip">
+            {stripGroups.map((g) => (
+              <div className="card-strip-pool" key={g.poolNumber}>
+                <span className="card-strip-label">Pool {g.poolNumber}</span>
+                <div className="card-strip-chips">
+                  {g.cards.map((c) => {
+                    const current = viewOnly
+                      ? c.receiptTokenId === receiptId
+                      : c.poolId === cardsSummary.poolId &&
+                        c.cardIndex === cardIndex;
+                    return (
+                      <a
+                        key={c.receiptTokenId}
+                        href={`/card?receipt=${c.receiptTokenId}`}
+                        className={`card-chip ${current ? 'current' : ''} ${
+                          c.linesFunded >= 10 ? 'filled' : ''
+                        }`}
+                      >
+                        <span className="card-chip-id">
+                          #{c.receiptTokenId}
+                        </span>
+                        <span className="card-chip-sub">
+                          {c.linesFunded >= 10 ? '✓' : `${c.linesFunded}/10`}
+                        </span>
+                      </a>
+                    );
+                  })}
+                  {cardsSummary.open && g.poolNumber === activePoolNumber && (
+                    <a
+                      href={`/card?card=${cardsSummary.cardCount}`}
+                      className={`card-chip card-chip-new ${
+                        !viewOnly && cardIndex === cardsSummary.cardCount
+                          ? 'current'
+                          : ''
+                      }`}
+                      onClick={(e) => {
+                        // A card with unfunded lines forfeits bonus
+                        // eligibility — block the next card until every
+                        // line of the ACTIVE pool's cards is funded (old
+                        // pools are closed; they can't be filled, so they
+                        // don't gate).
+                        const unfilled = cardsSummary.cards.some(
+                          (c) => c.linesFunded < 10,
+                        );
+                        if (unfilled) {
+                          e.preventDefault();
+                          setFillPreviousOpen(true);
+                        } else if (!viewOnly) {
+                          e.preventDefault();
+                          selectCard(cardsSummary.cardCount);
+                        }
+                      }}
+                    >
+                      + New
+                    </a>
+                  )}
+                </div>
+              </div>
             ))}
-            {cardsSummary.open && (
-              <button
-                type="button"
-                className={
-                  cardIndex === cardsSummary.cardCount ? 'primary' : 'ghost'
-                }
-                onClick={() => {
-                  // A card with unfunded lines forfeits bonus eligibility —
-                  // block the next card until every line of the previous
-                  // ones is funded (the admin reviews re-roll patterns).
-                  const unfilled = cardsSummary.cards.some(
-                    (c) => c.linesFunded < 10,
-                  );
-                  if (unfilled) setFillPreviousOpen(true);
-                  else selectCard(cardsSummary.cardCount);
-                }}
-              >
-                + New card
-              </button>
-            )}
           </div>
         </section>
       )}
@@ -939,7 +1032,7 @@ export default function CardDetailScreen() {
 
           {submitted && (
             <>
-              {!cardComplete && (
+              {!cardComplete && (!viewOnly || isOwner) && (
                 <div className="wizard-step-title">
                   {anyInflight || actionBusy
                     ? `Submitting your 10 lines (${lineCount}/10)`
@@ -1110,7 +1203,7 @@ export default function CardDetailScreen() {
               </div>
               </div>
 
-              {!cardComplete && (
+              {!cardComplete && (!viewOnly || isOwner) && (
                 <>
                   {anyFailed && (
                     <p className="error small">
@@ -1121,12 +1214,14 @@ export default function CardDetailScreen() {
                   )}
                   {/* The client drives line funding: offer to (re)start it
                       whenever lines are missing and nothing is in flight —
-                      covers failures, page reloads, and interrupted runs. */}
-                  {!anyInflight && !actionBusy && (
+                      covers failures, page reloads, and interrupted runs.
+                      Only while the pool is open (closed pools refuse new
+                      lines) and only to the card's owner. */}
+                  {!anyInflight && !actionBusy && card.open && (
                     <button
                       type="button"
                       className="primary block"
-                      disabled={!isActive}
+                      disabled={!isActive || (viewOnly && !isOwner)}
                       onClick={retryLines}
                     >
                       {anyFailed
