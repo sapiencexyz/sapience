@@ -25,7 +25,7 @@ import {
 } from './chain.js';
 import { buildLines, LINES_PER_CARD } from './lines.js';
 import { NETWORK_CONFIG, resolveNetwork, type Network } from './network.js';
-import { loadPools, parsePools, poolIsOpen } from './pool.js';
+import { activePoolOf, loadPools, parsePools, poolIsOpen } from './pool.js';
 import {
   cardCount,
   chainSubmission,
@@ -53,10 +53,8 @@ const poolById: Record<Network, Map<string, PoolConfig>> = {
   staging: new Map(poolsFor.staging.map((p) => [p.poolId, p])),
   main: new Map(poolsFor.main.map((p) => [p.poolId, p])),
 };
-export const activePool = (network: Network): PoolConfig => {
-  const pools = poolsFor[network];
-  return pools[pools.length - 1];
-};
+export const activePool = (network: Network): PoolConfig =>
+  activePoolOf(poolsFor[network]);
 
 const secretFor = (poolId: string): Hex =>
   poolSecret(env.SERVER_SECRET as Hex, poolId);
@@ -215,7 +213,12 @@ export async function handleApi(
         cutoff: pool.cutoff,
         commitment: fairnessCommitment(secretFor(pool.poolId)),
         // The secret is only revealed once the pool can no longer be played.
-        ...(poolIsOpen(pool) ? {} : { secret: secretFor(pool.poolId) }),
+        // CUTOFF-passed specifically — NOT !poolIsOpen, which is also true
+        // for scheduled pools that haven't opened yet (their secrets must
+        // stay sealed until after they've been played).
+        ...(Date.now() / 1000 >= pool.cutoff
+          ? { secret: secretFor(pool.poolId) }
+          : {}),
       })),
     });
     return true;

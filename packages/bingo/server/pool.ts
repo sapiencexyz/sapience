@@ -38,6 +38,14 @@ export function validatePool(input: unknown): PoolConfig {
   if (!Number.isInteger(raw.cutoff) || raw.cutoff <= 0) {
     throw new Error('pool: cutoff (unix seconds) required');
   }
+  if (raw.opensAt !== undefined) {
+    if (!Number.isInteger(raw.opensAt) || raw.opensAt <= 0) {
+      throw new Error('pool: opensAt must be unix seconds');
+    }
+    if (raw.opensAt >= raw.cutoff) {
+      throw new Error('pool: opensAt must be before cutoff');
+    }
+  }
   if (!Array.isArray(raw.conditions) || raw.conditions.length < CELL_COUNT) {
     throw new Error(`pool: need >= ${CELL_COUNT} conditions`);
   }
@@ -80,5 +88,20 @@ export function validatePool(input: unknown): PoolConfig {
 }
 
 export function poolIsOpen(pool: PoolConfig, nowSec = Date.now() / 1000): boolean {
-  return nowSec < pool.cutoff;
+  return nowSec >= (pool.opensAt ?? 0) && nowSec < pool.cutoff;
+}
+
+/** The pool players see/play right now: the LAST pool whose opensAt has
+ *  passed. Future pools sit in the file invisible until their time comes —
+ *  scheduling is committing them ahead with opensAt set (typically the
+ *  previous pool's cutoff). Falls back to the first pool when nothing has
+ *  opened yet. */
+export function activePoolOf(
+  pools: readonly PoolConfig[],
+  nowSec = Date.now() / 1000,
+): PoolConfig {
+  for (let i = pools.length - 1; i >= 0; i--) {
+    if ((pools[i].opensAt ?? 0) <= nowSec) return pools[i];
+  }
+  return pools[0];
 }

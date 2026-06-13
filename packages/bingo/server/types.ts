@@ -15,6 +15,11 @@ export interface PoolConfig {
   /** Unix seconds. Submissions are refused at/after this time. Must be
    *  before the earliest condition can start resolving. */
   cutoff: number;
+  /** Unix seconds; optional. Before this the pool is not yet open (and not
+   *  the active pool), letting future pools be committed ahead of time —
+   *  each becomes active when its opensAt passes. Absent = open from the
+   *  start. Must be before cutoff. */
+  opensAt?: number;
   /** >= 16 entries, unique by (conditionId, resolver). */
   conditions: PoolCondition[];
   /** Bonus multiplier in bps by winning-line count; length 11 (0..10 wins). */
