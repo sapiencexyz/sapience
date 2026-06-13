@@ -63,7 +63,7 @@ const VaultsPageContent = () => {
   const searchParams = useSearchParams();
   const VAULT_CHAIN_ID = DEFAULT_CHAIN_ID;
 
-  const visibleVaultOptions = useMemo<VaultOption[]>(() => {
+  const vaultOptions = useMemo<VaultOption[]>(() => {
     const entries: Array<[`0x${string}` | undefined, string]> = [
       [
         predictionMarketVault[VAULT_CHAIN_ID]?.address as
@@ -94,12 +94,9 @@ const VaultsPageContent = () => {
       | `0x${string}`
       | undefined;
     return singleLegAddr
-      ? [
-          ...visibleVaultOptions,
-          { address: singleLegAddr, label: 'Single Leg Vault' },
-        ]
-      : visibleVaultOptions;
-  }, [VAULT_CHAIN_ID, visibleVaultOptions]);
+      ? [...vaultOptions, { address: singleLegAddr, label: 'Single Leg Vault' }]
+      : vaultOptions;
+  }, [VAULT_CHAIN_ID, vaultOptions]);
 
   const queryVault = normalizeAddress(searchParams.get(VAULT_QUERY_PARAM));
   const hasVaultQueryParam = queryVault !== '';
@@ -107,8 +104,8 @@ const VaultsPageContent = () => {
     const match = knownVaultOptions.find(
       (v) => normalizeAddress(v.address) === queryVault
     );
-    return match ?? visibleVaultOptions[0];
-  }, [queryVault, knownVaultOptions, visibleVaultOptions]);
+    return match ?? vaultOptions[0];
+  }, [queryVault, knownVaultOptions, vaultOptions]);
 
   useEffect(() => {
     if (!selectedVault || !hasVaultQueryParam) return;
@@ -134,13 +131,12 @@ const VaultsPageContent = () => {
   const selectedVaultValue = selectedVault?.address ?? '';
   const collateralSymbol = COLLATERAL_SYMBOLS[VAULT_CHAIN_ID] || 'testUSDe';
 
-  // Separate reads for each configured vault so the Vault Rewards calc can sum
-  // across all vaults regardless of which tab is selected. Hooks must be called
-  // unconditionally, so missing addresses are handled inside the hook via the
-  // `enabled` flag.
+  // Separate reads for each of the (up to) three vaults so the Vault Rewards
+  // calc can sum across all vaults regardless of which tab is selected. Hooks
+  // must be called unconditionally, so missing addresses are handled inside
+  // the hook via the `enabled` flag.
   const coreAddr = predictionMarketVault[VAULT_CHAIN_ID]?.address;
   const optionsAddr = pythPredictionMarketVault[VAULT_CHAIN_ID]?.address;
-  const singleLegAddr = singleLegVault[VAULT_CHAIN_ID]?.address;
   const edgeAddr = predictionMarketVaultStrategyB[VAULT_CHAIN_ID]?.address;
 
   const coreVault = usePassiveLiquidityVault({
@@ -151,10 +147,6 @@ const VaultsPageContent = () => {
     vaultAddress: optionsAddr,
     chainId: VAULT_CHAIN_ID,
   });
-  const singleLegVaultData = usePassiveLiquidityVault({
-    vaultAddress: singleLegAddr,
-    chainId: VAULT_CHAIN_ID,
-  });
   const edgeVault = usePassiveLiquidityVault({
     vaultAddress: edgeAddr,
     chainId: VAULT_CHAIN_ID,
@@ -162,7 +154,6 @@ const VaultsPageContent = () => {
 
   const { data: coreStats } = useProtocolStats(coreAddr);
   const { data: optionsStats } = useProtocolStats(optionsAddr);
-  const { data: singleLegStats } = useProtocolStats(singleLegAddr);
   const { data: edgeStats } = useProtocolStats(edgeAddr);
 
   const {
@@ -652,7 +643,6 @@ const VaultsPageContent = () => {
     const vaultEntries = [
       [coreVault.vaultData, coreStats] as const,
       [optionsVault.vaultData, optionsStats] as const,
-      [singleLegVaultData.vaultData, singleLegStats] as const,
       [edgeVault.vaultData, edgeStats] as const,
     ];
     const totalVaultTvlWei = vaultEntries.reduce((sum, [v, stats]) => {
@@ -709,11 +699,9 @@ const VaultsPageContent = () => {
   }, [
     coreVault.vaultData,
     optionsVault.vaultData,
-    singleLegVaultData.vaultData,
     edgeVault.vaultData,
     coreStats,
     optionsStats,
-    singleLegStats,
     edgeStats,
     formatAssetAmount,
   ]);
@@ -727,7 +715,7 @@ const VaultsPageContent = () => {
           </h1>
           <Tabs value={selectedVaultValue} onValueChange={handleVaultChange}>
             <TabsList className="h-auto p-1">
-              {visibleVaultOptions.map((option) => (
+              {vaultOptions.map((option) => (
                 <TabsTrigger
                   key={option.address}
                   value={option.address}

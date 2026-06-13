@@ -19,13 +19,7 @@ vi.mock('@sapience/sdk/contracts', () => ({
       },
     },
     pythPredictionMarketVault: {},
-    singleLegVault: {
-      42161: {
-        address: '0xSingleLegVault',
-        blockCreated: 200,
-        legacy: [],
-      },
-    },
+    singleLegVault: {},
     predictionMarketVaultStrategyB: {},
   },
   normalizeLegacyEntry: (
@@ -36,10 +30,7 @@ vi.mock('@sapience/sdk/contracts', () => ({
       : entry,
 }));
 
-import {
-  getConfiguredVaultDeploymentAddresses,
-  getConfiguredVaults,
-} from './vaultConfig';
+import { getConfiguredVaultDeploymentAddresses } from './vaultConfig';
 
 describe('getConfiguredVaultDeploymentAddresses', () => {
   it('includes current and legacy vault deployments', () => {
@@ -47,21 +38,6 @@ describe('getConfiguredVaultDeploymentAddresses', () => {
       '0xvault',
       '0xlegacyvault',
       '0xtuplelegacyvault',
-      '0xsinglelegvault',
     ]);
-  });
-});
-
-describe('getConfiguredVaults', () => {
-  it('includes the single-leg vault so protocol stats cron/backfills index it', () => {
-    expect(getConfiguredVaults(42161)).toContainEqual({
-      kind: 'single-leg',
-      config: {
-        address: '0xSingleLegVault',
-        blockCreated: 200,
-        legacy: [],
-      },
-      address: '0xsinglelegvault',
-    });
   });
 });
