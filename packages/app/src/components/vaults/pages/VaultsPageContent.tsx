@@ -3,7 +3,7 @@
 import {
   predictionMarketVault,
   predictionMarketVaultStrategyB,
-  pythPredictionMarketVault,
+  singleLegVault,
 } from '@sapience/sdk/contracts';
 import { Button } from '@sapience/ui/components/ui/button';
 import { Card, CardContent } from '@sapience/ui/components/ui/card';
@@ -77,10 +77,8 @@ const VaultsPageContent = () => {
         'Edge Vault',
       ],
       [
-        pythPredictionMarketVault[VAULT_CHAIN_ID]?.address as
-          | `0x${string}`
-          | undefined,
-        'Options Vault',
+        singleLegVault[VAULT_CHAIN_ID]?.address as `0x${string}` | undefined,
+        'Single Leg Vault',
       ],
     ];
     return entries
@@ -126,15 +124,15 @@ const VaultsPageContent = () => {
   // must be called unconditionally, so missing addresses are handled inside
   // the hook via the `enabled` flag.
   const coreAddr = predictionMarketVault[VAULT_CHAIN_ID]?.address;
-  const optionsAddr = pythPredictionMarketVault[VAULT_CHAIN_ID]?.address;
+  const singleLegAddr = singleLegVault[VAULT_CHAIN_ID]?.address;
   const edgeAddr = predictionMarketVaultStrategyB[VAULT_CHAIN_ID]?.address;
 
   const coreVault = usePassiveLiquidityVault({
     vaultAddress: coreAddr,
     chainId: VAULT_CHAIN_ID,
   });
-  const optionsVault = usePassiveLiquidityVault({
-    vaultAddress: optionsAddr,
+  const singleLegVaultData = usePassiveLiquidityVault({
+    vaultAddress: singleLegAddr,
     chainId: VAULT_CHAIN_ID,
   });
   const edgeVault = usePassiveLiquidityVault({
@@ -143,7 +141,7 @@ const VaultsPageContent = () => {
   });
 
   const { data: coreStats } = useProtocolStats(coreAddr);
-  const { data: optionsStats } = useProtocolStats(optionsAddr);
+  const { data: singleLegStats } = useProtocolStats(singleLegAddr);
   const { data: edgeStats } = useProtocolStats(edgeAddr);
 
   const {
@@ -632,7 +630,7 @@ const VaultsPageContent = () => {
     // tab is selected — sum TVL across all deployed vaults.
     const vaultEntries = [
       [coreVault.vaultData, coreStats] as const,
-      [optionsVault.vaultData, optionsStats] as const,
+      [singleLegVaultData.vaultData, singleLegStats] as const,
       [edgeVault.vaultData, edgeStats] as const,
     ];
     const totalVaultTvlWei = vaultEntries.reduce((sum, [v, stats]) => {
@@ -688,10 +686,10 @@ const VaultsPageContent = () => {
     };
   }, [
     coreVault.vaultData,
-    optionsVault.vaultData,
+    singleLegVaultData.vaultData,
     edgeVault.vaultData,
     coreStats,
-    optionsStats,
+    singleLegStats,
     edgeStats,
     formatAssetAmount,
   ]);

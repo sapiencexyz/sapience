@@ -67,7 +67,7 @@ vi.mock('@sapience/sdk/contracts', () => ({
   predictionMarketVaultStrategyB: {
     42161: { address: '0xStrategyBVault' },
   },
-  singleLegVault: {},
+  singleLegVault: { 42161: { address: '0xSingleLegVault' } },
 }));
 
 vi.mock('@sapience/sdk/constants', () => ({
@@ -341,6 +341,30 @@ describe('VaultsPageContent geofence', () => {
     // Deposit button should be enabled (all other conditions satisfied by mocks)
     const depositBtn = screen.getByRole('button', { name: /Submit Deposit/ });
     expect(depositBtn).not.toBeDisabled();
+  });
+
+  it('renders the single-leg vault tab instead of the options vault tab', () => {
+    mockUseRestrictedJurisdiction.mockReturnValue({
+      isRestricted: false,
+      isPermitLoading: false,
+      permitData: { permitted: true },
+      permitError: null,
+    });
+
+    render(<VaultsPageContent />);
+
+    expect(
+      screen.getByRole('button', { name: 'Core Vault' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Edge Vault' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Single Leg Vault' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Options Vault' })
+    ).not.toBeInTheDocument();
   });
 
   it('defaults to the first vault tab without rewriting the URL when no address query param is present', () => {
