@@ -12,53 +12,54 @@ script layout (`src/scripts/deploy/`).
 
 ## Active environments
 
-| Manifest (`manifest/env/*.json`) | Bundle    | Chain                   | Bridge            |
-| -------------------------------- | --------- | ----------------------- | ----------------- |
-| `robinhood-testnet.json`         | `testnet` | Robinhood Testnet 46630 | disabled          |
-| `robinhood-mainnet.json`         | `mainnet` | Robinhood mainnet (TBD) | disabled (staged) |
-| `arbitrum.json`                  | `mainnet` | Arbitrum One 42161      | disabled (staged) |
-| `polygon.json`                   | `mainnet` | Polygon 137             | disabled (staged) |
+| Manifest (`manifest/env/*.json`) | Bundle    | Chain                   | Bridge      |
+| -------------------------------- | --------- | ----------------------- | ----------- |
+| `robinhood-testnet.json`         | `testnet` | Robinhood Testnet 46630 | disabled    |
+| `robinhood-mainnet.json`         | `mainnet` | Robinhood mainnet (TBD) | **enabled** |
+| `arbitrum.json`                  | `mainnet` | Arbitrum One 42161      | **enabled** |
+| `polygon.json`                   | `mainnet` | Polygon 137             | **enabled** |
 
-The `mainnet` bundle now carries the full bridge topology, but every cross-chain
-unit is inert (`bridgeEnabled: false`) so the standalone 6-unit protocol still
-deploys on Robinhood alone. With the bridge off, `manifest:apply --bundle mainnet`
-only touches the Robinhood standalone units; `arbitrum.json`/`polygon.json` deploy
-nothing.
+The `mainnet` bundle is wired for the full bridge topology — **Robinhood (PM) ↔
+Arbitrum One (SM)** for the token bridge (the factory shares an address as a
+CREATE2 twin) and **Polygon → Robinhood** for the Gnosis ConditionalTokens
+resolver. `bridgeEnabled` is `true` on all three, so `manifest:apply --bundle
+mainnet` deploys the whole set across the three chains.
 
-### Standalone (no bridge)
+### Completing the config before the first mainnet apply
 
-Robinhood ships with `"bridgeEnabled": false` in its manifest. Every unit that
-is coupled to another chain (a CREATE3 twin or a LayerZero wiring peer — see
-`isBridgeUnit`) is then treated as inert: the planner skips it and cross-env
-symmetry validation is not enforced.
+Every value still missing is a literal `REPLACE_ME_*` placeholder. List them:
 
-### Enabling the Robinhood mainnet bridge (go-live)
+```bash
+cd packages/protocol
+grep -rn REPLACE_ME deployment/mainnet/
+```
 
-Topology when on: **Robinhood (PM) ↔ Arbitrum One (SM)** for the token bridge
-(factory shares an address as a CREATE2 twin), and **Polygon → Robinhood** for the
-Gnosis ConditionalTokens resolver. The units and `config.json` keys are already
-staged; to turn it on:
+Checklist (what each `REPLACE_ME` is):
 
-1. **Confirm LayerZero supports Robinhood** and fill the `PM_NETWORK_LZ_*`
-   placeholders in `mainnet/config.json` (endpoint, EID, send/receive lib, DVNs,
-   executor). Re-confirm the `SM_NETWORK_DVN_*` / `POLYGON_DVN_*` choices actually
-   support the Robinhood channel. Set the real `PM_NETWORK_CHAIN_ID` /
-   `chainId` (manifest env file) and `COLLATERAL_TOKEN_ADDRESS`.
-2. **Use one deployer EOA on Robinhood + Arbitrum** (`PM_NETWORK_DEPLOYER_ADDRESS`
-   == `SM_NETWORK_DEPLOYER_ADDRESS`, matching private keys) so the CREATE2 factory
-   twin lands on the same address. Ensure the Arachnid CREATE2 proxy
-   (`0x4e59b44847b379578588920cA78FbF26c0B4956C`) exists on Robinhood. Fund all
-   three deployer EOAs with gas.
-3. **Add the factory twin** on the PM side: in `robinhood-mainnet.json` add
-   `"twinOf": "arbitrum:PredictionMarketTokenFactory"` to
-   `PredictionMarketTokenFactory`.
-4. **Flip `bridgeEnabled: true`** in `robinhood-mainnet.json`, `arbitrum.json`,
-   and `polygon.json`.
-5. `pnpm manifest:plan -- --bundle mainnet` → `--simulate` → real apply.
+- **Robinhood chain** — `chainId` in `manifest/env/robinhood-mainnet.json` is
+  still `0`; set the real number. In `mainnet/config.json`:
+  `REPLACE_ME_ROBINHOOD_CHAIN_ID`, `_RPC_URL`, `_EXPLORER_URL`,
+  `_COLLATERAL_USDC`.
+- **Robinhood LayerZero** (from LayerZero) — `REPLACE_ME_ROBINHOOD_LZ_ENDPOINT`,
+  `_LZ_EID`, `_LZ_SEND_LIB`, `_LZ_RECEIVE_LIB`, `_LZ_EXECUTOR`.
+- **DVNs for the Robinhood channel** (from LayerZero) — `REPLACE_ME_ROBINHOOD_DVN_1/2`,
+  `REPLACE_ME_ARBITRUM_DVN_1/2_FOR_ROBINHOOD_CHANNEL`,
+  `REPLACE_ME_POLYGON_DVN_1/2_FOR_ROBINHOOD_CHANNEL`. (The SM/Polygon LZ
+  endpoint/EID/lib/executor are pre-filled real per-chain values — verify, but
+  they don't change per channel; only the DVNs do.)
+- **Deployers** — `REPLACE_ME_DEPLOYER_EOA` (the address; it appears 3× and must
+  be ONE EOA shared by Robinhood + Arbitrum for the CREATE2 twin),
+  `REPLACE_ME_POLYGON_DEPLOYER_EOA`. Private keys in `mainnet/.env`:
+  `REPLACE_ME_DEPLOYER_PRIVATE_KEY` (PM+SM, same key),
+  `REPLACE_ME_POLYGON_DEPLOYER_PRIVATE_KEY`, plus the Etherscan keys.
+- **Governance** — `REPLACE_ME_VAULT_MANAGER`, `REPLACE_ME_BUDGET_MANAGER`.
 
-(Validate the bridge end-to-end on the `testnet` bundle first — same steps with
-Arbitrum Sepolia / Polygon Amoy — once LayerZero is available on Robinhood
-testnet 46630.)
+Also out of band: the Arachnid CREATE2 proxy
+(`0x4e59b44847b379578588920cA78FbF26c0B4956C`) must exist on Robinhood, and all
+three deployer EOAs must hold native gas.
+
+Then: `pnpm manifest:plan -- --bundle mainnet` → `--simulate` → real apply.
+(Recommended: dry-run the same topology on the `testnet` bundle first.)
 
 ## Entrypoints
 

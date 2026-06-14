@@ -12,7 +12,7 @@
     }
   },
   "bundle": "mainnet",
-  "bridgeEnabled": false,
+  "bridgeEnabled": true,
   "units": {
     "PredictionMarketTokenFactory": {
       "name": "PredictionMarketTokenFactory",
@@ -25,7 +25,7 @@
       "twinOf": "robinhood-mainnet:PredictionMarketTokenFactory",
       "configureScripts": [],
       "sdkExport": "predictionMarketTokenFactory",
-      "notes": "SCAFFOLD/INERT — bridge unit (twinOf), skipped while bridgeEnabled=false. SM-side CREATE2 twin of robinhood-mainnet:PredictionMarketTokenFactory: same deployer EOA + same FACTORY_SALT via the Arachnid proxy yields the same address on both chains. The robinhood-mainnet side gains its matching twinOf when bridgeEnabled is flipped to true."
+      "notes": "SM-side CREATE2 twin of robinhood-mainnet:PredictionMarketTokenFactory: same deployer EOA + same FACTORY_SALT via the Arachnid proxy yields the same address on both chains."
     },
     "PredictionMarketBridgeRemote": {
       "name": "PredictionMarketBridgeRemote",
@@ -40,7 +40,7 @@
         "src/scripts/deploy/SetDVN_RemoteBridge.s.sol:SetDVN_RemoteBridge"
       ],
       "sdkExport": "predictionMarketBridgeRemote",
-      "notes": "SCAFFOLD/INERT — bridge unit, skipped while bridgeEnabled=false. SM-side LayerZero remote bridge, LZ peer of robinhood-mainnet:PredictionMarketBridge."
+      "notes": "SM-side LayerZero remote bridge, LZ peer of robinhood-mainnet:PredictionMarketBridge."
     }
   }
 }

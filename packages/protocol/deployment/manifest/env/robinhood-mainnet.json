@@ -12,7 +12,7 @@
     }
   },
   "bundle": "mainnet",
-  "bridgeEnabled": false,
+  "bridgeEnabled": true,
   "units": {
     "ManualConditionResolver": {
       "name": "ManualConditionResolver",
@@ -35,11 +35,12 @@
       "constructorDeps": [],
       "stateInvalidatedBy": ["PredictionMarketEscrow"],
       "wiringPeers": [],
+      "twinOf": "arbitrum:PredictionMarketTokenFactory",
       "configureScripts": [
         "src/scripts/deploy/ConfigureFactory.s.sol:ConfigureFactory"
       ],
       "sdkExport": "predictionMarketTokenFactory",
-      "notes": "Standalone deploy while bridgeEnabled=false (no twinOf, stays active so PredictionMarketEscrow can deploy). To enable the Robinhood<->Arbitrum token bridge add \"twinOf\": \"arbitrum:PredictionMarketTokenFactory\" here (shared CREATE2 address via the Arachnid proxy + same deployer EOA + same FACTORY_SALT) and set bridgeEnabled=true across the mainnet bundle."
+      "notes": "CREATE2 twin of arbitrum:PredictionMarketTokenFactory — same deployer EOA + same FACTORY_SALT via the Arachnid proxy (0x4e59...4956C, must exist on Robinhood) yields the same address on both chains."
     },
     "PredictionMarketEscrow": {
       "name": "PredictionMarketEscrow",
@@ -102,7 +103,7 @@
         "src/scripts/deploy/SetDVN_EtherealBridge.s.sol:SetDVN_EtherealBridge"
       ],
       "sdkExport": "predictionMarketBridge",
-      "notes": "SCAFFOLD/INERT — bridge unit, skipped while bridgeEnabled=false. PM-side LayerZero bridge, LZ peer of arbitrum:PredictionMarketBridgeRemote (Robinhood <-> Arbitrum One token bridge). Activate by filling the PM_NETWORK_LZ_* config and flipping bridgeEnabled=true across the mainnet bundle (also add the factory twinOf)."
+      "notes": "PM-side LayerZero bridge, LZ peer of arbitrum:PredictionMarketBridgeRemote (Robinhood <-> Arbitrum One token bridge). Needs the PM_NETWORK_LZ_* config filled before apply."
     },
     "ConditionalTokensConditionResolver": {
       "name": "ConditionalTokensConditionResolver",
@@ -117,7 +118,7 @@
         "src/scripts/deploy/SetDVN_CTResolver.s.sol:SetDVN_CTResolver"
       ],
       "sdkExport": "conditionalTokensConditionResolver",
-      "notes": "SCAFFOLD/INERT — bridge unit, skipped while bridgeEnabled=false. PM-side receiver of Gnosis ConditionalTokens payouts forwarded from polygon:ConditionalTokensReader via LayerZero."
+      "notes": "PM-side receiver of Gnosis ConditionalTokens payouts forwarded from polygon:ConditionalTokensReader via LayerZero."
     }
   }
 }
