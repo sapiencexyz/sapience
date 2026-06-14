@@ -1,0 +1,46 @@
+{
+  "env": "arbitrum",
+  "chain": {
+    "name": "Arbitrum One",
+    "chainId": 42161,
+    "rpcUrlEnv": "SM_NETWORK_RPC_URL",
+    "deployerPrivateKeyEnv": "SM_NETWORK_DEPLOYER_PRIVATE_KEY",
+    "deployerAddressEnv": "SM_NETWORK_DEPLOYER_ADDRESS",
+    "verifier": {
+      "kind": "etherscan",
+      "apiKeyEnv": "SM_NETWORK_ETHERSCAN_API_KEY"
+    }
+  },
+  "bundle": "mainnet",
+  "bridgeEnabled": false,
+  "units": {
+    "PredictionMarketTokenFactory": {
+      "name": "PredictionMarketTokenFactory",
+      "contract": "PredictionMarketTokenFactory",
+      "contractPath": "src/PredictionMarketTokenFactory.sol:PredictionMarketTokenFactory",
+      "script": "src/scripts/deploy/DeployFactorySM.s.sol:DeployFactorySM",
+      "produces": ["FACTORY_ADDRESS"],
+      "constructorDeps": [],
+      "wiringPeers": [],
+      "twinOf": "robinhood-mainnet:PredictionMarketTokenFactory",
+      "configureScripts": [],
+      "sdkExport": "predictionMarketTokenFactory",
+      "notes": "SCAFFOLD/INERT — bridge unit (twinOf), skipped while bridgeEnabled=false. SM-side CREATE2 twin of robinhood-mainnet:PredictionMarketTokenFactory: same deployer EOA + same FACTORY_SALT via the Arachnid proxy yields the same address on both chains. The robinhood-mainnet side gains its matching twinOf when bridgeEnabled is flipped to true."
+    },
+    "PredictionMarketBridgeRemote": {
+      "name": "PredictionMarketBridgeRemote",
+      "contract": "PredictionMarketBridgeRemote",
+      "contractPath": "src/bridge/PredictionMarketBridgeRemote.sol:PredictionMarketBridgeRemote",
+      "script": "src/scripts/deploy/DeployRemoteBridge.s.sol:DeployRemoteBridge",
+      "produces": ["SM_NETWORK_BRIDGE_ADDRESS"],
+      "constructorDeps": ["PredictionMarketTokenFactory"],
+      "wiringPeers": ["robinhood-mainnet:PredictionMarketBridge"],
+      "configureScripts": [
+        "src/scripts/deploy/ConfigureRemoteBridge.s.sol:ConfigureRemoteBridge",
+        "src/scripts/deploy/SetDVN_RemoteBridge.s.sol:SetDVN_RemoteBridge"
+      ],
+      "sdkExport": "predictionMarketBridgeRemote",
+      "notes": "SCAFFOLD/INERT — bridge unit, skipped while bridgeEnabled=false. SM-side LayerZero remote bridge, LZ peer of robinhood-mainnet:PredictionMarketBridge."
+    }
+  }
+}

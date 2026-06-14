@@ -1,0 +1,33 @@
+{
+  "env": "polygon",
+  "chain": {
+    "name": "Polygon",
+    "chainId": 137,
+    "rpcUrlEnv": "POLYGON_RPC_URL",
+    "deployerPrivateKeyEnv": "POLYGON_DEPLOYER_PRIVATE_KEY",
+    "deployerAddressEnv": "POLYGON_DEPLOYER_ADDRESS",
+    "verifier": {
+      "kind": "etherscan",
+      "apiKeyEnv": "POLYGON_ETHERSCAN_API_KEY"
+    }
+  },
+  "bundle": "mainnet",
+  "bridgeEnabled": false,
+  "units": {
+    "ConditionalTokensReader": {
+      "name": "ConditionalTokensReader",
+      "contract": "ConditionalTokensReader",
+      "contractPath": "src/resolvers/conditionalTokens/ConditionalTokensReader.sol:ConditionalTokensReader",
+      "script": "src/scripts/deploy/DeployConditionalTokensReader.s.sol:DeployConditionalTokensReader",
+      "produces": ["CT_READER_ADDRESS"],
+      "constructorDeps": [],
+      "wiringPeers": ["robinhood-mainnet:ConditionalTokensConditionResolver"],
+      "configureScripts": [
+        "src/scripts/deploy/ConfigureCTReader.s.sol:ConfigureCTReader",
+        "src/scripts/deploy/SetDVN_CTReader.s.sol:SetDVN_CTReader"
+      ],
+      "sdkExport": "conditionalTokensReader",
+      "notes": "SCAFFOLD/INERT — bridge unit, skipped while bridgeEnabled=false. Reads Gnosis ConditionalTokens payouts on Polygon and forwards them via LayerZero to robinhood-mainnet:ConditionalTokensConditionResolver. Reads POLYGON_CONDITIONAL_TOKENS_ADDRESS (Gnosis CT framework on Polygon mainnet)."
+    }
+  }
+}

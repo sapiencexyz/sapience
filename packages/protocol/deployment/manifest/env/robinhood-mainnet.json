@@ -39,7 +39,7 @@
         "src/scripts/deploy/ConfigureFactory.s.sol:ConfigureFactory"
       ],
       "sdkExport": "predictionMarketTokenFactory",
-      "notes": "Standalone deploy (bridge disabled), so no twinOf."
+      "notes": "Standalone deploy while bridgeEnabled=false (no twinOf, stays active so PredictionMarketEscrow can deploy). To enable the Robinhood<->Arbitrum token bridge add \"twinOf\": \"arbitrum:PredictionMarketTokenFactory\" here (shared CREATE2 address via the Arachnid proxy + same deployer EOA + same FACTORY_SALT) and set bridgeEnabled=true across the mainnet bundle."
     },
     "PredictionMarketEscrow": {
       "name": "PredictionMarketEscrow",
@@ -88,6 +88,36 @@
       "configureScripts": [],
       "sdkExport": "onboardingSponsor",
       "notes": "Reads MAX_ENTRY_PRICE_BPS + VAULT_ADDRESS. Optional — remove this unit if not needed."
+    },
+    "PredictionMarketBridge": {
+      "name": "PredictionMarketBridge",
+      "contract": "PredictionMarketBridge",
+      "contractPath": "src/bridge/PredictionMarketBridge.sol:PredictionMarketBridge",
+      "script": "src/scripts/deploy/DeployEtherealBridge.s.sol:DeployEtherealBridge",
+      "produces": ["PM_NETWORK_BRIDGE_ADDRESS"],
+      "constructorDeps": ["PredictionMarketTokenFactory"],
+      "wiringPeers": ["arbitrum:PredictionMarketBridgeRemote"],
+      "configureScripts": [
+        "src/scripts/deploy/ConfigureEtherealBridge.s.sol:ConfigureEtherealBridge",
+        "src/scripts/deploy/SetDVN_EtherealBridge.s.sol:SetDVN_EtherealBridge"
+      ],
+      "sdkExport": "predictionMarketBridge",
+      "notes": "SCAFFOLD/INERT — bridge unit, skipped while bridgeEnabled=false. PM-side LayerZero bridge, LZ peer of arbitrum:PredictionMarketBridgeRemote (Robinhood <-> Arbitrum One token bridge). Activate by filling the PM_NETWORK_LZ_* config and flipping bridgeEnabled=true across the mainnet bundle (also add the factory twinOf)."
+    },
+    "ConditionalTokensConditionResolver": {
+      "name": "ConditionalTokensConditionResolver",
+      "contract": "ConditionalTokensConditionResolver",
+      "contractPath": "src/resolvers/conditionalTokens/ConditionalTokensConditionResolver.sol:ConditionalTokensConditionResolver",
+      "script": "src/scripts/deploy/DeployConditionalTokensConditionResolver.s.sol:DeployConditionalTokensConditionResolver",
+      "produces": ["CT_CONDITION_RESOLVER_ADDRESS"],
+      "constructorDeps": [],
+      "wiringPeers": ["polygon:ConditionalTokensReader"],
+      "configureScripts": [
+        "src/scripts/deploy/ConfigureCTResolver.s.sol:ConfigureCTResolver",
+        "src/scripts/deploy/SetDVN_CTResolver.s.sol:SetDVN_CTResolver"
+      ],
+      "sdkExport": "conditionalTokensConditionResolver",
+      "notes": "SCAFFOLD/INERT — bridge unit, skipped while bridgeEnabled=false. PM-side receiver of Gnosis ConditionalTokens payouts forwarded from polygon:ConditionalTokensReader via LayerZero."
     }
   }
 }

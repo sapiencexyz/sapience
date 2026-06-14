@@ -1,5 +1,6 @@
 {
-  "_comment": "SCAFFOLD — Robinhood MAINNET deploy config. The mainnet chain does not exist yet; every value here is a placeholder. Fill in (chain id is set in the manifest env file, not here) before running manifest:apply --bundle mainnet. The deployer private key lives in deployment/mainnet/.env (gitignored).",
+  "_comment": "SCAFFOLD — Robinhood MAINNET deploy config. The mainnet chain does not exist yet; the PM_NETWORK_* (Robinhood) values are placeholders. Fill them before running manifest:apply --bundle mainnet (chain id is set in the manifest env file, not here). The deployer private keys live in deployment/mainnet/.env (gitignored). The standalone protocol (6 base units) deploys with bridgeEnabled=false in the manifests. The bridge block below is staged for when LayerZero supports Robinhood — see _bridge_comment.",
+
   "PM_NETWORK_NAME": "Robinhood Mainnet",
   "PM_NETWORK_RPC_URL": "https://rpc.mainnet.chain.robinhood.com",
   "PM_NETWORK_CHAIN_ID": "0",
@@ -12,5 +13,40 @@
   "VAULT_SYMBOL": "SRHV",
   "VAULT_EXPIRATION_TIME": 86400,
   "BUDGET_MANAGER": "0x0000000000000000000000000000000000000000",
-  "MAX_ENTRY_PRICE_BPS": "7000"
+  "MAX_ENTRY_PRICE_BPS": "7000",
+
+  "_bridge_comment": "Cross-chain bridge config. PM_NETWORK_LZ_* are Robinhood-side placeholders — they depend on LayerZero deploying an EndpointV2 (+ libs/DVNs/executor) on Robinhood. The SM_NETWORK_* (Arbitrum One) and POLYGON_* values are the real per-chain LayerZero infra. NOTE: the *_DVN_* addresses below are the qeng Ethereal<->Arbitrum<->Polygon set; DVNs are per-channel — re-confirm they support the Robinhood channel before going live. SM_NETWORK_DEPLOYER_ADDRESS MUST equal PM_NETWORK_DEPLOYER_ADDRESS for the CREATE2 factory twin to share an address.",
+
+  "PM_NETWORK_LZ_ENDPOINT": "0x0000000000000000000000000000000000000000",
+  "PM_NETWORK_LZ_EID": "0",
+  "PM_NETWORK_SEND_LIB": "0x0000000000000000000000000000000000000000",
+  "PM_NETWORK_RECEIVE_LIB": "0x0000000000000000000000000000000000000000",
+  "PM_NETWORK_DVN_1": "0x0000000000000000000000000000000000000000",
+  "PM_NETWORK_DVN_2": "0x0000000000000000000000000000000000000000",
+  "PM_NETWORK_EXECUTOR": "0x0000000000000000000000000000000000000000",
+
+  "SM_NETWORK_NAME": "Arbitrum One",
+  "SM_NETWORK_RPC_URL": "https://arb1.arbitrum.io/rpc",
+  "SM_NETWORK_DEPLOYER_ADDRESS": "0x0000000000000000000000000000000000000000",
+  "SM_NETWORK_LZ_ENDPOINT": "0x1a44076050125825900e736c501f859c50fE728c",
+  "SM_NETWORK_LZ_EID": "30110",
+  "SM_NETWORK_SEND_LIB": "0x975bcD720be66659e3EB3C0e4F1866a3020E493A",
+  "SM_NETWORK_RECEIVE_LIB": "0x7B9E184e07a6EE1aC23eAe0fe8D6Be2f663f05e6",
+  "SM_NETWORK_DVN_1": "0xf2e380c90e6c09721297526dbc74f870e114dfcb",
+  "SM_NETWORK_DVN_2": "0x19670df5e16bea2ba9b9e68b48c054c5baea06b8",
+  "SM_NETWORK_EXECUTOR": "0x31CAe3B7fB82d847621859fb1585353c5720660D",
+
+  "POLYGON_RPC_URL": "https://polygon.rpc.subquery.network/public",
+  "POLYGON_DEPLOYER_ADDRESS": "0x0000000000000000000000000000000000000000",
+  "POLYGON_CONDITIONAL_TOKENS_ADDRESS": "0x4D97DCd97eC945f40cF65F87097ACe5EA0476045",
+  "POLYGON_LZ_ENDPOINT": "0x1a44076050125825900e736c501f859c50fE728c",
+  "POLYGON_LZ_EID": "30109",
+  "POLYGON_SEND_LIB": "0x6c26c61a97006888ea9E4FA36584c7df57Cd9dA3",
+  "POLYGON_DVN_1": "0x13feb7234ff60a97af04477d6421415766753ba3",
+  "POLYGON_DVN_2": "0x25e0e650a78e6304a3983fc4b7ffc6544b1beea6",
+  "POLYGON_EXECUTOR": "0xCd3F213AD101472e1713C72B1697E727C803885b",
+
+  "PM_ACK_FEE_ESTIMATE": "100000000000000",
+  "SM_ACK_FEE_ESTIMATE": "500000000000000000",
+  "ULN_CONFIRMATIONS": "15"
 }
