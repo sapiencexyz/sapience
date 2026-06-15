@@ -28,8 +28,8 @@ const validators = {
     desc: 'Maximum allowed query complexity score for /v2/graphql. Tighter than v1 because v2 surfaces are flatter and deeply-nested fan-outs are not a legitimate v2 access pattern.',
   }),
   GRAPHQL_V2_MAX_DEPTH: num({
-    default: 6,
-    desc: 'Maximum selection-set depth for /v2/graphql. v1 allows 7; v2 trims one level on the assumption that Relay-wrapped two-deep entity fan-outs cover every legitimate v2 client. Override if a v2 query legitimately needs greater depth.',
+    default: 10,
+    desc: "Maximum selection-set depth for /v2/graphql. Relay connections cost two extra levels (edges -> node) over v1's flat lists, and legitimate v2 queries reach through that into pickConfig -> picks -> condition -> category (e.g. the activity feed, positions, forecasts), so the floor is ~8. 10 leaves headroom; query complexity (GRAPHQL_V2_MAX_COMPLEXITY) remains the primary fan-out guard.",
   }),
   GRAPHQL_V2_APQ_TTL_MS: num({
     default: 24 * 60 * 60 * 1000,

@@ -60,7 +60,7 @@ describe('fetchVaultStats', () => {
     expect(mockGraphqlRequestV2).toHaveBeenCalledWith(GET_VAULT_STATS, {
       address: '0xabcdef',
       chainId: 42161,
-      first: 365,
+      first: 100,
       after: null,
     });
   });
