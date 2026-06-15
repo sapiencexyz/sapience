@@ -86,9 +86,53 @@ forge script src/scripts/deploy/DeployCollateral.s.sol:DeployCollateral \
 ```
 
 Copy the logged `COLLATERAL_TOKEN_ADDRESS=` into `deployment/testnet/config.json`,
-then run the apply. It's NOT a manifest unit on purpose: keeping collateral
-external means the Escrow doesn't redeploy when the mock changes, and swapping to
-the real token later is a one-line config change.
+then run the apply. It's NOT a manifest unit on purpose (the Escrow's bytecode
+hash doesn't change when the token address changes, so the planner won't
+auto-redeploy on its own). But the collateral IS immutable in the Escrow/Vault
+constructors, so changing it does require a redeploy — see below.
+
+### Redeploying the escrow (e.g. swapping collateral) — the factory must move too
+
+**Rule: whenever a redeploy changes the `PredictionMarketEscrow`, the
+`PredictionMarketTokenFactory` MUST be redeployed to a NEW address. Never reuse
+the existing factory with a new escrow.** The factory and escrow are a bound pair
+(the factory authorizes exactly one escrow as its deployer, and CREATE3 token
+addresses derive under that pairing); reusing the old factory leaves stale
+authorization and risks address reuse across the old and new escrow.
+
+What this means mechanically:
+
+- The collateral (`COLLATERAL_TOKEN_ADDRESS`) is **immutable** in both the
+  `PredictionMarketEscrow` and `PredictionMarketVault` constructors, so swapping
+  it forces both to redeploy. A constructor-arg change does NOT mark them dirty
+  on its own (bytecode is unchanged) — you must `--force` them.
+- The factory unit already declares `stateInvalidatedBy: ["PredictionMarketEscrow"]`,
+  so it joins the plan automatically. **But** `DeployFactory.s.sol` skips if code
+  already exists at the predicted CREATE2 address, and `manifest:apply`
+  auto-generates a **date-based** `FACTORY_SALT`
+  (`keccak("sapience-prediction-market-token-factory-<bundle>-YYYY-MM-DD")`) when
+  unset. So you must ensure a **fresh** salt — otherwise the factory no-ops to its
+  old address, violating the rule.
+- **Do NOT pin a prior deploy's `FACTORY_SALT`.** Let apply auto-generate today's
+  (a different day ⇒ a different salt ⇒ a new factory), or pin a deliberate new
+  one. `OnboardingSponsor` redeploys too (constructorDeps).
+
+```bash
+cd packages/protocol
+# 1. set the new COLLATERAL_TOKEN_ADDRESS in deployment/testnet/config.json
+# 2. do NOT export an old FACTORY_SALT — a fresh salt is required
+pnpm manifest:plan    -- --bundle testnet                 # expect: Escrow, Vault, Factory, OnboardingSponsor
+pnpm manifest:apply   -- --bundle testnet --simulate \
+  --force robinhood-testnet:PredictionMarketEscrow \
+  --force robinhood-testnet:PredictionMarketVault         # confirm the Factory deploys at a NEW address
+pnpm manifest:apply   -- --bundle testnet \
+  --force robinhood-testnet:PredictionMarketEscrow \
+  --force robinhood-testnet:PredictionMarketVault
+```
+
+Old addresses rotate to `state.legacy[]` in the manifest; `config.json` and the
+SDK `addresses.ts` regenerate. `ManualConditionResolver` and
+`SecondaryMarketEscrow` are collateral-agnostic and keep their addresses.
 
 Pyth is not wired yet — `ManualConditionResolver` is the default resolver. Add a
 `PythConditionResolver` unit + `PYTH_LAZER_ADDRESS` once Pyth is available on
