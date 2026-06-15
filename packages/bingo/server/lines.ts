@@ -1,18 +1,16 @@
-export type Side = 'YES' | 'NO';
-export type LineKind = 'row' | 'col' | 'diag';
-
 export interface Line {
   id: string;
-  kind: LineKind;
+  kind: 'row' | 'col' | 'diag';
   label: string;
-  /** indices into the 16-cell card, in reading order */
+  /** Indices into the 16-cell card, in reading order. */
   cellIndices: [number, number, number, number];
 }
 
 export const GRID_SIZE = 4;
 export const CELL_COUNT = GRID_SIZE * GRID_SIZE;
+export const LINES_PER_CARD = 10;
 
-/** 4 rows + 4 cols + 2 diagonals = 10 lines. */
+/** 4 rows + 4 cols + 2 diagonals = 10 lines. Same order as the frontend. */
 export function buildLines(): Line[] {
   const lines: Line[] = [];
   for (let r = 0; r < GRID_SIZE; r++) {

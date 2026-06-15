@@ -3,3 +3,5 @@ dist
 *.tsbuildinfo
 .vite
 .env.local
+# server secrets: SERVER_SECRET, ADMIN_TOKEN, MINTER_PRIVATE_KEY
+.env

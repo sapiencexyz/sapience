@@ -1312,6 +1312,83 @@ button.quick-pick:hover {
   color: var(--no);
 }
 
+/* ---------- card strip (all cards across pools) ---------- */
+.card-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.card-strip-pool {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.card-strip-label {
+  flex: 0 0 auto;
+  min-width: 3.4rem;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.card-strip-chips {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.card-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.32rem;
+  padding: 0.3rem 0.55rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--r-sm);
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition:
+    color 0.15s,
+    border-color 0.15s,
+    background 0.15s;
+}
+
+.card-chip:hover {
+  color: var(--text);
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.card-chip-sub {
+  font-size: 0.66rem;
+  color: var(--text-muted);
+}
+
+.card-chip.filled .card-chip-sub {
+  color: var(--yes);
+}
+
+.card-chip.current {
+  color: #0a0a0c;
+  background: var(--text);
+  border-color: transparent;
+  font-weight: 600;
+}
+
+.card-chip.current .card-chip-sub {
+  color: inherit;
+  opacity: 0.65;
+}
+
+.card-chip-new {
+  border-style: dashed;
+}
+
 /* ---------- admin ---------- */
 .admin-row {
   display: flex;
@@ -1376,6 +1453,75 @@ button.quick-pick:hover {
 .admin-action:first-of-type {
   border-top: 0;
   padding-top: 0;
+}
+
+.admin-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 0.55rem 0.75rem;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.admin-table th {
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--hairline-strong);
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+}
+
+.admin-table tbody tr + tr td {
+  border-top: 1px solid var(--hairline);
+}
+
+.admin-table th.num,
+.admin-table td.num {
+  text-align: right;
+}
+
+.admin-table-flagged td {
+  background: var(--no-soft);
+}
+
+.admin-table-actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.admin-table-actions button {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.78rem;
+  border-radius: var(--r-sm);
+}
+
+/* Card price input under the pick grid: breathing room above, and the
+   available-balance readout right-aligned on the label line. */
+.price-field {
+  margin-top: 1.5rem;
+}
+
+.price-field-labels {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
 }
 
 .pool-results,

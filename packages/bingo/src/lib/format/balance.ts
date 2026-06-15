@@ -1,4 +1,17 @@
 import { formatUnits } from 'viem';
+import { DECIMALS } from '~/lib/chain';
+
+/** "0x1234…abcd" shortening for addresses; "—" when missing. */
+export function shortAddress(a?: string | null): string {
+  if (!a) return '—';
+  return `${a.slice(0, 6)}…${a.slice(-4)}`;
+}
+
+/** Format an 18-dec wei amount; "—" when missing. */
+export function fmtUnits(v: bigint | undefined): string {
+  if (v == null) return '—';
+  return formatUnits(v, DECIMALS);
+}
 
 /**
  * Format a balance with commas and exactly 2 decimal places.

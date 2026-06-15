@@ -12,7 +12,7 @@ import {
   parseUnits,
   type Address,
 } from 'viem';
-import { CHAIN_ID } from '~/lib/bingoCard';
+import { CHAIN_ID } from '~/lib/chain';
 import {
   BUNGEE_NATIVE_TOKEN,
   BUNGEE_SOURCE_CHAIN_META,

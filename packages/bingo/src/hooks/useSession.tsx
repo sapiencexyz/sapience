@@ -83,6 +83,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...s, isRestoring: true }));
     restoreSession(stored)
       .then((result) => {
+        // No backend registration: the backend is stateless — the session
+        // rides along with each submit/line request instead.
         setState({
           isReady: true,
           isActive: true,

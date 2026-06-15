@@ -1,124 +1,47 @@
-import { useMemo, useState } from 'react';
-import { isAddress, type Address } from 'viem';
-import {
-  useAccount,
-  useConnect,
-  useReadContract,
-  useWaitForTransactionReceipt,
-  useWriteContract,
-} from 'wagmi';
-import {
-  BINGO_CARD_ABI,
-  CHAIN_ID,
-  encodeCode,
-  fmtUnits,
-  loadContractAddress,
-  shortAddress,
-} from '../lib/bingoCard';
+import { useState } from 'react';
+import { useAccount, useConnect } from 'wagmi';
+import { shortAddress } from '../lib/format/balance';
 import Nav from '../components/Nav';
 
 export default function ReferScreen() {
   const { address: eoa, isConnected } = useAccount();
   const { connectors, connect, isPending: connectPending } = useConnect();
-
-  const contractAddress: Address | null = useMemo(() => {
-    const a = loadContractAddress();
-    return a && isAddress(a) ? (a as Address) : null;
-  }, []);
-  const baseContract = contractAddress
-    ? { address: contractAddress, abi: BINGO_CARD_ABI, chainId: CHAIN_ID }
-    : null;
-
-  const [codeInput, setCodeInput] = useState('');
-  const [recipientInput, setRecipientInput] = useState('');
-  const [statusMsg, setStatusMsg] = useState<string | null>(null);
-
-  const {
-    writeContract,
-    isPending: writePending,
-    error: writeError,
-    data: lastTxHash,
-  } = useWriteContract();
-  const { isLoading: txLoading } = useWaitForTransactionReceipt({
-    hash: lastTxHash,
-    chainId: CHAIN_ID,
-  });
-
-  // Look up the owner of the entered code so the user can tell if it's taken.
-  const encodedCode = codeInput.trim() ? encodeCode(codeInput) : null;
-  const codeOwnerRead = useReadContract({
-    ...(baseContract ?? {}),
-    address: baseContract?.address,
-    abi: baseContract?.abi,
-    chainId: baseContract?.chainId,
-    functionName: 'referrerOf',
-    args: encodedCode ? [encodedCode] : undefined,
-    query: { enabled: !!baseContract && !!encodedCode },
-  });
-  const codeOwner = codeOwnerRead.data as Address | undefined;
-  const codeIsFree =
-    codeOwner === '0x0000000000000000000000000000000000000000';
-  const codeIsMine =
-    eoa && codeOwner && codeOwner.toLowerCase() === eoa.toLowerCase();
-
-  // Earnings balance for the connected EOA.
-  const earningsRead = useReadContract({
-    ...(baseContract ?? {}),
-    address: baseContract?.address,
-    abi: baseContract?.abi,
-    chainId: baseContract?.chainId,
-    functionName: 'referralEarnings',
-    args: eoa ? [eoa] : undefined,
-    query: { enabled: !!baseContract && !!eoa },
-  });
-  const earnings = earningsRead.data as bigint | undefined;
-
-  const submitRegister = () => {
-    if (!baseContract || !encodedCode) return;
-    setStatusMsg(null);
-    writeContract({
-      ...baseContract,
-      functionName: 'registerCode',
-      args: [encodedCode],
-    });
-  };
-
-  const submitClaim = () => {
-    if (!baseContract) return;
-    const to = isAddress(recipientInput)
-      ? (recipientInput as Address)
-      : eoa;
-    if (!to) {
-      setStatusMsg('Connect wallet or enter a recipient address.');
-      return;
-    }
-    writeContract({
-      ...baseContract,
-      functionName: 'claimReferralEarnings',
-      args: [to],
-    });
-  };
+  const [copied, setCopied] = useState(false);
 
   const injected = connectors.find((c) => c.id === 'injected');
+  const shareLink = eoa
+    ? `${window.location.origin}/?ref=${eoa}`
+    : null;
+
+  const copyLink = async () => {
+    if (!shareLink) return;
+    try {
+      await navigator.clipboard.writeText(shareLink);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2_000);
+    } catch {
+      /* clipboard unavailable — the link is selectable below */
+    }
+  };
 
   return (
     <main>
       <Nav />
       <header className="header">
         <div className="title-block">
-          <h1>BingoCard — Refer</h1>
+          <h1>Refer</h1>
         </div>
       </header>
 
-      {!contractAddress && (
-        <section className="screen admin-section">
-          <p className="muted small">
-            Set the BingoCard contract address in Settings (gear icon).
-          </p>
-        </section>
-      )}
-      {contractAddress && !isConnected && injected && (
-        <section className="screen admin-section">
+      <section className="screen admin-section">
+        <h2>Share your link</h2>
+        <p className="muted small">
+          When someone opens your link and completes a card, you earn the
+          referral cut of their card price. Referral rewards are paid out
+          directly by COMBO.BINGO to your address — no claiming required.
+        </p>
+
+        {!isConnected && injected && (
           <button
             type="button"
             className="primary block"
@@ -127,104 +50,24 @@ export default function ReferScreen() {
           >
             {connectPending ? 'Opening wallet…' : 'Connect wallet'}
           </button>
-        </section>
-      )}
-      {contractAddress && isConnected && (
-        <p className="muted small">Wallet: {shortAddress(eoa)}</p>
-      )}
-
-      <section className="screen admin-section">
-        <h2>Create a code</h2>
-        <p className="muted small">
-          First-come-first-served. When someone mints a card with your code and
-          fills all 10 lines, you earn the configured referral bps cut.
-        </p>
-        <div className="admin-row">
-          <input
-            className="admin-input"
-            placeholder="e.g. NOAH"
-            value={codeInput}
-            onChange={(e) => setCodeInput(e.target.value)}
-          />
-        </div>
-        {codeInput.trim() && (
-          <div className="admin-kv">
-            <div>Encoded</div>
-            <div className="mono small">{encodedCode ?? '— (too long)'}</div>
-            <div>Current owner</div>
-            <div className="mono">
-              {codeOwner == null
-                ? '—'
-                : codeIsFree
-                  ? 'available'
-                  : codeIsMine
-                    ? 'you'
-                    : shortAddress(codeOwner)}
-            </div>
-          </div>
         )}
-        <div className="admin-row">
-          <button
-            type="button"
-            className="primary"
-            disabled={
-              writePending ||
-              txLoading ||
-              !baseContract ||
-              !encodedCode ||
-              !codeIsFree
-            }
-            onClick={submitRegister}
-          >
-            {writePending || txLoading
-              ? 'Submitting…'
-              : codeIsMine
-                ? 'You own this code'
-                : codeIsFree
-                  ? 'Register code'
-                  : 'Code taken'}
-          </button>
-        </div>
-      </section>
 
-      <section className="screen admin-section">
-        <h2>Claim earnings</h2>
-        <div className="admin-kv">
-          <div>Your balance</div>
-          <div className="mono">{fmtUnits(earnings)}</div>
-        </div>
-        <div className="admin-action">
-          <div className="wizard-step-title">Recipient (optional)</div>
-          <p className="muted small">
-            Defaults to your connected wallet if left blank.
-          </p>
-          <div className="admin-row">
-            <input
-              className="admin-input"
-              placeholder="0x…"
-              value={recipientInput}
-              onChange={(e) => setRecipientInput(e.target.value.trim())}
-            />
-          </div>
-        </div>
-        <div className="admin-row">
-          <button
-            type="button"
-            className="primary"
-            disabled={
-              writePending ||
-              txLoading ||
-              !baseContract ||
-              !earnings ||
-              earnings === 0n
-            }
-            onClick={submitClaim}
-          >
-            {writePending || txLoading ? 'Submitting…' : 'Claim earnings'}
-          </button>
-        </div>
-        {writeError && <p className="error">{writeError.message}</p>}
-        {statusMsg && <p className="muted small">{statusMsg}</p>}
+        {isConnected && (
+          <>
+            <p className="muted small">Wallet: {shortAddress(eoa)}</p>
+            <div className="admin-row">
+              <input
+                className="admin-input"
+                readOnly
+                value={shareLink ?? ''}
+                onFocus={(e) => e.currentTarget.select()}
+              />
+              <button type="button" className="primary" onClick={copyLink}>
+                {copied ? 'Copied!' : 'Copy link'}
+              </button>
+            </div>
+          </>
+        )}
       </section>
     </main>
   );

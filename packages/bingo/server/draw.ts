@@ -1,0 +1,85 @@
+import {
+  concatHex,
+  keccak256,
+  pad,
+  stringToHex,
+  toHex,
+  type Address,
+  type Hex,
+} from 'viem';
+import { CELL_COUNT } from './lines.js';
+import type { PoolCondition } from './types.js';
+
+/** Per-pool fairness secret, derived from the master env secret. Revealing
+ *  one pool's secret after its cutoff exposes nothing about other pools or
+ *  the master. */
+export function poolSecret(master: Hex, poolId: string): Hex {
+  return keccak256(concatHex([master, stringToHex(poolId)]));
+}
+
+/** Published when the pool opens; the secret is revealed after cutoff so
+ *  anyone can verify every card was dealt deterministically. */
+export function fairnessCommitment(secret: Hex): Hex {
+  return keccak256(secret);
+}
+
+/** One seed per (pool, player, cardIndex). Fixed-width fields (20-byte
+ *  address, 4-byte index) keep the preimage unambiguous; the player can't
+ *  grind a layout's contents without the secret. */
+export function cardSeed(
+  secret: Hex,
+  poolId: string,
+  player: Address,
+  cardIndex: number,
+): Hex {
+  return keccak256(
+    concatHex([
+      secret,
+      stringToHex(poolId),
+      player.toLowerCase() as Hex,
+      toHex(cardIndex, { size: 4 }),
+    ]),
+  );
+}
+
+/** Per-card escrow refCode: attributes a line mint to one specific card
+ *  (two cards can draw an identical line — same pickConfigId — so escrow
+ *  events alone can't tell them apart). 4-byte ascii 'bngo' prefix keeps
+ *  bingo traffic recognizable in event scans; the 28-byte hash tail is
+ *  plenty of collision resistance. */
+export function cardTag(
+  poolId: string,
+  player: Address,
+  cardIndex: number,
+): Hex {
+  const h = keccak256(
+    concatHex([
+      stringToHex('bingo'),
+      keccak256(stringToHex(poolId)),
+      player.toLowerCase() as Hex,
+      toHex(cardIndex, { size: 4 }),
+    ]),
+  );
+  return `0x626e676f${h.slice(2, 2 + 56)}` as Hex; // 'bngo' ‖ hash[0:28]
+}
+
+/** Deterministic partial Fisher-Yates: the first `count` slots of `pool`
+ *  shuffled by a keccak chain over `seed`. Re-hashes per step so one seed
+ *  yields well-distributed picks (same scheme the old contract used). */
+export function drawCells(
+  pool: readonly PoolCondition[],
+  seed: Hex,
+  count = CELL_COUNT,
+): PoolCondition[] {
+  if (pool.length < count) {
+    throw new Error(`Pool too small: ${pool.length} < ${count}`);
+  }
+  const arr = [...pool];
+  let s = seed;
+  for (let i = 0; i < count; i++) {
+    s = keccak256(concatHex([s, pad(toHex(i), { size: 32 })]));
+    const j = i + Number(BigInt(s) % BigInt(arr.length - i));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr.slice(0, count);
+}

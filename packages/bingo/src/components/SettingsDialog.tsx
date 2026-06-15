@@ -1,30 +1,50 @@
 import { useState } from 'react';
-import { isAddress } from 'viem';
-import {
-  loadContractAddress,
-  saveContractAddress,
-} from '../lib/bingoCard';
+import { loadServerUrl, saveServerUrl } from '../lib/backendApi';
+import { loadNetwork, saveNetwork, type Network } from '../lib/chain';
 
 interface Props {
   onClose: () => void;
 }
 
+const NETWORK_LABELS: Record<Network, string> = {
+  main: 'Mainnet (Ethereal)',
+  staging: 'Staging (Ethereal testnet)',
+};
+
 /**
- * Modal triggered by the Nav settings gear. Owns the contract-address input
- * that used to live inline in every screen. Persists to localStorage; the
- * caller reloads so screens re-read it.
+ * Modal triggered by the Nav settings gear. Owns the network switch and the
+ * per-network backend URL override. Persists to localStorage; the caller
+ * reloads so every module re-reads them.
  */
 export default function SettingsDialog({ onClose }: Props) {
-  const [addressInput, setAddressInput] = useState<string>(
-    loadContractAddress() ?? '',
-  );
-  const canSave = isAddress(addressInput);
+  const [network, setNetwork] = useState<Network>(loadNetwork());
+  // Backend URLs are per network; editing follows the selected network.
+  const [urls, setUrls] = useState<Record<Network, string>>({
+    staging: loadServerUrl('staging'),
+    main: loadServerUrl('main'),
+  });
+  const urlInput = urls[network];
+  const validUrl = (raw: string) => {
+    const v = raw.trim();
+    if (!v) return true; // empty clears the override
+    try {
+      const u = new URL(v);
+      return u.protocol === 'http:' || u.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  };
+  // Both URLs persist on save, so both must be valid (not just the one
+  // currently shown).
+  const canSave = validUrl(urls.staging) && validUrl(urls.main);
 
   const save = () => {
     if (!canSave) return;
-    saveContractAddress(addressInput);
+    saveNetwork(network);
+    saveServerUrl(urls.staging, 'staging');
+    saveServerUrl(urls.main, 'main');
     onClose();
-    // Force every screen to re-read the stored address.
+    // Force every module to re-read the stored network + URL.
     window.location.reload();
   };
 
@@ -38,16 +58,39 @@ export default function SettingsDialog({ onClose }: Props) {
       <div className="bingo-modal" role="dialog" aria-modal="true">
         <h2>Settings</h2>
         <div className="admin-action">
-          <div className="wizard-step-title">BingoCard contract address</div>
+          <div className="wizard-step-title">Network</div>
           <p className="muted small">
-            Persists in localStorage. Used by every screen in this app.
+            Cards, sessions, and balances are per network. Switching reloads
+            the app.
+          </p>
+          <div className="admin-row">
+            {(['main', 'staging'] as const).map((n) => (
+              <label key={n} className="small">
+                <input
+                  type="radio"
+                  name="bingo-network"
+                  checked={network === n}
+                  onChange={() => setNetwork(n)}
+                />{' '}
+                {NETWORK_LABELS[n]}
+              </label>
+            ))}
+          </div>
+        </div>
+        <div className="admin-action">
+          <div className="wizard-step-title">Backend URL</div>
+          <p className="muted small">
+            COMBO.BINGO backend service for {NETWORK_LABELS[network]}. Persists
+            in localStorage; leave blank to use the default.
           </p>
           <div className="admin-row">
             <input
               className="admin-input"
-              placeholder="0x…"
-              value={addressInput}
-              onChange={(e) => setAddressInput(e.target.value.trim())}
+              placeholder="http://localhost:3200"
+              value={urlInput}
+              onChange={(e) =>
+                setUrls((prev) => ({ ...prev, [network]: e.target.value.trim() }))
+              }
             />
           </div>
         </div>

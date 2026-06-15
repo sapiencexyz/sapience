@@ -1,64 +1,34 @@
-import { useEffect, useMemo, useState } from 'react';
-import { isAddress, parseAbi, type Address, type Hex } from 'viem';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { isAddress, parseAbi, parseUnits, type Address } from 'viem';
 import {
   canonicalizePicks,
   computePickConfigId,
 } from '@sapience/sdk/auction/escrowEncoding';
 import { OutcomeSide, type Pick } from '@sapience/sdk/types/escrow';
 import { predictionMarketEscrow as escrowAddresses } from '@sapience/sdk/contracts';
+import { useAccount, useConnect, usePublicClient } from 'wagmi';
+import { CHAIN_ID } from '../lib/chain';
+import { fmtUnits, shortAddress } from '../lib/format/balance';
 import {
-  useAccount,
-  useConnect,
-  usePublicClient,
-  useReadContracts,
-  useWriteContract,
-} from 'wagmi';
+  fetchCard,
+  fetchCards,
+  fetchPool,
+  fetchReceiptCard,
+  submitCard,
+  submitLine,
+  type CardResponse,
+  type CardsResponse,
+  type PoolCardSummary,
+  type PoolResponse,
+} from '../lib/backendApi';
 import {
-  BINGO_CARD_ABI,
-  CHAIN_ID,
-  fmtUnits,
-  loadContractAddress,
-  shortAddress,
-  STATIC_ENTROPY_ABI,
-} from '../lib/bingoCard';
-import {
-  setCellSidesViaSession,
-  claimBonusViaSession,
-  withdrawUnusedViaSession,
+  loadSession,
   redeemViaSession,
 } from '../lib/session/sessionKeyManager';
 import { useSession } from '../hooks/useSession';
-import { useSubmitCard } from '../hooks/useSubmitCard';
+import { useCollateralBalance } from '../hooks/blockchain/useCollateralBalance';
 import { buildLines } from '../parlay';
-import { fetchConditionsByIds, type BingoConditionDetail } from '../api';
 import Nav from '../components/Nav';
-
-interface CardSnapshot {
-  player: Address;
-  refCode: Hex;
-  poolVersion: number;
-  mintedAt: bigint;
-  expiresAt: bigint;
-  sponsorBalance: bigint;
-  cardPriceAtMint: bigint;
-  referralBpsAtMint: number;
-  revealed: boolean;
-  referrerPaid: boolean;
-  sidesDeclared: boolean;
-  filledLineBitmap: number;
-  cellSides: number;
-  conditionIds: readonly Hex[];
-  resolvers: readonly Address[];
-}
-
-interface BonusPreview {
-  wins: number;
-  payout: bigint;
-}
-
-interface Props {
-  cardId: bigint;
-}
 
 const LINES = buildLines();
 
@@ -138,22 +108,59 @@ function fmtWin(wei: bigint): string {
   return `$${n.toFixed(2)}`;
 }
 
-function lineStatusLabel(status: string): string {
-  switch (status) {
-    case 'quoting':
-      return 'QUOTING…';
-    case 'signing':
-      return 'SIGNING…';
-    case 'submitting':
-      return 'MINTING…';
-    case 'failed':
-      return 'FAILED';
-    default:
-      return 'WAITING';
-  }
+/** Client-side per-line progress — the client drives each line's funding
+ *  request against the stateless backend. */
+type LineRun =
+  | { status: 'funding' }
+  | { status: 'done' }
+  | { status: 'failed'; error: string };
+
+function lineStatusLabel(run: LineRun | undefined): string {
+  if (run?.status === 'funding') return 'FUNDING…';
+  if (run?.status === 'failed') return 'FAILED';
+  return 'WAITING';
 }
 
-export default function CardDetailScreen({ cardId }: Props) {
+function loadRef(): Address | undefined {
+  if (typeof window === 'undefined') return undefined;
+  const v = window.localStorage.getItem('bingo-ref');
+  return v && isAddress(v) ? (v as Address) : undefined;
+}
+
+/** The ?card=N query param, or null when absent/invalid. */
+function cardIndexFromUrl(): number | null {
+  if (typeof window === 'undefined') return null;
+  const v = new URLSearchParams(window.location.search).get('card');
+  if (v == null) return null;
+  const n = Number(v);
+  return Number.isInteger(n) && n >= 0 ? n : null;
+}
+
+/** The ?receipt=<tokenId> query param — a PUBLIC, view-only card permalink
+ *  (no session/wallet needed; the receipt NFT id is the handle). */
+function receiptIdFromUrl(): string | null {
+  if (typeof window === 'undefined') return null;
+  const v = new URLSearchParams(window.location.search).get('receipt');
+  return v && /^\d{1,78}$/.test(v) ? v : null;
+}
+
+/** Funded flags are monotonic on-chain (escrow events can't un-happen), so
+ *  never let a lagging backend read downgrade a line the UI already showed
+ *  as funded — that's what made cards "reset to pending" on refresh races. */
+function mergeCardMonotonic(
+  prev: CardResponse | null,
+  next: CardResponse,
+): CardResponse {
+  if (!prev || prev.receiptTokenId !== next.receiptTokenId) return next;
+  return {
+    ...next,
+    lines: next.lines.map((l, i) =>
+      !l.funded && prev.lines[i]?.funded ? { ...l, funded: true } : l,
+    ),
+  };
+}
+
+export default function CardDetailScreen() {
   const { isConnected } = useAccount();
   const { connectors, connect, isPending: connectPending } = useConnect();
   const publicClient = usePublicClient({ chainId: CHAIN_ID });
@@ -166,33 +173,40 @@ export default function CardDetailScreen({ cardId }: Props) {
     config,
     start,
   } = useSession();
-  const smartAccount = config?.smartAccountAddress;
+  // The card is per-player: the connected session's smart account is the player.
+  const player = config?.smartAccountAddress;
 
-  const contractAddress: Address | null = useMemo(() => {
-    const a = loadContractAddress();
-    return a && isAddress(a) ? (a as Address) : null;
-  }, []);
-  const baseContract = contractAddress
-    ? { address: contractAddress, abi: BINGO_CARD_ABI, chainId: CHAIN_ID }
-    : null;
+  // ?receipt=<id> = public view-only mode: anyone's card by receipt NFT id,
+  // no session required, all write actions hidden.
+  const [receiptId] = useState<string | null>(receiptIdFromUrl());
+  const viewOnly = receiptId != null;
 
-  const [card, setCard] = useState<CardSnapshot | null>(null);
-  const [preview, setPreview] = useState<BonusPreview | null>(null);
-  const [claimed, setClaimed] = useState(false);
+  const [pool, setPool] = useState<PoolResponse | null>(null);
+  const [card, setCard] = useState<CardResponse | null>(null);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
-  const [conditionDetails, setConditionDetails] = useState<
-    Map<string, BingoConditionDetail>
-  >(new Map());
+
+  // Which of the player's cards is shown. ?card=N wins; otherwise the last
+  // submitted card (or a fresh card 0). null = not resolved yet.
+  const [cardIndex, setCardIndex] = useState<number | null>(
+    cardIndexFromUrl(),
+  );
+  const [cardsSummary, setCardsSummary] = useState<CardsResponse | null>(null);
 
   const [pickedSides, setPickedSides] = useState(0);
   const [pickedMask, setPickedMask] = useState(0);
   const allCellsPicked = (pickedMask & 0xffff) === 0xffff;
 
-  // Bumped after each action to force an immediate card re-read.
+  // Card price input (only while unsubmitted). Defaults to the pool minimum.
+  const [priceInput, setPriceInput] = useState('');
+  const [priceTouched, setPriceTouched] = useState(false);
+
+  // Bumped after each action to force an immediate re-read.
   const [refreshKey, setRefreshKey] = useState(0);
   const [actionBusy, setActionBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [fillPreviousOpen, setFillPreviousOpen] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
   const [tip, setTip] = useState<{
     text: string;
     x: number;
@@ -213,136 +227,89 @@ export default function CardDetailScreen({ cardId }: Props) {
   // Per-cell resolution vs the declared side, once the card is complete.
   const [cellStatus, setCellStatus] = useState<Record<number, CellStatus>>({});
 
-  const submitter = useSubmitCard();
-
-  // ---------- entropy: detect mock + drive the reveal ----------
-  // Real Pyth reveals async via a keeper; the StaticEntropy mock used on
-  // staging needs someone to push the callback. pushCallback is permissionless,
-  // so the player can trigger their own reveal right here.
-  const [entropyAddr, setEntropyAddr] = useState<Address | null>(null);
-  const [isMockEntropy, setIsMockEntropy] = useState(false);
-  const [pendingSeq, setPendingSeq] = useState<bigint | null>(null);
-  const { writeContract: writeReveal, isPending: revealPending } =
-    useWriteContract();
-
+  // Pool config (multipliers, min card price). In receipt view the card can
+  // belong to an OLD pool — fetch THAT pool (once the card tells us which),
+  // not the active one, so the header and bonus curve match the card.
+  const viewedPoolId = viewOnly ? card?.poolId : undefined;
   useEffect(() => {
-    if (!publicClient || !contractAddress) return;
+    if (viewOnly && !viewedPoolId) return; // wait for the card to load
     let stop = false;
-    void (async () => {
-      try {
-        const ent = (await publicClient.readContract({
-          address: contractAddress,
-          abi: BINGO_CARD_ABI,
-          functionName: 'entropy',
-        })) as Address;
-        if (stop) return;
-        setEntropyAddr(ent);
-        // Capability probe: only StaticEntropy exposes fixedRandom().
-        try {
-          await publicClient.readContract({
-            address: ent,
-            abi: STATIC_ENTROPY_ABI,
-            functionName: 'fixedRandom',
-          });
-          if (!stop) setIsMockEntropy(true);
-        } catch {
-          if (!stop) setIsMockEntropy(false);
-        }
-      } catch {
-        /* ignore */
-      }
-    })();
+    fetchPool(viewedPoolId)
+      .then((p) => {
+        if (!stop) setPool(p);
+      })
+      .catch((e) => {
+        if (!stop) setStatusMsg(e instanceof Error ? e.message : String(e));
+      });
     return () => {
       stop = true;
     };
-  }, [publicClient, contractAddress]);
+  }, [viewOnly, viewedPoolId]);
 
-  // Find the pending entropy sequence for this card (cleared on reveal).
+  // Default the price input to the pool minimum once known.
   useEffect(() => {
-    if (
-      !publicClient ||
-      !contractAddress ||
-      !entropyAddr ||
-      !card ||
-      card.revealed
-    ) {
-      setPendingSeq(null);
-      return;
-    }
-    let stop = false;
-    void (async () => {
-      try {
-        const nextSeq = (await publicClient.readContract({
-          address: entropyAddr,
-          abi: STATIC_ENTROPY_ABI,
-          functionName: 'nextSequence',
-        })) as bigint;
-        for (let s = 1n; s < nextSeq; s++) {
-          const cid = (await publicClient.readContract({
-            address: contractAddress,
-            abi: BINGO_CARD_ABI,
-            functionName: 'pendingReveal',
-            args: [s],
-          })) as bigint;
-          if (cid === cardId) {
-            if (!stop) setPendingSeq(s);
-            return;
-          }
-        }
-        if (!stop) setPendingSeq(null);
-      } catch {
-        /* ignore */
-      }
-    })();
-    return () => {
-      stop = true;
-    };
-  }, [publicClient, contractAddress, entropyAddr, card, cardId, refreshKey]);
+    if (!pool || priceTouched) return;
+    setPriceInput(fmtUnits(BigInt(pool.minCardPriceWei)));
+  }, [pool, priceTouched]);
 
-  const pushReveal = () => {
-    if (!entropyAddr || pendingSeq == null) return;
-    writeReveal(
-      {
-        address: entropyAddr,
-        abi: STATIC_ENTROPY_ABI,
-        chainId: CHAIN_ID,
-        functionName: 'pushCallback',
-        args: [pendingSeq],
-      },
-      { onSuccess: () => setRefreshKey((k) => k + 1) },
-    );
-  };
-
-  // Multiplier table for the bonus prize curve widget (shown post-submit).
-  const multReads = useReadContracts({
-    contracts: baseContract
-      ? Array.from({ length: 11 }, (_, i) => ({
-          ...baseContract,
-          functionName: 'multiplierBps' as const,
-          args: [BigInt(i)],
-        }))
-      : [],
-    query: { enabled: !!baseContract },
-  });
-  const multipliers = multReads.data?.map(
-    (r) => (r?.result as number | undefined) ?? 0,
-  );
-
-  // Poll cardOf every 3s (and immediately on refreshKey) so reveal, side
-  // declaration, line funding, and claim all surface without a manual reload.
+  // Resolve which card to show + keep the card list fresh: ?card=N wins,
+  // otherwise default to the player's latest submitted card. Also runs in
+  // receipt view — the strip of the viewer's own cards needs the list.
   useEffect(() => {
-    if (!publicClient || !contractAddress) return;
+    if (!player) return;
     let stop = false;
     const tick = async () => {
       try {
-        const c = (await publicClient.readContract({
-          address: contractAddress,
-          abi: BINGO_CARD_ABI,
-          functionName: 'cardOf',
-          args: [cardId],
-        })) as CardSnapshot;
+        const s = await fetchCards(player);
         if (stop) return;
-        setCard(c);
+        setCardsSummary(s);
+        // Clamp to the active pool's valid range — a stale ?card=N link
+        // (e.g. bookmarked before a pool rollover) lands on the fresh card
+        // instead of 404ing forever.
+        if (!viewOnly) {
+          setCardIndex((cur) =>
+            Math.min(
+              cur ?? cardIndexFromUrl() ?? Math.max(0, s.cardCount - 1),
+              s.cardCount,
+            ),
+          );
+        }
+      } catch {
+        // Card list is auxiliary; the card poll surfaces real errors.
+        if (!stop && !viewOnly) {
+          setCardIndex((cur) => cur ?? cardIndexFromUrl() ?? 0);
+        }
+      }
+    };
+    void tick();
+    const interval = window.setInterval(tick, 5_000);
+    return () => {
+      stop = true;
+      window.clearInterval(interval);
+    };
+  }, [player, viewOnly, refreshKey]);
+
+  // Reset per-card state when switching cards — lineIds repeat across cards.
+  useEffect(() => {
+    setLineRuns({});
+    setLineOutcomes({});
+    setCellStatus({});
+    setPickedSides(0);
+    setPickedMask(0);
+    setPriceTouched(false);
+    setCard(null);
+  }, [cardIndex]);
+
+  // Poll the backend card every 3s (and immediately on refreshKey) so deal,
+  // submission progress, and line funding all surface without a reload.
+  useEffect(() => {
+    if (viewOnly || !player || cardIndex == null) return;
+    let stop = false;
+    const tick = async () => {
+      try {
+        const c = await fetchCard(player, cardIndex);
+        if (stop) return;
+        setCard((prev) => mergeCardMonotonic(prev, c));
         setStatusMsg(null);
       } catch (err) {
         if (stop) return;
@@ -355,73 +322,161 @@ export default function CardDetailScreen({ cardId }: Props) {
       stop = true;
       window.clearInterval(interval);
     };
-  }, [publicClient, contractAddress, cardId, refreshKey]);
+  }, [viewOnly, player, cardIndex, refreshKey]);
 
-  // Re-read once each line-funding run finishes.
+  // View-only: poll the public receipt endpoint instead (slower cadence —
+  // nothing on this page is mid-flight).
   useEffect(() => {
-    if (submitter.result) setRefreshKey((k) => k + 1);
-  }, [submitter.result]);
+    if (!receiptId) return;
+    let stop = false;
+    const tick = async () => {
+      try {
+        const c = await fetchReceiptCard(receiptId);
+        if (stop) return;
+        setCard((prev) => mergeCardMonotonic(prev, c));
+        setStatusMsg(null);
+      } catch (err) {
+        if (stop) return;
+        setStatusMsg(err instanceof Error ? err.message : String(err));
+      }
+    };
+    void tick();
+    const interval = window.setInterval(tick, 10_000);
+    return () => {
+      stop = true;
+      window.clearInterval(interval);
+    };
+  }, [receiptId, refreshKey]);
 
-  // Bonus preview + claimed flag.
-  useEffect(() => {
-    if (!publicClient || !contractAddress || !card?.revealed) {
-      setPreview(null);
-      return;
+  const submitted = card != null && card.yesMask != null;
+  const yesMask = card?.yesMask ?? 0;
+  const cardPriceWei =
+    card?.cardPriceWei != null ? BigInt(card.cardPriceWei) : null;
+
+  // Validate the entered price: wei, ≥ pool minimum, divisible by 10 lines.
+  const enteredPriceWei: bigint | null = useMemo(() => {
+    const v = priceInput.trim();
+    if (!v) return null;
+    try {
+      const wei = parseUnits(v, 18);
+      if (wei <= 0n) return null;
+      if (wei % 10n !== 0n) return null;
+      if (pool && wei < BigInt(pool.minCardPriceWei)) return null;
+      return wei;
+    } catch {
+      return null;
     }
-    let stop = false;
-    void (async () => {
-      try {
-        const [previewRes, claimedRes] = await Promise.all([
-          publicClient.readContract({
-            address: contractAddress,
-            abi: BINGO_CARD_ABI,
-            functionName: 'previewBonus',
-            args: [cardId],
-          }),
-          publicClient.readContract({
-            address: contractAddress,
-            abi: BINGO_CARD_ABI,
-            functionName: 'bonusClaimed',
-            args: [cardId],
-          }),
-        ]);
-        if (stop) return;
-        const [wins, payout] = previewRes as [number, bigint];
-        setPreview({ wins, payout });
-        setClaimed(Boolean(claimedRes));
-      } catch {
-        setPreview(null);
-      }
-    })();
-    return () => {
-      stop = true;
-    };
-  }, [publicClient, contractAddress, card, cardId, refreshKey]);
+  }, [priceInput, pool]);
 
-  // Pull condition images + titles from sapience API.
-  useEffect(() => {
-    if (!card?.revealed) return;
-    let stop = false;
-    void (async () => {
-      try {
-        const map = await fetchConditionsByIds(Array.from(card.conditionIds));
-        if (stop) return;
-        setConditionDetails(map);
-      } catch {
-        // best-effort
-      }
-    })();
-    return () => {
-      stop = true;
-    };
-  }, [card]);
+  // Spendable collateral = native USDe + wrapped (the backend wraps any
+  // native shortfall). Drives the balance display + the pre-submit check —
+  // without it, a too-high price only fails server-side AFTER the receipt
+  // NFT has locked the card at a price the player can't fund.
+  const { rawBalance: availableWei } = useCollateralBalance({
+    address: player as Address | undefined,
+    chainId: CHAIN_ID,
+    enabled: !!player && !submitted,
+  });
+  const insufficientBalance =
+    enteredPriceWei != null &&
+    availableWei != null &&
+    enteredPriceWei > availableWei;
 
-  const runAction = async (fn: () => Promise<unknown>) => {
+  // Per-line client-side run state, keyed by lineId. The on-chain `funded`
+  // flag from the backend is the durable truth; this only tracks requests
+  // this page has in flight (or that failed here).
+  const [lineRuns, setLineRuns] = useState<Record<string, LineRun>>({});
+
+  const lineDone = (l: { lineId: string; funded: boolean }) =>
+    l.funded || lineRuns[l.lineId]?.status === 'done';
+  const doneFlags = (card?.lines ?? []).map(lineDone);
+  const lineCount = doneFlags.filter(Boolean).length;
+  const cardComplete = card != null && card.lines.length > 0 && lineCount === card.lines.length;
+  const anyInflight = Object.values(lineRuns).some(
+    (r) => r.status === 'funding',
+  );
+  const anyFailed = (card?.lines ?? []).some(
+    (l) => !lineDone(l) && lineRuns[l.lineId]?.status === 'failed',
+  );
+
+  // The signed-in player IS this card's player — write actions (fund,
+  // claim) hang off this, so a receipt permalink works as the owner's own
+  // card page too, not just a spectator view.
+  const isOwner =
+    !!player && !!card && player.toLowerCase() === card.player.toLowerCase();
+
+  // Funds the given lines: one synchronous backend request each, all in
+  // parallel. Idempotent — the backend skips already-funded lines. The
+  // card's own poolId/cardIndex are used (not the selector state) so this
+  // works on receipt permalinks as well.
+  const fundLines = async (indices: number[]) => {
+    const session = loadSession();
+    if (!player || !session || !card) return;
+    const lineIds = card.lines.map((l) => l.lineId);
+    setActionError(null);
+    setLineRuns((p) => {
+      const next = { ...p };
+      for (const i of indices) next[lineIds[i]] = { status: 'funding' };
+      return next;
+    });
+    await Promise.allSettled(
+      indices.map(async (i) => {
+        try {
+          await submitLine({
+            player,
+            poolId: card.poolId,
+            cardIndex: card.cardIndex,
+            lineIndex: i,
+            session,
+          });
+          setLineRuns((p) => ({ ...p, [lineIds[i]]: { status: 'done' } }));
+        } catch (e) {
+          setLineRuns((p) => ({
+            ...p,
+            [lineIds[i]]: {
+              status: 'failed',
+              error: e instanceof Error ? e.message : String(e),
+            },
+          }));
+        }
+      }),
+    );
+    setRefreshKey((k) => k + 1);
+  };
+
+  // Submit the picks: the backend mints the receipt NFT (locking sides and
+  // price on-chain), then this client drives the 10 line mints.
+  const submitPicks = async () => {
+    const session = loadSession();
+    if (!player || enteredPriceWei == null || !session || cardIndex == null)
+      return;
     setActionError(null);
     setActionBusy(true);
     try {
-      await fn();
+      const res = await submitCard({
+        player,
+        cardIndex,
+        yesMask: pickedSides,
+        cardPriceWei: enteredPriceWei.toString(),
+        ref: loadRef(),
+        session,
+      });
+      // Optimistic flip to the submitted view — without this the pick form
+      // (with a re-enabled button) lingers until the next poll notices the
+      // receipt. The poll then confirms with the same receiptTokenId.
+      setCard((prev) =>
+        prev
+          ? {
+              ...prev,
+              yesMask: pickedSides,
+              cardPriceWei: enteredPriceWei.toString(),
+              submittedAt: Date.now(),
+              receiptTokenId: res.receiptTokenId,
+            }
+          : prev,
+      );
       setRefreshKey((k) => k + 1);
+      void fundLines(Array.from({ length: 10 }, (_, i) => i));
     } catch (e) {
       setActionError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -429,33 +484,22 @@ export default function CardDetailScreen({ cardId }: Props) {
     }
   };
 
-  // One action: declare YES/NO sides on-chain, then immediately run the
-  // auction + sponsored mint for all 10 lines inline. The card itself sponsors
-  // each line's predictor collateral (predictorSponsor = BingoCard).
-  const declareAndFund = async () => {
-    if (!sessionClient || !card || !contractAddress) return;
-    setActionError(null);
-    setActionBusy(true);
-    try {
-      // setCellSides awaits its receipt, so sides are on-chain before funding.
-      await setCellSidesViaSession(sessionClient, cardId, pickedSides);
-      setRefreshKey((k) => k + 1);
-      // Use the just-picked sides directly — the polled card may not have
-      // re-read cellSides yet.
-      await submitter.submit({
-        cardId,
-        conditionIds: card.conditionIds,
-        resolvers: card.resolvers,
-        cellSides: pickedSides,
-        cardPriceWei: card.cardPriceAtMint,
-        bingoCardAddress: contractAddress,
-      });
-      setRefreshKey((k) => k + 1);
-    } catch (e) {
-      setActionError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setActionBusy(false);
-    }
+  // Switch the visible card (and reflect it in the URL for reloads/sharing).
+  const selectCard = (i: number) => {
+    if (i === cardIndex) return;
+    const u = new URL(window.location.href);
+    u.searchParams.set('card', String(i));
+    window.history.replaceState(null, '', u.toString());
+    setCardIndex(i);
+  };
+
+  // Retry/resume: fund whichever lines aren't on-chain yet.
+  const retryLines = async () => {
+    if (!card) return;
+    const indices = card.lines
+      .map((l, i) => (lineDone(l) ? -1 : i))
+      .filter((i) => i >= 0);
+    await fundLines(indices);
   };
 
   // Randomly assign YES/NO to all 16 cells.
@@ -468,175 +512,228 @@ export default function CardDetailScreen({ cardId }: Props) {
     setPickedMask(0xffff);
   };
 
-  const submitClaimBonus = () => {
-    if (!sessionClient) return;
-    void runAction(() => claimBonusViaSession(sessionClient, cardId));
-  };
-
   // Redeem a single won line's predictor position for its payout.
   const claimLine = (line: (typeof LINES)[number]) => {
-    if (!sessionClient || !publicClient || !card || !smartAccount) return;
+    if (!sessionClient || !publicClient || !card || !player) return;
+    if (card.yesMask == null) return;
     const escrowAddr = escrowAddresses[CHAIN_ID]?.address as
       | Address
       | undefined;
     if (!escrowAddr) return;
-    void runAction(async () => {
-      const picks: Pick[] = line.cellIndices.map((ci) => ({
-        conditionResolver: card.resolvers[ci],
-        conditionId: card.conditionIds[ci],
-        predictedOutcome:
-          (card.cellSides & (1 << ci)) !== 0 ? OutcomeSide.YES : OutcomeSide.NO,
-      }));
-      const pcid = computePickConfigId(canonicalizePicks(picks));
-      const pair = (await publicClient.readContract({
-        address: escrowAddr,
-        abi: ESCROW_TOKENPAIR_ABI,
-        functionName: 'getTokenPair',
-        args: [pcid],
-      })) as { predictorToken: Address; counterpartyToken: Address };
-      const bal = (await publicClient.readContract({
-        address: pair.predictorToken,
-        abi: ERC20_BALANCE_ABI,
-        functionName: 'balanceOf',
-        args: [smartAccount],
-      })) as bigint;
-      if (bal === 0n) throw new Error('No position tokens to claim');
-      await redeemViaSession(sessionClient, pair.predictorToken, bal);
-    });
-  };
-
-  const submitWithdrawUnused = () => {
-    if (!sessionClient) return;
-    void runAction(() => withdrawUnusedViaSession(sessionClient, cardId));
-  };
-
-  const fundLines = () => {
-    if (!card || !contractAddress) return;
-    void submitter.submit({
-      cardId,
-      conditionIds: card.conditionIds,
-      resolvers: card.resolvers,
-      cellSides: card.cellSides,
-      cardPriceWei: card.cardPriceAtMint,
-      bingoCardAddress: contractAddress,
-    });
+    const mask = card.yesMask;
+    setActionError(null);
+    setActionBusy(true);
+    void (async () => {
+      try {
+        const picks: Pick[] = line.cellIndices.map((ci) => ({
+          conditionResolver: card.cells[ci].resolver,
+          conditionId: card.cells[ci].conditionId,
+          predictedOutcome:
+            (mask & (1 << ci)) !== 0 ? OutcomeSide.YES : OutcomeSide.NO,
+        }));
+        const pcid = computePickConfigId(canonicalizePicks(picks));
+        const pair = (await publicClient.readContract({
+          address: escrowAddr,
+          abi: ESCROW_TOKENPAIR_ABI,
+          functionName: 'getTokenPair',
+          args: [pcid],
+        })) as { predictorToken: Address; counterpartyToken: Address };
+        const bal = (await publicClient.readContract({
+          address: pair.predictorToken,
+          abi: ERC20_BALANCE_ABI,
+          functionName: 'balanceOf',
+          args: [player],
+        })) as bigint;
+        if (bal === 0n) throw new Error('No position tokens to claim');
+        await redeemViaSession(sessionClient, pair.predictorToken, bal);
+        setRefreshKey((k) => k + 1);
+      } catch (e) {
+        setActionError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setActionBusy(false);
+      }
+    })();
   };
 
   // Read the real pool (stake + counterparty) for each funded line so the
   // "to win" amount survives a reload — recompute the pickConfigId from the
-  // card's cells and ask the escrow.
+  // card's cells + declared sides and ask the escrow.
+  // Re-read only when something material changes (which lines are funded /
+  // which card), NOT on every 3s poll — `card` is a fresh object each poll
+  // and using it as a dep re-fired 10 sequential reads per cycle.
+  const outcomesKey = card
+    ? `${card.receiptTokenId}:${card.yesMask}:${card.lines
+        .map((l) => (l.funded ? 1 : 0))
+        .join('')}`
+    : '';
+  const cardRef = useRef<CardResponse | null>(null);
+  cardRef.current = card;
   useEffect(() => {
     const escrowAddr = escrowAddresses[CHAIN_ID]?.address as Address | undefined;
-    if (!publicClient || !card || !card.sidesDeclared || !escrowAddr) return;
+    const snapshot = cardRef.current;
+    if (!publicClient || !snapshot || snapshot.yesMask == null || !escrowAddr)
+      return;
+    const mask = snapshot.yesMask;
     let stop = false;
-    void (async () => {
-      const out: Record<string, LineOutcome> = {};
-      for (let i = 0; i < LINES.length; i++) {
-        if ((card.filledLineBitmap & (1 << i)) === 0) continue;
-        const l = LINES[i];
-        const picks: Pick[] = l.cellIndices.map((ci) => ({
-          conditionResolver: card.resolvers[ci],
-          conditionId: card.conditionIds[ci],
-          predictedOutcome:
-            (card.cellSides & (1 << ci)) !== 0
-              ? OutcomeSide.YES
-              : OutcomeSide.NO,
-        }));
-        try {
-          const pcid = computePickConfigId(canonicalizePicks(picks));
-          const cfg = (await publicClient.readContract({
-            address: escrowAddr,
-            abi: ESCROW_PICKCONFIG_ABI,
-            functionName: 'getPickConfiguration',
-            args: [pcid],
-          })) as {
-            totalPredictorCollateral: bigint;
-            totalCounterpartyCollateral: bigint;
-            claimedPredictorCollateral: bigint;
-            resolved: boolean;
-            result: number;
-          };
-          out[l.id] = {
-            pool:
-              cfg.totalPredictorCollateral + cfg.totalCounterpartyCollateral,
-            resolved: cfg.resolved,
-            predictorWon: cfg.result === 1, // SettlementResult.PREDICTOR_WINS
-            claimed: cfg.claimedPredictorCollateral > 0n,
-          };
-        } catch {
-          /* leave unset */
-        }
-      }
-      if (!stop) setLineOutcomes(out);
-    })();
+    const tick = async () => {
+      // All funded lines read in parallel; failures resolve to null so one
+      // flaky RPC call can't hide the rest.
+      const entries = await Promise.all(
+        snapshot.lines
+          .filter((l) => l.funded)
+          .map(async (apiLine) => {
+            const picks: Pick[] = apiLine.cellIndices.map((ci) => ({
+              conditionResolver: snapshot.cells[ci].resolver,
+              conditionId: snapshot.cells[ci].conditionId,
+              predictedOutcome:
+                (mask & (1 << ci)) !== 0 ? OutcomeSide.YES : OutcomeSide.NO,
+            }));
+            try {
+              const pcid = computePickConfigId(canonicalizePicks(picks));
+              const cfg = (await publicClient.readContract({
+                address: escrowAddr,
+                abi: ESCROW_PICKCONFIG_ABI,
+                functionName: 'getPickConfiguration',
+                args: [pcid],
+              })) as {
+                totalPredictorCollateral: bigint;
+                totalCounterpartyCollateral: bigint;
+                claimedPredictorCollateral: bigint;
+                resolved: boolean;
+                result: number;
+              };
+              return [
+                apiLine.lineId,
+                {
+                  pool:
+                    cfg.totalPredictorCollateral +
+                    cfg.totalCounterpartyCollateral,
+                  resolved: cfg.resolved,
+                  // SettlementResult.PREDICTOR_WINS
+                  predictorWon: cfg.result === 1,
+                  claimed: cfg.claimedPredictorCollateral > 0n,
+                },
+              ] as const;
+            } catch {
+              return null;
+            }
+          }),
+      );
+      if (stop) return;
+      const out = Object.fromEntries(
+        entries.filter((e): e is NonNullable<typeof e> => e != null),
+      );
+      // MERGE — a failed read must never blank an amount already on screen
+      // (replacing the map each cycle is what made funded lines flap back
+      // to bare "PENDING" after a refresh).
+      setLineOutcomes((prev) => ({ ...prev, ...out }));
+    };
+    void tick();
+    // Slow refresh keeps WON/CLAIM states current once matches resolve.
+    const interval = window.setInterval(tick, 30_000);
     return () => {
       stop = true;
+      window.clearInterval(interval);
     };
-  }, [publicClient, card, refreshKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [publicClient, outcomesKey, refreshKey]);
 
   // Once all 10 lines are funded, read each cell's resolution and compare to
   // the declared side: correct (✓), wrong (✗), or not-yet-resolved (loading).
   useEffect(() => {
-    if (!publicClient || !card || !card.sidesDeclared) return;
-    if ((card.filledLineBitmap & 0x3ff) !== 0x3ff) return;
+    const snapshot = cardRef.current;
+    if (!publicClient || !snapshot || snapshot.yesMask == null) return;
+    const allDone = snapshot.lines.every((l) => l.funded);
+    if (!allDone || snapshot.lines.length === 0) return;
+    const mask = snapshot.yesMask;
     let stop = false;
-    void (async () => {
+    const tick = async () => {
       const out: Record<number, CellStatus> = {};
-      for (let i = 0; i < 16; i++) {
-        const declaredYes = (card.cellSides & (1 << i)) !== 0;
-        let st: CellStatus = 'pending';
-        try {
-          const r = (await publicClient.readContract({
-            address: card.resolvers[i],
-            abi: RESOLVER_ABI,
-            functionName: 'getResolution',
-            args: [card.conditionIds[i]],
-          })) as readonly [boolean, { yesWeight: bigint; noWeight: bigint }];
-          const ok = r[0];
-          const yw = r[1].yesWeight;
-          const nw = r[1].noWeight;
-          if (ok && !(yw === 0n && nw === 0n)) {
-            const decisiveYes = yw > 0n && nw === 0n;
-            const decisiveNo = nw > 0n && yw === 0n;
-            st =
-              (declaredYes && decisiveYes) || (!declaredYes && decisiveNo)
-                ? 'correct'
-                : 'wrong';
+      await Promise.all(
+        snapshot.cells.map(async (cell, i) => {
+          const declaredYes = (mask & (1 << i)) !== 0;
+          try {
+            const r = (await publicClient.readContract({
+              address: cell.resolver,
+              abi: RESOLVER_ABI,
+              functionName: 'getResolution',
+              args: [cell.conditionId],
+            })) as readonly [boolean, { yesWeight: bigint; noWeight: bigint }];
+            const ok = r[0];
+            const yw = r[1].yesWeight;
+            const nw = r[1].noWeight;
+            if (ok && !(yw === 0n && nw === 0n)) {
+              const decisiveYes = yw > 0n && nw === 0n;
+              const decisiveNo = nw > 0n && yw === 0n;
+              out[i] =
+                (declaredYes && decisiveYes) || (!declaredYes && decisiveNo)
+                  ? 'correct'
+                  : 'wrong';
+            }
+          } catch {
+            /* leave as-is — merge below keeps any prior decisive state */
           }
-        } catch {
-          /* leave pending */
-        }
-        out[i] = st;
-      }
-      if (!stop) setCellStatus(out);
-    })();
+        }),
+      );
+      if (!stop) setCellStatus((prev) => ({ ...prev, ...out }));
+    };
+    void tick();
+    const interval = window.setInterval(tick, 30_000);
     return () => {
       stop = true;
+      window.clearInterval(interval);
     };
-  }, [publicClient, card, refreshKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [publicClient, outcomesKey, refreshKey]);
+
+  // Wins so far = funded lines that resolved in the predictor's favor.
+  const wins = LINES.filter(
+    (l) => lineOutcomes[l.id]?.resolved && lineOutcomes[l.id]?.predictorWon,
+  ).length;
+
+  // Card strip: every card the player holds, across all pools, grouped by
+  // pool (newest first). Old pools' cards stay reachable after rollover —
+  // chips link to receipt permalinks, which never go stale. The active
+  // pool's group also carries the "+ new card" chip while it's open.
+  const activePoolNumber = cardsSummary?.poolNumber ?? 1;
+  const stripGroups = useMemo(() => {
+    if (!cardsSummary) return [];
+    const all: PoolCardSummary[] =
+      cardsSummary.allCards ??
+      // Backend predating the cross-pool list: active pool only.
+      cardsSummary.cards.map((c) => ({
+        ...c,
+        poolId: cardsSummary.poolId,
+        poolNumber: activePoolNumber,
+        poolOpen: cardsSummary.open,
+      }));
+    const byPool = new Map<
+      number,
+      { poolId: string; cards: PoolCardSummary[] }
+    >();
+    for (const c of all) {
+      const g = byPool.get(c.poolNumber) ?? { poolId: c.poolId, cards: [] };
+      g.cards.push(c);
+      byPool.set(c.poolNumber, g);
+    }
+    if (cardsSummary.open && !byPool.has(activePoolNumber)) {
+      byPool.set(activePoolNumber, { poolId: cardsSummary.poolId, cards: [] });
+    }
+    return [...byPool.entries()]
+      .sort((a, b) => b[0] - a[0])
+      .map(([poolNumber, g]) => ({ poolNumber, ...g }));
+  }, [cardsSummary, activePoolNumber]);
 
   const injected = connectors.find((c) => c.id === 'injected');
-  const now = Math.floor(Date.now() / 1000);
-  const isExpired = card != null && Number(card.expiresAt) < now;
-  const lineCount = card
-    ? Array.from({ length: 10 }).filter(
-        (_, i) => (card.filledLineBitmap & (1 << i)) !== 0,
-      ).length
-    : 0;
-  const cardComplete = lineCount === 10;
-  const isPlayer =
-    smartAccount &&
-    card &&
-    smartAccount.toLowerCase() === card.player.toLowerCase();
 
-  // A funded session is required for every player action.
+  // A session is required: it identifies the player (smart account) and lets
+  // the backend mint lines on their behalf.
   const needsSession = isConnected && !isActive;
 
   const sessionPrompt = needsSession ? (
     <div className="admin-action">
       <p className="muted small">
-        Sign in to act on this card (mint card, declare sides, fund lines,
-        claim).
+        Sign in to see your card, pick sides, and submit.
       </p>
       <button
         type="button"
@@ -664,30 +761,57 @@ export default function CardDetailScreen({ cardId }: Props) {
           <div className="receipt-titles">
             <div className="receipt-eyebrow-row">
               <span className="label">
-                Parlay Bingo · {cardComplete ? 'Live Bet' : 'Ready to Submit'}
+                Combo Bingo · {cardComplete ? 'Live Bet' : 'Ready to Submit'}
               </span>
-              <button
-                type="button"
-                className="details-link"
-                onClick={() => setDetailsOpen(true)}
-              >
-                Details
-              </button>
+              <span>
+                {card.receiptTokenId && (
+                  <button
+                    type="button"
+                    className="details-link"
+                    onClick={() => {
+                      // The public, view-only permalink for this card —
+                      // anyone can open it, no wallet needed.
+                      const url = `${window.location.origin}/card?receipt=${card.receiptTokenId}`;
+                      void navigator.clipboard.writeText(url).then(() => {
+                        setShareCopied(true);
+                        window.setTimeout(() => setShareCopied(false), 1500);
+                      });
+                    }}
+                  >
+                    {shareCopied ? 'Copied!' : 'Share'}
+                  </button>
+                )}{' '}
+                <button
+                  type="button"
+                  className="details-link"
+                  onClick={() => setDetailsOpen(true)}
+                >
+                  Details
+                </button>
+              </span>
             </div>
             <h2 className="receipt-title">World Cup 2026</h2>
+            {pool && (
+              <span className="label muted">
+                Pool #{pool.poolNumber} ·{' '}
+                {card.open
+                  ? `closes ${new Date(card.cutoff * 1000).toLocaleString(
+                      undefined,
+                      {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      },
+                    )}`
+                  : 'closed'}
+              </span>
+            )}
           </div>
         </header>
       )}
 
-      {!contractAddress && (
-        <section className="screen admin-section">
-          <p className="muted small">
-            Set the BingoCard contract address in Settings (gear icon).
-          </p>
-        </section>
-      )}
-
-      {contractAddress && !isConnected && injected && (
+      {!viewOnly && !isConnected && injected && (
         <section className="screen admin-section">
           <button
             type="button"
@@ -700,51 +824,95 @@ export default function CardDetailScreen({ cardId }: Props) {
         </section>
       )}
 
-      {card && !card.revealed && (
+      {!viewOnly && needsSession && (
+        <section className="screen admin-section">{sessionPrompt}</section>
+      )}
+
+      {/* Card strip — every card the player holds, across all pools.
+          Chips are receipt permalinks (?receipt=N), so they survive pool
+          rotation and double as share URLs. Hidden until the player owns at
+          least one card; a first-timer just sees their fresh card below. */}
+      {player && cardsSummary && stripGroups.some((g) => g.cards.length > 0) && (
         <section className="screen admin-section">
-          <div className="reveal-pending">
-            <div className="reveal-orb" aria-hidden />
-            <div className="reveal-pending-body">
-              <div className="wizard-step-title">Revealing your card…</div>
-              <p className="muted small">
-                {isMockEntropy
-                  ? 'Staging uses a fixed placeholder instead of Pyth Entropy. Submit it to draw your 16 cells.'
-                  : 'Drawing 16 conditions from the pool and shuffling your board.'}
-              </p>
-            </div>
-            {isMockEntropy && pendingSeq != null && (
-              <button
-                type="button"
-                className="primary"
-                disabled={revealPending}
-                onClick={pushReveal}
-              >
-                {revealPending ? 'Submitting…' : 'Submit placeholder randomness'}
-              </button>
-            )}
+          <div className="card-strip">
+            {stripGroups.map((g) => (
+              <div className="card-strip-pool" key={g.poolNumber}>
+                <span className="card-strip-label">Pool {g.poolNumber}</span>
+                <div className="card-strip-chips">
+                  {g.cards.map((c) => {
+                    const current = viewOnly
+                      ? c.receiptTokenId === receiptId
+                      : c.poolId === cardsSummary.poolId &&
+                        c.cardIndex === cardIndex;
+                    return (
+                      <a
+                        key={c.receiptTokenId}
+                        href={`/card?receipt=${c.receiptTokenId}`}
+                        className={`card-chip ${current ? 'current' : ''} ${
+                          c.linesFunded >= 10 ? 'filled' : ''
+                        }`}
+                      >
+                        <span className="card-chip-id">
+                          #{c.receiptTokenId}
+                        </span>
+                        <span className="card-chip-sub">
+                          {c.linesFunded >= 10 ? '✓' : `${c.linesFunded}/10`}
+                        </span>
+                      </a>
+                    );
+                  })}
+                  {cardsSummary.open && g.poolNumber === activePoolNumber && (
+                    <a
+                      href={`/card?card=${cardsSummary.cardCount}`}
+                      className={`card-chip card-chip-new ${
+                        !viewOnly && cardIndex === cardsSummary.cardCount
+                          ? 'current'
+                          : ''
+                      }`}
+                      onClick={(e) => {
+                        // A card with unfunded lines forfeits bonus
+                        // eligibility — block the next card until every
+                        // line of the ACTIVE pool's cards is funded (old
+                        // pools are closed; they can't be filled, so they
+                        // don't gate).
+                        const unfilled = cardsSummary.cards.some(
+                          (c) => c.linesFunded < 10,
+                        );
+                        if (unfilled) {
+                          e.preventDefault();
+                          setFillPreviousOpen(true);
+                        } else if (!viewOnly) {
+                          e.preventDefault();
+                          selectCard(cardsSummary.cardCount);
+                        }
+                      }}
+                    >
+                      + New
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         </section>
       )}
 
-      {card && (
+      {card && (player || viewOnly) && (
         <section className="screen admin-section">
-          {sessionPrompt}
-
-          {card.revealed && !card.sidesDeclared && isPlayer && (
+          {!submitted && (
             <div className="admin-action">
               <div className="bingo-grid">
-                {card.conditionIds.map((id, i) => {
+                {card.cells.map((cell, i) => {
                   const isPicked = (pickedMask & (1 << i)) !== 0;
                   const yes = isPicked && (pickedSides & (1 << i)) !== 0;
                   const no = isPicked && (pickedSides & (1 << i)) === 0;
-                  const detail = conditionDetails.get(id.toLowerCase());
-                  const odds = fmtOdds(detail?.estimatedPrice);
+                  const odds = fmtOdds(cell.estimatedPrice);
                   return (
                     <div key={i} className="bingo-cell">
-                      {detail?.similarMarketImage && (
+                      {cell.imageUrl && (
                         <img
                           className="cell-thumb"
-                          src={detail.similarMarketImage}
+                          src={cell.imageUrl}
                           alt=""
                           aria-hidden
                         />
@@ -753,7 +921,10 @@ export default function CardDetailScreen({ cardId }: Props) {
                         className="bingo-cell-title"
                         onMouseEnter={(e) =>
                           setTip({
-                            text: detail?.question ?? detail?.shortName ?? id,
+                            text:
+                              cell.question ??
+                              cell.shortName ??
+                              cell.conditionId,
                             x: e.clientX,
                             y: e.clientY,
                           })
@@ -765,7 +936,7 @@ export default function CardDetailScreen({ cardId }: Props) {
                         }
                         onMouseLeave={() => setTip(null)}
                       >
-                        {detail?.shortName ?? detail?.question ?? id}
+                        {cell.shortName ?? cell.question ?? cell.conditionId}
                       </div>
                       {odds && <div className="cell-odds">Odds {odds}</div>}
                       <div className="bingo-side-toggle">
@@ -794,6 +965,47 @@ export default function CardDetailScreen({ cardId }: Props) {
                   );
                 })}
               </div>
+              <div className="field price-field">
+                <div className="price-field-labels">
+                  <label className="label" htmlFor="card-price">
+                    Card price (USDe)
+                  </label>
+                  {availableWei != null && (
+                    <span className="label muted">
+                      Available: {fmtUnits(availableWei)} USDe
+                    </span>
+                  )}
+                </div>
+                <input
+                  id="card-price"
+                  className="admin-input"
+                  inputMode="decimal"
+                  placeholder={
+                    pool ? fmtUnits(BigInt(pool.minCardPriceWei)) : '10'
+                  }
+                  value={priceInput}
+                  onChange={(e) => {
+                    setPriceTouched(true);
+                    setPriceInput(e.target.value);
+                  }}
+                  disabled={actionBusy}
+                />
+                {priceInput.trim() && enteredPriceWei == null && (
+                  <p className="muted small">
+                    Must be a multiple of 10 wei
+                    {pool
+                      ? ` and at least ${fmtUnits(BigInt(pool.minCardPriceWei))}`
+                      : ''}
+                    .
+                  </p>
+                )}
+                {insufficientBalance && (
+                  <p className="error small">
+                    Not enough USDe — you have {fmtUnits(availableWei)}{' '}
+                    available.
+                  </p>
+                )}
+              </div>
               <div className="pick-actions">
                 <button
                   type="button"
@@ -807,9 +1019,13 @@ export default function CardDetailScreen({ cardId }: Props) {
                   type="button"
                   className="primary block"
                   disabled={
-                    actionBusy || !sessionClient || !allCellsPicked || !isActive
+                    actionBusy ||
+                    !isActive ||
+                    !allCellsPicked ||
+                    enteredPriceWei == null ||
+                    insufficientBalance
                   }
-                  onClick={declareAndFund}
+                  onClick={submitPicks}
                 >
                   {actionBusy
                     ? 'Submitting…'
@@ -821,11 +1037,11 @@ export default function CardDetailScreen({ cardId }: Props) {
             </div>
           )}
 
-          {card.revealed && card.sidesDeclared && (
+          {submitted && (
             <>
-              {!cardComplete && isPlayer && (
+              {!cardComplete && (!viewOnly || isOwner) && (
                 <div className="wizard-step-title">
-                  {submitter.isSubmitting || actionBusy
+                  {anyInflight || actionBusy
                     ? `Submitting your 10 lines (${lineCount}/10)`
                     : `Submit your 10 lines (${lineCount}/10)`}
                 </div>
@@ -836,10 +1052,9 @@ export default function CardDetailScreen({ cardId }: Props) {
                   diagonals in the corners. */}
               <div className="submit-panel">
               <div className="locked-grid">
-                {card.conditionIds.map((id, idx) => {
-                  const yes = (card.cellSides & (1 << idx)) !== 0;
-                  const detail = conditionDetails.get(id.toLowerCase());
-                  const odds = fmtOdds(detail?.estimatedPrice);
+                {card.cells.map((cell, idx) => {
+                  const yes = (yesMask & (1 << idx)) !== 0;
+                  const odds = fmtOdds(cell.estimatedPrice);
                   const row = Math.floor(idx / 4);
                   const col = idx % 4;
                   const highlighted =
@@ -856,10 +1071,10 @@ export default function CardDetailScreen({ cardId }: Props) {
                       }`}
                       style={{ gridColumn: col + 2, gridRow: row + 1 }}
                     >
-                      {detail?.similarMarketImage && (
+                      {cell.imageUrl && (
                         <img
                           className="cell-thumb"
-                          src={detail.similarMarketImage}
+                          src={cell.imageUrl}
                           alt=""
                           aria-hidden
                         />
@@ -871,9 +1086,9 @@ export default function CardDetailScreen({ cardId }: Props) {
                           }`}
                           onMouseEnter={(e) =>
                             (cellStatus[idx] ?? 'pending') === 'pending' &&
-                            detail?.endTime
+                            cell.endTime
                               ? setTip({
-                                  text: `Est. end ${fmtEndTime(detail.endTime)}`,
+                                  text: `Est. end ${fmtEndTime(cell.endTime)}`,
                                   x: e.clientX,
                                   y: e.clientY,
                                 })
@@ -895,7 +1110,10 @@ export default function CardDetailScreen({ cardId }: Props) {
                         className="cell-text"
                         onMouseEnter={(e) =>
                           setTip({
-                            text: detail?.question ?? detail?.shortName ?? id,
+                            text:
+                              cell.question ??
+                              cell.shortName ??
+                              cell.conditionId,
                             x: e.clientX,
                             y: e.clientY,
                           })
@@ -907,7 +1125,7 @@ export default function CardDetailScreen({ cardId }: Props) {
                         }
                         onMouseLeave={() => setTip(null)}
                       >
-                        {detail?.shortName ?? detail?.question ?? id}
+                        {cell.shortName ?? cell.question ?? cell.conditionId}
                       </div>
                       {odds && <div className="cell-odds">Odds {odds}</div>}
                       <div className="locked-pick">{yes ? 'YES' : 'NO'}</div>
@@ -915,19 +1133,14 @@ export default function CardDetailScreen({ cardId }: Props) {
                   );
                 })}
 
-                {LINES.map((l, i) => {
-                  const status = submitter.progress[l.id]?.status ?? 'pending';
-                  const filled = (card.filledLineBitmap & (1 << i)) !== 0;
-                  const done = filled || status === 'done';
-                  // On-chain `filled` wins over transient submitter status: a
-                  // retry re-attempts already-funded lines and they revert
-                  // (LineAlreadyFilled) — don't paint those red/in-flight.
-                  const submitFailed = !filled && status === 'failed';
-                  const inflight =
-                    !filled &&
-                    (status === 'quoting' ||
-                      status === 'signing' ||
-                      status === 'submitting');
+                {LINES.map((l) => {
+                  const apiLine = card.lines.find((x) => x.lineId === l.id);
+                  const run = lineRuns[l.id];
+                  const funded = apiLine?.funded ?? false;
+                  // funded (on-chain) or done (just minted) = the line exists.
+                  const done = funded || run?.status === 'done';
+                  const submitFailed = !done && run?.status === 'failed';
+                  const inflight = !done && run?.status === 'funding';
                   const o = lineOutcomes[l.id];
 
                   // Resolve the line's display verb/amount/tone.
@@ -951,7 +1164,12 @@ export default function CardDetailScreen({ cardId }: Props) {
                     verb = 'PENDING';
                   }
 
-                  const claimable = verb === 'CLAIM' && !!isPlayer;
+                  // Claiming needs the viewer's session to BE the card's
+                  // player — on a public receipt URL the square is display-only.
+                  const claimable =
+                    verb === 'CLAIM' &&
+                    isActive &&
+                    player?.toLowerCase() === card.player.toLowerCase();
                   return (
                     <div
                       key={l.id}
@@ -985,7 +1203,7 @@ export default function CardDetailScreen({ cardId }: Props) {
                         </>
                       ) : (
                         <div className="payout-status">
-                          {lineStatusLabel(status)}
+                          {lineStatusLabel(run)}
                         </div>
                       )}
                     </div>
@@ -994,21 +1212,30 @@ export default function CardDetailScreen({ cardId }: Props) {
               </div>
               </div>
 
-              {!cardComplete && isPlayer && (
+              {!cardComplete && (!viewOnly || isOwner) && (
                 <>
-                  {submitter.error && (
-                    <p className="error small">{submitter.error}</p>
+                  {anyFailed && (
+                    <p className="error small">
+                      {Object.values(lineRuns)
+                        .map((r) => (r.status === 'failed' ? r.error : null))
+                        .find(Boolean) ?? 'Some lines failed to fund.'}
+                    </p>
                   )}
-                  {!submitter.isSubmitting && !actionBusy && (
+                  {/* The client drives line funding: offer to (re)start it
+                      whenever lines are missing and nothing is in flight —
+                      covers failures, page reloads, and interrupted runs.
+                      Only while the pool is open (closed pools refuse new
+                      lines) and only to the card's owner. */}
+                  {!anyInflight && !actionBusy && card.open && (
                     <button
                       type="button"
                       className="primary block"
-                      disabled={!isActive}
-                      onClick={fundLines}
+                      disabled={!isActive || (viewOnly && !isOwner)}
+                      onClick={retryLines}
                     >
-                      {lineCount > 0 || submitter.error
+                      {anyFailed
                         ? 'Retry remaining lines'
-                        : 'Submit lines'}
+                        : `Fund remaining lines (${lineCount}/10)`}
                     </button>
                   )}
                 </>
@@ -1016,15 +1243,17 @@ export default function CardDetailScreen({ cardId }: Props) {
             </>
           )}
 
-          {cardComplete && multipliers && (
+          {cardComplete && pool && cardPriceWei != null && (
             <div className="bonus-curve">
               <div className="bonus-prize-title">Bonus Prize</div>
+              <p className="muted small">
+                Bonuses are paid out directly by COMBO.BINGO.
+              </p>
               <ol className="wizard bonus-wizard">
-                {multipliers.map((bps, i) => {
-                  const wins = preview?.wins ?? 0;
+                {pool.multiplierBps.map((bps, i) => {
                   const status =
                     i < wins ? 'done' : i === wins ? 'current' : 'pending';
-                  const payout = (card.cardPriceAtMint * BigInt(bps)) / 10_000n;
+                  const payout = (cardPriceWei * BigInt(bps)) / 10_000n;
                   return (
                     <li key={i} className={`wizard-step status-${status}`}>
                       <div className="wizard-step-marker" aria-hidden>
@@ -1046,55 +1275,59 @@ export default function CardDetailScreen({ cardId }: Props) {
                   );
                 })}
               </ol>
-            </div>
-          )}
-
-          {cardComplete && !claimed && isPlayer && (
-            <div>
-              <button
-                type="button"
-                className="primary block"
-                disabled={
-                  actionBusy || !isActive || !preview || preview.wins < 2
-                }
-                onClick={() => {
-                  if (
-                    preview &&
-                    preview.wins < 10 &&
-                    !window.confirm(
-                      `Claim is one-shot. You currently have ${preview.wins} winning lines. More may resolve later. Claim now?`,
-                    )
-                  ) {
-                    return;
-                  }
-                  submitClaimBonus();
-                }}
-              >
-                {actionBusy
-                  ? 'Claiming…'
-                  : preview && preview.wins >= 2
-                    ? `Claim Bonus (${preview.wins} bingos)`
-                    : 'Claim Bonus'}
-              </button>
-            </div>
-          )}
-
-          {isExpired && card.sponsorBalance > 0n && isPlayer && (
-            <div className="admin-row">
-              <button
-                type="button"
-                className="primary"
-                disabled={actionBusy || !isActive}
-                onClick={submitWithdrawUnused}
-              >
-                Withdraw unused ({fmtUnits(card.sponsorBalance)})
-              </button>
+              {wins > 0 && (
+                <p className="muted small">
+                  Current entitlement: $
+                  {fmtUnits(
+                    (cardPriceWei *
+                      BigInt(pool.multiplierBps[wins] ?? 0)) /
+                      10_000n,
+                  )}{' '}
+                  ({wins} {wins === 1 ? 'bingo' : 'bingos'}) — paid out
+                  directly by COMBO.BINGO.
+                </p>
+              )}
             </div>
           )}
 
           {actionError && <p className="error">{actionError}</p>}
           {statusMsg && <p className="muted small">{statusMsg}</p>}
         </section>
+      )}
+
+      {!card && (player || viewOnly) && !statusMsg && (
+        <section className="screen admin-section">
+          <p className="muted small">Dealing your card…</p>
+        </section>
+      )}
+      {!card && statusMsg && (
+        <section className="screen admin-section">
+          <p className="error small">{statusMsg}</p>
+        </section>
+      )}
+
+      {fillPreviousOpen && (
+        <div
+          className="bingo-modal-backdrop"
+          onClick={() => setFillPreviousOpen(false)}
+        >
+          <div className="bingo-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="card-header">
+              <h2>Fill your card first</h2>
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => setFillPreviousOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+            <p>
+              You must fill your previous card to remain eligible for bonus
+              multipliers.
+            </p>
+          </div>
+        </div>
       )}
 
       {detailsOpen && card && (
@@ -1114,23 +1347,29 @@ export default function CardDetailScreen({ cardId }: Props) {
               </button>
             </div>
             <div className="admin-kv">
-              <div>ID</div>
-              <div className="mono">#{cardId.toString()}</div>
+              <div>Pool</div>
+              <div className="mono">{card.poolId}</div>
+              <div>Card</div>
+              <div className="mono">
+                #{card.cardIndex + 1} of {Math.max(card.cardCount, card.cardIndex + 1)}
+              </div>
               <div>Player</div>
               <div className="mono">{shortAddress(card.player)}</div>
-              <div>Ref code</div>
-              <div className="mono">{card.refCode}</div>
-              <div>Sponsor balance</div>
-              <div className="mono">{fmtUnits(card.sponsorBalance)}</div>
-              <div>Revealed</div>
-              <div className="mono">{card.revealed ? 'yes' : 'no'}</div>
-              <div>Sides declared</div>
-              <div className="mono">{card.sidesDeclared ? 'yes' : 'no'}</div>
-              <div>Lines funded</div>
-              <div className="mono">{lineCount} / 10</div>
-              <div>Expires at</div>
+              <div>Card price</div>
+              <div className="mono">{fmtUnits(cardPriceWei ?? undefined)}</div>
+              <div>Submitted</div>
               <div className="mono">
-                {new Date(Number(card.expiresAt) * 1000).toLocaleString()}
+                {card.submittedAt
+                  ? new Date(card.submittedAt).toLocaleString()
+                  : 'no'}
+              </div>
+              <div>Lines funded</div>
+              <div className="mono">
+                {lineCount} / {card.lines.length}
+              </div>
+              <div>Pool cutoff</div>
+              <div className="mono">
+                {new Date(card.cutoff * 1000).toLocaleString()}
               </div>
             </div>
           </div>

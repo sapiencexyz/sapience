@@ -1,0 +1,16 @@
+{
+  "poolId": "world-cup-2026-06-10",
+  "cutoff": 1781200800,
+  "minCardPriceWei": "1000000000000000000",
+  "referralBps": 200,
+  "multiplierBps": [
+    0, 0, 20000, 30000, 40000, 50000, 100000, 250000, 500000, 750000, 1000000
+  ],
+  "conditions": [
+    {
+      "conditionId": "0xfe6b62eb04131454b02250536badc72dbb7050dec35a8a4fe224691789aa49a4",
+      "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+      "shortName": "Example condition 1"
+    }
+  ]
+}

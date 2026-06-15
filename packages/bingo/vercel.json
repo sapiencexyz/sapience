@@ -1,7 +1,21 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "vite",
-  "buildCommand": "pnpm --filter @sapience/sdk run build:lib && pnpm --filter @sapience/bingo run build",
+  "framework": null,
+  "buildCommand": "cd ../.. && pnpm --filter @sapience/sdk run build:lib && pnpm --filter @sapience/bingo run build",
   "outputDirectory": "dist",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "functions": {
+    "api/index.ts": {
+      "maxDuration": 300
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ]
 }

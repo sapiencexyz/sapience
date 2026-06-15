@@ -12,6 +12,7 @@ interface NavLink {
 
 const LINKS: NavLink[] = [
   { href: '/', label: 'Draw', match: ['/'], exact: true },
+  { href: '/card', label: 'My Card', match: ['/card'] },
   { href: '/refer', label: 'Refer', match: ['/refer'] },
   { href: '/admin', label: 'Admin', match: ['/admin'] },
 ];
