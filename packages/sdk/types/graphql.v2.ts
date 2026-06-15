@@ -2061,6 +2061,13 @@ export type VaultStat = {
   timestamp: Scalars['UnixSeconds']['output'];
   /** Liquid collateral not yet deployed to escrow. `balance + deployed` is AUM. */
   undeployedCollateral: Scalars['BigInt']['output'];
+  /**
+   * wUSDe owed to the vault on resolved-but-not-yet-redeemed winning sides,
+   * net of what it has already claimed. The dashboard's TVL line adds this to
+   * `balance + deployedCollateral` so funds that have settled in the vault's
+   * favor but await an indexed redeem are not transiently dropped.
+   */
+  unredeemedClaim: Scalars['BigInt']['output'];
   withdrawals: Scalars['BigInt']['output'];
 };
 

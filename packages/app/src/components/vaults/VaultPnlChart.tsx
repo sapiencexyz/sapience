@@ -19,10 +19,8 @@ import {
   calculateVaultPnlHeadlineApy,
   computeVaultPnlYDomain,
 } from './vaultPnlChartUtils';
-import {
-  useProtocolStats,
-  type ProtocolStat,
-} from '~/hooks/graphql/useAnalytics';
+import { useVaultStats, type VaultStat } from '~/hooks/graphql/useAnalytics';
+import { toVaultStatPoint } from '~/lib/adapters/vaultStat';
 import Loader from '~/components/shared/Loader';
 import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
 import { type Period } from '~/components/shared/PeriodFilter';
@@ -160,8 +158,8 @@ const CHART_AXIS_STYLE = {
 const CHART_MARGIN = { top: 10, right: 0, left: -15, bottom: 0 };
 
 type VaultPnlChartProps = {
-  /** Optional external protocol stats data. If not provided, will fetch internally. */
-  protocolStats?: ProtocolStat[];
+  /** Optional external vault stats series. If not provided, will fetch internally. */
+  vaultStats?: VaultStat[];
   /** Whether the data is loading */
   isLoading?: boolean;
   /** Chart height in pixels (ignored if className includes flex-1) */
@@ -177,7 +175,7 @@ type VaultPnlChartProps = {
 };
 
 export default function VaultPnlChart({
-  protocolStats: externalStats,
+  vaultStats: externalStats,
   isLoading: externalLoading,
   height = 200,
   className,
@@ -194,11 +192,11 @@ export default function VaultPnlChart({
   // scale is undefined. Symlog stays linear near zero and log beyond it.
   const [logScale, setLogScale] = useState(false);
 
-  // Use internal fetch if no external data provided
-  const { data: internalStats, isLoading: internalLoading } =
-    useProtocolStats();
+  // Use internal fetch if no external data provided. With no address the hook
+  // is disabled and yields no data — callers that want a series pass it in.
+  const { data: internalStats, isLoading: internalLoading } = useVaultStats();
 
-  const protocolStats = externalStats ?? internalStats;
+  const vaultStats = externalStats ?? internalStats;
   const isLoading = externalLoading ?? internalLoading;
 
   // Trim pre-activity snapshots for every period so % mode and APY anchor off
@@ -209,12 +207,12 @@ export default function VaultPnlChart({
   const chartData = useMemo(
     () =>
       buildVaultPnlChartData(
-        protocolStats,
+        vaultStats?.map(toVaultStatPoint),
         period,
         Math.floor(Date.now() / 1000),
         chartAnchorSec
       ),
-    [protocolStats, period, chartAnchorSec]
+    [vaultStats, period, chartAnchorSec]
   );
 
   // Headline APY uses wall-clock now for elapsed-days so it doesn't snap to
