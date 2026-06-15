@@ -1,5 +1,6 @@
 import type { Request } from 'express';
 import prisma from '../core/db';
+import type { GraphQLLoaders } from './sdl/resolvers/loaders';
 import { SharedSchema } from './sharedSchema';
 import { ApolloServer } from '@apollo/server';
 import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';
@@ -43,6 +44,11 @@ export interface ApolloContext {
    * need a place to stash the map for the field resolver to read.
    */
   pickConditions?: Map<string, unknown>;
+  /**
+   * Per-request DataLoaders for keyed lookups used by the v2 endpoint.
+   * Optional because some v1 tests construct a narrow context object.
+   */
+  loaders?: GraphQLLoaders;
 }
 
 export const initializeApolloServer = async () => {

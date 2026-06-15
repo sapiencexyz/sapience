@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { GET_ACCURACY_LEADERBOARD } from '@sapience/sdk/queries';
+import { GET_ACCURACY_LEADERBOARD } from '../fixtures/v1-operations';
 import { executeOperation } from '../../helpers/testApollo';
 import { stabilize } from '../../helpers/stableSerializer';
 

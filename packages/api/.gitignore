@@ -8,6 +8,7 @@ data
 
 /generated/prisma
 /src/graphql/sdl/__generated__
+/src/graphql/v2/__generated__
 
 tsconfig.tsbuildinfo
 

@@ -2,6 +2,7 @@ import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import {
   predictionMarketVault,
   predictionMarketVaultStrategyB,
+  singleLegVault,
 } from '@sapience/sdk/contracts';
 
 // Per-vault "start of visible history" for the Vault PnL chart. A vault may
@@ -12,6 +13,7 @@ import {
 const CORE_VAULT_ADDRESS = predictionMarketVault[DEFAULT_CHAIN_ID]?.address;
 const EDGE_VAULT_ADDRESS =
   predictionMarketVaultStrategyB[DEFAULT_CHAIN_ID]?.address;
+const SINGLE_LEG_VAULT_ADDRESS = singleLegVault[DEFAULT_CHAIN_ID]?.address;
 
 export const VAULT_PNL_ANCHORS_SEC: Record<string, number> = {
   ...(CORE_VAULT_ADDRESS && {
@@ -22,6 +24,11 @@ export const VAULT_PNL_ANCHORS_SEC: Record<string, number> = {
   ...(EDGE_VAULT_ADDRESS && {
     [EDGE_VAULT_ADDRESS.toLowerCase()]: Math.floor(
       Date.UTC(2026, 4, 13) / 1000
+    ),
+  }),
+  ...(SINGLE_LEG_VAULT_ADDRESS && {
+    [SINGLE_LEG_VAULT_ADDRESS.toLowerCase()]: Math.floor(
+      Date.UTC(2026, 5, 4) / 1000
     ),
   }),
 };

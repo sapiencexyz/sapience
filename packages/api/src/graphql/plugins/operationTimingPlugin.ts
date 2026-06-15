@@ -34,15 +34,32 @@ const SENSITIVE_VAR_NAMES = new Set([
   'counterparty',
 ]);
 
+// Wallet addresses are sensitive. v1 passed them as top-level variables
+// (holder/buyer/…) so a flat redactor sufficed; v2 moved them inside
+// `filter` input objects (filter:{ holder }), so redaction must follow them
+// however deep they nest. redactDeep walks the whole variable tree.
+const redactDeep = (value: unknown): unknown => {
+  if (Array.isArray(value)) return value.map(redactDeep);
+  if (value !== null && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([k, v]) =>
+        SENSITIVE_VAR_NAMES.has(k)
+          ? [k, '[REDACTED]']
+          : // A non-sensitive key (e.g. `filter`) can still hold a sensitive
+            // one deeper down — recurse so nested addresses get caught. A
+            // scalar `v` returns unchanged via the base case.
+            [k, redactDeep(v)]
+      )
+    );
+  }
+  return value;
+};
+
 const sanitizeVariables = (
   vars: Readonly<Record<string, unknown>> | undefined
 ): Record<string, unknown> => {
   if (!vars) return {};
-  return Object.fromEntries(
-    Object.entries(vars).map(([k, v]) =>
-      SENSITIVE_VAR_NAMES.has(k) ? [k, '[REDACTED]'] : [k, v]
-    )
-  );
+  return redactDeep(vars) as Record<string, unknown>;
 };
 
 const truncate = (s: string | undefined, max = 120): string | undefined => {

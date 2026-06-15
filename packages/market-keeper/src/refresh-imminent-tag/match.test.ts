@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   questionMentionsImminentDate,
+  conditionMentionsImminentDate,
   computeDesiredTags,
   TODAY_TAG,
 } from './match';
@@ -162,6 +163,68 @@ describe('questionMentionsImminentDate', () => {
     it('returns false for empty question', () => {
       expect(questionMentionsImminentDate('', NOW)).toBe(false);
     });
+  });
+});
+
+describe('conditionMentionsImminentDate (question OR description)', () => {
+  it('matches when only the question mentions the date', () => {
+    expect(
+      conditionMentionsImminentDate(
+        'Will SpaceX launch on May 18?',
+        'Resolves to the launch outcome.',
+        NOW
+      )
+    ).toBe(true);
+  });
+
+  it('matches when only the description mentions the date', () => {
+    expect(
+      conditionMentionsImminentDate(
+        'Will SpaceX launch this week?',
+        'This market resolves YES if a launch occurs on or before 2026-05-19.',
+        NOW
+      )
+    ).toBe(true);
+  });
+
+  it('matches when the description uses the literal word "today"', () => {
+    expect(
+      conditionMentionsImminentDate(
+        'Will the Fed cut rates?',
+        'Resolution is based on the announcement made today.',
+        NOW
+      )
+    ).toBe(true);
+  });
+
+  it('returns false when neither question nor description matches', () => {
+    expect(
+      conditionMentionsImminentDate(
+        'Will SpaceX launch this year?',
+        'Resolves based on the May 20 launch window.',
+        NOW
+      )
+    ).toBe(false);
+  });
+
+  it('does not straddle the question/description boundary', () => {
+    // Question ends with the month, description starts with the day —
+    // scanning them separately must NOT read this as "May 18".
+    expect(
+      conditionMentionsImminentDate('Will it happen in May', '18 markets?', NOW)
+    ).toBe(false);
+  });
+
+  it('tolerates a null/undefined/empty description', () => {
+    expect(
+      conditionMentionsImminentDate('Will it rain today?', null, NOW)
+    ).toBe(true);
+    expect(
+      conditionMentionsImminentDate('Will it rain today?', undefined, NOW)
+    ).toBe(true);
+    expect(conditionMentionsImminentDate('Nothing imminent', '', NOW)).toBe(
+      false
+    );
   });
 });
 

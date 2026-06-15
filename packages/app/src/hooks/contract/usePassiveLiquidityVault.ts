@@ -57,6 +57,10 @@ export function usePassiveLiquidityVault(
     isLoading: isLoadingVaultData,
     refetch: refetchVaultData,
   } = useReadContracts({
+    // All-or-nothing: a failed sub-read must fail (and retry) the whole
+    // query. With the default allowFailure: true, a single flaky RPC call
+    // silently parses as 0 and renders a wrong vault balance.
+    allowFailure: false,
     contracts: [
       {
         abi: VAULT_ABI,
@@ -117,6 +121,7 @@ export function usePassiveLiquidityVault(
     isLoading: isLoadingUserData,
     refetch: refetchUserData,
   } = useReadContracts({
+    allowFailure: false,
     contracts: currentAddress
       ? [
           {
@@ -168,6 +173,7 @@ export function usePassiveLiquidityVault(
 
   const { data: pendingMapping, refetch: refetchPendingMapping } =
     useReadContracts({
+      allowFailure: false,
       contracts: currentAddress
         ? [
             {
@@ -186,6 +192,7 @@ export function usePassiveLiquidityVault(
 
   const { data: lastInteractionData, isPending: isLastInteractionPending } =
     useReadContracts({
+      allowFailure: false,
       contracts: currentAddress
         ? [
             {
@@ -221,27 +228,26 @@ export function usePassiveLiquidityVault(
 
   const parsedVaultData: VaultData | null = vaultData
     ? {
-        availableAssets: (vaultData[0]?.result as bigint) || 0n,
-        totalSupply: (vaultData[1]?.result as bigint) || 0n,
+        availableAssets: (vaultData[0] as bigint) || 0n,
+        totalSupply: (vaultData[1] as bigint) || 0n,
         totalLiquidValue: (() => {
-          const r = vaultData[2]?.result;
+          const r = vaultData[2];
           if (Array.isArray(r)) return (r as bigint[])[0] ?? 0n;
           return (r as bigint) || 0n;
         })(),
-        paused: (vaultData[3]?.result as boolean) || false,
+        paused: (vaultData[3] as boolean) || false,
         manager:
-          (vaultData[4]?.result as Address) ||
+          (vaultData[4] as Address) ||
           '0x0000000000000000000000000000000000000000',
         asset:
-          (vaultData[5]?.result as Address) ||
+          (vaultData[5] as Address) ||
           '0x0000000000000000000000000000000000000000',
-        depositInteractionDelay: (vaultData[6]?.result as bigint) || 0n,
-        expirationTime: (vaultData[7]?.result as bigint) || 0n,
+        depositInteractionDelay: (vaultData[6] as bigint) || 0n,
+        expirationTime: (vaultData[7] as bigint) || 0n,
       }
     : null;
 
-  const lastInteractionAt: bigint =
-    (lastInteractionData?.[0]?.result as bigint) || 0n;
+  const lastInteractionAt: bigint = (lastInteractionData?.[0] as bigint) || 0n;
 
   const interactionDelay: bigint =
     parsedVaultData?.depositInteractionDelay || 0n;
@@ -257,7 +263,7 @@ export function usePassiveLiquidityVault(
     interactionDelayRemainingSec > 0;
 
   const parsedUserData = userData
-    ? { balance: (userData[0]?.result as bigint) || 0n }
+    ? { balance: (userData[0] as bigint) || 0n }
     : null;
 
   const assetDecimals = 18;
@@ -271,7 +277,7 @@ export function usePassiveLiquidityVault(
     typeof wusdeAllowance === 'bigint' ? wusdeAllowance : 0n;
 
   const pendingRequest = useMemo(
-    () => parsePendingRequest(pendingMapping?.[0]?.result),
+    () => parsePendingRequest(pendingMapping?.[0]),
     [pendingMapping]
   );
 

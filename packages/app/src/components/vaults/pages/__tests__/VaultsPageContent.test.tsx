@@ -30,7 +30,8 @@ vi.mock('~/hooks/useRestrictedJurisdiction', () => ({
 }));
 
 vi.mock('~/hooks/contract/usePassiveLiquidityVault', () => ({
-  usePassiveLiquidityVault: () => mockUsePassiveLiquidityVault(),
+  usePassiveLiquidityVault: (args: unknown) =>
+    mockUsePassiveLiquidityVault(args),
 }));
 
 vi.mock('~/hooks/blockchain/useCurrentAddress', () => ({
@@ -38,7 +39,8 @@ vi.mock('~/hooks/blockchain/useCurrentAddress', () => ({
 }));
 
 vi.mock('~/hooks/graphql/useAnalytics', () => ({
-  useProtocolStats: () => mockUseProtocolStats(),
+  useProtocolStats: (vaultAddress: string | undefined) =>
+    mockUseProtocolStats(vaultAddress),
   getProtocolTvlWei: (
     stat: { escrowBalance?: string; vaultAvailableAssets?: string } | null
   ) =>
@@ -67,7 +69,7 @@ vi.mock('@sapience/sdk/contracts', () => ({
   predictionMarketVaultStrategyB: {
     42161: { address: '0xStrategyBVault' },
   },
-  singleLegVault: {},
+  singleLegVault: { 42161: { address: '0xSingleLegVault' } },
 }));
 
 vi.mock('@sapience/sdk/constants', () => ({
@@ -248,13 +250,8 @@ import VaultsPageContent from '../VaultsPageContent';
 // blocked by the whitelist check.
 const WHITELISTED_ADDRESS = '0xdb5af497a73620d881561edb508012a5f84e9ba2';
 
-function setDefaults() {
-  mockUseCurrentAddress.mockReturnValue({
-    currentAddress: WHITELISTED_ADDRESS,
-    isConnected: true,
-  });
-
-  mockUsePassiveLiquidityVault.mockReturnValue({
+function passiveVaultDefaults() {
+  return {
     vaultData: { totalLiquidValue: 1000n * 10n ** 18n, paused: false },
     userData: { balance: 100n * 10n ** 18n },
     pendingRequest: null,
@@ -274,7 +271,16 @@ function setDefaults() {
     interactionDelay: 0n,
     isInteractionDelayActive: false,
     lastInteractionAt: 0n,
+  };
+}
+
+function setDefaults() {
+  mockUseCurrentAddress.mockReturnValue({
+    currentAddress: WHITELISTED_ADDRESS,
+    isConnected: true,
   });
+
+  mockUsePassiveLiquidityVault.mockReturnValue(passiveVaultDefaults());
 
   mockUseProtocolStats.mockReturnValue({
     data: [],
@@ -339,6 +345,91 @@ describe('VaultsPageContent geofence', () => {
     expect(depositBtn).not.toBeDisabled();
   });
 
+  it('hides the options and singles vaults from tabs', () => {
+    mockUseRestrictedJurisdiction.mockReturnValue({
+      isRestricted: false,
+      isPermitLoading: false,
+      permitData: { permitted: true },
+      permitError: null,
+    });
+
+    render(<VaultsPageContent />);
+
+    expect(
+      screen.getByRole('button', { name: 'Core Vault' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Edge Vault' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Options Vault' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Singles Vault' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('accepts a hidden known/indexed vault address from the URL without rewriting it', () => {
+    const singleLegVault = '0xSingleLegVault';
+    mockSearchParamsToString.mockReturnValue(`address=${singleLegVault}`);
+    mockUseRestrictedJurisdiction.mockReturnValue({
+      isRestricted: false,
+      isPermitLoading: false,
+      permitData: { permitted: true },
+      permitError: null,
+    });
+
+    render(<VaultsPageContent />);
+
+    expect(screen.getByText('Singles Vault')).toBeInTheDocument();
+    expect(mockRouterReplace).not.toHaveBeenCalled();
+    expect(
+      mockUsePassiveLiquidityVault.mock.calls.some(
+        ([args]) =>
+          (args as { vaultAddress?: string }).vaultAddress === singleLegVault
+      )
+    ).toBe(true);
+    expect(mockUseProtocolStats).toHaveBeenCalledWith(singleLegVault);
+  });
+
+  it('accepts the hidden options vault address from the URL without showing its tab', () => {
+    const optionsVault = '0xOptionsVault';
+    mockSearchParamsToString.mockReturnValue(`address=${optionsVault}`);
+    mockUseRestrictedJurisdiction.mockReturnValue({
+      isRestricted: false,
+      isPermitLoading: false,
+      permitData: { permitted: true },
+      permitError: null,
+    });
+
+    render(<VaultsPageContent />);
+
+    expect(screen.getByText('Options Vault')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Options Vault' })
+    ).not.toBeInTheDocument();
+    expect(mockRouterReplace).not.toHaveBeenCalled();
+    expect(mockUseProtocolStats).toHaveBeenCalledWith(optionsVault);
+  });
+
+  it('rewrites an unknown vault address to the default vault', () => {
+    const unknownVault = '0x0000000000000000000000000000000000000abc';
+    mockSearchParamsToString.mockReturnValue(`address=${unknownVault}`);
+    mockUseRestrictedJurisdiction.mockReturnValue({
+      isRestricted: false,
+      isPermitLoading: false,
+      permitData: { permitted: true },
+      permitError: null,
+    });
+
+    render(<VaultsPageContent />);
+
+    expect(screen.queryByText('Custom Vault')).not.toBeInTheDocument();
+    expect(mockRouterReplace).toHaveBeenCalledWith('/vaults?address=0xvault', {
+      scroll: false,
+    });
+  });
+
   it('defaults to the first vault tab without rewriting the URL when no address query param is present', () => {
     mockUseRestrictedJurisdiction.mockReturnValue({
       isRestricted: false,
@@ -350,5 +441,73 @@ describe('VaultsPageContent geofence', () => {
     render(<VaultsPageContent />);
 
     expect(mockRouterReplace).not.toHaveBeenCalled();
+  });
+});
+
+describe('VaultsPageContent vault balance display', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSearchParamsToString.mockReturnValue('');
+    setDefaults();
+    mockUseRestrictedJurisdiction.mockReturnValue({
+      isRestricted: false,
+      isPermitLoading: false,
+      permitData: { permitted: true },
+      permitError: null,
+    });
+    // Liquid (on-chain) = 1,000; deployed (GraphQL) = 500 -> balance 1,500.
+    mockUseProtocolStats.mockReturnValue({
+      data: [{ vaultDeployed: (500n * 10n ** 18n).toString() }],
+      isLoading: false,
+    });
+  });
+
+  it('renders the balance and progress bar once both sources have loaded', () => {
+    render(<VaultsPageContent />);
+
+    expect(screen.getByText('1,500.00 USDe')).toBeInTheDocument();
+    expect(screen.getByTestId('vault-balance-bar')).toBeInTheDocument();
+    expect(screen.getByText(/deployed/)).toBeInTheDocument();
+  });
+
+  it('fades the balance, bar, and deployed line in once loaded', () => {
+    render(<VaultsPageContent />);
+
+    const fadeIn = 'animate-in fade-in duration-200';
+    expect(screen.getByText('1,500.00 USDe').className).toContain(fadeIn);
+    expect(
+      screen.getByTestId('vault-balance-bar').parentElement?.className
+    ).toContain(fadeIn);
+    expect(screen.getByText(/deployed/).className).toContain(fadeIn);
+  });
+
+  it('hides the balance number and progress bar until the on-chain read has loaded', () => {
+    mockUsePassiveLiquidityVault.mockReturnValue({
+      ...passiveVaultDefaults(),
+      vaultData: null,
+    });
+
+    render(<VaultsPageContent />);
+
+    // Without the liquid value, the sum would misleadingly show only the
+    // deployed portion (500.00) - it must not render at all.
+    expect(screen.queryByText('500.00 USDe')).toBeNull();
+    expect(screen.queryByTestId('vault-balance-bar')).toBeNull();
+    expect(screen.queryByText(/deployed/)).toBeNull();
+  });
+
+  it('hides the balance number and progress bar until protocol stats have loaded', () => {
+    mockUseProtocolStats.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+    });
+
+    render(<VaultsPageContent />);
+
+    // Without the deployed value, the sum would misleadingly show only the
+    // liquid portion (1,000.00) - it must not render at all.
+    expect(screen.queryByText('1,000.00 USDe')).toBeNull();
+    expect(screen.queryByTestId('vault-balance-bar')).toBeNull();
+    expect(screen.queryByText(/deployed/)).toBeNull();
   });
 });

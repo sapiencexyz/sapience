@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { GET_CONDITION_GROUPS } from '@sapience/sdk/queries';
+import { GET_CONDITION_GROUPS } from '../fixtures/v1-operations';
 import { executeOperation } from '../../helpers/testApollo';
 import { stabilize } from '../../helpers/stableSerializer';
 
