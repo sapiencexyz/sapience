@@ -3,9 +3,9 @@ import { graphqlRequestV2 } from './client/graphqlClient';
 /**
  * Protocol-wide analytics, fetched from the v2 `protocol` singleton.
  *
- * Vault analytics deliberately do NOT live here — `fetchProtocolStats`
- * (v1, `analytics.ts`) remains the source for the vault pages. This module
- * only backs the protocol analytics dashboard.
+ * Vault analytics deliberately do NOT live here — `fetchVaultStats`
+ * (v2, `vault.ts`) backs the vault pages via `vault(address:).statsHistory`.
+ * This module only backs the protocol analytics dashboard.
  */
 
 export interface ProtocolAnalyticsStat {

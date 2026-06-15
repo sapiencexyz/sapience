@@ -132,6 +132,10 @@ const mapVaultStat = (row: SnapshotRow) => ({
   positionsLost: row.vaultPositionsLost,
   collateralWon: BigInt(row.vaultCollateralWon ?? '0'),
   collateralLost: BigInt(row.vaultCollateralLost ?? '0'),
+  // wUSDe owed to the vault on resolved-but-not-yet-redeemed winning sides,
+  // net of what it has already claimed. Also a term in `cumulativePnl` above;
+  // surfaced on its own so the vault dashboard's TVL line can include it.
+  unredeemedClaim: BigInt(row.vaultUnredeemedClaim ?? '0'),
 });
 
 /**
