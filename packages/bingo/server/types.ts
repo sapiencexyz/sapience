@@ -6,6 +6,9 @@ export interface PoolCondition {
   question?: string;
   shortName?: string;
   imageUrl?: string;
+  /** Estimated YES probability (0–1) for the market, if known. Surfaced as
+   *  the cell's odds badge on the frontend. */
+  estimatedPrice?: number;
   /** Unix seconds; informational (the pool cutoff is the enforced gate). */
   endTime?: number;
 }

@@ -62,6 +62,8 @@ export interface BackendCell {
   shortName?: string;
   question?: string;
   imageUrl?: string;
+  /** Estimated YES probability (0–1) for the market, if known. */
+  estimatedPrice?: number;
   /** Unix seconds; informational. */
   endTime?: number;
 }
