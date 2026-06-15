@@ -25,10 +25,20 @@ export interface VaultStat {
 
 // `statsHistory` defaults to TIMESTAMP DESC; the chart wants ascending, so the
 // mapper sorts oldest-first (mirroring `protocol.ts`'s statsHistory handling).
+//
+// The resolver caps `first` per page (daily snapshots, bounded series), so we
+// page on `pageInfo` until exhausted rather than over-fetching a single page —
+// otherwise a vault older than the cap would silently lose the earliest chart
+// history.
 export const GET_VAULT_STATS = /* GraphQL */ `
-  query VaultStats($address: Address!, $chainId: Int, $first: Int!) {
+  query VaultStats(
+    $address: Address!
+    $chainId: Int
+    $first: Int!
+    $after: String
+  ) {
     vault(address: $address, chainId: $chainId) {
-      statsHistory(first: $first) {
+      statsHistory(first: $first, after: $after) {
         nodes {
           timestamp
           balance
@@ -36,6 +46,10 @@ export const GET_VAULT_STATS = /* GraphQL */ `
           undeployedCollateral
           cumulativePnl
           unredeemedClaim
+        }
+        pageInfo {
+          hasNextPage
+          endCursor
         }
       }
     }
@@ -53,7 +67,10 @@ type WireVaultStat = {
 
 type VaultStatsResponse = {
   vault: {
-    statsHistory: { nodes: WireVaultStat[] };
+    statsHistory: {
+      nodes: WireVaultStat[];
+      pageInfo: { hasNextPage: boolean; endCursor: string | null };
+    };
   } | null;
 };
 
@@ -73,20 +90,36 @@ function toVaultStat(node: WireVaultStat): VaultStat {
 }
 
 /**
- * Fetch a vault's snapshot series, oldest-first. Returns an empty array when
- * the address is not a configured vault (the v2 `vault` field resolves null).
+ * Fetch a vault's full snapshot series, oldest-first. Pages through
+ * `statsHistory` until the connection is exhausted (the resolver caps page
+ * size), so the chart gets the complete history regardless of vault age.
+ * Returns an empty array when the address is not a configured vault (the v2
+ * `vault` field resolves null).
  */
 export async function fetchVaultStats(
   address: string,
   chainId?: number,
-  first = 1000
+  pageSize = 365
 ): Promise<VaultStat[]> {
-  const data = await graphqlRequestV2<VaultStatsResponse>(GET_VAULT_STATS, {
-    address: address.toLowerCase(),
-    chainId,
-    first,
-  });
-  const nodes = data?.vault?.statsHistory?.nodes;
-  if (!Array.isArray(nodes)) return [];
+  const nodes: WireVaultStat[] = [];
+  let after: string | null = null;
+  // Bound the loop defensively against a non-progressing cursor; a daily
+  // series can't realistically exceed a few thousand snapshots.
+  for (let page = 0; page < 50; page += 1) {
+    const data: VaultStatsResponse = await graphqlRequestV2<VaultStatsResponse>(
+      GET_VAULT_STATS,
+      {
+        address: address.toLowerCase(),
+        chainId,
+        first: pageSize,
+        after,
+      }
+    );
+    const history = data?.vault?.statsHistory;
+    if (!history || !Array.isArray(history.nodes)) break;
+    nodes.push(...history.nodes);
+    if (!history.pageInfo?.hasNextPage || !history.pageInfo.endCursor) break;
+    after = history.pageInfo.endCursor;
+  }
   return nodes.map(toVaultStat).sort((a, b) => a.timestamp - b.timestamp);
 }

@@ -181,9 +181,32 @@ export const Vault: VaultResolvers = {
     const after = args.after ? decodeCursor(args.after) : null;
     const skip = after && /^\d+$/.test(after.k) ? Number(after.k) + 1 : 0;
 
+    // Query the vault's FULL address history — current primary plus every
+    // demoted-to-legacy address — mirroring v1's `protocolStats`. Without the
+    // legacies, an SDK redeploy orphans the entire historical chart until a
+    // re-stamping backfill runs. The address set is per-family by construction,
+    // so vault families never bleed across each other.
+    const primary = row.address.toLowerCase();
+    const match = getConfiguredVaults(row.chainId).find(
+      (v) =>
+        v.address === primary ||
+        (v.config.legacy ?? []).some(
+          (le) => normalizeLegacyEntry(le).address.toLowerCase() === primary
+        )
+    );
+    const vaultAddresses = match
+      ? [
+          match.address,
+          ...(match.config.legacy ?? []).map(
+            (le) => normalizeLegacyEntry(le).address
+          ),
+        ].map((a) => a.toLowerCase())
+      : [primary];
+    const currentPrimary = match?.address.toLowerCase() ?? primary;
+
     const where = {
       chainId: row.chainId,
-      vaultAddress: row.address.toLowerCase(),
+      vaultAddress: { in: vaultAddresses },
       ...(args.filter?.timestamp
         ? {
             timestamp: {
@@ -198,18 +221,29 @@ export const Vault: VaultResolvers = {
         : {}),
     };
 
-    const [rows, totalCount] = await Promise.all([
-      prisma.protocolStatsSnapshot.findMany({
-        where,
-        orderBy: { timestamp: 'desc' },
-        skip,
-        take: first + 1,
-      }),
-      prisma.protocolStatsSnapshot.count({ where }),
-    ]);
+    // Snapshots are a bounded daily series, so fetch the full set and dedupe
+    // in memory: a redeploy day can carry rows under multiple addresses, and
+    // the current-primary row wins (matches the post-redeploy backfill). DB
+    // skip/take can't dedupe-then-page correctly, so paginate after the dedupe.
+    const allRows = await prisma.protocolStatsSnapshot.findMany({
+      where,
+      orderBy: { timestamp: 'desc' },
+    });
+    const dedup = new Map<number, (typeof allRows)[number]>();
+    for (const s of allRows) {
+      const existing = dedup.get(s.timestamp);
+      if (!existing || s.vaultAddress.toLowerCase() === currentPrimary) {
+        dedup.set(s.timestamp, s);
+      }
+    }
+    const deduped = Array.from(dedup.values()).sort(
+      (a, b) => b.timestamp - a.timestamp
+    );
+    const totalCount = deduped.length;
+    const pageRows = deduped.slice(skip, skip + first + 1);
 
     return buildConnection({
-      rows,
+      rows: pageRows,
       first,
       totalCount,
       getNode: (row) => mapVaultStat(row),
