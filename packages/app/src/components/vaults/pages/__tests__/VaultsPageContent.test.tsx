@@ -9,14 +9,16 @@ const {
   mockUseRestrictedJurisdiction,
   mockUsePassiveLiquidityVault,
   mockUseCurrentAddress,
-  mockUseProtocolStats,
+  mockUseVaultStats,
+  mockUseProtocolAnalytics,
   mockRouterReplace,
   mockSearchParamsToString,
 } = vi.hoisted(() => ({
   mockUseRestrictedJurisdiction: vi.fn(),
   mockUsePassiveLiquidityVault: vi.fn(),
   mockUseCurrentAddress: vi.fn(),
-  mockUseProtocolStats: vi.fn(),
+  mockUseVaultStats: vi.fn(),
+  mockUseProtocolAnalytics: vi.fn(),
   mockRouterReplace: vi.fn(),
   mockSearchParamsToString: vi.fn(() => ''),
 }));
@@ -39,15 +41,9 @@ vi.mock('~/hooks/blockchain/useCurrentAddress', () => ({
 }));
 
 vi.mock('~/hooks/graphql/useAnalytics', () => ({
-  useProtocolStats: (vaultAddress: string | undefined) =>
-    mockUseProtocolStats(vaultAddress),
-  getProtocolTvlWei: (
-    stat: { escrowBalance?: string; vaultAvailableAssets?: string } | null
-  ) =>
-    stat
-      ? BigInt(stat.escrowBalance || '0') +
-        BigInt(stat.vaultAvailableAssets || '0')
-      : 0n,
+  useVaultStats: (vaultAddress: string | undefined) =>
+    mockUseVaultStats(vaultAddress),
+  useProtocolAnalytics: () => mockUseProtocolAnalytics(),
 }));
 
 vi.mock('~/lib/context/ConnectDialogContext', () => ({
@@ -282,8 +278,13 @@ function setDefaults() {
 
   mockUsePassiveLiquidityVault.mockReturnValue(passiveVaultDefaults());
 
-  mockUseProtocolStats.mockReturnValue({
+  mockUseVaultStats.mockReturnValue({
     data: [],
+    isLoading: false,
+  });
+
+  mockUseProtocolAnalytics.mockReturnValue({
+    data: { stats: { totalValueLocked: '0' } },
     isLoading: false,
   });
 }
@@ -389,7 +390,7 @@ describe('VaultsPageContent geofence', () => {
           (args as { vaultAddress?: string }).vaultAddress === singleLegVault
       )
     ).toBe(true);
-    expect(mockUseProtocolStats).toHaveBeenCalledWith(singleLegVault);
+    expect(mockUseVaultStats).toHaveBeenCalledWith(singleLegVault);
   });
 
   it('accepts the hidden options vault address from the URL without showing its tab', () => {
@@ -409,7 +410,7 @@ describe('VaultsPageContent geofence', () => {
       screen.queryByRole('button', { name: 'Options Vault' })
     ).not.toBeInTheDocument();
     expect(mockRouterReplace).not.toHaveBeenCalled();
-    expect(mockUseProtocolStats).toHaveBeenCalledWith(optionsVault);
+    expect(mockUseVaultStats).toHaveBeenCalledWith(optionsVault);
   });
 
   it('rewrites an unknown vault address to the default vault', () => {
@@ -456,8 +457,8 @@ describe('VaultsPageContent vault balance display', () => {
       permitError: null,
     });
     // Liquid (on-chain) = 1,000; deployed (GraphQL) = 500 -> balance 1,500.
-    mockUseProtocolStats.mockReturnValue({
-      data: [{ vaultDeployed: (500n * 10n ** 18n).toString() }],
+    mockUseVaultStats.mockReturnValue({
+      data: [{ deployedCollateral: (500n * 10n ** 18n).toString() }],
       isLoading: false,
     });
   });
@@ -497,7 +498,7 @@ describe('VaultsPageContent vault balance display', () => {
   });
 
   it('hides the balance number and progress bar until protocol stats have loaded', () => {
-    mockUseProtocolStats.mockReturnValue({
+    mockUseVaultStats.mockReturnValue({
       data: undefined,
       isLoading: true,
     });

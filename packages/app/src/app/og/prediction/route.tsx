@@ -25,7 +25,8 @@ import {
 import {
   PREDICTION_BY_ID_QUERY,
   CONDITIONS_BY_IDS_QUERY,
-  getGraphQLEndpoint,
+  getGraphQLEndpointV2,
+  toPredictionData,
   formatUnits,
   normalizeChoiceLabel,
   getChoiceTone,
@@ -54,7 +55,9 @@ export async function GET(req: Request) {
     // If predictionId is provided and we need data from it (no legs, or need to fill in missing data)
     if (predictionId) {
       try {
-        const graphqlEndpoint = getGraphQLEndpoint();
+        // Both legs run against /v2/graphql; the prediction node is mapped
+        // back to the v1-shaped PredictionData via the shared mapper.
+        const graphqlEndpoint = getGraphQLEndpointV2();
         let prediction: PredictionData | null = null;
 
         const response = await fetch(graphqlEndpoint, {
@@ -62,13 +65,14 @@ export async function GET(req: Request) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             query: PREDICTION_BY_ID_QUERY,
-            variables: { id: predictionId },
+            variables: { predictionId },
           }),
         });
 
         if (response.ok) {
           const result = await response.json();
-          prediction = result?.data?.prediction ?? null;
+          const node = result?.data?.prediction ?? null;
+          prediction = node ? toPredictionData(node) : null;
         }
 
         if (prediction) {
@@ -81,18 +85,21 @@ export async function GET(req: Request) {
             const conditionsMap = new Map<string, ConditionData>();
             if (conditionIds.length > 0) {
               try {
+                // v2 conditions connection: variables { ids }, nodes under
+                // data.conditions.nodes (the v1-era `where` variables made
+                // this leg dead — it silently rendered no questions).
                 const condResp = await fetch(graphqlEndpoint, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
                     query: CONDITIONS_BY_IDS_QUERY,
-                    variables: { where: { id: { in: conditionIds } } },
+                    variables: { ids: conditionIds },
                   }),
                 });
                 if (condResp.ok) {
                   const condResult = await condResp.json();
                   const conditions: ConditionData[] =
-                    condResult?.data?.conditions ?? [];
+                    condResult?.data?.conditions?.nodes ?? [];
                   for (const c of conditions) {
                     conditionsMap.set(c.id, c);
                   }

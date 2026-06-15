@@ -17,15 +17,22 @@ type CombinedConditionDetail = {
   category?: { slug?: string | null } | null;
 };
 
-const COMBINED_CONDITIONS_QUERY = /* GraphQL */ `
-  query CombinedConditions($where: ConditionWhereInput!) {
-    conditions(where: $where, take: 100) {
-      id
-      question
-      shortName
-      resolver
-      category {
-        slug
+// v2 document — untagged so graphql-eslint (pinned to the v1 schema) skips it.
+const COMBINED_CONDITIONS_QUERY = `
+  query CombinedConditions($ids: [Bytes!]!) {
+    conditions(
+      first: 100
+      orderBy: { field: CREATED_AT, direction: DESC }
+      filter: { conditionIds: $ids }
+    ) {
+      nodes {
+        id: conditionId
+        question
+        shortName
+        resolver
+        category {
+          slug
+        }
       }
     }
   }

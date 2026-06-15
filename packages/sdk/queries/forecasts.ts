@@ -1,20 +1,26 @@
 import { getAddress } from 'viem';
 import { FORECAST_SCHEMA_UID } from '../constants/resolver';
-import { graphqlRequest } from './client/graphqlClient';
+import { graphqlRequestV2 } from './client/graphqlClient';
 
 const DEFAULT_SCHEMA_UID = FORECAST_SCHEMA_UID;
 
-interface RawAttestation {
-  id: string;
+/**
+ * Wire shape of a v2 `Forecast` node (the subset selected by the documents
+ * below). v2 renames: v1 `prediction` → `value` (a probability STRING, not a
+ * binary outcome) and v1 `time` → `attestedAt` (epoch seconds). The numeric
+ * Prisma row id is not exposed in v2 — identity is the EAS `uid`.
+ */
+export interface ForecastNode {
   uid: string;
   attester: string;
-  time: number;
-  prediction: string;
-  comment: string;
-  conditionId?: string;
+  attestedAt: number;
+  value: string;
+  comment?: string | null;
+  conditionId?: string | null;
 }
 
 export type FormattedAttestation = {
+  /** EAS uid — v2 has no numeric attestation row id. */
   id: string;
   uid: string;
   attester: string;
@@ -26,70 +32,88 @@ export type FormattedAttestation = {
   conditionId?: string;
 };
 
-type AttestationsQueryResponse = {
-  attestations: RawAttestation[];
+export type ForecastPageInfo = {
+  hasNextPage: boolean;
+  endCursor: string | null;
 };
 
-export const GET_ATTESTATIONS_QUERY = /* GraphQL */ `
-  query FindAttestations($where: AttestationWhereInput!, $take: Int!) {
-    attestations(where: $where, orderBy: { time: desc }, take: $take) {
-      id
-      uid
-      attester
-      time
-      prediction
-      comment
-      conditionId
+export type ForecastPage = {
+  items: FormattedAttestation[];
+  pageInfo: ForecastPageInfo;
+};
+
+type ForecastsConnectionResponse = {
+  forecasts?: {
+    nodes?: ForecastNode[];
+    pageInfo?: { hasNextPage?: boolean; endCursor?: string | null };
+  } | null;
+};
+
+export const GET_FORECASTS_QUERY = `
+  query ForecastsList($filter: ForecastFilter, $first: Int!) {
+    forecasts(
+      first: $first
+      filter: $filter
+      orderBy: { field: ATTESTED_AT, direction: DESC }
+    ) {
+      nodes {
+        uid
+        attester
+        attestedAt
+        value
+        comment
+        conditionId
+      }
     }
   }
 `;
 
-export const GET_ATTESTATIONS_PAGINATED_QUERY = /* GraphQL */ `
-  query FindAttestationsPaginated(
-    $where: AttestationWhereInput!
-    $take: Int!
-    $cursor: AttestationWhereUniqueInput
-    $skip: Int
-    $orderBy: [AttestationOrderByWithRelationInput!]
+export const GET_FORECASTS_PAGINATED_QUERY = `
+  query ForecastsPage(
+    $filter: ForecastFilter
+    $first: Int!
+    $after: String
+    $orderBy: ForecastOrder
   ) {
-    attestations(
-      where: $where
+    forecasts(
+      first: $first
+      after: $after
+      filter: $filter
       orderBy: $orderBy
-      take: $take
-      cursor: $cursor
-      skip: $skip
     ) {
-      id
-      uid
-      attester
-      time
-      prediction
-      comment
-      conditionId
+      nodes {
+        uid
+        attester
+        attestedAt
+        value
+        comment
+        conditionId
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
     }
   }
 `;
 
 export const formatAttestationData = (
-  attestation: RawAttestation
+  node: ForecastNode
 ): FormattedAttestation => {
   const formattedTime = new Date(
-    Number(attestation.time) * 1000
+    Number(node.attestedAt) * 1000
   ).toLocaleString();
 
   return {
-    id: attestation.id.toString(),
-    uid: attestation.uid,
-    attester: attestation.attester,
-    shortAttester: `${attestation.attester.slice(
-      0,
-      6
-    )}...${attestation.attester.slice(-4)}`,
-    value: attestation.prediction,
+    id: node.uid,
+    uid: node.uid,
+    attester: node.attester,
+    shortAttester: `${node.attester.slice(0, 6)}...${node.attester.slice(-4)}`,
+    value: node.value,
     time: formattedTime,
-    rawTime: attestation.time,
-    comment: attestation.comment,
-    conditionId: attestation.conditionId,
+    rawTime: node.attestedAt,
+    comment: node.comment ?? '',
+    conditionId: node.conditionId ?? undefined,
   };
 };
 
@@ -99,7 +123,9 @@ export interface FetchForecastsParams {
   conditionId?: string;
 }
 
-function buildAttestationFilters(params: FetchForecastsParams) {
+function buildForecastFilter(
+  params: FetchForecastsParams
+): Record<string, unknown> {
   const {
     schemaId = DEFAULT_SCHEMA_UID,
     attesterAddress,
@@ -111,112 +137,101 @@ function buildAttestationFilters(params: FetchForecastsParams) {
     try {
       normalizedAttesterAddress = getAddress(attesterAddress);
     } catch (_e) {
-      // swallow normalization error
+      // keep the address as provided; the Address scalar canonicalizes
     }
   }
 
-  const filters: Record<string, { equals: string }>[] = [];
+  const filter: Record<string, unknown> = { schemaId };
   if (normalizedAttesterAddress) {
-    filters.push({ attester: { equals: normalizedAttesterAddress } });
+    filter.attester = normalizedAttesterAddress;
   }
   if (conditionId) {
-    filters.push({ conditionId: { equals: conditionId } });
+    filter.conditionIds = [conditionId];
   }
+  return filter;
+}
 
+function toFormattedAttestations(
+  data: ForecastsConnectionResponse | null
+): FormattedAttestation[] {
+  const nodes = data?.forecasts?.nodes;
+  if (!Array.isArray(nodes)) {
+    throw new Error('Failed to fetch forecasts: Invalid response structure');
+  }
+  return nodes.map(formatAttestationData);
+}
+
+function toForecastPage(
+  data: ForecastsConnectionResponse | null
+): ForecastPage {
+  const items = toFormattedAttestations(data);
+  const pageInfo = data?.forecasts?.pageInfo;
   return {
-    where: {
-      schemaId: { equals: schemaId },
-      AND: filters,
+    items,
+    pageInfo: {
+      hasNextPage: Boolean(pageInfo?.hasNextPage),
+      endCursor: pageInfo?.endCursor ?? null,
     },
   };
 }
 
 export async function fetchForecasts(
   params: FetchForecastsParams
-): Promise<AttestationsQueryResponse> {
-  const { where } = buildAttestationFilters(params);
-
-  const data = await graphqlRequest<AttestationsQueryResponse>(
-    GET_ATTESTATIONS_QUERY,
-    { where, take: 100 }
+): Promise<FormattedAttestation[]> {
+  const data = await graphqlRequestV2<ForecastsConnectionResponse>(
+    GET_FORECASTS_QUERY,
+    { filter: buildForecastFilter(params), first: 100 }
   );
+  return toFormattedAttestations(data);
+}
 
-  return data;
+export interface ForecastPageArgs {
+  first: number;
+  /** Relay cursor of the last row of the previous page; omit for page one. */
+  after?: string | null;
+  orderDirection?: 'asc' | 'desc';
 }
 
 export async function fetchForecastsPage(
   params: FetchForecastsParams,
-  page: { take: number; cursorId?: number }
-): Promise<AttestationsQueryResponse> {
-  const { where } = buildAttestationFilters(params);
-
-  const variables: Record<string, unknown> = {
-    where,
-    take: page.take,
-    orderBy: [{ time: 'desc' }],
-  };
-
-  if (page.cursorId !== undefined) {
-    variables.cursor = { id: page.cursorId };
-    variables.skip = 1;
-  }
-
-  return await graphqlRequest<AttestationsQueryResponse>(
-    GET_ATTESTATIONS_PAGINATED_QUERY,
-    variables
+  page: ForecastPageArgs
+): Promise<ForecastPage> {
+  const data = await graphqlRequestV2<ForecastsConnectionResponse>(
+    GET_FORECASTS_PAGINATED_QUERY,
+    {
+      filter: buildForecastFilter(params),
+      first: page.first,
+      after: page.after ?? null,
+      orderBy: {
+        field: 'ATTESTED_AT',
+        direction: page.orderDirection === 'asc' ? 'ASC' : 'DESC',
+      },
+    }
   );
+  return toForecastPage(data);
 }
 
 export async function fetchUserForecasts(params: {
   attesterAddress: string;
   schemaId?: string;
   conditionId?: string;
-  take: number;
-  skip: number;
-  orderBy: string;
+  first: number;
+  after?: string | null;
   orderDirection: 'asc' | 'desc';
-}): Promise<FormattedAttestation[]> {
+}): Promise<ForecastPage> {
   const {
     attesterAddress,
-    schemaId = DEFAULT_SCHEMA_UID,
+    schemaId,
     conditionId,
-    take,
-    skip,
-    orderBy,
+    first,
+    after,
     orderDirection,
   } = params;
 
-  let normalizedAttesterAddress = attesterAddress;
-  if (attesterAddress) {
-    try {
-      normalizedAttesterAddress = getAddress(attesterAddress);
-    } catch (_e) {
-      // swallow
-    }
-  }
-
-  const filters: Record<string, { equals: string }>[] = [];
-  if (normalizedAttesterAddress) {
-    filters.push({ attester: { equals: normalizedAttesterAddress } });
-  }
-  if (conditionId) {
-    filters.push({ conditionId: { equals: conditionId } });
-  }
-
-  const variables = {
-    where: {
-      schemaId: { equals: schemaId },
-      AND: filters,
-    },
-    take,
-    skip,
-    orderBy: [{ [orderBy]: orderDirection }],
-  };
-  const data = await graphqlRequest<AttestationsQueryResponse>(
-    GET_ATTESTATIONS_PAGINATED_QUERY,
-    variables
+  return fetchForecastsPage(
+    { schemaId, attesterAddress, conditionId },
+    { first, after, orderDirection }
   );
-  return (data.attestations || []).map((att) => formatAttestationData(att));
 }
 
 export function generateForecastsQueryKey(params: {

@@ -28,13 +28,12 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@sapience/ui/components/ui/dialog';
-import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
+import { graphqlRequestV2 } from '@sapience/sdk/queries/client/graphqlClient';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { isAddress, getAddress } from 'viem';
 import { getDeterministicCategoryColor } from '~/lib/theme/categoryPalette';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import MarketBadge from '~/components/markets/MarketBadge';
-import type { ConditionType } from '~/hooks/graphql/useConditions';
 
 const MAX_RESULTS = 10;
 
@@ -47,66 +46,84 @@ const PAGES = [
   { name: 'Docs', href: 'https://docs.sapience.xyz', icon: FileText },
 ] as const;
 
-/** Lightweight query — only fetches the fields the command palette needs */
-const SEARCH_QUESTIONS = /* GraphQL */ `
-  query CommandMenuSearch($take: Int!, $chainId: Int, $search: String) {
+/**
+ * Lightweight v2 query — only fetches the fields the command palette
+ * needs. `QuestionItem` is a union, so results branch on `__typename`;
+ * v2 `QuestionFilter.search` also covers condition shortName server-side.
+ * (Untagged literal on purpose: app graphql-eslint validates tagged
+ * documents against the v1 schema.)
+ */
+const SEARCH_QUESTIONS = `
+  query CommandMenuSearch($first: Int, $chainId: Int, $search: String) {
     questions(
-      take: $take
-      skip: 0
-      chainId: $chainId
-      sortField: endTime
-      sortDirection: asc
-      search: $search
+      first: $first
+      filter: { chainId: $chainId, search: $search }
+      orderBy: { field: END_TIME, direction: ASC }
     ) {
-      questionType
-      group {
-        id
-        name
-        category {
-          id
-          name
-          slug
-        }
-        conditions {
-          id
-          question
-          shortName
-          endTime
-          openInterest
-          resolver
-          category {
-            id
-            name
-            slug
+      edges {
+        node {
+          __typename
+          ... on Condition {
+            conditionId
+            question
+            shortName
+            endTime
+            openInterest
+            resolver
+            category {
+              name
+              slug
+            }
           }
-        }
-      }
-      condition {
-        id
-        question
-        shortName
-        endTime
-        openInterest
-        resolver
-        category {
-          id
-          name
-          slug
+          ... on ConditionGroup {
+            category {
+              name
+              slug
+            }
+            conditions(first: 50) {
+              nodes {
+                conditionId
+                question
+                shortName
+                endTime
+                openInterest
+                resolver
+                category {
+                  name
+                  slug
+                }
+              }
+            }
+          }
         }
       }
     }
   }
 `;
 
-type QuestionResult = {
-  questionType: 'condition' | 'group';
-  condition?: ConditionType | null;
-  group?: {
-    id: number;
-    name: string;
-    category?: { id: number; name: string; slug: string } | null;
-    conditions: ConditionType[];
-  } | null;
+type SearchCategory = { name: string; slug: string } | null;
+
+type SearchConditionNode = {
+  conditionId: string;
+  question: string;
+  shortName?: string | null;
+  endTime?: number | null;
+  openInterest?: string | null;
+  resolver?: string | null;
+  category?: SearchCategory;
+};
+
+type SearchQuestionNode =
+  | ({ __typename: 'Condition' } & SearchConditionNode)
+  | {
+      __typename: 'ConditionGroup';
+      category?: SearchCategory;
+      conditions?: { nodes?: SearchConditionNode[] } | null;
+    };
+
+/** Flattened palette row — keyed on the on-chain conditionId. */
+type SearchConditionRow = Omit<SearchConditionNode, 'conditionId'> & {
+  id: string;
 };
 
 function getCategoryColor(categorySlug?: string | null): string {
@@ -117,30 +134,35 @@ function getCategoryColor(categorySlug?: string | null): string {
 }
 
 function useCommandMenuSearch(search: string | undefined, enabled: boolean) {
-  return useQuery<ConditionType[]>({
+  return useQuery<SearchConditionRow[]>({
     queryKey: ['commandMenuSearch', search],
     queryFn: async () => {
-      const data = await graphqlRequest<{
-        questions: QuestionResult[];
+      const data = await graphqlRequestV2<{
+        questions: { edges: Array<{ node: SearchQuestionNode }> };
       }>(SEARCH_QUESTIONS, {
         // Overfetch 3x: groups expand into multiple rows, and we re-sort
         // client-side to prefer future markets over expired ones
-        take: MAX_RESULTS * 3,
+        first: MAX_RESULTS * 3,
         chainId: DEFAULT_CHAIN_ID,
         search: search?.trim() || null,
       });
 
       const nowSec = Math.floor(Date.now() / 1000);
-      return (data.questions ?? [])
-        .flatMap((q) => {
-          if (q.questionType === 'condition' && q.condition) {
-            return [q.condition];
+      return (data?.questions?.edges ?? [])
+        .flatMap(({ node }): SearchConditionRow[] => {
+          if (node.__typename === 'Condition') {
+            const { conditionId, ...rest } = node;
+            return [{ ...rest, id: conditionId }];
           }
-          if (q.questionType === 'group' && q.group?.conditions) {
-            return q.group.conditions.map((gc) => ({
-              ...gc,
-              category: gc.category ?? q.group!.category,
-            }));
+          if (node.__typename === 'ConditionGroup') {
+            return (node.conditions?.nodes ?? []).map((gc) => {
+              const { conditionId, ...rest } = gc;
+              return {
+                ...rest,
+                id: conditionId,
+                category: gc.category ?? node.category,
+              };
+            });
           }
           return [];
         })

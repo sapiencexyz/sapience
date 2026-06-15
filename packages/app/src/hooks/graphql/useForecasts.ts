@@ -5,12 +5,14 @@ import {
   fetchForecasts,
   fetchForecastsPage,
   fetchUserForecasts,
-  formatAttestationData,
   generateForecastsQueryKey,
+  type ForecastPage,
   type FormattedAttestation,
 } from '@sapience/sdk/queries';
 
 import { SCHEMA_UID } from '~/lib/constants';
+
+const EMPTY_FORECASTS: FormattedAttestation[] = [];
 
 interface UseForecastsProps {
   schemaId?: string;
@@ -39,12 +41,7 @@ export const useForecasts = ({
     conditionId,
   });
 
-  const {
-    data: attestationsData,
-    isLoading,
-    error,
-    refetch,
-  } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey,
     queryFn: () =>
       fetchForecasts({
@@ -61,14 +58,8 @@ export const useForecasts = ({
     refetchOnWindowFocus: options?.refetchOnWindowFocus ?? false,
   });
 
-  const data: FormattedAttestation[] = React.useMemo(() => {
-    if (!attestationsData?.attestations) return [];
-    return attestationsData.attestations.map((att) =>
-      formatAttestationData(att)
-    );
-  }, [attestationsData]);
-
-  return { data, isLoading, error, refetch };
+  // The SDK already returns render-ready FormattedAttestation rows (v2).
+  return { data: data ?? EMPTY_FORECASTS, isLoading, error, refetch };
 };
 
 export const prefetchForecasts = async (
@@ -82,6 +73,12 @@ export const prefetchForecasts = async (
     queryFn: () => fetchForecasts({ schemaId }),
   });
 };
+
+/** Relay forward pagination: thread the last page's endCursor as `after`. */
+const getNextForecastPageParam = (lastPage: ForecastPage) =>
+  lastPage.pageInfo.hasNextPage
+    ? (lastPage.pageInfo.endCursor ?? undefined)
+    : undefined;
 
 export const useInfiniteForecasts = ({
   schemaId = SCHEMA_UID,
@@ -105,25 +102,17 @@ export const useInfiniteForecasts = ({
     queryFn: ({ pageParam }) =>
       fetchForecastsPage(
         { schemaId, attesterAddress, conditionId },
-        { take: pageSize, cursorId: pageParam }
+        { first: pageSize, after: pageParam }
       ),
-    initialPageParam: undefined as number | undefined,
-    getNextPageParam: (lastPage) => {
-      const list = lastPage.attestations || [];
-      if (list.length < pageSize) return undefined;
-      const last = list[list.length - 1];
-      if (!last) return undefined;
-      return Number(last.id);
-    },
+    initialPageParam: null as string | null,
+    getNextPageParam: getNextForecastPageParam,
     retry: 3,
     retryDelay: 1000,
   });
 
   const data: FormattedAttestation[] = React.useMemo(() => {
     if (!query.data?.pages) return [];
-    return query.data.pages.flatMap((p) =>
-      (p.attestations || []).map((att) => formatAttestationData(att))
-    );
+    return query.data.pages.flatMap((p) => p.items);
   }, [query.data]);
 
   return {
@@ -141,9 +130,9 @@ interface UseUserForecastsParams {
   attesterAddress: string;
   schemaId?: string;
   conditionId?: string;
-  take: number;
-  skip: number;
-  orderBy: string;
+  /** Rows per page (`first`). */
+  pageSize?: number;
+  /** Direction of the fixed v2 ATTESTED_AT ordering. */
   orderDirection: 'asc' | 'desc';
 }
 
@@ -151,36 +140,48 @@ export const useUserForecasts = ({
   attesterAddress,
   schemaId = SCHEMA_UID,
   conditionId,
-  take,
-  skip,
-  orderBy,
+  pageSize = 20,
   orderDirection,
 }: UseUserForecastsParams) => {
-  return useQuery<FormattedAttestation[]>({
+  const query = useInfiniteQuery({
     queryKey: [
       'forecasts',
       schemaId,
       attesterAddress,
       conditionId || null,
-      take,
-      skip,
-      orderBy,
+      pageSize,
       orderDirection,
     ],
-    queryFn: () =>
+    queryFn: ({ pageParam }) =>
       fetchUserForecasts({
         attesterAddress,
         schemaId,
         conditionId,
-        take,
-        skip,
-        orderBy,
+        first: pageSize,
+        after: pageParam,
         orderDirection,
       }),
+    initialPageParam: null as string | null,
+    getNextPageParam: getNextForecastPageParam,
     enabled: Boolean(attesterAddress),
     staleTime: 30_000,
     placeholderData: (prev) => prev,
   });
+
+  const data: FormattedAttestation[] = React.useMemo(() => {
+    if (!query.data?.pages) return [];
+    return query.data.pages.flatMap((p) => p.items);
+  }, [query.data]);
+
+  return {
+    data,
+    isLoading: query.isLoading,
+    error: query.error,
+    refetch: query.refetch,
+    fetchNextPage: query.fetchNextPage,
+    hasNextPage: Boolean(query.hasNextPage),
+    isFetchingNextPage: query.isFetchingNextPage,
+  };
 };
 
 export type { FormattedAttestation };

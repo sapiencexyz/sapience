@@ -41,7 +41,6 @@ import ResolutionStatusFilter, {
 import { RangeFilter } from '~/components/shared/RangeFilter';
 
 export interface CategoryOption {
-  id: number;
   name: string;
   slug: string;
 }

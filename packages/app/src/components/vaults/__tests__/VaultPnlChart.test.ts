@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ProtocolStat } from '~/hooks/graphql/useAnalytics';
+import type { VaultStatPoint } from '~/lib/adapters/vaultStat';
 import {
   buildVaultPnlChartData,
   calculateVaultPnlHeadlineApy,
@@ -7,9 +7,10 @@ import {
 } from '../vaultPnlChartUtils';
 
 const ONE_DAY = 24 * 60 * 60;
-const ONE_WUSDE = 10n ** 18n;
 const NOW_SEC = Date.UTC(2026, 3, 24, 0, 0, 0) / 1000;
 
+// The chart util now consumes the adapted `{ timestamp, pnl, tvl }` point
+// (whole wUSDe) produced by `toVaultStatPoint`, not the raw v1 ProtocolStat.
 function makeStat({
   timestamp,
   tvl,
@@ -18,15 +19,8 @@ function makeStat({
   timestamp: number;
   tvl: number;
   pnl: number;
-}): ProtocolStat {
-  const tvlWei = BigInt(tvl) * ONE_WUSDE;
-
-  return {
-    timestamp,
-    vaultBalance: tvlWei.toString(),
-    escrowBalance: '0',
-    vaultCumulativePnL: (BigInt(pnl) * ONE_WUSDE).toString(),
-  } as ProtocolStat;
+}): VaultStatPoint {
+  return { timestamp, tvl, pnl };
 }
 
 describe('vaultPnlChartUtils', () => {

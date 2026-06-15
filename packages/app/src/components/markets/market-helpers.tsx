@@ -49,9 +49,9 @@ export type TopLevelRow =
   | {
       kind: 'group';
       id: string;
-      groupId: number;
+      groupId: string;
       name: string;
-      category?: { id: number; name: string; slug: string } | null;
+      category?: { name: string; slug: string } | null;
       conditions: ConditionGroupConditionType[];
       openInterestWei: bigint;
       maxEndTime: number;
@@ -87,8 +87,6 @@ export function groupConditionToConditionType(
     settled: gc.settled,
     resolvedToYes: gc.resolvedToYes,
     nonDecisive: gc.nonDecisive,
-    assertionId: gc.assertionId,
-    assertionTimestamp: gc.assertionTimestamp,
     similarMarketVolume: gc.similarMarketVolume,
     conditionGroupId: gc.conditionGroupId,
     estimatedPrice: gc.estimatedPrice,

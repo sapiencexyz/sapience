@@ -1,0 +1,334 @@
+import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { renderHook, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import React from 'react';
+
+const mockGraphqlRequest = vi.fn();
+const mockGraphqlRequestV2 = vi.fn();
+
+vi.mock('@sapience/sdk/queries/client/graphqlClient', () => ({
+  graphqlRequest: (...args: unknown[]) => mockGraphqlRequest(...args),
+  graphqlRequestV2: (...args: unknown[]) => mockGraphqlRequestV2(...args),
+}));
+
+function createWrapper() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, gcTime: 0 },
+    },
+  });
+  return function Wrapper({ children }: { children: React.ReactNode }) {
+    return React.createElement(
+      QueryClientProvider,
+      { client: queryClient },
+      children
+    );
+  };
+}
+
+async function getModule() {
+  return import('../usePositions');
+}
+
+function makePredictionNode(overrides: Record<string, unknown> = {}) {
+  return {
+    predictionId: '0xpred1',
+    chainId: 8453,
+    escrow: '0xescrow',
+    predictor: '0xaaa',
+    counterparty: '0xbbb',
+    predictorToken: '0xpredictortoken',
+    counterpartyToken: '0xcounterpartytoken',
+    predictorCollateral: 1000, // BigInt scalar may serialize as number
+    counterpartyCollateral: '2000',
+    collateralDeposited: '3000',
+    collateralDepositedAt: 1700000000,
+    settled: true,
+    settledAt: 1700000100,
+    settleTxHash: '0xsettle',
+    result: 'PREDICTOR_WINS',
+    predictorClaimable: 3000,
+    counterpartyClaimable: null,
+    createTxHash: '0xtx1',
+    createdAt: '2026-06-01T00:00:00.000Z',
+    refCode: null,
+    isLegacy: false,
+    pickConfig: {
+      pickConfigId: '0xpc1',
+      chainId: 8453,
+      escrow: '0xescrow',
+      totalPredictorCollateral: '1000',
+      totalCounterpartyCollateral: '2000',
+      claimedPredictorCollateral: '0',
+      claimedCounterpartyCollateral: '0',
+      resolved: true,
+      result: 'PREDICTOR_WINS',
+      resolvedAt: 1700000100,
+      predictorToken: '0xpredictortoken',
+      counterpartyToken: '0xcounterpartytoken',
+      endsAt: 1760000000,
+      isLegacy: false,
+      picks: [
+        {
+          conditionId: '0xcond1',
+          resolver: '0xresolver',
+          predictedOutcome: 'YES',
+          condition: {
+            conditionId: '0xcond1',
+            question: 'Will ETH hit 5k?',
+            settled: true,
+            resolvedToYes: true,
+            nonDecisive: false,
+            category: { slug: 'crypto' },
+          },
+        },
+      ],
+    },
+    ...overrides,
+  };
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockGraphqlRequest.mockRejectedValue(
+    new Error('v1 transport must not be used for predictions')
+  );
+  mockGraphqlRequestV2.mockResolvedValue({ predictions: { nodes: [] } });
+});
+
+// ─── Document shapes ─────────────────────────────────────────────────────────
+
+describe('v2 prediction documents', () => {
+  it('predictions list query filters by participant with explicit orderBy', async () => {
+    const mod = await getModule();
+    const doc = mod.PREDICTIONS_QUERY as string;
+    expect(doc).toContain(
+      'filter: { participant: $participant, chainId: $chainId }'
+    );
+    expect(doc).toContain('orderBy: { field: CREATED_AT, direction: DESC }');
+    expect(doc).toContain('first: $first');
+    expect(doc).toContain('nodes {');
+    expect(doc).toContain('isLegacy');
+    expect(doc).not.toContain('address:');
+    expect(doc).not.toContain('take:');
+    expect(doc).not.toContain('GraphQL */');
+  });
+
+  it('by-condition query filters via conditionIds', async () => {
+    const mod = await getModule();
+    const doc = mod.PREDICTIONS_BY_CONDITION_QUERY as string;
+    expect(doc).toContain('conditionIds: [$conditionId]');
+    expect(doc).toContain('orderBy: { field: CREATED_AT, direction: DESC }');
+    expect(doc).toContain('first: $first');
+    // slim projection: no embedded condition objects (complexity budget)
+    expect(doc).not.toContain('condition {');
+  });
+
+  it('single prediction query looks up by predictionId', async () => {
+    const mod = await getModule();
+    const doc = mod.PREDICTION_QUERY as string;
+    expect(doc).toContain('prediction(predictionId: $predictionId)');
+  });
+
+  it('count query is a first: 0 totalCount-only connection', async () => {
+    const mod = await getModule();
+    const doc = mod.PREDICTIONS_COUNT_QUERY as string;
+    expect(doc).toContain('first: 0');
+    expect(doc).toContain('totalCount');
+    expect(doc).not.toContain('predictionCount');
+  });
+
+  it('positions documents stay on v1 (wave 3)', async () => {
+    const mod = await getModule();
+    // The v1 positions half is untouched: no v2 connection args.
+    expect(mod.POSITION_BALANCES_QUERY).toBeUndefined();
+  });
+});
+
+// ─── Hooks ───────────────────────────────────────────────────────────────────
+
+describe('usePredictions', () => {
+  it('maps v2 nodes to the app Prediction shape via the shared adapter', async () => {
+    const mod = await getModule();
+    mockGraphqlRequestV2.mockResolvedValue({
+      predictions: { nodes: [makePredictionNode()] },
+    });
+
+    const { result } = renderHook(
+      () => mod.usePredictions({ address: '0xaaa', chainId: 8453, take: 5 }),
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => {
+      expect(result.current.data.length).toBe(1);
+    });
+    expect(mockGraphqlRequest).not.toHaveBeenCalled();
+
+    const [, variables] = mockGraphqlRequestV2.mock.calls[0];
+    expect(variables).toMatchObject({
+      participant: '0xaaa',
+      chainId: 8453,
+      first: 5,
+    });
+
+    const p = result.current.data[0];
+    expect(p.predictionId).toBe('0xpred1');
+    expect(p.marketAddress).toBe('0xescrow'); // escrow → marketAddress
+    expect(p.predictorCollateral).toBe('1000'); // BigInt normalized
+    expect(p.predictorClaimable).toBe('3000');
+    expect(p.result).toBe('PREDICTOR_WINS');
+    expect(p.settled).toBe(true);
+    expect(p.isLegacy).toBe(false);
+    expect(p.pickConfig?.id).toBe('0xpc1');
+    expect(p.pickConfig?.marketAddress).toBe('0xescrow');
+    // v1 pickConfig.predictionId is backfilled from the parent prediction
+    expect(p.pickConfig?.predictionId).toBe('0xpred1');
+    expect(p.pickConfig?.picks[0]?.conditionResolver).toBe('0xresolver');
+    expect(p.pickConfig?.picks[0]?.predictedOutcome).toBe(1);
+    expect(p.pickConfig?.picks[0]?.condition?.id).toBe('0xcond1');
+  });
+
+  it('maps null result to UNRESOLVED', async () => {
+    const mod = await getModule();
+    mockGraphqlRequestV2.mockResolvedValue({
+      predictions: {
+        nodes: [
+          makePredictionNode({
+            result: null,
+            settled: false,
+            pickConfig: null,
+          }),
+        ],
+      },
+    });
+
+    const { result } = renderHook(
+      () => mod.usePredictions({ address: '0xaaa' }),
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => {
+      expect(result.current.data.length).toBe(1);
+    });
+    expect(result.current.data[0].result).toBe('UNRESOLVED');
+    expect(result.current.data[0].pickConfig).toBeNull();
+  });
+});
+
+describe('usePredictionsCount', () => {
+  it('reads totalCount from the first: 0 connection', async () => {
+    const mod = await getModule();
+    mockGraphqlRequestV2.mockResolvedValue({
+      predictions: { totalCount: 7 },
+    });
+
+    const { result } = renderHook(
+      () => mod.usePredictionsCount('0xaaa', 8453),
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => {
+      expect(result.current).toBe(7);
+    });
+    const [, variables] = mockGraphqlRequestV2.mock.calls[0];
+    expect(variables).toMatchObject({ participant: '0xaaa', chainId: 8453 });
+  });
+});
+
+describe('usePrediction', () => {
+  it('fetches a single prediction by predictionId', async () => {
+    const mod = await getModule();
+    mockGraphqlRequestV2.mockResolvedValue({
+      prediction: makePredictionNode(),
+    });
+
+    const { result } = renderHook(() => mod.usePrediction('0xpred1'), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.data).not.toBeNull();
+    });
+    const [, variables] = mockGraphqlRequestV2.mock.calls[0];
+    expect(variables).toMatchObject({ predictionId: '0xpred1' });
+    expect(result.current.data?.marketAddress).toBe('0xescrow');
+  });
+
+  it('returns null when the prediction does not exist', async () => {
+    const mod = await getModule();
+    mockGraphqlRequestV2.mockResolvedValue({ prediction: null });
+
+    const { result } = renderHook(() => mod.usePrediction('0xmissing'), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(mockGraphqlRequestV2).toHaveBeenCalledTimes(1);
+    });
+    expect(result.current.data).toBeNull();
+  });
+});
+
+describe('usePredictionsByConditionId', () => {
+  it('maps the slim projection for the question-page chart', async () => {
+    const mod = await getModule();
+    mockGraphqlRequestV2.mockResolvedValue({
+      predictions: {
+        nodes: [
+          {
+            predictionId: '0xpred1',
+            chainId: 8453,
+            escrow: '0xescrow',
+            predictor: '0xaaa',
+            counterparty: '0xbbb',
+            predictorCollateral: '1000',
+            counterpartyCollateral: 2000,
+            collateralDepositedAt: 1700000000,
+            createdAt: '2026-06-01T00:00:00.000Z',
+            pickConfig: {
+              pickConfigId: '0xpc1',
+              chainId: 8453,
+              escrow: '0xescrow',
+              totalPredictorCollateral: '1000',
+              totalCounterpartyCollateral: '2000',
+              claimedPredictorCollateral: '0',
+              claimedCounterpartyCollateral: '0',
+              resolved: false,
+              result: null,
+              resolvedAt: null,
+              predictorToken: null,
+              counterpartyToken: null,
+              endsAt: null,
+              isLegacy: false,
+              picks: [
+                {
+                  conditionId: '0xcond1',
+                  resolver: '0xresolver',
+                  predictedOutcome: 'NO',
+                },
+              ],
+            },
+          },
+        ],
+      },
+    });
+
+    const { result } = renderHook(
+      () => mod.usePredictionsByConditionId({ conditionId: '0xcond1' }),
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => {
+      expect(result.current.data.length).toBe(1);
+    });
+
+    const [, variables] = mockGraphqlRequestV2.mock.calls[0];
+    expect(variables).toMatchObject({ conditionId: '0xcond1', first: 50 });
+
+    const p = result.current.data[0];
+    expect(p.marketAddress).toBe('0xescrow');
+    expect(p.counterpartyCollateral).toBe('2000');
+    expect(p.pickConfig?.picks[0]?.conditionResolver).toBe('0xresolver');
+    expect(p.pickConfig?.picks[0]?.predictedOutcome).toBe(0); // NO → 0
+  });
+});

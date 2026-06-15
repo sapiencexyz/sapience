@@ -31,7 +31,10 @@ import { usePassiveLiquidityVault } from '~/hooks/contract/usePassiveLiquidityVa
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
 import RestrictedJurisdictionBanner from '~/components/shared/RestrictedJurisdictionBanner';
-import { useProtocolStats } from '~/hooks/graphql/useAnalytics';
+import {
+  useVaultStats,
+  useProtocolAnalytics,
+} from '~/hooks/graphql/useAnalytics';
 import RiskDisclaimer from '~/components/markets/forms/shared/RiskDisclaimer';
 import Loader from '~/components/shared/Loader';
 import VaultPnlChart from '~/components/vaults/VaultPnlChart';
@@ -43,7 +46,7 @@ const DEPOSIT_WHITELIST: `0x${string}`[] = [
   '0x7BB4e4E4674c625b23C550A74cfcfF9Ec50064F3',
 ];
 
-const DEPOSIT_CAP = 20000;
+const DEPOSIT_CAP = 50000;
 
 type VaultOption = {
   address: `0x${string}`;
@@ -156,9 +159,14 @@ const VaultsPageContent = () => {
     chainId: VAULT_CHAIN_ID,
   });
 
-  const { data: coreStats } = useProtocolStats(coreAddr);
-  const { data: optionsStats } = useProtocolStats(optionsAddr);
-  const { data: edgeStats } = useProtocolStats(edgeAddr);
+  const { data: coreStats } = useVaultStats(coreAddr);
+  const { data: optionsStats } = useVaultStats(optionsAddr);
+  const { data: edgeStats } = useVaultStats(edgeAddr);
+
+  // Protocol-wide TVL (escrow collateral + undeployed assets across every
+  // vault family), server-computed on v2. Replaces v1's client-side
+  // reconstruction from per-vault `escrowBalance + vaultAvailableAssets`.
+  const { data: protocolAnalytics } = useProtocolAnalytics();
 
   const {
     vaultData,
@@ -186,8 +194,8 @@ const VaultsPageContent = () => {
   });
 
   const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
-  const { data: protocolStats, isLoading: isAnalyticsLoading } =
-    useProtocolStats(VAULT_ADDRESS);
+  const { data: vaultStats, isLoading: isAnalyticsLoading } =
+    useVaultStats(VAULT_ADDRESS);
 
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
@@ -564,9 +572,11 @@ const VaultsPageContent = () => {
   const liquidWei = vaultData?.totalLiquidValue ?? 0n;
 
   const deployedWei = useMemo(() => {
-    const lastStat = protocolStats?.[protocolStats.length - 1];
-    return lastStat?.vaultDeployed ? BigInt(lastStat.vaultDeployed) : 0n;
-  }, [protocolStats]);
+    const lastStat = vaultStats?.[vaultStats.length - 1];
+    return lastStat?.deployedCollateral
+      ? BigInt(lastStat.deployedCollateral)
+      : 0n;
+  }, [vaultStats]);
 
   // Vault AUM = liquid USDe in the vault + collateral deployed in open positions.
   // getTotalLiquidValue() on the contract intentionally excludes position tokens,
@@ -575,7 +585,7 @@ const VaultsPageContent = () => {
 
   // The two terms come from different sources (on-chain read vs GraphQL);
   // until both have loaded, the sum is a misleading partial figure.
-  const isBalanceReady = !!vaultData && !!protocolStats;
+  const isBalanceReady = !!vaultData && !!vaultStats;
 
   const utilizationPercent = useMemo(() => {
     if (tvlWei <= 0n) return 0;
@@ -652,30 +662,20 @@ const VaultsPageContent = () => {
     const totalVaultTvlWei = vaultEntries.reduce((sum, [v, stats]) => {
       const liquid = v?.totalLiquidValue ?? 0n;
       const lastStat = stats?.[stats.length - 1];
-      const deployed = lastStat?.vaultDeployed
-        ? BigInt(lastStat.vaultDeployed)
+      const deployed = lastStat?.deployedCollateral
+        ? BigInt(lastStat.deployedCollateral)
         : 0n;
       return sum + liquid + deployed;
     }, 0n);
 
-    // Protocol TVL = escrow (protocol-wide, same across all vault queries) +
-    // undeployed assets summed across every vault. Sourcing from the selected
-    // vault's stats zeros out when we switch to a vault with no stats yet.
-    const escrowWei = (() => {
-      for (const [, stats] of vaultEntries) {
-        const last = stats?.[stats.length - 1];
-        if (last?.escrowBalance) return BigInt(last.escrowBalance);
-      }
-      return 0n;
-    })();
-    const vaultAvailableWei = vaultEntries.reduce((sum, [, stats]) => {
-      const last = stats?.[stats.length - 1];
-      return (
-        sum +
-        (last?.vaultAvailableAssets ? BigInt(last.vaultAvailableAssets) : 0n)
-      );
-    }, 0n);
-    const protocolTvlWei = escrowWei + vaultAvailableWei;
+    // Protocol TVL = escrow collateral + undeployed assets across every vault
+    // family, server-computed on v2 (`protocol.stats.totalValueLocked`). v1
+    // reconstructed this client-side from per-vault `escrowBalance +
+    // vaultAvailableAssets`; the v2 figure is authoritative and avoids the
+    // selected-vault dependence that zeroed out when switching tabs.
+    const protocolTvlWei = protocolAnalytics?.stats?.totalValueLocked
+      ? BigInt(protocolAnalytics.stats.totalValueLocked)
+      : 0n;
     const protocolTvlNum = Number(formatAssetAmount(protocolTvlWei));
     const totalVaultTvlNum = Number(formatAssetAmount(totalVaultTvlWei));
 
@@ -707,6 +707,7 @@ const VaultsPageContent = () => {
     coreStats,
     optionsStats,
     edgeStats,
+    protocolAnalytics,
     formatAssetAmount,
   ]);
 
@@ -851,7 +852,7 @@ const VaultsPageContent = () => {
 
                       <div className="p-5 pt-4 rounded-lg bg-[hsl(var(--primary)/_0.05)] border border-brand-white/10 lg:flex-1 lg:flex lg:flex-col lg:min-h-0 lg:overflow-hidden">
                         <VaultPnlChart
-                          protocolStats={protocolStats ?? undefined}
+                          vaultStats={vaultStats ?? undefined}
                           isLoading={isAnalyticsLoading}
                           chartAnchorSec={getVaultPnlAnchorSec(VAULT_ADDRESS)}
                           className="flex-1"

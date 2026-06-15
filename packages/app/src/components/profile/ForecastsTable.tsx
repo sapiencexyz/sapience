@@ -224,84 +224,35 @@ const ForecastsTable = ({
 
   // Pagination & sorting state
   const ITEMS_PER_PAGE = 20;
-  const [skip, setSkip] = React.useState(0);
-  const [allLoadedData, setAllLoadedData] = React.useState<
-    FormattedAttestation[]
-  >([]);
-  const [hasMore, setHasMore] = React.useState(true);
 
   const [sorting, setSorting] = React.useState<SortingState>([
     { id: 'rawTime', desc: true },
   ]);
 
-  // Convert sorting state to API params
-  const sortId = sorting[0]?.id;
-  const orderBy =
-    sortId === 'rawTime' ? 'time' : sortId === 'value' ? 'prediction' : 'time';
+  // v2 orders forecasts by ATTESTED_AT only — sorting picks the direction.
   const orderDirection = sorting[0]?.desc ? 'desc' : 'asc';
 
-  // Track what data we've already processed to avoid infinite loops
-  const processedRef = React.useRef<{ skip: number; length: number } | null>(
-    null
-  );
-
-  // Reset when sorting changes
-  React.useEffect(() => {
-    setSkip(0);
-    setHasMore(true);
-    processedRef.current = null;
-  }, [sorting, attesterAddress]);
-
-  // Fetch data with skip-based pagination
-  const { data: rawData, isLoading } = useUserForecasts({
+  // Cursor-paginated fetch (v2 first/after). Page accumulation lives in the
+  // infinite query; changing direction or attester resets via the query key.
+  const {
+    data: attestations,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useUserForecasts({
     attesterAddress,
     schemaId: SCHEMA_UID,
-    take: ITEMS_PER_PAGE + 1,
-    skip,
-    orderBy,
+    pageSize: ITEMS_PER_PAGE,
     orderDirection,
   });
 
-  // Accumulate pages
-  React.useEffect(() => {
-    const dataLength = rawData?.length ?? 0;
-
-    if (
-      processedRef.current?.skip === skip &&
-      processedRef.current?.length === dataLength
-    ) {
-      return;
-    }
-    processedRef.current = { skip, length: dataLength };
-
-    if (!rawData || rawData.length === 0) {
-      if (skip === 0) {
-        setAllLoadedData((prev) => (prev.length === 0 ? prev : []));
-        setHasMore((prev) => (prev === false ? prev : false));
-      }
-      return;
-    }
-
-    const hasNextPage = rawData.length > ITEMS_PER_PAGE;
-    const newItems = hasNextPage ? rawData.slice(0, ITEMS_PER_PAGE) : rawData;
-
-    if (skip === 0) {
-      setAllLoadedData(newItems);
-    } else {
-      setAllLoadedData((prev) => [...prev, ...newItems]);
-    }
-
-    setHasMore(hasNextPage);
-  }, [rawData, skip]);
-
-  const attestations = allLoadedData;
-
   // Load more handler
   const handleLoadMore = useCallback(() => {
-    if (!isLoading && hasMore) {
-      setSkip((prev) => prev + ITEMS_PER_PAGE);
+    if (!isFetchingNextPage && hasNextPage) {
+      fetchNextPage();
     }
-  }, [isLoading, hasMore]);
+  }, [isFetchingNextPage, hasNextPage, fetchNextPage]);
 
   // Collect conditionIds from attestations for batch fetching
   const conditionIds = useMemo(() => {
@@ -329,20 +280,27 @@ const ForecastsTable = ({
     staleTime: 60_000,
     gcTime: 5 * 60 * 1000,
     queryFn: async () => {
-      const query = /* GraphQL */ `
-        query ConditionsByIds($where: ConditionWhereInput!) {
-          conditions(where: $where, take: 100) {
-            id
-            question
-            shortName
-            endTime
-            description
-            settled
-            resolvedToYes
-            nonDecisive
-            resolver
-            category {
-              slug
+      // v2 document — untagged so graphql-eslint (v1 schema) skips it.
+      const query = `
+        query ConditionsByIds($ids: [Bytes!]!) {
+          conditions(
+            first: 100
+            orderBy: { field: CREATED_AT, direction: DESC }
+            filter: { conditionIds: $ids }
+          ) {
+            nodes {
+              id: conditionId
+              question
+              shortName
+              endTime
+              description
+              settled
+              resolvedToYes
+              nonDecisive
+              resolver
+              category {
+                slug
+              }
             }
           }
         }
@@ -490,34 +448,10 @@ const ForecastsTable = ({
       {
         id: 'value',
         accessorFn: (row) => row.value,
-        header: ({ column }) => (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-            className="px-0 gap-1 hover:bg-transparent whitespace-nowrap"
-            aria-sort={
-              column.getIsSorted() === false
-                ? 'none'
-                : column.getIsSorted() === 'asc'
-                  ? 'ascending'
-                  : 'descending'
-            }
-          >
-            Forecast
-            {column.getIsSorted() === 'asc' ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : column.getIsSorted() === 'desc' ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <span className="flex flex-col -my-2">
-                <ChevronUp className="h-3 w-3 -mb-2 opacity-50" />
-                <ChevronDown className="h-3 w-3 opacity-50" />
-              </span>
-            )}
-          </Button>
-        ),
+        // v2 has no server-side ordering by forecast value (ATTESTED_AT only),
+        // so this column is no longer sortable.
+        enableSorting: false,
+        header: () => <span className="text-sm font-medium">Forecast</span>,
         cell: (info) =>
           renderPredictionCell({
             row: info.row,
@@ -664,11 +598,11 @@ const ForecastsTable = ({
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!loadMoreRef.current || !hasMore) return;
+    if (!loadMoreRef.current || !hasNextPage) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isLoading) {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
           handleLoadMore();
         }
       },
@@ -681,7 +615,7 @@ const ForecastsTable = ({
     observer.observe(loadMoreRef.current);
 
     return () => observer.disconnect();
-  }, [hasMore, isLoading, handleLoadMore]);
+  }, [hasNextPage, isFetchingNextPage, handleLoadMore]);
 
   // Initial loading state (no data yet)
   const isInitialLoading =
@@ -907,10 +841,10 @@ const ForecastsTable = ({
             </Table>
           </div>
           {/* Infinite scroll sentinel - triggers auto-load when visible */}
-          {hasMore && (
+          {hasNextPage && (
             <InfiniteScrollFooter
               ref={loadMoreRef}
-              isLoading={isLoading}
+              isLoading={isFetchingNextPage}
               loadingMessage="Loading more forecasts…"
             />
           )}

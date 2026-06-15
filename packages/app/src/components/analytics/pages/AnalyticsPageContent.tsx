@@ -20,10 +20,7 @@ import {
   ComposedChart,
   Bar,
 } from 'recharts';
-import {
-  getProtocolTvlWei,
-  useProtocolStats,
-} from '~/hooks/graphql/useAnalytics';
+import { useProtocolAnalytics } from '~/hooks/graphql/useAnalytics';
 import Loader from '~/components/shared/Loader';
 import OpenInterestByCategoryChart from '~/components/analytics/OpenInterestByCategoryChart';
 import OpenInterestByTimeToResolutionChart from '~/components/analytics/OpenInterestByTimeToResolutionChart';
@@ -205,14 +202,26 @@ function AnalyticsPageContent(): React.ReactElement {
   const [oiPeriod, setOiPeriod] = useState<Period>('1M');
   const [tvlPeriod, setTvlPeriod] = useState<Period>('1M');
 
-  // Fetch protocol stats and daily volumes
-  const { data: protocolStats, isLoading: statsLoading } = useProtocolStats();
+  // Fetch protocol-wide analytics (v2): live stats + recorded snapshot series
+  const { data: analytics, isLoading: statsLoading } = useProtocolAnalytics();
+  const protocolStats = analytics?.statsHistory;
 
-  // Get summary from the last protocol stat
-  const summary = useMemo(() => {
-    if (!protocolStats || protocolStats.length === 0) return null;
-    return protocolStats[protocolStats.length - 1];
-  }, [protocolStats]);
+  // Summary cards read the live stats (timestamp = now), not the last
+  // recorded snapshot.
+  const summary = analytics?.stats ?? null;
+
+  // Undeployed vault funds across ALL vault families, derived from the
+  // server's TVL definition: totalValueLocked = escrowBalance + undeployed.
+  const undeployedVaultFundsWei = useMemo(() => {
+    if (!summary) return '0';
+    try {
+      return (
+        BigInt(summary.totalValueLocked) - BigInt(summary.escrowBalance)
+      ).toString();
+    } catch {
+      return '0';
+    }
+  }, [summary]);
 
   // Prepare chart data for protocol stats (TVL, OI)
   const statsChartData = useMemo(() => {
@@ -220,14 +229,14 @@ function AnalyticsPageContent(): React.ReactElement {
 
     return protocolStats.map((point) => {
       const openInterest = parseFloat(point.openInterest) / 1e18;
-      const escrowBalance = parseFloat(point.escrowBalance) / 1e18;
-      const vaultAvailableAssets =
-        parseFloat(point.vaultAvailableAssets) / 1e18;
+      // Server-computed TVL: escrow + undeployed assets across EVERY vault
+      // family. Numerically different from v1's client-side
+      // escrow + single-family vaultAvailableAssets sum — intended.
+      const protocolTvl = parseFloat(point.totalValueLocked) / 1e18;
       return {
         timestamp: point.timestamp,
         openInterest,
-        protocolTvl: escrowBalance + vaultAvailableAssets,
-        vaultAvailableAssets,
+        protocolTvl,
       };
     });
   }, [protocolStats]);
@@ -333,7 +342,7 @@ function AnalyticsPageContent(): React.ReactElement {
                           Undeployed Vault Funds
                         </span>
                         <span className="font-mono whitespace-nowrap text-xl">
-                          {formatNumber(summary?.vaultAvailableAssets || '0')}{' '}
+                          {formatNumber(undeployedVaultFundsWei)}{' '}
                           {collateralSymbol}
                         </span>
                       </div>
@@ -348,7 +357,8 @@ function AnalyticsPageContent(): React.ReactElement {
                   </div>
                 ) : (
                   <span className="transition-opacity duration-300">
-                    {formatNumber(String(getProtocolTvlWei(summary)))}{' '}
+                    {/* Server TVL (all vault families) — see statsChartData note. */}
+                    {formatNumber(summary?.totalValueLocked || '0')}{' '}
                     {collateralSymbol}
                   </span>
                 )}
@@ -408,7 +418,8 @@ function AnalyticsPageContent(): React.ReactElement {
                   </div>
                 ) : (
                   <span className="transition-opacity duration-300">
-                    {formatCount(summary?.totalTradeCount ?? 0)}
+                    {/* v1 `totalTradeCount` → v2 `cumulativeTradeCount` */}
+                    {formatCount(summary?.cumulativeTradeCount ?? 0)}
                   </span>
                 )}
               </div>

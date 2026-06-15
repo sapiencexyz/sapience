@@ -89,9 +89,9 @@ export default function QuestionsGrid({
     scrollContainerRef,
   });
 
-  const [openGroupId, setOpenGroupId] = React.useState<number | null>(null);
+  const [openGroupId, setOpenGroupId] = React.useState<string | null>(null);
 
-  const handleToggleExpand = React.useCallback((groupId: number) => {
+  const handleToggleExpand = React.useCallback((groupId: string) => {
     setOpenGroupId((prev) => (prev === groupId ? null : groupId));
   }, []);
 

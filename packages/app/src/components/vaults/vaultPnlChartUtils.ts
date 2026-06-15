@@ -1,4 +1,4 @@
-import type { ProtocolStat } from '~/hooks/graphql/useAnalytics';
+import type { VaultStatPoint } from '~/lib/adapters/vaultStat';
 import { PERIOD_DAYS, type Period } from '~/components/shared/PeriodFilter';
 
 const ONE_DAY_IN_SECONDS = 24 * 60 * 60;
@@ -14,28 +14,17 @@ export type VaultPnlChartPoint = {
 
 type BasePoint = Pick<VaultPnlChartPoint, 'timestamp' | 'pnl' | 'tvl'>;
 
-function mapProtocolStatToPoint(point: ProtocolStat): BasePoint {
-  return {
-    timestamp: point.timestamp,
-    pnl: point.vaultCumulativePnL
-      ? parseFloat(point.vaultCumulativePnL) / 1e18
-      : 0,
-    tvl:
-      (parseFloat(point.vaultBalance) + parseFloat(point.escrowBalance)) / 1e18,
-  };
-}
-
 function findFirstActivePointIndex(points: BasePoint[]): number {
   return points.findIndex((point) => point.tvl > 0);
 }
 
 export function buildVaultPnlChartData(
-  protocolStats: ProtocolStat[] | undefined,
+  vaultStats: VaultStatPoint[] | undefined,
   period: Period,
   nowSec = Math.floor(Date.now() / 1000),
   anchorSec?: number
 ): VaultPnlChartPoint[] {
-  if (!protocolStats || protocolStats.length === 0) return [];
+  if (!vaultStats || vaultStats.length === 0) return [];
 
   const periodDays = PERIOD_DAYS[period];
   const periodCutoff =
@@ -43,9 +32,13 @@ export function buildVaultPnlChartData(
   const cutoffTimestamp =
     anchorSec !== undefined ? Math.max(periodCutoff, anchorSec) : periodCutoff;
 
-  const filteredPoints = protocolStats
+  const filteredPoints: BasePoint[] = vaultStats
     .filter((stat) => stat.timestamp >= cutoffTimestamp)
-    .map(mapProtocolStatToPoint);
+    .map((stat) => ({
+      timestamp: stat.timestamp,
+      pnl: stat.pnl,
+      tvl: stat.tvl,
+    }));
 
   if (filteredPoints.length === 0) return [];
 

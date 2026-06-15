@@ -694,3 +694,80 @@ describe('GET /referrals/codes/:id', () => {
     });
   });
 });
+
+describe('GET /referrals/users/:address', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns the no-referral shape (200) for an unknown user', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue(null);
+
+    const res = await request(app).get('/referrals/users/0xABC');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      address: '0xabc',
+      refCodeHash: null,
+      maxReferrals: 0,
+      referredBy: null,
+      referredByCode: null,
+      referrals: [],
+    });
+    // address is normalized to lowercase for the lookup
+    expect(mockPrisma.user.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { address: '0xabc' } })
+    );
+  });
+
+  it('maps status + referrals, exposing FK ids for referredBy/referredByCode', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({
+      address: '0xabc',
+      refCodeHash: '0xhash',
+      maxReferrals: 5,
+      referredById: 11,
+      referredByCodeId: 22,
+      referrals: [
+        { address: '0xdef', createdAt: new Date('2026-01-01T00:00:00.000Z') },
+      ],
+    });
+
+    const res = await request(app).get('/referrals/users/0xabc');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      address: '0xabc',
+      refCodeHash: '0xhash',
+      maxReferrals: 5,
+      referredBy: { id: 11 },
+      referredByCode: { id: 22 },
+      referrals: [{ address: '0xdef', createdAt: '2026-01-01T00:00:00.000Z' }],
+    });
+  });
+
+  it('nulls referredBy/referredByCode when the user has neither', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({
+      address: '0xabc',
+      refCodeHash: null,
+      maxReferrals: 0,
+      referredById: null,
+      referredByCodeId: null,
+      referrals: [],
+    });
+
+    const res = await request(app).get('/referrals/users/0xabc');
+
+    expect(res.status).toBe(200);
+    expect(res.body.referredBy).toBeNull();
+    expect(res.body.referredByCode).toBeNull();
+    expect(res.body.referrals).toEqual([]);
+  });
+
+  it('returns 500 when the lookup throws', async () => {
+    mockPrisma.user.findUnique.mockRejectedValue(new Error('db down'));
+
+    const res = await request(app).get('/referrals/users/0xabc');
+
+    expect(res.status).toBe(500);
+  });
+});

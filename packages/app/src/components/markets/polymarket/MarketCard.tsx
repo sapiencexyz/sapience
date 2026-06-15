@@ -268,7 +268,7 @@ function ConditionCard({
 
 interface GroupCardProps {
   row: TopLevelRow & { kind: 'group' };
-  onToggleExpand: (groupId: number) => void;
+  onToggleExpand: (groupId: string) => void;
 }
 
 function GroupCard({ row, onToggleExpand }: GroupCardProps) {

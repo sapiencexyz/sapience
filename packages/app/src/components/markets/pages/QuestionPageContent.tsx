@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
+import { graphqlRequestV2 } from '@sapience/sdk/queries/client/graphqlClient';
 import Image from 'next/image';
 import { PythOracleMark } from '@sapience/ui';
 import dynamic from 'next/dynamic';
@@ -96,55 +96,74 @@ export default function QuestionPageContent({
     enabled: Boolean(conditionId),
     queryFn: async () => {
       if (!conditionId) return null;
-      const QUERY = /* GraphQL */ `
-        query ConditionsByIds($where: ConditionWhereInput!) {
-          conditions(where: $where, take: 1) {
-            id
-            question
-            shortName
-            endTime
-            settled
-            resolvedToYes
-            nonDecisive
-            description
-            chainId
-            resolver
-            openInterest
-            estimatedPrice
-            similarMarkets
-            category {
-              slug
+      // v2: by-ids lookups skip the public-only listing default, and
+      // `resolvers` composes with `conditionIds` for the multi-resolver
+      // disambiguation (both matched case-insensitively server-side).
+      // Untagged literal on purpose: app graphql-eslint validates tagged
+      // documents against the v1 schema.
+      const QUERY = `
+        query ConditionByIdAndResolver($ids: [Bytes!]!, $resolvers: [Address!]) {
+          conditions(
+            first: 1
+            orderBy: { field: CREATED_AT, direction: DESC }
+            filter: { conditionIds: $ids, resolvers: $resolvers }
+          ) {
+            nodes {
+              id: conditionId
+              question
+              shortName
+              endTime
+              settled
+              resolvedToYes
+              nonDecisive
+              description
+              chainId
+              resolver
+              openInterest
+              estimatedPrice
+              similarMarket {
+                markets
+              }
+              category {
+                slug
+              }
             }
           }
         }
       `;
-      // Build where clause with conditionId and optional resolver filter
-      const whereClause: { AND: Array<Record<string, unknown>> } = {
-        AND: [{ id: { in: [conditionId] } }],
+      const resp = await graphqlRequestV2<{
+        conditions: {
+          nodes: Array<{
+            id: string;
+            question: string;
+            shortName?: string | null;
+            endTime?: number | string | null;
+            settled?: boolean | null;
+            resolvedToYes?: boolean | null;
+            nonDecisive?: boolean | null;
+            description?: string | null;
+            category?: { slug: string } | null;
+            chainId?: number | null;
+            resolver?: string | null;
+            openInterest?: string | number | null;
+            estimatedPrice?: number | null;
+            similarMarket?: { markets?: string[] } | null;
+          }>;
+        };
+      }>(QUERY, {
+        ids: [conditionId],
+        resolvers: resolverAddressFromUrl ? [resolverAddressFromUrl] : null,
+      });
+      const node = resp?.conditions?.nodes?.[0];
+      if (!node) return null;
+      const { similarMarket, ...rest } = node;
+      return {
+        ...rest,
+        endTime: node.endTime != null ? Number(node.endTime) : null,
+        openInterest:
+          node.openInterest != null ? String(node.openInterest) : null,
+        similarMarkets: similarMarket?.markets ?? [],
       };
-      if (resolverAddressFromUrl) {
-        whereClause.AND.push({
-          resolver: { equals: resolverAddressFromUrl, mode: 'insensitive' },
-        });
-      }
-      const resp = await graphqlRequest<{
-        conditions: Array<{
-          id: string;
-          question: string;
-          shortName?: string | null;
-          endTime?: number | null;
-          settled?: boolean | null;
-          resolvedToYes?: boolean | null;
-          nonDecisive?: boolean | null;
-          description?: string | null;
-          category?: { slug: string } | null;
-          chainId?: number | null;
-          resolver?: string | null;
-          openInterest?: string | null;
-          estimatedPrice?: number | null;
-        }>;
-      }>(QUERY, { where: whereClause });
-      return resp?.conditions?.[0] || null;
     },
     staleTime: 60_000,
     gcTime: 5 * 60 * 1000,
