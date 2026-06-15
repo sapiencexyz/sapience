@@ -8,7 +8,11 @@
  * - `status`           := v2's explicit `OPEN`/`SOLD` discriminator. v1 encoded
  *   SOLD rows implicitly in the id shape (`<rowId>-sell-<tradeHash>`); v2 makes
  *   it explicit, so consumers stop parsing the opaque Relay id.
- * - `pickConfig`       := `toPickConfigData(node.pickConfig)` (shared mapper)
+ * - `pickConfig`       := `toPickConfigData(node.pickConfig)` (shared mapper),
+ *   with `predictionId` backfilled from `node.prediction` — v2 dropped the v1
+ *   `pickConfig.predictionId` field, but claim/redeem (`handleClaim`) and the
+ *   prediction permalink still read it, so the holder's prediction id is
+ *   surfaced via `Position.prediction` and grafted back on.
  *
  * BigInt scalars can arrive as string or number over the wire; normalized to
  * decimal strings so consumers can `BigInt()` them (v1 returned strings).
@@ -36,6 +40,9 @@ export type PositionV2Node = {
   createdAt: string;
   updatedAt: string;
   pickConfig?: PickConfigurationV2Node | null;
+  // The holder's prediction for this pickConfig — v2's home for the id that v1
+  // carried on `pickConfig.predictionId` (claim/redeem + permalink read it).
+  prediction?: { predictionId: string } | null;
 };
 
 /**
@@ -58,6 +65,9 @@ export const POSITION_V2_FIELDS = `
   updatedAt
   pickConfig {
     ${PICK_CONFIGURATION_V2_FIELDS}
+  }
+  prediction {
+    predictionId
   }
 `;
 
@@ -82,6 +92,13 @@ export function toPositionBalance(node: PositionV2Node): PositionBalance {
     status: node.status,
     createdAt: node.createdAt,
     updatedAt: node.updatedAt,
-    pickConfig: node.pickConfig ? toPickConfigData(node.pickConfig) : null,
+    pickConfig: node.pickConfig
+      ? {
+          ...toPickConfigData(node.pickConfig),
+          // v2 dropped pickConfig.predictionId; graft it back from the
+          // holder's prediction so claim/redeem + permalinks keep working.
+          predictionId: node.prediction?.predictionId ?? null,
+        }
+      : null,
   };
 }

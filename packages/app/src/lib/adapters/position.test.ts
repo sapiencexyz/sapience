@@ -21,6 +21,7 @@ function makeNode(overrides: Partial<PositionV2Node> = {}): PositionV2Node {
     realizedPnl: null,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-02T00:00:00.000Z',
+    prediction: { predictionId: '0xprediction' },
     pickConfig: {
       pickConfigId: '0xpickconfig',
       chainId: 8453,
@@ -109,6 +110,16 @@ describe('toPositionBalance', () => {
   test('returns null pickConfig when absent', () => {
     const bal = toPositionBalance(makeNode({ pickConfig: null }));
     expect(bal.pickConfig).toBeNull();
+  });
+
+  test('backfills pickConfig.predictionId from the holder prediction (claim/permalink)', () => {
+    const bal = toPositionBalance(makeNode());
+    expect(bal.pickConfig?.predictionId).toBe('0xprediction');
+  });
+
+  test('predictionId is null when the position has no holder prediction', () => {
+    const bal = toPositionBalance(makeNode({ prediction: null }));
+    expect(bal.pickConfig?.predictionId).toBeNull();
   });
 });
 
