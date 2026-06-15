@@ -6,10 +6,39 @@ import {
   type UseMutationResult,
   type UseQueryResult,
 } from '@tanstack/react-query';
-import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 
 function getPublicApiBaseUrl(): string {
   return process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz';
+}
+
+/**
+ * Per-user referral status + referrals, from the public REST endpoint
+ * `GET /referrals/users/:address`. Referral data is attribution-only and v2
+ * GraphQL deliberately does not expose it, so all referral reads go through
+ * REST. A missing user resolves to the empty/no-referral shape (never null).
+ */
+export type UserReferralStatus = {
+  address: string;
+  refCodeHash: string | null;
+  maxReferrals: number;
+  referredBy: { id: number } | null;
+  referredByCode: { id: number } | null;
+  referrals: { address: string; createdAt: string }[];
+};
+
+export async function fetchUserReferralStatus(
+  walletAddress: string
+): Promise<UserReferralStatus> {
+  const response = await fetch(
+    `${getPublicApiBaseUrl()}/referrals/users/${walletAddress.toLowerCase()}`
+  );
+  if (!response.ok) {
+    throw new ReferralApiError(
+      response.status,
+      `Failed to load referral status (${response.status})`
+    );
+  }
+  return (await response.json()) as UserReferralStatus;
 }
 
 export class ReferralApiError extends Error {
@@ -117,30 +146,25 @@ export type UserReferralsData = {
   } | null;
 };
 
-const USER_REFERRALS_QUERY = `
-  query UserReferrals($wallet: String!) {
-    user(where: { address: $wallet }) {
-      address
-      refCodeHash
-      maxReferrals
-      referrals {
-        address
-        createdAt
-      }
-    }
-  }
-`;
-
 export function useUserReferrals(
   walletAddress: string | null | undefined,
   enabled: boolean
 ): UseQueryResult<UserReferralsData> {
   return useQuery<UserReferralsData>({
     queryKey: ['userReferrals', walletAddress?.toLowerCase() ?? null],
-    queryFn: () =>
-      graphqlRequest<UserReferralsData>(USER_REFERRALS_QUERY, {
-        wallet: (walletAddress ?? '').toLowerCase(),
-      }),
+    queryFn: async () => {
+      const status = await fetchUserReferralStatus(walletAddress ?? '');
+      // Preserve the `{ user }` envelope the dashboard reads; the REST
+      // endpoint always returns a (possibly empty) status object.
+      return {
+        user: {
+          address: status.address,
+          refCodeHash: status.refCodeHash,
+          maxReferrals: status.maxReferrals,
+          referrals: status.referrals,
+        },
+      };
+    },
     enabled: enabled && Boolean(walletAddress),
   });
 }

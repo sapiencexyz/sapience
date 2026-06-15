@@ -1,7 +1,8 @@
-import { Request, Response, Router } from 'express';
+import type { Request, Response } from 'express';
+import { Router } from 'express';
+import { recoverMessageAddress, type Address } from 'viem';
 import prisma from '../core/db';
 import { hashReferralCode } from '../services';
-import { recoverMessageAddress, type Address } from 'viem';
 import { adminAuth } from '../runtime/middleware';
 import { grantSponsorshipBudget } from '../services/sponsorship';
 import { createLogger } from '../core/logger';
@@ -557,6 +558,66 @@ router.get('/codes/:id', async (req: Request, res: Response) => {
     return res.status(200).json({ id, ...stats, claimants });
   } catch (e) {
     log.error({ err: e }, 'Error reading referral code analytics');
+    return res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+// GET /referrals/users/:address - per-user referral status + the user's own
+// referrals. Reads are public (referral data is attribution, not a credential)
+// and replace the v1 GraphQL `user(where:{address})` reads the frontend used
+// for the invite gate (Header/ConnectDialog) and the referrals dashboard
+// (useReferrals). A missing user resolves to the empty/no-referral shape (200,
+// not 404) so callers can read it unconditionally.
+router.get('/users/:address', async (req: Request, res: Response) => {
+  const address = (req.params.address || '').toLowerCase();
+  if (!address) {
+    return res.status(400).json({ message: 'Invalid address' });
+  }
+  try {
+    const user = await prisma.user.findUnique({
+      where: { address },
+      select: {
+        address: true,
+        refCodeHash: true,
+        maxReferrals: true,
+        referredById: true,
+        referredByCodeId: true,
+        referrals: {
+          select: { address: true, createdAt: true },
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+    });
+
+    if (!user) {
+      return res.status(200).json({
+        address,
+        refCodeHash: null,
+        maxReferrals: 0,
+        referredBy: null,
+        referredByCode: null,
+        referrals: [],
+      });
+    }
+
+    return res.status(200).json({
+      address: user.address,
+      refCodeHash: user.refCodeHash,
+      maxReferrals: user.maxReferrals,
+      // The frontend only checks presence (the invite gate), so the FK id is
+      // a sufficient stand-in for the v1 `referredBy { id }` / `referredByCode
+      // { id }` selections.
+      referredBy: user.referredById != null ? { id: user.referredById } : null,
+      referredByCode:
+        user.referredByCodeId != null ? { id: user.referredByCodeId } : null,
+      referrals: user.referrals.map((r) => ({
+        address: r.address,
+        createdAt:
+          r.createdAt instanceof Date ? r.createdAt.toISOString() : r.createdAt,
+      })),
+    });
+  } catch (e) {
+    log.error({ err: e }, 'Error reading user referral status');
     return res.status(500).json({ message: 'Internal Server Error' });
   }
 });

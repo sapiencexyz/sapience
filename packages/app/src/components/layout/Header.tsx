@@ -44,8 +44,8 @@ import {
   CHAIN_ID_ETHEREAL_TESTNET,
   DEFAULT_CHAIN_ID,
 } from '@sapience/sdk/constants';
-import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import CollateralBalanceButton from './CollateralBalanceButton';
+import { fetchUserReferralStatus } from '~/hooks/referrals/useReferrals';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import GetAccessDialog from '~/components/shared/GetAccessDialog';
@@ -59,21 +59,6 @@ import {
   DEFAULT_CONNECTION_DURATION_HOURS,
 } from '~/lib/context/SettingsContext';
 import { StatusIndicators } from '~/components/layout/StatusIndicators';
-
-const USER_REFERRAL_STATUS_QUERY = `
-  query UserReferralStatus($wallet: String!) {
-    user(where: { address: $wallet }) {
-      address
-      refCodeHash
-      referredBy {
-        id
-      }
-      referredByCode {
-        id
-      }
-    }
-  }
-`;
 
 // On staging (Ethereal Testnet) we don't gate access behind an invite code.
 const IS_STAGING = DEFAULT_CHAIN_ID === CHAIN_ID_ETHEREAL_TESTNET;
@@ -348,21 +333,14 @@ const Header = () => {
       }
 
       try {
-        const data = await graphqlRequest<{
-          user: {
-            address: string;
-            refCodeHash?: string | null;
-            referredBy?: { id: number } | null;
-            referredByCode?: { id: number } | null;
-          } | null;
-        }>(USER_REFERRAL_STATUS_QUERY, { wallet: currentAddress });
+        const status = await fetchUserReferralStatus(currentAddress);
 
         if (cancelled) return;
 
-        const user = data?.user;
         const hasServerReferral = !!(
-          user &&
-          (user.refCodeHash || user.referredBy || user.referredByCode)
+          status.refCodeHash ||
+          status.referredBy ||
+          status.referredByCode
         );
 
         // Update ref only after successful check to avoid race conditions
