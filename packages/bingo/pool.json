@@ -93,8 +93,8 @@
       {
         "conditionId": "0xe890148bbb5a08a6c1225a412ff55a322f6480a2087db64c12f460c4130731d3",
         "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-        "shortName": "Armando Gonz\u00e1lez: 1+ goals",
-        "question": "Armando Gonz\u00e1lez: 1+ goals",
+        "shortName": "Armando González: 1+ goals",
+        "question": "Armando González: 1+ goals",
         "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/worldcup-goal-props/mex-armando-gonzalez.png",
         "endTime": 1781215140
       },
@@ -423,16 +423,16 @@
       {
         "conditionId": "0x48880e3355f031da13b5ed1142d209396bdec61acf6c0945234ff6e5edab9ebf",
         "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-        "shortName": "Will T\u00fcrkiye win on 2026-06-14?",
-        "question": "Will T\u00fcrkiye win on 2026-06-14?",
+        "shortName": "Will Türkiye win on 2026-06-14?",
+        "question": "Will Türkiye win on 2026-06-14?",
         "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
         "endTime": 1781409600
       },
       {
         "conditionId": "0x12c17c04d2e404bd85a8c65c04cd7e8799a6295c7f74414feec5e867fa40cc5a",
         "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-        "shortName": "Will Australia vs. T\u00fcrkiye end in a draw?",
-        "question": "Will Australia vs. T\u00fcrkiye end in a draw?",
+        "shortName": "Will Australia vs. Türkiye end in a draw?",
+        "question": "Will Australia vs. Türkiye end in a draw?",
         "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
         "endTime": 1781409600
       },
@@ -455,23 +455,23 @@
         "conditionId": "0x85a8fd15a5277a7e210fd45f53584b0831f081fd4727771af47fec7e4528ce83",
         "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
         "shortName": "AUS/TRK O2.5",
-        "question": "Will Australia vs T\u00fcrkiye total be over 2.5?",
+        "question": "Will Australia vs Türkiye total be over 2.5?",
         "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
         "endTime": 1781409600
       },
       {
         "conditionId": "0x96cd1bc66d5b25c59fc8163bacb7f6eff00501a5589891fde75827a1e0ea2b3b",
         "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-        "shortName": "Australia vs. T\u00fcrkiye: 1st Half O/U 0.5",
-        "question": "Australia vs. T\u00fcrkiye: 1st Half O/U 0.5",
+        "shortName": "Australia vs. Türkiye: 1st Half O/U 0.5",
+        "question": "Australia vs. Türkiye: 1st Half O/U 0.5",
         "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
         "endTime": 1781409600
       },
       {
         "conditionId": "0x8364d93d587700053776084b87ab9fb334f49ffbf6c85b3b34e1c03f1cbde89e",
         "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-        "shortName": "Australia vs. T\u00fcrkiye: T\u00fcrkiye O/U 1.5",
-        "question": "Australia vs. T\u00fcrkiye: T\u00fcrkiye O/U 1.5",
+        "shortName": "Australia vs. Türkiye: Türkiye O/U 1.5",
+        "question": "Australia vs. Türkiye: Türkiye O/U 1.5",
         "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
         "endTime": 1781420340
       },
@@ -485,15 +485,15 @@
       {
         "conditionId": "0x0921c61d04ca3f79c5ec022da1bf5f39a59ab36506004d74a02f2894cc376e32",
         "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-        "shortName": "Germany vs. Cura\u00e7ao: Draw at halftime?",
-        "question": "Germany vs. Cura\u00e7ao: Draw at halftime?",
+        "shortName": "Germany vs. Curaçao: Draw at halftime?",
+        "question": "Germany vs. Curaçao: Draw at halftime?",
         "endTime": 1781456400
       },
       {
         "conditionId": "0x3fbc68160eebf3b359b077b0e5ea8c7052031e84ec159c5002666302f67b508c",
         "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
         "shortName": "GRM -3.5",
-        "question": "Germany covers -3.5 spread vs Cura\u00e7ao?",
+        "question": "Germany covers -3.5 spread vs Curaçao?",
         "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
         "endTime": 1781456400
       },
@@ -501,15 +501,15 @@
         "conditionId": "0x685d9c11a3cddb6c0a49fb5a742c8a75b91e20de1b8bb4912444879de97baf46",
         "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
         "shortName": "GRM/CUR O4.5",
-        "question": "Will Germany vs Cura\u00e7ao total be over 4.5?",
+        "question": "Will Germany vs Curaçao total be over 4.5?",
         "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
         "endTime": 1781456400
       },
       {
         "conditionId": "0x90e31bfe6fed6275c3048c09ab90c73c039688e89a302294a9e1ed63ac8af2af",
         "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-        "shortName": "Germany vs. Cura\u00e7ao: 1st Half O/U 1.5",
-        "question": "Germany vs. Cura\u00e7ao: 1st Half O/U 1.5",
+        "shortName": "Germany vs. Curaçao: 1st Half O/U 1.5",
+        "question": "Germany vs. Curaçao: 1st Half O/U 1.5",
         "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
         "endTime": 1781456400
       },
@@ -579,16 +579,16 @@
       {
         "conditionId": "0xa6c938b3402538af5faa626dc882bd7995db132df1c4ea669db7841df3557678",
         "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-        "shortName": "Will C\u00f4te d'Ivoire vs. Ecuador end in a draw?",
-        "question": "Will C\u00f4te d'Ivoire vs. Ecuador end in a draw?",
+        "shortName": "Will Côte d'Ivoire vs. Ecuador end in a draw?",
+        "question": "Will Côte d'Ivoire vs. Ecuador end in a draw?",
         "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
         "endTime": 1781478000
       },
       {
         "conditionId": "0x8f92746709a4fc82f4d454e162046ac3590e3a5a7564540806a6c5f8a87e6738",
         "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-        "shortName": "Will C\u00f4te d'Ivoire win on 2026-06-14?",
-        "question": "Will C\u00f4te d'Ivoire win on 2026-06-14?",
+        "shortName": "Will Côte d'Ivoire win on 2026-06-14?",
+        "question": "Will Côte d'Ivoire win on 2026-06-14?",
         "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
         "endTime": 1781478000
       },
@@ -596,7 +596,7 @@
         "conditionId": "0x11664d353e416f56ac57f40c21839527be7bd4730ee259955fee13d45226e2d3",
         "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
         "shortName": "CTD/ECU O2.5",
-        "question": "Will C\u00f4te d'Ivoire vs Ecuador total be over 2.5?",
+        "question": "Will Côte d'Ivoire vs Ecuador total be over 2.5?",
         "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
         "endTime": 1781478000
       },
@@ -604,7 +604,7 @@
         "conditionId": "0xf946f993eb6dddb93e04c413b8da82c89306d8ed367cebdb13dc26933c483fab",
         "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
         "shortName": "CTD/ECU O1.5",
-        "question": "Will C\u00f4te d'Ivoire vs Ecuador total be over 1.5?",
+        "question": "Will Côte d'Ivoire vs Ecuador total be over 1.5?",
         "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
         "endTime": 1781488740
       },
@@ -635,8 +635,8 @@
       {
         "conditionId": "0xea1ff53447ee83d737ff6ad02cb04cf7a2e771aae70e3a15b54c8ec5a4820884",
         "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
-        "shortName": "C\u00f4te d'Ivoire vs. Ecuador: 1st Half O/U 0.5",
-        "question": "C\u00f4te d'Ivoire vs. Ecuador: 1st Half O/U 0.5",
+        "shortName": "Côte d'Ivoire vs. Ecuador: 1st Half O/U 0.5",
+        "question": "Côte d'Ivoire vs. Ecuador: 1st Half O/U 0.5",
         "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
         "endTime": 1781488800
       },
@@ -1652,6 +1652,2738 @@
         "question": "Will United States vs Paraguay total be over 1.5?",
         "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
         "endTime": 1781323140
+      }
+    ]
+  },
+  {
+    "poolId": "world-cup-2026-jun16",
+    "opensAt": 1781496000,
+    "cutoff": 1781582400,
+    "minCardPriceWei": "1000000000000000000",
+    "referralBps": 200,
+    "multiplierBps": [
+      0, 0, 20000, 30000, 40000, 50000, 100000, 250000, 500000, 750000, 1000000
+    ],
+    "conditions": [
+      {
+        "conditionId": "0x04b6d6630d49e6513355ff045c96439c929335cb0d18da7792dea6c2fc717ead",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will France win on 2026-06-16?",
+        "question": "Will France win on 2026-06-16?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.665,
+        "endTime": 1781636400
+      },
+      {
+        "conditionId": "0x3045a441e5ea4e49468d0fac36d47c32ceae2e572bd7960111187b6630a83b46",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "FRN -1.5",
+        "question": "France covers -1.5 spread vs Senegal?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.395,
+        "endTime": 1781636400
+      },
+      {
+        "conditionId": "0x2066878047a7fbb815f230e720ff93f31236ed7c35997ea12c90a3442e6f3c61",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "France vs. Senegal: 2nd Half O/U 2.5",
+        "question": "France vs. Senegal: 2nd Half O/U 2.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.19,
+        "endTime": 1781647140
+      },
+      {
+        "conditionId": "0x2e8e6cd02e0b2b7348f0f2ac041762c4dc341756959767fb75c671781f2193cb",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "FRN/SNG O3.5",
+        "question": "Will France vs Senegal total be over 3.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.285,
+        "endTime": 1781647140
+      },
+      {
+        "conditionId": "0x3c76158722fca7aca8a1e38c5f1692c02c1c91b2a4e388eb6109bb39e5d6e321",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "France leading at halftime?",
+        "question": "France leading at halftime?",
+        "estimatedPrice": 0.495,
+        "endTime": 1781647140
+      },
+      {
+        "conditionId": "0x46459f98c990c1931a85e6b25726b70c71d224f3230acaa49cd3ff294d104466",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "SNG -2.5",
+        "question": "Senegal covers -2.5 spread vs France?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.0055,
+        "endTime": 1781647140
+      },
+      {
+        "conditionId": "0x4a060c12a1d21dd649782746b6e25b50c116af357ba288f366a99ed2eadcb025",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "France vs. Senegal: France O/U 2.5",
+        "question": "France vs. Senegal: France O/U 2.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.305,
+        "endTime": 1781647140
+      },
+      {
+        "conditionId": "0x58644adf1e2418ed688e9c242a537024a146b4fbedd3e66b54ad67ee2c7ce71f",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "FRN/SNG O4.5",
+        "question": "Will France vs Senegal total be over 4.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.135,
+        "endTime": 1781647140
+      },
+      {
+        "conditionId": "0x6c8535d38d6684fdfde3d734bccb8aeb396f0445384f6465e4f3c48134b33c02",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "France vs. Senegal: Both Teams to Score in First Half",
+        "question": "France vs. Senegal: Both Teams to Score in First Half",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.17,
+        "endTime": 1781647140
+      },
+      {
+        "conditionId": "0x766993aa87f8eddd648178203e92417fe89084cf1b8d898de72d2fb68a16794a",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "France vs. Senegal: 2nd Half O/U 1.5",
+        "question": "France vs. Senegal: 2nd Half O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.455,
+        "endTime": 1781647140
+      },
+      {
+        "conditionId": "0x79259c50721f31a83269c8c051448c5473ddeccd537822982849a162c00a9f94",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "France vs. Senegal: Senegal O/U 2.5",
+        "question": "France vs. Senegal: Senegal O/U 2.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.0455,
+        "endTime": 1781647140
+      },
+      {
+        "conditionId": "0x79b95fd90ba79fe5883b482c3311e42bb398baeec1fcc3f5d31842fef8901187",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "France vs. Senegal: 1st Half O/U 2.5",
+        "question": "France vs. Senegal: 1st Half O/U 2.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.12,
+        "endTime": 1781647140
+      },
+      {
+        "conditionId": "0x846a50ebbac79e1fad0573052a0b9f581e3e3d9e0e7aaf4214da4955c2d59954",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Exact Score: Any Other Score?",
+        "question": "Exact Score: Any Other Score?",
+        "estimatedPrice": 0.16,
+        "endTime": 1781647140
+      },
+      {
+        "conditionId": "0x8f3c4ec8a952306d39d3eb361dc05bf50e8911e84e0a2238af749d2b28fe21a0",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "FRN/SNG O5.5",
+        "question": "Will France vs Senegal total be over 5.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.055,
+        "endTime": 1781647140
+      },
+      {
+        "conditionId": "0x9ad38d22c9912987ca4d644c8b7d239f24afba5c93d16300a8cad778bc6f6858",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "FRN/SNG O2.5",
+        "question": "Will France vs Senegal total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.505,
+        "endTime": 1781647140
+      },
+      {
+        "conditionId": "0xa040429177bd8ed84edb1022f8ce1519b133cc82cbbf8429821f7f4337458df5",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "France vs. Senegal: O/U 8.5 Total Corners",
+        "question": "France vs. Senegal: O/U 8.5 Total Corners",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.6,
+        "endTime": 1781647140
+      },
+      {
+        "conditionId": "0xacc91369e8ab91b13e8c7e9dfecc5798f9ea6a64776f89742f13683b68f6420f",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "FRN/SNG O1.5",
+        "question": "Will France vs Senegal total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.745,
+        "endTime": 1781647140
+      },
+      {
+        "conditionId": "0xee49e8198f51e9ba029fc1932e19c57f083c2b4906f04962074f2914ae3cb380",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "FRN -2.5",
+        "question": "France covers -2.5 spread vs Senegal?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.195,
+        "endTime": 1781647140
+      },
+      {
+        "conditionId": "0xf10e557529d0a56f93fcb65db94ec737b85d3c04ef58d35d71647d480609d687",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "France vs. Senegal: 1st Half O/U 1.5",
+        "question": "France vs. Senegal: 1st Half O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.335,
+        "endTime": 1781647140
+      },
+      {
+        "conditionId": "0x2c6fff9c552558c74b976093b920b55a0cebbc51b1a06e04e1b02f8c48677900",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "BTTS FRN/SNG",
+        "question": "Will both France and Senegal score?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.465,
+        "endTime": 1781647200
+      },
+      {
+        "conditionId": "0x7164003effdfef62c5ac5b660c40630ecde0890e3c328ef8510f037831c59c0c",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "NRW -2.5",
+        "question": "Norway covers -2.5 spread vs Iraq?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.375,
+        "endTime": 1781647200
+      },
+      {
+        "conditionId": "0x821b530445694142d4b28874d58ffe841cad17a1106b7c0cff715bd7a165d7df",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "NRW -1.5",
+        "question": "Norway covers -1.5 spread vs Iraq?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.605,
+        "endTime": 1781647200
+      },
+      {
+        "conditionId": "0xcae11c24e67a2f445428d470ea64f0c7e49d294404e02e46a6e10866336449e1",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "IRA/NRW O5.5",
+        "question": "Will Iraq vs Norway total be over 5.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.095,
+        "endTime": 1781647200
+      },
+      {
+        "conditionId": "0xcee0d9074a1f8766b4f66d806608a4097d027c94f85de367410fbbb166a29424",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Norway win on 2026-06-16?",
+        "question": "Will Norway win on 2026-06-16?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.825,
+        "endTime": 1781647200
+      },
+      {
+        "conditionId": "0x03333cba94ad7239a0f3fb0215d1a480d530f86940b4da55c9ae214f0b200b57",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "IRA/NRW O6.5",
+        "question": "Will Iraq vs Norway total be over 6.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.0405,
+        "endTime": 1781657940
+      },
+      {
+        "conditionId": "0x063ee9dba3dbb3c949b3847fd9b9432549fabd4abd49cb0d295f4ef2d224fd05",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "BTTS IRA/NRW",
+        "question": "Will both Iraq and Norway score?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.395,
+        "endTime": 1781657940
+      },
+      {
+        "conditionId": "0x21fdbb207735cc864a3c4983b84ac2fa8909cfc19422c85ee7566b3a9fdd1f4b",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "IRA -2.5",
+        "question": "Iraq covers -2.5 spread vs Norway?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.0035,
+        "endTime": 1781657940
+      },
+      {
+        "conditionId": "0x2790cc137c102b2c3aaab1d0f26eeb8f4a9ce475140f7a75939c7896cd12edc0",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Iraq vs. Norway: Norway O/U 0.5",
+        "question": "Iraq vs. Norway: Norway O/U 0.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.935,
+        "endTime": 1781657940
+      },
+      {
+        "conditionId": "0x305e177bf81537710c254139f066f013a99981ad614c39d997a0c0c76e29ac8e",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "IRA/NRW O1.5",
+        "question": "Will Iraq vs Norway total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.825,
+        "endTime": 1781657940
+      },
+      {
+        "conditionId": "0x35b9f2d56541e52d98b0abc2ad994ff2b2a4722d30f0f8a76649980bba3ca6f4",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Iraq vs. Norway: Norway O/U 1.5",
+        "question": "Iraq vs. Norway: Norway O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.745,
+        "endTime": 1781657940
+      },
+      {
+        "conditionId": "0x3810cb9860d50b1c785250bba319a397bd27f8652feaff6743c18f54790d7bbc",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "IRA/NRW O3.5",
+        "question": "Will Iraq vs Norway total be over 3.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.385,
+        "endTime": 1781657940
+      },
+      {
+        "conditionId": "0x398401a1f154312143c187cb890d3871f7be68e7d639f314475d8daf9db7a7d7",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Iraq vs. Norway: Norway O/U 2.5",
+        "question": "Iraq vs. Norway: Norway O/U 2.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.485,
+        "endTime": 1781657940
+      },
+      {
+        "conditionId": "0x609d33a57b5e647b226d10e9fe46dd756f50b6eb5aeeae22a6c044e50f5c2fca",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Iraq vs. Norway: 1st Half O/U 1.5",
+        "question": "Iraq vs. Norway: 1st Half O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.405,
+        "endTime": 1781657940
+      },
+      {
+        "conditionId": "0x628d761e7a83448fc26d68108e5239e2b1183edd60824b60cf84e98cf705a6b2",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Exact Score: Any Other Score?",
+        "question": "Exact Score: Any Other Score?",
+        "estimatedPrice": 0.24,
+        "endTime": 1781657940
+      },
+      {
+        "conditionId": "0x75632c047c314459500d1efb10e00ede9926af2143d165112d92a0ee9dad3dc0",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "IRA/NRW O2.5",
+        "question": "Will Iraq vs Norway total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.615,
+        "endTime": 1781657940
+      },
+      {
+        "conditionId": "0x7e9fb29678dfaa8651b48264c7683598745d0538cace1809aa16dd903d0f8b36",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "IRA/NRW O0.5",
+        "question": "Will Iraq vs Norway total be over 0.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.9595,
+        "endTime": 1781657940
+      },
+      {
+        "conditionId": "0x803014ff74ac5ad2093a5c21640ffda63c260fd5f93fc1c09e972bcec19c5d55",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Iraq vs. Norway: Iraq O/U 2.5",
+        "question": "Iraq vs. Norway: Iraq O/U 2.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.022,
+        "endTime": 1781657940
+      },
+      {
+        "conditionId": "0x943f333ebb1aeb725a1aa80ab79a0c3e1b7842c384ce2c15978a7e003385d16a",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Iraq vs. Norway: 2nd Half O/U 2.5",
+        "question": "Iraq vs. Norway: 2nd Half O/U 2.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.27,
+        "endTime": 1781657940
+      },
+      {
+        "conditionId": "0xa6e038f2afe16051046cedfabc2b14e49315fbe8b7bc5ce354c74744f75c3e55",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "NRW -3.5",
+        "question": "Norway covers -3.5 spread vs Iraq?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.195,
+        "endTime": 1781657940
+      },
+      {
+        "conditionId": "0xb0587bb48c33df3c619011fd8fc92004e6cedcf5bd62c904411f59bcda7e7570",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Iraq vs. Norway: 1st Half O/U 2.5",
+        "question": "Iraq vs. Norway: 1st Half O/U 2.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.16,
+        "endTime": 1781657940
+      },
+      {
+        "conditionId": "0xc2b17b40b8e1987b974a307d2bc968a6dc522e8f7e9636ca33f050714347c219",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "IRA -3.5",
+        "question": "Iraq covers -3.5 spread vs Norway?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.004,
+        "endTime": 1781657940
+      },
+      {
+        "conditionId": "0xda098591c7d6f444a52c40827301c8ed48caa105e0b5567c057d1fc16ac91003",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "IRA -1.5",
+        "question": "Iraq covers -1.5 spread vs Norway?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.0155,
+        "endTime": 1781657940
+      },
+      {
+        "conditionId": "0xe7a8b810e0f4a6dd1bc096be0804abdbf00b1b0bc1996a6214bb45bf9a3e98e7",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Norway leading at halftime?",
+        "question": "Norway leading at halftime?",
+        "estimatedPrice": 0.605,
+        "endTime": 1781657940
+      },
+      {
+        "conditionId": "0x085d391f323281868231f25498990cb9fd65c791d26c5ffb7787a958ddb50f8e",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "ARG/ALG O3.5",
+        "question": "Will Argentina vs Algeria total be over 3.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.265,
+        "endTime": 1781658000
+      },
+      {
+        "conditionId": "0x2a7a6ab8f4984f1ae82eacd7fb408832a50e63162ac6b98fff1fe094b8e9d3b5",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Argentina win on 2026-06-16?",
+        "question": "Will Argentina win on 2026-06-16?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.705,
+        "endTime": 1781658000
+      },
+      {
+        "conditionId": "0x01383d17a4ea8f24e66df6d29d2b9f4690d2c70e6954837f3094c852c5b2bc2a",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Argentina vs. Algeria: O/U 8.5 Total Corners",
+        "question": "Argentina vs. Algeria: O/U 8.5 Total Corners",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.485,
+        "endTime": 1781668740
+      },
+      {
+        "conditionId": "0x0c28873bd714e9671e4258ce506b11527023b911295896ef034439bbf76bb933",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "ALG -2.5",
+        "question": "Algeria covers -2.5 spread vs Argentina?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.006,
+        "endTime": 1781668740
+      },
+      {
+        "conditionId": "0x1eb724a708f3720c2b7ef63d7ffc7483ecc14deed6df2e7e9dc1dfa724a98bd6",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "ARG -1.5",
+        "question": "Argentina covers -1.5 spread vs Algeria?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.435,
+        "endTime": 1781668740
+      },
+      {
+        "conditionId": "0x2050d3a4ac01b40cfcea5b581dfaf4dba9d38c173496203b7aab7d838ab80e72",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Charles De Ketelaere be in Belgium's Starting 11?",
+        "question": "Will Charles De Ketelaere be in Belgium's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/charles-de-ketelaere-20260609173850410-Amf15JvXTOvx.png",
+        "estimatedPrice": 0.972,
+        "endTime": 1781668740
+      },
+      {
+        "conditionId": "0x205cc9d6c1f91bc23484884c199f8593f697aeade8a555ab10e110f8d48b019b",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Argentina vs. Algeria: Algeria O/U 1.5",
+        "question": "Argentina vs. Algeria: Algeria O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.12,
+        "endTime": 1781668740
+      },
+      {
+        "conditionId": "0x26eb69256ae07a7279fda1db082b82faf77e01c7443e8fb86e625bfad73306b8",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Diego Moreira be in Belgium's Starting 11?",
+        "question": "Will Diego Moreira be in Belgium's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/diego-moreira-20260609173850412-2_oA7DzUGkHO.png",
+        "estimatedPrice": 0.0005,
+        "endTime": 1781668740
+      },
+      {
+        "conditionId": "0x2bff69d3d338ba739182c5144b5a41f4f5bae4a771bccdba707e45ffa4a22756",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Argentina vs. Algeria: Argentina 1st Half O/U 0.5",
+        "question": "Argentina vs. Algeria: Argentina 1st Half O/U 0.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.58,
+        "endTime": 1781668740
+      },
+      {
+        "conditionId": "0x2d6740ddd59dd175997d0b9ed6572348f2a06ccd58074e7be5bc74cbcf8c401b",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Argentina vs. Algeria: Algeria 1st Half O/U 1.5",
+        "question": "Argentina vs. Algeria: Algeria 1st Half O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.0205,
+        "endTime": 1781668740
+      },
+      {
+        "conditionId": "0x3892ebff6e83ea02b395c314fb1baea7eacf7170a6c8c13adeac5af8d272858d",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Argentina vs. Algeria: 2nd Half O/U 2.5",
+        "question": "Argentina vs. Algeria: 2nd Half O/U 2.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.185,
+        "endTime": 1781668740
+      },
+      {
+        "conditionId": "0x3e314e1041ff7929e2cd4fc89c6281ba53cc44d3786fa293522b1813b6e3c6b9",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Romelu Lukaku be in Belgium's Starting 11?",
+        "question": "Will Romelu Lukaku be in Belgium's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/romelu-lukaku-20260609173850402-edCiZkObGE_6.png",
+        "estimatedPrice": 0.0045,
+        "endTime": 1781668740
+      },
+      {
+        "conditionId": "0x41e1ef285e96bf4c0e5fd8be12150684ba99f58127dde112053273fcb5700b72",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Zeno Debast be in Belgium's Starting 11?",
+        "question": "Will Zeno Debast be in Belgium's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/zeno-debast-20260609173850395-LfTyTEWTvJgn.png",
+        "estimatedPrice": 0.0005,
+        "endTime": 1781668740
+      },
+      {
+        "conditionId": "0x43a71145b80dfa87bdd42b9be44b0ccca9f030d7e7b2f4abdb1d424cd34915fc",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "ARG/ALG O1.5",
+        "question": "Will Argentina vs Algeria total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.735,
+        "endTime": 1781668740
+      },
+      {
+        "conditionId": "0x4587d40327837ce4441a637397a38db1f8fb227a9e49d97ea60cc655299c4cb7",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Exact Score: Any Other Score?",
+        "question": "Exact Score: Any Other Score?",
+        "estimatedPrice": 0.175,
+        "endTime": 1781668740
+      },
+      {
+        "conditionId": "0x4befb4d9dc28f63371ba136962a813fa179d101a3123dc266762cdefdb6dd70f",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Argentina vs. Algeria: O/U 7.5 Total Corners",
+        "question": "Argentina vs. Algeria: O/U 7.5 Total Corners",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.585,
+        "endTime": 1781668740
+      },
+      {
+        "conditionId": "0x5c3397b42765a65ea3c63001d79b2700a56df29c9a9e53a7476abe89654fc9a4",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "BTTS ARG/ALG",
+        "question": "Will both Argentina and Algeria score?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.405,
+        "endTime": 1781668740
+      },
+      {
+        "conditionId": "0x605c73359f1ebdd44c2427f5cafe31c3d6c7f3b83733e11a423656bfaf6812dc",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Nathan Ngoy be in Belgium's Starting 11?",
+        "question": "Will Nathan Ngoy be in Belgium's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/nathan-ngoy-20260609173850418-Cdt5xNDmziyR.png",
+        "estimatedPrice": 0.9995,
+        "endTime": 1781668740
+      },
+      {
+        "conditionId": "0x65614be35621ca4a0bf264966c09571f5fa5e9305d0ed3720be942016c911c86",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Argentina vs. Algeria: O/U 6.5 Total Corners",
+        "question": "Argentina vs. Algeria: O/U 6.5 Total Corners",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.72,
+        "endTime": 1781668740
+      },
+      {
+        "conditionId": "0x76530aedaf090b5c81a46d49c1ba5f5c999fc4a3457acace104cb0e47055a2b3",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Thomas Meunier be in Belgium's Starting 11?",
+        "question": "Will Thomas Meunier be in Belgium's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/thomas-meunier-20260609173850408--L6Ry8b85e0R.png",
+        "estimatedPrice": 0.996,
+        "endTime": 1781668740
+      },
+      {
+        "conditionId": "0x7c945fce2c1016e09641dea6a51a7f921a05a1d5a968948613d806f705a6d3d4",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Argentina vs. Algeria: 1st Half O/U 1.5",
+        "question": "Argentina vs. Algeria: 1st Half O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.31,
+        "endTime": 1781668740
+      },
+      {
+        "conditionId": "0x837121217005352126f3fd6c35f9764da3a5c25a9ffd639eb8e88945680e35fb",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Argentina leading at halftime?",
+        "question": "Argentina leading at halftime?",
+        "estimatedPrice": 0.505,
+        "endTime": 1781668740
+      },
+      {
+        "conditionId": "0x848c5c42fed99c0e8ceffb14ac0e4462f3c8c30709e9982f2bd0840a1ea7d91f",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Amadou Onana be in Belgium's Starting 11?",
+        "question": "Will Amadou Onana be in Belgium's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/amadou-onana-20260609173850417-S_B53NUl_6fX.png",
+        "estimatedPrice": 0.9995,
+        "endTime": 1781668740
+      },
+      {
+        "conditionId": "0x8566bb2b9746a5a84dd05d55de843632b6b3a98d7eeebec1566e0b7f8e0f81bc",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Joaquin Seys be in Belgium's Starting 11?",
+        "question": "Will Joaquin Seys be in Belgium's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/joaquin-seys-20260609173850411-SVRRKKg-WxEb.png",
+        "estimatedPrice": 0.0005,
+        "endTime": 1781668740
+      },
+      {
+        "conditionId": "0x9c03103506a9deec63f01c68c628000331d3a87b33832d84e1f9e0cba0a66027",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Koni De Winter be in Belgium's Starting 11?",
+        "question": "Will Koni De Winter be in Belgium's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/koni-de-winter-20260609173850409-ef1YnaDNQEmH.png",
+        "estimatedPrice": 0.0005,
+        "endTime": 1781668740
+      },
+      {
+        "conditionId": "0xa2e6b0daeed375f289790ff4901a17abdab41b6526cbec0632fae580e75786d8",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Thibaut Courtois be in Belgium's Starting 11?",
+        "question": "Will Thibaut Courtois be in Belgium's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/thibaut-courtois-20260609173850394-5YpBQBao86Ps.png",
+        "estimatedPrice": 0.9995,
+        "endTime": 1781668740
+      },
+      {
+        "conditionId": "0xa93be1024e17c8a6f52bcbf8f8f53d88215703978d801741e9b2bc1f85b9e518",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "ARG -2.5",
+        "question": "Argentina covers -2.5 spread vs Algeria?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.215,
+        "endTime": 1781668740
+      },
+      {
+        "conditionId": "0xb00f83f9d75b07ae1a544664d31f7483e0a87d10baf71506080c2430eba11173",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Argentina vs. Algeria: O/U 9.5 Total Corners",
+        "question": "Argentina vs. Algeria: O/U 9.5 Total Corners",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.335,
+        "endTime": 1781668740
+      },
+      {
+        "conditionId": "0xb8b93e9a9aff4b912aa7c695700ee68c6aae7b7f540eba23c70d837d2c42468e",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Argentina vs. Algeria: 2nd Half O/U 1.5",
+        "question": "Argentina vs. Algeria: 2nd Half O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.46,
+        "endTime": 1781668740
+      },
+      {
+        "conditionId": "0xc0f88d884322bad4aadedfa49a1022636cc6ad248e412bfd8e406b65d4da3de7",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "ARG/ALG O2.5",
+        "question": "Will Argentina vs Algeria total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.485,
+        "endTime": 1781668740
+      },
+      {
+        "conditionId": "0xc0fea58ac85d4f22f3e7494045642571d0ac4bb68751466a568cac589b9cd605",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Kevin De Bruyne be in Belgium's Starting 11?",
+        "question": "Will Kevin De Bruyne be in Belgium's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/kevin-de-bruyne-20260609173850400-6XRl-LCxi_dL.png",
+        "estimatedPrice": 0.9995,
+        "endTime": 1781668740
+      },
+      {
+        "conditionId": "0xc5982d738192f9f63c87493096aefc99b4e139e8a3904e9a4ba4477b25b449b0",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Jérémy Doku be in Belgium's Starting 11?",
+        "question": "Will Jérémy Doku be in Belgium's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/jeremy-doku-20260609173850404-qMfj5tpLzaPG.png",
+        "estimatedPrice": 0.9995,
+        "endTime": 1781668740
+      },
+      {
+        "conditionId": "0xdf236ba999b5cb4a11ac3835d48315180529c2a951177adcea82e62fcbcddfdf",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Leandro Trossard be in Belgium's Starting 11?",
+        "question": "Will Leandro Trossard be in Belgium's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/leandro-trossard-20260609173850403-D9fMt97vecLU.png",
+        "estimatedPrice": 0.9995,
+        "endTime": 1781668740
+      },
+      {
+        "conditionId": "0xe59985e7d40a9db90c4e0dab0143c7d4cd781688122668ebdd4e0833d1c8b9b2",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Timothy Castagne be in Belgium's Starting 11?",
+        "question": "Will Timothy Castagne be in Belgium's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/timothy-castagne-20260609173850414-POzM6OpdY3QN.png",
+        "estimatedPrice": 0.9585,
+        "endTime": 1781668740
+      },
+      {
+        "conditionId": "0xfe32a0fe589e32bc137217f8186089d7ab4a13f3aa1025620fb92393f159568c",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Argentina vs. Algeria: 1st Half O/U 2.5",
+        "question": "Argentina vs. Algeria: 1st Half O/U 2.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.1,
+        "endTime": 1781668740
+      }
+    ]
+  },
+  {
+    "poolId": "world-cup-2026-jun17",
+    "opensAt": 1781582400,
+    "cutoff": 1781668800,
+    "minCardPriceWei": "1000000000000000000",
+    "referralBps": 200,
+    "multiplierBps": [
+      0, 0, 20000, 30000, 40000, 50000, 100000, 250000, 500000, 750000, 1000000
+    ],
+    "conditions": [
+      {
+        "conditionId": "0x15869f0d05e99ad5789f647685b2eedbbe4201f8910a2bdb70e5716bd3674e8f",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Austria win on 2026-06-17?",
+        "question": "Will Austria win on 2026-06-17?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.725,
+        "endTime": 1781668800
+      },
+      {
+        "conditionId": "0x46e7555011a28e224408874f19801a7ad94f78cdcf0b69154bdbfb8cf1a74b55",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "AUS -2.5",
+        "question": "Austria covers -2.5 spread vs Jordan?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.265,
+        "endTime": 1781668800
+      },
+      {
+        "conditionId": "0x84fbb724c0465bf76f6302fa7189a8dd67264d39c59fba5fd341968de1178f9c",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "AUS -1.5",
+        "question": "Austria covers -1.5 spread vs Jordan?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.475,
+        "endTime": 1781668800
+      },
+      {
+        "conditionId": "0xcdb783a1fded73d862ca39d79263ed2ca01e2c2c0e61134e1124b05aeebb0e45",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "JRD -2.5",
+        "question": "Jordan covers -2.5 spread vs Austria?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.0065,
+        "endTime": 1781668800
+      },
+      {
+        "conditionId": "0x1a2ed5a9b3be408d56c9d1a811b6f4a5db9a811ffc88a0b48c390cb0fc9be829",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "AUS/JRD O0.5",
+        "question": "Will Austria vs Jordan total be over 0.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.95,
+        "endTime": 1781679540
+      },
+      {
+        "conditionId": "0x1fc3b49aed83f6b64ff5d96473cc12125715a4da07d82bbf26fae231364d89bc",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Austria vs. Jordan: Jordan O/U 1.5",
+        "question": "Austria vs. Jordan: Jordan O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.165,
+        "endTime": 1781679540
+      },
+      {
+        "conditionId": "0x2ea32b144195d05af9b6b6791b86c555b86f4c5853f1684bbd94a6839c1d0902",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "AUS/JRD O3.5",
+        "question": "Will Austria vs Jordan total be over 3.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.335,
+        "endTime": 1781679540
+      },
+      {
+        "conditionId": "0x55d0941280aaac9e285befcdfc0ae122727cd398315c33fc7234f6960ffad200",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Austria vs. Jordan: 1st Half O/U 2.5",
+        "question": "Austria vs. Jordan: 1st Half O/U 2.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.145,
+        "endTime": 1781679540
+      },
+      {
+        "conditionId": "0x6172da3db76c83578796d09bbbca323e2c0d2208b0b09c31c135811779a2188a",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "AUS/JRD O1.5",
+        "question": "Will Austria vs Jordan total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.795,
+        "endTime": 1781679540
+      },
+      {
+        "conditionId": "0x6c6e4d4ca07954019afe3eae562bb021e46f46679f625c2b603a4fd26fe432a8",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Austria leading at halftime?",
+        "question": "Austria leading at halftime?",
+        "estimatedPrice": 0.535,
+        "endTime": 1781679540
+      },
+      {
+        "conditionId": "0xd6126c2b59d6cae3799052ae87cf77247e8aa598b7f911d81cff9bcb62dd4925",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Austria vs. Jordan: 1st Half O/U 1.5",
+        "question": "Austria vs. Jordan: 1st Half O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.38,
+        "endTime": 1781679540
+      },
+      {
+        "conditionId": "0xe1cb1ab6d8a737156b893334167a6f1c59bef8131449aeb997ceb672ab87f5c9",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "JRD -3.5",
+        "question": "Jordan covers -3.5 spread vs Austria?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.0005,
+        "endTime": 1781679540
+      },
+      {
+        "conditionId": "0xe90005e94a2bb04dd0291c3eed8073b59a30408efed54abd35be68a6fb97085a",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Exact Score: Any Other Score?",
+        "question": "Exact Score: Any Other Score?",
+        "estimatedPrice": 0.19,
+        "endTime": 1781679540
+      },
+      {
+        "conditionId": "0xf73fce05ffcc7ce3783c1affcd5e4bf8fe4a6035e6d9a6de97dad49dabc31509",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Austria vs. Jordan: Austria O/U 0.5",
+        "question": "Austria vs. Jordan: Austria O/U 0.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.905,
+        "endTime": 1781679540
+      },
+      {
+        "conditionId": "0xfb9b81ad5aaaeac1b7fc3380454f4d4c5d89ed6e0adce87493e84b8d3c2e3683",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "AUS/JRD O5.5",
+        "question": "Will Austria vs Jordan total be over 5.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.075,
+        "endTime": 1781679540
+      },
+      {
+        "conditionId": "0x4cca4d1e6722c00e372bd219c15a94d29d09dc34c2599cc5efa9eef82ff67838",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "AUS/JRD O2.5",
+        "question": "Will Austria vs Jordan total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.565,
+        "endTime": 1781679600
+      },
+      {
+        "conditionId": "0x2a4f962b950e09e32e7db3d0c5d5b00765bb7fc7129e566cf3ba4e3153e619ac",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "PRT/DRC O3.5",
+        "question": "Will Portugal vs DR Congo total be over 3.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.325,
+        "endTime": 1781715600
+      },
+      {
+        "conditionId": "0x7d531b7f4710a8f00562455db5d409e269564a1415b5da352ba3f3daf33ee98e",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "PRT -1.5",
+        "question": "Portugal covers -1.5 spread vs DR Congo?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.515,
+        "endTime": 1781715600
+      },
+      {
+        "conditionId": "0xa71f817655a1e3388855598499fbe5dbb1f7904a376b7a792869b19279365dc1",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "PRT/DRC O2.5",
+        "question": "Will Portugal vs DR Congo total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.555,
+        "endTime": 1781715600
+      },
+      {
+        "conditionId": "0xc7cf1cff6bc27b004f2b8fef8f72113c7c10d24b14eeca2fe903a04e0def3d40",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "PRT -2.5",
+        "question": "Portugal covers -2.5 spread vs DR Congo?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.295,
+        "endTime": 1781715600
+      },
+      {
+        "conditionId": "0xcaaa1338d38b5c614196c9a926dd84babc3984442f2ec9b937a16284a199ec3a",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Portugal win on 2026-06-17?",
+        "question": "Will Portugal win on 2026-06-17?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.765,
+        "endTime": 1781715600
+      },
+      {
+        "conditionId": "0x0698bbfe9ca640fdc5d324070cd6d2ffc0db702ed6dc6fc8cdb2e24f1b081dca",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "PRT/DRC O1.5",
+        "question": "Will Portugal vs DR Congo total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.79,
+        "endTime": 1781726340
+      },
+      {
+        "conditionId": "0x1010c873aa7b27b0264b4b8cf3592863ed621a721f56c84c08c9da2a0c17f39b",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Exact Score: Any Other Score?",
+        "question": "Exact Score: Any Other Score?",
+        "estimatedPrice": 0.2,
+        "endTime": 1781726340
+      },
+      {
+        "conditionId": "0x1656380a528e58160d10b6aecba12352a4c31297d00fc5853a2731b23abd516c",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Portugal vs. DR Congo: O/U 12.5 Total Corners",
+        "question": "Portugal vs. DR Congo: O/U 12.5 Total Corners",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.18,
+        "endTime": 1781726340
+      },
+      {
+        "conditionId": "0x3499df2ed5f6a32e7f86837cbca0b64ca09dfa529d89059aed1759232b94a33e",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Portugal leading at halftime?",
+        "question": "Portugal leading at halftime?",
+        "estimatedPrice": 0.565,
+        "endTime": 1781726340
+      },
+      {
+        "conditionId": "0x35a44a268982c40da54ed560914fe4d497878eb299579d9f53128d299a9e2cec",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Portugal vs. DR Congo: DR Congo O/U 2.5",
+        "question": "Portugal vs. DR Congo: DR Congo O/U 2.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.0355,
+        "endTime": 1781726340
+      },
+      {
+        "conditionId": "0x42c98bb278b906e1d14badbcddd1626f89a0ee6e78e64062d96acfa4f47b47b8",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Portugal vs. DR Congo: 2nd Half O/U 2.5",
+        "question": "Portugal vs. DR Congo: 2nd Half O/U 2.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.215,
+        "endTime": 1781726340
+      },
+      {
+        "conditionId": "0x4ca004770f58e5ad56b47fa336c5a2b6ca823893262478fa76ca01b878cdf8ce",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "PRT/DRC O5.5",
+        "question": "Will Portugal vs DR Congo total be over 5.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.075,
+        "endTime": 1781726340
+      },
+      {
+        "conditionId": "0x60f993181304b378a25c1f334069251498c4002f424659c421a7e5c2b2099a03",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Portugal vs. DR Congo: 1st Half O/U 2.5",
+        "question": "Portugal vs. DR Congo: 1st Half O/U 2.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.14,
+        "endTime": 1781726340
+      },
+      {
+        "conditionId": "0x6dac370ddda9f263cab2828c770c4c9daf1da8f3a8e8aa7d4fc0d68ec4465aae",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "PRT/DRC O4.5",
+        "question": "Will Portugal vs DR Congo total be over 4.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.165,
+        "endTime": 1781726340
+      },
+      {
+        "conditionId": "0xd556526a0bed51555cfd55c0e80f8ed9f2e2ea5986714a4a892bd70155cb031a",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "BTTS PRT/DRC",
+        "question": "Will both Portugal and DR Congo score?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.405,
+        "endTime": 1781726340
+      },
+      {
+        "conditionId": "0xde0efbf9052d1467ac826c421b4b056e6bec4a251980ec7c15fd6244cecc72db",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Portugal vs. DR Congo: 1st Half O/U 1.5",
+        "question": "Portugal vs. DR Congo: 1st Half O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.37,
+        "endTime": 1781726340
+      },
+      {
+        "conditionId": "0xe12c616ffbe90c2899ee5ad5388152bd2d81b36183c2b704b4e7759f89ffc0b9",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "PRT -3.5",
+        "question": "Portugal covers -3.5 spread vs DR Congo?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.145,
+        "endTime": 1781726340
+      },
+      {
+        "conditionId": "0xf744cee270ee7e04f707eb20ba92de5b27aafb8f434741fc8efd94cdbb726e20",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "DRC -2.5",
+        "question": "DR Congo covers -2.5 spread vs Portugal?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.006,
+        "endTime": 1781726340
+      },
+      {
+        "conditionId": "0x1c0b3b89f91914877baa6642fadd047deee44a76c129643779e134bb2c61e5f7",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "ENG/CRT O2.5",
+        "question": "Will England vs Croatia total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.435,
+        "endTime": 1781726400
+      },
+      {
+        "conditionId": "0xb361c29b5481164886627cb175ed76792df30902e66ec329c0a3853f807fe8e9",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will England win on 2026-06-17?",
+        "question": "Will England win on 2026-06-17?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.565,
+        "endTime": 1781726400
+      },
+      {
+        "conditionId": "0x0fcd3ec1997002b2c76408a22d50cb3b29f220ec719ec8baf246b987764f0f7d",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "ENG/CRT O1.5",
+        "question": "Will England vs Croatia total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.705,
+        "endTime": 1781737140
+      },
+      {
+        "conditionId": "0x4bf019219fa7808774d81823893e9a008010ecfd6018d4305b515e9a6b5e63fe",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "ENG/CRT O8.5",
+        "question": "Will England vs Croatia total be over 8.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.0015,
+        "endTime": 1781737140
+      },
+      {
+        "conditionId": "0x530eec2f13db452298c4fa21ab23250562cec2c89f93ef1fdfaa6b30e3e53bc4",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "ENG/CRT O6.5",
+        "question": "Will England vs Croatia total be over 6.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.0145,
+        "endTime": 1781737140
+      },
+      {
+        "conditionId": "0x5585ede820305707cfe1ed1441842e87cd903c07e89d8b738edf025b5a5f94df",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "BTTS ENG/CRT",
+        "question": "Will both England and Croatia score?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.465,
+        "endTime": 1781737140
+      },
+      {
+        "conditionId": "0x607c81735eeb615761a452afc175cf98f9af5ec4d865c6563e301a8f15a319d0",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Exact Score: England 2 - 0 Croatia?",
+        "question": "Exact Score: England 2 - 0 Croatia?",
+        "estimatedPrice": 0.13,
+        "endTime": 1781737140
+      },
+      {
+        "conditionId": "0x6f3acfd26aa60488756cb3835aeb40b8c7c61cdb6b5e08a70806b3178b2200ee",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "ENG/CRT O5.5",
+        "question": "Will England vs Croatia total be over 5.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.043,
+        "endTime": 1781737140
+      },
+      {
+        "conditionId": "0x751efee5500f93b5af859f5ab48cb4aae3d39201cba983389600b848291482ed",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "ENG/CRT O4.5",
+        "question": "Will England vs Croatia total be over 4.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.105,
+        "endTime": 1781737140
+      },
+      {
+        "conditionId": "0x90387faad9abf6d8d1c8e38aeabf8bb0d9f0d604775487d98fc66f7cb3b40a00",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "ENG/CRT O0.5",
+        "question": "Will England vs Croatia total be over 0.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.915,
+        "endTime": 1781737140
+      },
+      {
+        "conditionId": "0xa5a2fc694cd183f90b6f6fdff3ca2ea0311c96871effc19ca90146a0e0ba94ef",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "CRT -2.5",
+        "question": "Croatia covers -2.5 spread vs England?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.011,
+        "endTime": 1781737140
+      },
+      {
+        "conditionId": "0xac8d629b6c47d8500ee4f9cbbe5cefebb15cbb696faba06ec5bdbbf247136038",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "ENG -1.5",
+        "question": "England covers -1.5 spread vs Croatia?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.295,
+        "endTime": 1781737140
+      },
+      {
+        "conditionId": "0xd3322421befd2c2979ab9de90e9b1cf91a27784dcc7de1577529a352b08518e9",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "England vs. Croatia: 1st Half O/U 2.5",
+        "question": "England vs. Croatia: 1st Half O/U 2.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.1,
+        "endTime": 1781737140
+      },
+      {
+        "conditionId": "0xf4dc0839f09117926dcd9582596a1f50f79f0ac154f929b8873bd7f4f3665b19",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "England vs. Croatia: 1st Half O/U 1.5",
+        "question": "England vs. Croatia: 1st Half O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.295,
+        "endTime": 1781737140
+      },
+      {
+        "conditionId": "0x0256ef63427ed0d9eefa1422eee948165a2a215b0741a339025fb08b2cf6e15d",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Ghana win on 2026-06-17?",
+        "question": "Will Ghana win on 2026-06-17?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.435,
+        "endTime": 1781737200
+      },
+      {
+        "conditionId": "0x10b86541c2718fecfb2f49d65fd9109de8d05ac3ca7177edf304e317d235e1f6",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "GHN/PNM O2.5",
+        "question": "Will Ghana vs Panama total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.415,
+        "endTime": 1781737200
+      },
+      {
+        "conditionId": "0x05c1451819eb04173dac5cd2e58289b9f75c7cc0a63b5d0a440f2e7936a4cd64",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "GHN -2.5",
+        "question": "Ghana covers -2.5 spread vs Panama?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.065,
+        "endTime": 1781747940
+      },
+      {
+        "conditionId": "0x0ba6b08375b3f54524210ee5b4f7fd4bb6d9db81b0f79f62b128cb4f5e5ed41e",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Ghana vs. Panama: 1st Half O/U 2.5",
+        "question": "Ghana vs. Panama: 1st Half O/U 2.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.085,
+        "endTime": 1781747940
+      },
+      {
+        "conditionId": "0x3786dfeb9590ba12303b19734adb6a5026d972332ccdba2415a954898f86b87a",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Ghana vs. Panama: O/U 7.5 Total Corners",
+        "question": "Ghana vs. Panama: O/U 7.5 Total Corners",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.605,
+        "endTime": 1781747940
+      },
+      {
+        "conditionId": "0x5c1183a8ec42348d8bf207149b504e5686fd4baa97dbcc92f28bdb309325ce4f",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Ghana vs. Panama: 1st Half O/U 1.5",
+        "question": "Ghana vs. Panama: 1st Half O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.28,
+        "endTime": 1781747940
+      },
+      {
+        "conditionId": "0x5d1839050900811f6fa6fc43766d87aa68f2ca62afebc4849f23c467b3f4a701",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "GHN/PNM O5.5",
+        "question": "Will Ghana vs Panama total be over 5.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.029,
+        "endTime": 1781747940
+      },
+      {
+        "conditionId": "0xc762565f9176d9541db13d712f9c0209d800abb4eb39d37e2dbbdf445b68e77d",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "GHN/PNM O3.5",
+        "question": "Will Ghana vs Panama total be over 3.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.205,
+        "endTime": 1781747940
+      },
+      {
+        "conditionId": "0xcf4b8efffb6fa2f72ea6a8e434f64b1507452562ed7ebe64ea9854bc6f71e58c",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "GHN -1.5",
+        "question": "Ghana covers -1.5 spread vs Panama?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.195,
+        "endTime": 1781747940
+      },
+      {
+        "conditionId": "0xf19a53afb615e3d80cddbca6e41e57833b1f723cc14c04bf6ff88568159702a4",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "GHN/PNM O1.5",
+        "question": "Will Ghana vs Panama total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.675,
+        "endTime": 1781747940
+      },
+      {
+        "conditionId": "0x2f00e48e914ba6606867a6347e90c48cc1fd4da66cc196a191786637f40848e9",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Colombia win on 2026-06-17?",
+        "question": "Will Colombia win on 2026-06-17?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.715,
+        "endTime": 1781748000
+      },
+      {
+        "conditionId": "0x08d6d244f4b0d29e33d1e9bf46163d6e68cad3a89448b552b4a240200f248205",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Julián Alvarez be in Argentina's Starting 11?",
+        "question": "Will Julián Alvarez be in Argentina's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/julian-alvarez-20260609174518092-YWtmQCZNx0cB.png",
+        "estimatedPrice": 0.47,
+        "endTime": 1781755140
+      },
+      {
+        "conditionId": "0x298c8c23541baa1e0a1b5b9dddc885cda8a9bbd1125af8adf81f73653f41475d",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Marcus Thuram be in France's Starting 11?",
+        "question": "Will Marcus Thuram be in France's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/marcus-thuram-20260609174813074-VjoK7wFofWuh.png",
+        "estimatedPrice": 0.025,
+        "endTime": 1781755140
+      },
+      {
+        "conditionId": "0x2f7e097c387741d90e3cc126d9daab9304a51d213cc4585fb1b67cfc63725ffc",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Malo Gusto be in France's Starting 11?",
+        "question": "Will Malo Gusto be in France's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/malo-gusto-20260609174813067-2va2c11D2ypK.png",
+        "estimatedPrice": 0.033,
+        "endTime": 1781755140
+      },
+      {
+        "conditionId": "0x3be4e5ef202bd0e3a6bd525c9f887b18acb323071f3344dccaf8e443ebdfeada",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Facundo Medina be in Argentina's Starting 11?",
+        "question": "Will Facundo Medina be in Argentina's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/facundo-medina-20260609174518108-4mmy8qYt6W-S.png",
+        "estimatedPrice": 0.5205,
+        "endTime": 1781755140
+      },
+      {
+        "conditionId": "0x3df38da6dd20e82e52caaa901177756f014c5f3a572546791a1e598fdd8769e6",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Warren Zaïre-Emery be in France's Starting 11?",
+        "question": "Will Warren Zaïre-Emery be in France's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/warren-zaire-emery-20260609174813083-F8MhxHFAcYaB.png",
+        "estimatedPrice": 0.03,
+        "endTime": 1781755140
+      },
+      {
+        "conditionId": "0x4f60f3ba343dc86e5e17740d6817d1035a0cda2d16c887e72bb3c59d842e77e1",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Nicolás Tagliafico be in Argentina's Starting 11?",
+        "question": "Will Nicolás Tagliafico be in Argentina's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/nicolas-tagliafico-20260609174518086-lq3G_OLr8UtK.png",
+        "estimatedPrice": 0.023,
+        "endTime": 1781755140
+      },
+      {
+        "conditionId": "0x96ddecc1488e26fee6d1f5dad1dee8159483c46874f429b36d210a66fe97ec7c",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Ibrahima Konaté be in France's Starting 11?",
+        "question": "Will Ibrahima Konaté be in France's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/ibrahima-konate-20260609174813080-Nv6OdsZgvAgF.png",
+        "estimatedPrice": 0.11,
+        "endTime": 1781755140
+      },
+      {
+        "conditionId": "0x9e3c96cb7f23f2c291f195d60054018490d5543f97b95d0f1ebf07ccb0b513ce",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will N'Golo Kanté be in France's Starting 11?",
+        "question": "Will N'Golo Kanté be in France's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/ngolo-kante-20260609174813078-jhjxP-TFoqK-.png",
+        "estimatedPrice": 0.064,
+        "endTime": 1781755140
+      },
+      {
+        "conditionId": "0xb4ff51d07d029e854a659b8c7d301723c83edfda08ede1a20b59e725e735e44b",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Kylian Mbappé be in France's Starting 11?",
+        "question": "Will Kylian Mbappé be in France's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/kylian-mbappe-20260609174813075-VEPMLhSFSotx.png",
+        "estimatedPrice": 0.988,
+        "endTime": 1781755140
+      },
+      {
+        "conditionId": "0xb54c79752a651c0b880f4db0bb9f27dcfe0bd6602f9165daba41db7674c6ed61",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Rodrigo De Paul be in Argentina's Starting 11?",
+        "question": "Will Rodrigo De Paul be in Argentina's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/rodrigo-de-paul-20260609174518090-IPx3gcC73f5g.png",
+        "estimatedPrice": 0.9,
+        "endTime": 1781755140
+      },
+      {
+        "conditionId": "0xc2bdedd2597b33ff4272e73efc0d34c3e7d79ffd3d3f8def17ce22b3803362c8",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Bradley Barcola be in France's Starting 11?",
+        "question": "Will Bradley Barcola be in France's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/bradley-barcola-20260609174813077-LzlPn2rwaTOd.png",
+        "estimatedPrice": 0.315,
+        "endTime": 1781755140
+      },
+      {
+        "conditionId": "0xce7ded4a3dc66922985ea8d47bbf0cda5d016c292d9a81c3a4553d6057a04cd1",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Théo Hernandez be in France's Starting 11?",
+        "question": "Will Théo Hernandez be in France's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/theo-hernandez-20260609174813084-vAtGTpkxj30y.png",
+        "estimatedPrice": 0.913,
+        "endTime": 1781755140
+      },
+      {
+        "conditionId": "0xf7fdb9544d44e13e567ab7d7e91b3d8173e0f2d1c6669f7aead3787632fd5492",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Lucas Digne be in France's Starting 11?",
+        "question": "Will Lucas Digne be in France's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/lucas-digne-20260609174813068-_jcV6F_nsQFG.png",
+        "estimatedPrice": 0.145,
+        "endTime": 1781755140
+      }
+    ]
+  },
+  {
+    "poolId": "world-cup-2026-jun18",
+    "opensAt": 1781668800,
+    "cutoff": 1781755200,
+    "minCardPriceWei": "1000000000000000000",
+    "referralBps": 200,
+    "multiplierBps": [
+      0, 0, 20000, 30000, 40000, 50000, 100000, 250000, 500000, 750000, 1000000
+    ],
+    "conditions": [
+      {
+        "conditionId": "0x0f98fca12ba83d57ca6baee1fa05fdedfa070386dca7b907a190027e2ee7e6f4",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Uzbekistan vs. Colombia: Uzbekistan O/U 3.5 Corners",
+        "question": "Uzbekistan vs. Colombia: Uzbekistan O/U 3.5 Corners",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.43,
+        "endTime": 1781758740
+      },
+      {
+        "conditionId": "0x1678eaaeeb2bad9384bef5fdc8d1bba9cafd59409d86e48531a0593b6479964e",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "CLM -1.5",
+        "question": "Colombia covers -1.5 spread vs Uzbekistan?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.445,
+        "endTime": 1781758740
+      },
+      {
+        "conditionId": "0x39a3650e6fbf333cd57262414bc8bacdef9aace2eeec16dd964b33f7d67febfd",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Uzbekistan vs. Colombia: Uzbekistan 1st Half O/U 1.5",
+        "question": "Uzbekistan vs. Colombia: Uzbekistan 1st Half O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.033,
+        "endTime": 1781758740
+      },
+      {
+        "conditionId": "0x40207f2e82a81843e316fb06d8a8f28f69f2853e47f28111202e9c70954aca2b",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "UZB/CLM O2.5",
+        "question": "Will Uzbekistan vs Colombia total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.485,
+        "endTime": 1781758740
+      },
+      {
+        "conditionId": "0x477166a2128ba35a699e266bd0626c4e80514964f63f3565acd76ae8aff2e23a",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "UZB/CLM O1.5",
+        "question": "Will Uzbekistan vs Colombia total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.745,
+        "endTime": 1781758740
+      },
+      {
+        "conditionId": "0x74ffc937c3f777285a8dec19c66fee5343c987439d69dc4350e0ebad7d099dd1",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Uzbekistan vs. Colombia: O/U 12.5 Total Corners",
+        "question": "Uzbekistan vs. Colombia: O/U 12.5 Total Corners",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.155,
+        "endTime": 1781758740
+      },
+      {
+        "conditionId": "0xb1cbb14b8e8469de8faa05a5a39799b0ea940446798c13fddaf3616c0b53aa5c",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Uzbekistan vs. Colombia: 1st Half O/U 2.5",
+        "question": "Uzbekistan vs. Colombia: 1st Half O/U 2.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.115,
+        "endTime": 1781758740
+      },
+      {
+        "conditionId": "0xbeaebbf4220e5e6c4ac194606bda5c3b1807b51875a4f967a165c1ec0c3b14f3",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "BTTS UZB/CLM",
+        "question": "Will both Uzbekistan and Colombia score?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.41,
+        "endTime": 1781758740
+      },
+      {
+        "conditionId": "0xd35c80d1064effe4676d67d981b1f3434ae351e70ad1be17a7334cf15ea4af87",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Colombia leading at halftime?",
+        "question": "Colombia leading at halftime?",
+        "estimatedPrice": 0.505,
+        "endTime": 1781758740
+      },
+      {
+        "conditionId": "0xd4f9a758d6cf3b9c8bf5666e75eba9b5ad07cda4b63d4d59dcfca95b92b1d074",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Uzbekistan vs. Colombia: 2nd Half O/U 1.5",
+        "question": "Uzbekistan vs. Colombia: 2nd Half O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.435,
+        "endTime": 1781758740
+      },
+      {
+        "conditionId": "0xd6977b030c1ad5c2cbf4d05e72ea99af85ead1e396021b8a8cb6acc8666a4e9c",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "UZB/CLM O5.5",
+        "question": "Will Uzbekistan vs Colombia total be over 5.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.045,
+        "endTime": 1781758740
+      },
+      {
+        "conditionId": "0xf1cbd276276e6dd5c1840602da0375549bb00b8c61060ffbd530bd8be57d27b5",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Uzbekistan vs. Colombia: 2nd Half O/U 2.5",
+        "question": "Uzbekistan vs. Colombia: 2nd Half O/U 2.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.2,
+        "endTime": 1781758740
+      },
+      {
+        "conditionId": "0xf2c0dc640a49a539bab7678e01131ee1f9562e37822eeb8c187c1d36031f7f6f",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Uzbekistan vs. Colombia: 1st Half O/U 1.5",
+        "question": "Uzbekistan vs. Colombia: 1st Half O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.33,
+        "endTime": 1781758740
+      },
+      {
+        "conditionId": "0x739ae7457696da4132d04787b96848f38a0d71c0f48347ee69ac55f7e75dad9f",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "CZC/STH O2.5",
+        "question": "Will Czechia vs South Africa total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.455,
+        "endTime": 1781798400
+      },
+      {
+        "conditionId": "0x825bc4151fd9c139c4f0400c1a6f5d60cf67b2d04f12d69fd9fb5de67b13e4bc",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Czechia win on 2026-06-18?",
+        "question": "Will Czechia win on 2026-06-18?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.545,
+        "endTime": 1781798400
+      },
+      {
+        "conditionId": "0x0c2b0afa2f752c02558063b97c4ebc3c6b0d872bd641eff9093c04259bc70012",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Czechia vs. South Africa: South Africa O/U 1.5",
+        "question": "Czechia vs. South Africa: South Africa O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.225,
+        "endTime": 1781809140
+      },
+      {
+        "conditionId": "0x9af69672ed9980d291f11e2a794ccde49d96296539d805932bf057120548613a",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "CZC/STH O1.5",
+        "question": "Will Czechia vs South Africa total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.715,
+        "endTime": 1781809140
+      },
+      {
+        "conditionId": "0xb6ccde3a0a30a1ab7551b3ceeb8c146739df954535282c96386926f2d594cd5e",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "BTTS CZC/STH",
+        "question": "Will both Czechia and South Africa score?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.485,
+        "endTime": 1781809140
+      },
+      {
+        "conditionId": "0xbc8e9375effa3cbe84bee9207461397cf7772d67214f21a07405e069a386e64e",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "CZC/STH O4.5",
+        "question": "Will Czechia vs South Africa total be over 4.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.11,
+        "endTime": 1781809140
+      },
+      {
+        "conditionId": "0xea65db68df175eec2f3a6332ada1ff3fb3fd74be05955c61a9f0b5fa19f4c440",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "CZC/STH O5.5",
+        "question": "Will Czechia vs South Africa total be over 5.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.0455,
+        "endTime": 1781809140
+      },
+      {
+        "conditionId": "0xf278f9bb7161847a264d8c88af9f6ff2b4aab9059ff7b9ab175202992031407d",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "CZC -1.5",
+        "question": "Czechia covers -1.5 spread vs South Africa?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.285,
+        "endTime": 1781809140
+      },
+      {
+        "conditionId": "0x870bb248c96c52dcf35390a66542471c5bba2896942d6bc97ade41a418646ba8",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Switzerland win on 2026-06-18?",
+        "question": "Will Switzerland win on 2026-06-18?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.625,
+        "endTime": 1781809200
+      },
+      {
+        "conditionId": "0xc43eed5e30cf6f0220341e6564bf8b4f09ea60eaa9709bf4b96c07544672ab9e",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "SWT/BSN O2.5",
+        "question": "Will Switzerland vs Bosnia and Herzegovina total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.455,
+        "endTime": 1781809200
+      },
+      {
+        "conditionId": "0x768f79886b4de2c64c022e0c1e74789477f6783ba505023fc498090e8cfacf55",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Switzerland vs. Bosnia-Herzegovina: 2nd Half O/U 1.5",
+        "question": "Switzerland vs. Bosnia-Herzegovina: 2nd Half O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.405,
+        "endTime": 1781819940
+      },
+      {
+        "conditionId": "0x7aa10dc64e62564b4d75c8d3b8f9b0051a42c6ca7dbf8fdcc6110637e4ebacf9",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "SWT -1.5",
+        "question": "Switzerland covers -1.5 spread vs Bosnia and Herzegovina?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.355,
+        "endTime": 1781819940
+      },
+      {
+        "conditionId": "0xc066bf883b94a16a84587c22b1c70a249d5af9d044c0c85c12c28cd89340c4ef",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Switzerland vs. Bosnia-Herzegovina: 2nd Half O/U 2.5",
+        "question": "Switzerland vs. Bosnia-Herzegovina: 2nd Half O/U 2.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.175,
+        "endTime": 1781819940
+      },
+      {
+        "conditionId": "0xde8e3ed627ae6c72fbf1e042554112049f98e54203b5c6a3a1510f170a7a7d9c",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "SWT/BSN O1.5",
+        "question": "Will Switzerland vs Bosnia and Herzegovina total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.715,
+        "endTime": 1781819940
+      },
+      {
+        "conditionId": "0x0eef909ecbb97c9e75ef685f8bc2a3f7e23a704d52a9085c1c124d6fa1dec7a6",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "CND/QTR O2.5",
+        "question": "Will Canada vs Qatar total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.545,
+        "endTime": 1781820000
+      },
+      {
+        "conditionId": "0xc90f95af1a5d4e392fe9cc484f1b1a0983687865e7b85910ae89300c2076e4a1",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Canada win on 2026-06-18?",
+        "question": "Will Canada win on 2026-06-18?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.765,
+        "endTime": 1781820000
+      },
+      {
+        "conditionId": "0x029e72f379232ca9a6cff192e77ef1a8d7b6582d41d4932f772a97f867c89336",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "CND/QTR O1.5",
+        "question": "Will Canada vs Qatar total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.775,
+        "endTime": 1781830740
+      },
+      {
+        "conditionId": "0x1542561e59258b1afb7da33123b319e4afd0ecbf889040427f3d1af8573d6fd7",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Canada vs. Qatar: Both Teams to Score in First Half",
+        "question": "Canada vs. Qatar: Both Teams to Score in First Half",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.13,
+        "endTime": 1781830740
+      },
+      {
+        "conditionId": "0x3988e32420aa1f8d277edc65dce1e13b9779512c56e16531a09dcd7f8ce40ed0",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "CND -3.5",
+        "question": "Canada covers -3.5 spread vs Qatar?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.135,
+        "endTime": 1781830740
+      },
+      {
+        "conditionId": "0x70338032cbd6911a0a16b82362e3b62bddd688cdaa69ce4d8df71e60f5c2aafa",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Canada vs. Qatar: Qatar O/U 2.5",
+        "question": "Canada vs. Qatar: Qatar O/U 2.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.0145,
+        "endTime": 1781830740
+      },
+      {
+        "conditionId": "0x828c7b109fafae85bfc71b6a1e2cb73b2fd3f80935344133365f6eac62114fcc",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "BTTS CND/QTR",
+        "question": "Will both Canada and Qatar score?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.385,
+        "endTime": 1781830740
+      },
+      {
+        "conditionId": "0x864d4155b62431499f469772de81ea9b7daa1c87b78047e4aa9cc2fbcd222640",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "CND -1.5",
+        "question": "Canada covers -1.5 spread vs Qatar?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.525,
+        "endTime": 1781830740
+      },
+      {
+        "conditionId": "0x939bf3cfa85d5c72d0b2bdfc800aa9391beacbb0102c2575e2aa0a46647e0bd7",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "QTR -3.5",
+        "question": "Qatar covers -3.5 spread vs Canada?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.0005,
+        "endTime": 1781830740
+      },
+      {
+        "conditionId": "0xa64bf02f5e4790504980a59b74c49a36bf6075faf189b1dae5f6bfac1e7f27b5",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "CND/QTR O4.5",
+        "question": "Will Canada vs Qatar total be over 4.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.155,
+        "endTime": 1781830740
+      },
+      {
+        "conditionId": "0xc0c2aa208f6a2fc36846a39f523c59bea895272805ba077a020aeefe86d18846",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "CND -2.5",
+        "question": "Canada covers -2.5 spread vs Qatar?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.285,
+        "endTime": 1781830740
+      },
+      {
+        "conditionId": "0xdaa325ab84a1fdfddeffdf2304db20d5f442ca79d20fcc650c1ad4b3943e2b0b",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Canada vs. Qatar: Qatar O/U 0.5",
+        "question": "Canada vs. Qatar: Qatar O/U 0.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.43,
+        "endTime": 1781830740
+      },
+      {
+        "conditionId": "0xde9b86170c86b2aee271f5a390963fef470b1ea6bea2b4284d9119699e864891",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Canada vs. Qatar: Canada O/U 1.5",
+        "question": "Canada vs. Qatar: Canada O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.66,
+        "endTime": 1781830740
+      },
+      {
+        "conditionId": "0xe7ff90935f17aa304edb9d98185e1ddded787689d5d44b3a9808ee0f341fa616",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Canada vs. Qatar: Canada O/U 0.5",
+        "question": "Canada vs. Qatar: Canada O/U 0.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.91,
+        "endTime": 1781830740
+      },
+      {
+        "conditionId": "0x6f05c7bc5ad978f8f9916f05d30a7f752e02b81508c56d82ed7c9245bca163b0",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Mexico win on 2026-06-18?",
+        "question": "Will Mexico win on 2026-06-18?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.485,
+        "endTime": 1781830800
+      },
+      {
+        "conditionId": "0x0a0e215a6ef94db58cb83532439fdae9d69dcb0205c250bce8554a5d7057b143",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Ollie Watkins be in England's Starting 11?",
+        "question": "Will Ollie Watkins be in England's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/ollie-watkins-20260609175104697-8xGC2TWPNxSM.png",
+        "estimatedPrice": 0.045,
+        "endTime": 1781841540
+      },
+      {
+        "conditionId": "0x1511dffa03ffeea9de445598b2b0edf50e5c01cea084fa01d93be7212efd4468",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Ezri Konsa be in England's Starting 11?",
+        "question": "Will Ezri Konsa be in England's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/ezri-konsa-20260609175104680-CXwjyeJ-nvI6.png",
+        "estimatedPrice": 0.74,
+        "endTime": 1781841540
+      },
+      {
+        "conditionId": "0x442f7f93f2dcca25512855abbc7ca4aefd41691d36815fa8465e2646e6b57c15",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Mexico vs. Korea Republic: 2nd Half O/U 1.5",
+        "question": "Mexico vs. Korea Republic: 2nd Half O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.365,
+        "endTime": 1781841540
+      },
+      {
+        "conditionId": "0x4684c66b24abb859eab7a013de21c6c48084be8e5c3dc1f0081787119aa471b1",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Jude Bellingham be in England's Starting 11?",
+        "question": "Will Jude Bellingham be in England's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/jude-bellingham-20260609175104688-O0VI2Hhv-BEr.png",
+        "estimatedPrice": 0.77,
+        "endTime": 1781841540
+      },
+      {
+        "conditionId": "0x4b9449e3e7a298c684f86a8d55336e60c39fb5aca5e7086a61a53bbb417bedd8",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Diogo Dalot be in Portugal's Starting 11?",
+        "question": "Will Diogo Dalot be in Portugal's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/diogo-dalot-20260609175357517-fs-OjyKcW6iy.png",
+        "estimatedPrice": 0.4,
+        "endTime": 1781841540
+      },
+      {
+        "conditionId": "0x4da254deafaa10035cb6f105a5a6b19d8ec10d767f0c963a32f7be3e61a7b22c",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Rafael Leão be in Portugal's Starting 11?",
+        "question": "Will Rafael Leão be in Portugal's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/rafael-leao-20260609175357529-ccnmJ1N2Eui7.png",
+        "estimatedPrice": 0.465,
+        "endTime": 1781841540
+      },
+      {
+        "conditionId": "0x55c50c630e6447642c0472a6a2176019f75cb2a2e61cefd8e6ce5761e6211ffa",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "KRR -1.5",
+        "question": "Korea Republic covers -1.5 spread vs Mexico?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.075,
+        "endTime": 1781841540
+      },
+      {
+        "conditionId": "0x5c83754e2ce94d16dedc4964183fbc5479c3a90f77df0f63a8754103dbd5f755",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Cristiano Ronaldo be in Portugal's Starting 11?",
+        "question": "Will Cristiano Ronaldo be in Portugal's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/cristiano-ronaldo-20260609175357519-0VsfyUR8Yb12.png",
+        "estimatedPrice": 0.9625,
+        "endTime": 1781841540
+      },
+      {
+        "conditionId": "0x5df9639999380cd7f85c1038731e85c7f2d8c7fb63c0e026c50b3d9121e9b311",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Morgan Rogers be in England's Starting 11?",
+        "question": "Will Morgan Rogers be in England's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/morgan-rogers-20260609175104695-hWFHYGy6oEMx.png",
+        "estimatedPrice": 0.47,
+        "endTime": 1781841540
+      },
+      {
+        "conditionId": "0x67ad504bd01cc56542616306a15744326e1585cc7c302dd24833e31dfe6080ef",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Francisco Conceição be in Portugal's Starting 11?",
+        "question": "Will Francisco Conceição be in Portugal's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/francisco-conceicao-20260609175357538-hDAxw9vSVa78.png",
+        "estimatedPrice": 0.05,
+        "endTime": 1781841540
+      },
+      {
+        "conditionId": "0x68e46ec8a6239a30ba840de3dcc7107b1dca47e0f39a1413ade3505f69e2a7ea",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Bukayo Saka be in England's Starting 11?",
+        "question": "Will Bukayo Saka be in England's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/bukayo-saka-20260609175104685-rqvImYxU2F7A.png",
+        "estimatedPrice": 0.397,
+        "endTime": 1781841540
+      },
+      {
+        "conditionId": "0x7304a54ed7c125864fbc2ca98683ef5353b52faaa0644f41e5616da9b9f61abf",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Noni Madueke be in England's Starting 11?",
+        "question": "Will Noni Madueke be in England's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/noni-madueke-20260609175104698-aHuxSDckw7jP.png",
+        "estimatedPrice": 0.48,
+        "endTime": 1781841540
+      },
+      {
+        "conditionId": "0x81d3c86751ca93f01717914355372e3e0198d90d5fd9e3b8533efa272d25c369",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "MXC -1.5",
+        "question": "Mexico covers -1.5 spread vs Korea Republic?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.225,
+        "endTime": 1781841540
+      },
+      {
+        "conditionId": "0x8235ae2793bdc6413100e230449959348095839122f0d23ce9388eb14e655761",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Gustavo Puerta be in Colombia's Starting 11?",
+        "question": "Will Gustavo Puerta be in Colombia's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/gustavo-puerta-20260609175657516-qZSkIDd9pSPn.png",
+        "estimatedPrice": 0.555,
+        "endTime": 1781841540
+      },
+      {
+        "conditionId": "0x960f80555857de084b2aea71f388fb6443a1cd3f35ca46bc1c58c786763d8f1e",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Nélson Semedo be in Portugal's Starting 11?",
+        "question": "Will Nélson Semedo be in Portugal's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/nelson-semedo-20260609175357514-TtXSosaDH09H.png",
+        "estimatedPrice": 0.125,
+        "endTime": 1781841540
+      },
+      {
+        "conditionId": "0x972ccf977b07c4dfa53eab0aa0277371d42a8c4ebd02c22363d563304a3ffc84",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "MXC -2.5",
+        "question": "Mexico covers -2.5 spread vs Korea Republic?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.075,
+        "endTime": 1781841540
+      },
+      {
+        "conditionId": "0xa05e65c9f1ec3e3cdf6daee18535cf58ebf658188099dbff6edad06b05ba0bae",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "MXC/KRR O2.5",
+        "question": "Will Mexico vs Korea Republic total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.405,
+        "endTime": 1781841540
+      },
+      {
+        "conditionId": "0xaf82c474327eb07563996ffd644da88da46547cb5ecb1c63fc7f6d67849fdf00",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "BTTS MXC/KRR",
+        "question": "Will both Mexico and Korea Republic score?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.465,
+        "endTime": 1781841540
+      },
+      {
+        "conditionId": "0xb24c13619066249180279330d65ebff4b6a59ebc7e614b3e31403bd10486b141",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Marc Guéhi be in England's Starting 11?",
+        "question": "Will Marc Guéhi be in England's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/marc-guehi-20260609175104684-_moLI3Slh3b7.png",
+        "estimatedPrice": 0.3965,
+        "endTime": 1781841540
+      },
+      {
+        "conditionId": "0xb80b86347f46673ffdc958ed9b43256d4fac4cd451ee930d8b972dd52d37feeb",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "MXC/KRR O4.5",
+        "question": "Will Mexico vs Korea Republic total be over 4.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.085,
+        "endTime": 1781841540
+      },
+      {
+        "conditionId": "0xcce10ebed983d44b6bd0a005ee784c4f323d5a31904741f448d57509e627d9d2",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Jordan Henderson be in England's Starting 11?",
+        "question": "Will Jordan Henderson be in England's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/jordan-henderson-20260609175104692-mmcx7n9ESGKf.png",
+        "estimatedPrice": 0.018,
+        "endTime": 1781841540
+      },
+      {
+        "conditionId": "0xceeae51ec212b347500255f0426c79798d5d6eb2e9368210f37761e0ffcae1f2",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "MXC/KRR O1.5",
+        "question": "Will Mexico vs Korea Republic total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.665,
+        "endTime": 1781841540
+      },
+      {
+        "conditionId": "0xd1c3103c396ebabc6a9ccc73e53b5aae72e510f7916126575b9fcbf7ed7e2a92",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Mexico vs. Korea Republic: 2nd Half O/U 2.5",
+        "question": "Mexico vs. Korea Republic: 2nd Half O/U 2.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.135,
+        "endTime": 1781841540
+      },
+      {
+        "conditionId": "0xd2c8d3ffbb2d812870e539c0df2e0974029e855db77d5510bd2daade03df235a",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will João Cancelo be in Portugal's Starting 11?",
+        "question": "Will João Cancelo be in Portugal's Starting 11?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/joao-cancelo-20260609175357532-KV0mJ8WvDM42.png",
+        "estimatedPrice": 0.85,
+        "endTime": 1781841540
+      }
+    ]
+  },
+  {
+    "poolId": "world-cup-2026-jun19",
+    "opensAt": 1781755200,
+    "cutoff": 1781841600,
+    "minCardPriceWei": "1000000000000000000",
+    "referralBps": 200,
+    "multiplierBps": [
+      0, 0, 20000, 30000, 40000, 50000, 100000, 250000, 500000, 750000, 1000000
+    ],
+    "conditions": [
+      {
+        "conditionId": "0x7ebb07134794576c154f06fbaa1cc61a5292d58e280ce98207977771c0326c27",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will United States win on 2026-06-19?",
+        "question": "Will United States win on 2026-06-19?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.615,
+        "endTime": 1781895600
+      },
+      {
+        "conditionId": "0x300e32ca5a62a4980bc95e5e3885930f8b888d26d46fb61e3dd11d87700618e3",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "BTTS UNI/AUS",
+        "question": "Will both United States and Australia score?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.465,
+        "endTime": 1781906340
+      },
+      {
+        "conditionId": "0x363ffe148031f2c8fc3034d5d576311f91985ff1aa0a1f66119c4d8b96062fbc",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "UNI -1.5",
+        "question": "United States covers -1.5 spread vs Australia?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.345,
+        "endTime": 1781906340
+      },
+      {
+        "conditionId": "0x5cac231397cc63e8d8ebc4c555066f77d7ba6581555a42297a9ac0b21e72a17f",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "UNI/AUS O1.5",
+        "question": "Will United States vs Australia total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.735,
+        "endTime": 1781906340
+      },
+      {
+        "conditionId": "0x611378763b8bd56a7343d95dc02163c67a84b95fc8b194532a042470efe8e0af",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "United States vs. Australia: 2nd Half O/U 2.5",
+        "question": "United States vs. Australia: 2nd Half O/U 2.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.225,
+        "endTime": 1781906340
+      },
+      {
+        "conditionId": "0xb47959475696c12c99e65a4a672c061e0bdda03bb0e8d358fc896220954cfeaf",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "UNI/AUS O5.5",
+        "question": "Will United States vs Australia total be over 5.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.053,
+        "endTime": 1781906340
+      },
+      {
+        "conditionId": "0xbc2caa56ce87821dfaff13470465afbf442c79f641726585722841eac93eb5a6",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "United States vs. Australia: United States O/U 1.5",
+        "question": "United States vs. Australia: United States O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.53,
+        "endTime": 1781906340
+      },
+      {
+        "conditionId": "0xbd2f6fdb40e00f1fc1b42c309deb790c6bedd835b567e2292523ddbf1a76b1fe",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "United States vs. Australia: 2nd Half O/U 1.5",
+        "question": "United States vs. Australia: 2nd Half O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.425,
+        "endTime": 1781906340
+      },
+      {
+        "conditionId": "0xbfe2628ebcbaaf420c7149a42718ec59e7f730d7bd7ea33b0fb066d9abcb31b3",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "United States vs. Australia: Australia O/U 2.5",
+        "question": "United States vs. Australia: Australia O/U 2.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.05,
+        "endTime": 1781906340
+      },
+      {
+        "conditionId": "0xc67e78d9515ea4100e43ea9f861fde9b068c7fc3f1395d26699c433206f9aabf",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "UNI/AUS O2.5",
+        "question": "Will United States vs Australia total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.485,
+        "endTime": 1781906340
+      },
+      {
+        "conditionId": "0x3b43eb7188434ad124e98aff60a70445712ff547737a972c2131ccb2cf358a05",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "MRC -1.5",
+        "question": "Morocco covers -1.5 spread vs Scotland?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.285,
+        "endTime": 1781906400
+      },
+      {
+        "conditionId": "0xbc28e92d1fa999e842caf926cff56a580fb477f26d8c44c99aa29beb78062241",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Morocco win on 2026-06-19?",
+        "question": "Will Morocco win on 2026-06-19?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.565,
+        "endTime": 1781906400
+      },
+      {
+        "conditionId": "0x5038cb8d1ae39e35eded49cbcb86ccf579de09935ba069050db28f07a05c23c1",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "BRZ -2.5",
+        "question": "Brazil covers -2.5 spread vs Haiti?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.495,
+        "endTime": 1781915400
+      },
+      {
+        "conditionId": "0xc90381f6021b8dc8d07dd3d783d3927f34706f8ce1ed097b21cc92f31b5be076",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Brazil win on 2026-06-19?",
+        "question": "Will Brazil win on 2026-06-19?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.885,
+        "endTime": 1781915400
+      },
+      {
+        "conditionId": "0x55d02472c6ffe437409ece155de9d50f82f0f366d93f058d9c3d719db467c1fc",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "SCT/MRC O2.5",
+        "question": "Will Scotland vs Morocco total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.425,
+        "endTime": 1781917140
+      },
+      {
+        "conditionId": "0xb9275e5de263eb01555279db80db363cb631912b944878805bfb1e9062b7298c",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "SCT/MRC O1.5",
+        "question": "Will Scotland vs Morocco total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.685,
+        "endTime": 1781917140
+      },
+      {
+        "conditionId": "0x7bed81b0bd1cbe7cae0ad49fcf2d9e068d1ea2da49a36e638712daa55712a184",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Türkiye win on 2026-06-19?",
+        "question": "Will Türkiye win on 2026-06-19?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.475,
+        "endTime": 1781924400
+      },
+      {
+        "conditionId": "0x1ca5e35acbd0cc8e31ebbc1e58f53a98ffe14d4c72f259ba6bca38d5c9d89065",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "HAI -3.5",
+        "question": "Haiti covers -3.5 spread vs Brazil?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.001,
+        "endTime": 1781926140
+      },
+      {
+        "conditionId": "0x1d91c2f193a85c62657df5ca4828b599f45cf117cebfaa8c74297dd11e0a9f52",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Brazil vs. Haiti: Brazil O/U 2.5",
+        "question": "Brazil vs. Haiti: Brazil O/U 2.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.615,
+        "endTime": 1781926140
+      },
+      {
+        "conditionId": "0x3abf580851cb45e4edb313fb44d43239ec4d6ef3ad90fd5a46546ab81a11dd80",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "BRZ/HAI O2.5",
+        "question": "Will Brazil vs Haiti total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.705,
+        "endTime": 1781926140
+      },
+      {
+        "conditionId": "0x5e6b685211bb1141b9f71539d29a6f60d681efb841668443c1c9eeacf1be73c7",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "BTTS BRZ/HAI",
+        "question": "Will both Brazil and Haiti score?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.385,
+        "endTime": 1781926140
+      },
+      {
+        "conditionId": "0x7b830121eb0c58c5f4161ecd626af187d199ba1ed7a705a696ebf93e84a1423f",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "BRZ/HAI O3.5",
+        "question": "Will Brazil vs Haiti total be over 3.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.505,
+        "endTime": 1781926140
+      },
+      {
+        "conditionId": "0x8e4a4c0c8a12798216d32432b6a964b7940927865fd89ed5d27bb773198496e2",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Brazil vs. Haiti: O/U 10.5 Total Corners",
+        "question": "Brazil vs. Haiti: O/U 10.5 Total Corners",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.415,
+        "endTime": 1781926140
+      },
+      {
+        "conditionId": "0x9a405a09ebeff5dd1b8a3b128f02824bbf849cb5b3bbca39c410dc7f85832d53",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "BRZ/HAI O4.5",
+        "question": "Will Brazil vs Haiti total be over 4.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.315,
+        "endTime": 1781926140
+      },
+      {
+        "conditionId": "0x9d6616aa851e889ca620b34a2f13b21c139840bfd798af9d417429c79227ca7a",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "BRZ -4.5",
+        "question": "Brazil covers -4.5 spread vs Haiti?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.175,
+        "endTime": 1781926140
+      },
+      {
+        "conditionId": "0xa7a1a0c511b5e5c14b1b0f689c1828459be94888c522c103f3221181730a4031",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "BRZ/HAI O1.5",
+        "question": "Will Brazil vs Haiti total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.875,
+        "endTime": 1781926140
+      },
+      {
+        "conditionId": "0xb0376135438501bca413f3168d1a5f7d198b1f16a5ee058589546b717646420d",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Brazil vs. Haiti: Haiti O/U 2.5",
+        "question": "Brazil vs. Haiti: Haiti O/U 2.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.018,
+        "endTime": 1781926140
+      },
+      {
+        "conditionId": "0xd88aa9c53fe09199b9a8cb7f8e8e3528f7f9817f6649e8b617aaac824c58a482",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Exact Score: Any Other Score?",
+        "question": "Exact Score: Any Other Score?",
+        "estimatedPrice": 0.325,
+        "endTime": 1781926140
+      },
+      {
+        "conditionId": "0xf38fd2da92a4b67e9a3e83ca109d45d28999069393e95c41f534da0bb8d6af1c",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "BRZ -3.5",
+        "question": "Brazil covers -3.5 spread vs Haiti?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.305,
+        "endTime": 1781926140
+      },
+      {
+        "conditionId": "0xfecf975f984273ab77d0d7bdbefb4ae80b31000a28e490ea90848f44f109b6a4",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "BRZ -1.5",
+        "question": "Brazil covers -1.5 spread vs Haiti?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.715,
+        "endTime": 1781926140
+      }
+    ]
+  },
+  {
+    "poolId": "world-cup-2026-jun20",
+    "opensAt": 1781841600,
+    "cutoff": 1781928000,
+    "minCardPriceWei": "1000000000000000000",
+    "referralBps": 200,
+    "multiplierBps": [
+      0, 0, 20000, 30000, 40000, 50000, 100000, 250000, 500000, 750000, 1000000
+    ],
+    "conditions": [
+      {
+        "conditionId": "0x28a7ce0dd60a6c71d72f49f43890bc30a5b2abe5a51637ae2149b054ef943aec",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Türkiye vs. Paraguay: 2nd Half O/U 2.5",
+        "question": "Türkiye vs. Paraguay: 2nd Half O/U 2.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.145,
+        "endTime": 1781935140
+      },
+      {
+        "conditionId": "0x3112fac8d20d1ab49fa9151c7f0a304d91dc5f180f49ee373327ef85ec5c2c2b",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "TRK/PRG O2.5",
+        "question": "Will Türkiye vs Paraguay total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.445,
+        "endTime": 1781935140
+      },
+      {
+        "conditionId": "0xad1b097b9115a8087cc00f60c994df98e9acd630657822f39f5eaf2f9ec7deb3",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Türkiye vs. Paraguay: 2nd Half O/U 1.5",
+        "question": "Türkiye vs. Paraguay: 2nd Half O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.415,
+        "endTime": 1781935140
+      },
+      {
+        "conditionId": "0xb45645188f311ecc46f8cdb80b02c29a345d4933cf6b73664b09d3131a2d16d9",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "TRK/PRG O1.5",
+        "question": "Will Türkiye vs Paraguay total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.715,
+        "endTime": 1781935140
+      },
+      {
+        "conditionId": "0x6ff94500c79343c2144d0c85122c9723a597cb3888be67223585f964317ae2c1",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "NTH/SWD O2.5",
+        "question": "Will Netherlands vs Sweden total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.515,
+        "endTime": 1781974800
+      },
+      {
+        "conditionId": "0xde92d563a6d742a4750c8c83a9c490ee5b02bd5d972a1765ab41c0f9095ef6c0",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Netherlands win on 2026-06-20?",
+        "question": "Will Netherlands win on 2026-06-20?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.575,
+        "endTime": 1781974800
+      },
+      {
+        "conditionId": "0x4921226dfa83bdeafb800c8c53a7a068c0c75d52147e2e8408744529b86746b6",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "NTH/SWD O1.5",
+        "question": "Will Netherlands vs Sweden total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.765,
+        "endTime": 1781985540
+      },
+      {
+        "conditionId": "0x4a5c996d32d0905e5c13b18671de76b98409c606b1f8fafb327f80a91525d523",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "NTH -1.5",
+        "question": "Netherlands covers -1.5 spread vs Sweden?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.325,
+        "endTime": 1781985540
+      },
+      {
+        "conditionId": "0x80a53919786cc1030aa0e2e710a9d9da2544e7e2c16ea0e7257ebf2771f7a3c0",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Netherlands vs. Sweden: Netherlands O/U 1.5",
+        "question": "Netherlands vs. Sweden: Netherlands O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.535,
+        "endTime": 1781985540
+      },
+      {
+        "conditionId": "0x82828f37db46375dd71affaf49604207ec83c0bda13b3ec4c09c0e5afbdc56f7",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Netherlands vs. Sweden: Netherlands O/U 2.5",
+        "question": "Netherlands vs. Sweden: Netherlands O/U 2.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.26,
+        "endTime": 1781985540
+      },
+      {
+        "conditionId": "0xc7cfba209be034229c76cb4d768e4ae9585b5a0a564dd36657c684d3e7207016",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Netherlands vs. Sweden: 2nd Half O/U 2.5",
+        "question": "Netherlands vs. Sweden: 2nd Half O/U 2.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.185,
+        "endTime": 1781985540
+      },
+      {
+        "conditionId": "0xddf46aa1815c86c227a5f61593f043f8bf242bfc8cda5af928c642a25188aa28",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Netherlands vs. Sweden: 2nd Half O/U 1.5",
+        "question": "Netherlands vs. Sweden: 2nd Half O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.45,
+        "endTime": 1781985540
+      },
+      {
+        "conditionId": "0xe15eabaa5ef575781feafcd96a256bdc88f1545d507ad8f62ec9fe18cc8e8b10",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "BTTS NTH/SWD",
+        "question": "Will both Netherlands and Sweden score?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.505,
+        "endTime": 1781985540
+      },
+      {
+        "conditionId": "0x232342e2a9200b203703a816f9d99d1c6a872333567af16f43d67a255e1a6aa8",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Germany win on 2026-06-20?",
+        "question": "Will Germany win on 2026-06-20?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.635,
+        "endTime": 1781985600
+      },
+      {
+        "conditionId": "0x1cc3ece780f64a568d2134e79a2f3b2efbc461d8f270ac7030f502953e335391",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "GRM/CTD O5.5",
+        "question": "Will Germany vs Côte d'Ivoire total be over 5.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.08,
+        "endTime": 1781996340
+      },
+      {
+        "conditionId": "0x1df83085e1c209bc99f4c706fe51449d527b029bccdbe292085d36b7e7c7d374",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "GRM -1.5",
+        "question": "Germany covers -1.5 spread vs Côte d'Ivoire?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.385,
+        "endTime": 1781996340
+      },
+      {
+        "conditionId": "0x67eade0eba1250609643a1884db4b7ccace61e106b866481906778c8d5d32fdb",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Germany vs. Côte d'Ivoire: Both Teams to Score in Second Half",
+        "question": "Germany vs. Côte d'Ivoire: Both Teams to Score in Second Half",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.27,
+        "endTime": 1781996340
+      },
+      {
+        "conditionId": "0x996314a5d1f4f81c0dbe514158b0d5cf5b83dca7837b533c3baf40aba3821eb8",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "GRM/CTD O1.5",
+        "question": "Will Germany vs Côte d'Ivoire total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.805,
+        "endTime": 1781996340
+      },
+      {
+        "conditionId": "0x9dd0f1e91584cf0a4edab2dd9c0acb872e7444e3431191954985362386b4d71f",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "BTTS GRM/CTD",
+        "question": "Will both Germany and Côte d'Ivoire score?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.555,
+        "endTime": 1781996340
+      },
+      {
+        "conditionId": "0xb75a74a413bb606a44632c44b39abe59361ff36f3d080f49703f4005dafc632b",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "GRM/CTD O3.5",
+        "question": "Will Germany vs Côte d'Ivoire total be over 3.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.345,
+        "endTime": 1781996340
+      },
+      {
+        "conditionId": "0xe042d8dedadf6b3d1148dafae62610bf1ce58d0678552512c83eeb083b66077e",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "GRM/CTD O2.5",
+        "question": "Will Germany vs Côte d'Ivoire total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.575,
+        "endTime": 1781996340
+      },
+      {
+        "conditionId": "0x38ad1408695bd94eab17d4ba186e5812f44356876f9e02afdfc082b56a20930f",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "ECU -2.5",
+        "question": "Ecuador covers -2.5 spread vs Curaçao?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.485,
+        "endTime": 1782000000
+      },
+      {
+        "conditionId": "0xa90ce8b69a218dced329076162df3b79f99596d1dc71d93bd30a64a2c8b6ba3e",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Ecuador win on 2026-06-20?",
+        "question": "Will Ecuador win on 2026-06-20?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.885,
+        "endTime": 1782000000
+      },
+      {
+        "conditionId": "0xd790740baf9d96b30d8ddfc9412f8fc0e6fb7cfcae06e987ae1691e7b9717895",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "ECU -1.5",
+        "question": "Ecuador covers -1.5 spread vs Curaçao?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.705,
+        "endTime": 1782000000
+      },
+      {
+        "conditionId": "0x260a4882417a907b28b8c88bbc6981f0b001570349654ed371b89187feff17d7",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "ECU/CUR O2.5",
+        "question": "Will Ecuador vs Curaçao total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.665,
+        "endTime": 1782010740
+      },
+      {
+        "conditionId": "0x274e91fa7e1eda26c20e9e793b24d6ca81f75a92f9b26371ad898013c5d40ece",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Ecuador vs. Curaçao: 2nd Half O/U 2.5",
+        "question": "Ecuador vs. Curaçao: 2nd Half O/U 2.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.215,
+        "endTime": 1782010740
+      },
+      {
+        "conditionId": "0x31527e6bf023cebbf342029a67c7d2cb57adc0a3c8d660c1a91e71b926faa659",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Ecuador vs. Curaçao: Ecuador O/U 0.5",
+        "question": "Ecuador vs. Curaçao: Ecuador O/U 0.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.94,
+        "endTime": 1782010740
+      },
+      {
+        "conditionId": "0x3d4751f8ed6a8420a714bfa3a4f0b5372709f5999b00f558995810a8cc6081e6",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "ECU/CUR O1.5",
+        "question": "Will Ecuador vs Curaçao total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.855,
+        "endTime": 1782010740
+      },
+      {
+        "conditionId": "0xe254398c20fd6166bf2fd564b474c131ef48a558bfd228aa535e35bdea106fcf",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "ECU/CUR O3.5",
+        "question": "Will Ecuador vs Curaçao total be over 3.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.445,
+        "endTime": 1782010740
+      }
+    ]
+  },
+  {
+    "poolId": "world-cup-2026-jun21",
+    "opensAt": 1781928000,
+    "cutoff": 1782014400,
+    "minCardPriceWei": "1000000000000000000",
+    "referralBps": 200,
+    "multiplierBps": [
+      0, 0, 20000, 30000, 40000, 50000, 100000, 250000, 500000, 750000, 1000000
+    ],
+    "conditions": [
+      {
+        "conditionId": "0x051e0ea5b3c394114eacf8ce5e944ca63cbb6ccdef1d086cadc5dd129a3804e6",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Japan win on 2026-06-21?",
+        "question": "Will Japan win on 2026-06-21?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.645,
+        "endTime": 1782014400
+      },
+      {
+        "conditionId": "0x123382902a815cb1974d3d12c182a1e75806bec00a0ae9139f2cc6009460f458",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "TNS -1.5",
+        "question": "Tunisia covers -1.5 spread vs Japan?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.0305,
+        "endTime": 1782025140
+      },
+      {
+        "conditionId": "0x7a47d9cb33434788761e0b84bbad0fc78bf63602abd5f25f08397a56700b3c26",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "TNS/JPN O2.5",
+        "question": "Will Tunisia vs Japan total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.455,
+        "endTime": 1782025140
+      },
+      {
+        "conditionId": "0xabcd94970a42787bb01726ff703134cf666434b9bdaa288505290e6a4b339fc0",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "JPN -1.5",
+        "question": "Japan covers -1.5 spread vs Tunisia?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.355,
+        "endTime": 1782025140
+      },
+      {
+        "conditionId": "0xc37f30846927a14aadc730839e78df475ea2d3fd02f6db3aa7028f8f070c1e0c",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "TNS/JPN O1.5",
+        "question": "Will Tunisia vs Japan total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.705,
+        "endTime": 1782025140
+      },
+      {
+        "conditionId": "0x2fcf3968f5feff8c544b1be614f1c7aed22f5051949478bc0b39f9e966cab02a",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Spain win on 2026-06-21?",
+        "question": "Will Spain win on 2026-06-21?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.895,
+        "endTime": 1782057600
+      },
+      {
+        "conditionId": "0x573b94d1df2175e37b4c392f3f2543dda70ae651407115c66ba97f7a8bf6d7d9",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "SPN/SDR O1.5",
+        "question": "Will Spain vs Saudi Arabia total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.855,
+        "endTime": 1782068340
+      },
+      {
+        "conditionId": "0x64c9b835f0f2f88b8abd21316714c47951e840861ef40f64fa1e94cecf397cb2",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Spain vs. Saudi Arabia: Spain O/U 0.5",
+        "question": "Spain vs. Saudi Arabia: Spain O/U 0.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.93,
+        "endTime": 1782068340
+      },
+      {
+        "conditionId": "0x6c7689f8bb53d723cd40dd70f0b1d2262f9a539b0025d87040af7a929eb41b30",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "SDR -1.5",
+        "question": "Saudi Arabia covers -1.5 spread vs Spain?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.012,
+        "endTime": 1782068340
+      },
+      {
+        "conditionId": "0xbdb326038e98f139550add22cab891493f7093118096eb005cd7d3224aaf4f5e",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "SPN -2.5",
+        "question": "Spain covers -2.5 spread vs Saudi Arabia?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.515,
+        "endTime": 1782068340
+      },
+      {
+        "conditionId": "0xebb200cb08bbe89c2523a345947d083a992e27cc479cf1b5568407751e026d2c",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Belgium win on 2026-06-21?",
+        "question": "Will Belgium win on 2026-06-21?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.695,
+        "endTime": 1782068400
+      },
+      {
+        "conditionId": "0x3efba6a87dca16e482f568863e591f4c480d8a5fa10b86f2b42c66287fda9fb4",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Belgium vs. IR Iran: 2nd Half O/U 1.5",
+        "question": "Belgium vs. IR Iran: 2nd Half O/U 1.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.49,
+        "endTime": 1782079140
+      },
+      {
+        "conditionId": "0x514615faec76304fbbe52b510fc96b26b866bed1b018229cfe01185840bebd42",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Belgium vs. IR Iran: 2nd Half O/U 2.5",
+        "question": "Belgium vs. IR Iran: 2nd Half O/U 2.5",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.27,
+        "endTime": 1782079140
+      },
+      {
+        "conditionId": "0x8c65738021aa8195009b33a4e375f83e4cb49eafd0c75ba7b44d08510036b9ae",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "BLG/IRI O1.5",
+        "question": "Will Belgium vs IR Iran total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.765,
+        "endTime": 1782079140
+      },
+      {
+        "conditionId": "0xa526b8d2898ec27db4a6c096b6e5f2a5829305a77d738cf740389f10d5c585be",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "BLG/IRI O2.5",
+        "question": "Will Belgium vs IR Iran total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.515,
+        "endTime": 1782079140
+      },
+      {
+        "conditionId": "0xeb36a2b384de0aaca0686ee0d80d9e4f9dfe2bb93ac6eeab5c57b42e46930b1a",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "IRI -1.5",
+        "question": "IR Iran covers -1.5 spread vs Belgium?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.0295,
+        "endTime": 1782079140
+      },
+      {
+        "conditionId": "0x08d56195e88cedb87eeff396bd35e8b67d031e586169b3bc937b3095b3cdfe43",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Uruguay win on 2026-06-21?",
+        "question": "Will Uruguay win on 2026-06-21?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.665,
+        "endTime": 1782079200
+      },
+      {
+        "conditionId": "0x6439c66cca805cdeb50925a4e67b85d0a2df66eb2f46983ff123fef019d14190",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "URU/CBV O2.5",
+        "question": "Will Uruguay vs Cabo Verde total be over 2.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.455,
+        "endTime": 1782089940
+      },
+      {
+        "conditionId": "0x9d013d3fc2d53c9c22d1738416312b854b72a80fcbfa5940937928578b686698",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "URU -1.5",
+        "question": "Uruguay covers -1.5 spread vs Cabo Verde?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.365,
+        "endTime": 1782089940
+      },
+      {
+        "conditionId": "0xfdfc0dd3151ee5b6f84e874714ff0f1fb0343e0abcc00adfb09bf0213b6fd067",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "URU/CBV O1.5",
+        "question": "Will Uruguay vs Cabo Verde total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.715,
+        "endTime": 1782089940
+      },
+      {
+        "conditionId": "0x16c981b47490212bbb7d70edcccc419a84ff5771bc85c1b7abae37128975953e",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "Will Egypt win on 2026-06-21?",
+        "question": "Will Egypt win on 2026-06-21?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.575,
+        "endTime": 1782090000
+      },
+      {
+        "conditionId": "0x4c8c81a8977892ce501038db87ff2112e9eaeafa18e4e712180de0ed57d880a5",
+        "resolver": "0x7e81ca51de1eecc5ed4f7ecbaa3156400c6b3b9c",
+        "shortName": "NWZ/EGY O1.5",
+        "question": "Will New Zealand vs Egypt total be over 1.5?",
+        "imageUrl": "https://polymarket-upload.s3.us-east-2.amazonaws.com/soccer ball-bba4025f77.png",
+        "estimatedPrice": 0.685,
+        "endTime": 1782100740
       }
     ]
   }

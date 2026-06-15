@@ -988,6 +988,7 @@ button.quick-pick:hover {
 }
 
 .locked-cell > .cell-text,
+.locked-cell > .cell-odds,
 .locked-cell > .locked-pick {
   position: relative;
   z-index: 1;
@@ -1747,6 +1748,7 @@ button.quick-pick:hover {
 
 /* Keep text + toggles above the thumbnail. */
 .bingo-cell > .bingo-cell-title,
+.bingo-cell > .cell-odds,
 .bingo-cell > .bingo-side-toggle,
 .bingo-cell > .bingo-side {
   position: relative;
@@ -1755,6 +1757,19 @@ button.quick-pick:hover {
 
 .bingo-cell-title {
   cursor: default;
+}
+
+.cell-odds {
+  align-self: flex-start;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  background: rgba(124, 140, 248, 0.14);
+  border: 1px solid rgba(124, 140, 248, 0.24);
+  border-radius: var(--r-sm);
+  padding: 0.18rem 0.42rem;
 }
 
 /* Hover tooltip showing the full question (escapes the grid's overflow). */
