@@ -99,7 +99,10 @@ function toVaultStat(node: WireVaultStat): VaultStat {
 export async function fetchVaultStats(
   address: string,
   chainId?: number,
-  pageSize = 365
+  // Must stay <= the API's GRAPHQL_MAX_LIST_SIZE (100); a larger `first` is
+  // rejected pre-execution with PAGINATION_LIMIT_EXCEEDED. The loop below pages
+  // on `pageInfo`, so a 100-row page still yields the full series.
+  pageSize = 100
 ): Promise<VaultStat[]> {
   const nodes: WireVaultStat[] = [];
   let after: string | null = null;

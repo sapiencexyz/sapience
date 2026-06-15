@@ -1,5 +1,9 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { fetchProtocolAnalytics, GET_PROTOCOL_ANALYTICS } from '../protocol';
+import {
+  fetchProtocolAnalytics,
+  GET_PROTOCOL_ANALYTICS,
+  GET_PROTOCOL_STATS_HISTORY_PAGE,
+} from '../protocol';
 
 const mockGraphqlRequestV2 = vi.fn();
 vi.mock('../client/graphqlClient', () => ({
@@ -25,7 +29,10 @@ const stat = (timestamp: number, overrides: Record<string, unknown> = {}) => ({
 const fullResponse = () => ({
   protocol: {
     stats: stat(1700000300),
-    statsHistory: { nodes: [stat(1700000100), stat(1700000200)] },
+    statsHistory: {
+      nodes: [stat(1700000100), stat(1700000200)],
+      pageInfo: { hasNextPage: false, endCursor: null },
+    },
     openInterestByCategory: [
       { category: { name: 'Crypto', slug: 'crypto' }, openInterest: '300' },
       { category: { name: 'Politics', slug: 'politics' }, openInterest: '200' },
@@ -58,8 +65,9 @@ describe('GET_PROTOCOL_ANALYTICS document', () => {
     expect(GET_PROTOCOL_ANALYTICS).toContain('protocol');
     expect(GET_PROTOCOL_ANALYTICS).toContain('stats');
     expect(GET_PROTOCOL_ANALYTICS).toContain(
-      'statsHistory(first: $historyFirst)'
+      'statsHistory(first: $first, after: $after)'
     );
+    expect(GET_PROTOCOL_ANALYTICS).toContain('hasNextPage');
     expect(GET_PROTOCOL_ANALYTICS).toContain('openInterestByCategory');
     expect(GET_PROTOCOL_ANALYTICS).toContain('openInterestByTimeToResolution');
   });
@@ -86,20 +94,49 @@ describe('GET_PROTOCOL_ANALYTICS document', () => {
 });
 
 describe('fetchProtocolAnalytics', () => {
-  test('requests 1000 history snapshots by default', async () => {
+  test('requests the first history page within the list-size cap (100)', async () => {
     mockGraphqlRequestV2.mockResolvedValue(fullResponse());
     await fetchProtocolAnalytics();
+    expect(mockGraphqlRequestV2).toHaveBeenCalledTimes(1);
     expect(mockGraphqlRequestV2).toHaveBeenCalledWith(GET_PROTOCOL_ANALYTICS, {
-      historyFirst: 1000,
+      first: 100,
+      after: null,
     });
   });
 
-  test('passes a custom history size', async () => {
-    mockGraphqlRequestV2.mockResolvedValue(fullResponse());
-    await fetchProtocolAnalytics(50);
-    expect(mockGraphqlRequestV2).toHaveBeenCalledWith(GET_PROTOCOL_ANALYTICS, {
-      historyFirst: 50,
+  test('pages statsHistory on pageInfo until exhausted, then concatenates', async () => {
+    const page1 = fullResponse();
+    page1.protocol.statsHistory = {
+      nodes: [stat(1700000100), stat(1700000200)],
+      pageInfo: { hasNextPage: true, endCursor: 'cursor-1' },
+    };
+    mockGraphqlRequestV2.mockResolvedValueOnce(page1).mockResolvedValueOnce({
+      protocol: {
+        statsHistory: {
+          nodes: [stat(1700000300)],
+          pageInfo: { hasNextPage: false, endCursor: null },
+        },
+      },
     });
+
+    const result = await fetchProtocolAnalytics();
+
+    expect(mockGraphqlRequestV2).toHaveBeenCalledTimes(2);
+    // First call: the combined analytics query, first page.
+    expect(mockGraphqlRequestV2).toHaveBeenNthCalledWith(
+      1,
+      GET_PROTOCOL_ANALYTICS,
+      { first: 100, after: null }
+    );
+    // Second call: the lighter history-only page query, threading the cursor.
+    expect(mockGraphqlRequestV2).toHaveBeenNthCalledWith(
+      2,
+      GET_PROTOCOL_STATS_HISTORY_PAGE,
+      { first: 100, after: 'cursor-1' }
+    );
+    expect(result.statsHistory.map((s) => s.timestamp)).toEqual([
+      1700000100, 1700000200, 1700000300,
+    ]);
   });
 
   test('unwraps the protocol payload, with history as a plain array', async () => {

@@ -63,17 +63,40 @@ export interface ProtocolAnalytics {
   openInterestByTimeToResolution: ProtocolTimeToResolutionBucket[];
 }
 
+const PROTOCOL_STAT_FIELDS = /* GraphQL */ `
+  fragment ProtocolStatFields on ProtocolStat {
+    timestamp
+    cumulativeVolume
+    cumulativeTradeCount
+    periodVolume
+    periodTradeCount
+    openInterest
+    escrowBalance
+    totalValueLocked
+  }
+`;
+
 // `Protocol.statsHistory` exposes no orderBy argument — the connection is
 // defined oldest-first in the SDL; the mapper still sorts defensively.
+//
+// `statsHistory` pages on `pageInfo`: `first` must stay <= the API's
+// GRAPHQL_MAX_LIST_SIZE (100) or the request is rejected pre-execution with
+// PAGINATION_LIMIT_EXCEEDED. The first page is fetched alongside the singular
+// stats/open-interest fields; `GET_PROTOCOL_STATS_HISTORY_PAGE` fetches the
+// remaining history pages on their own.
 export const GET_PROTOCOL_ANALYTICS = /* GraphQL */ `
-  query ProtocolAnalytics($historyFirst: Int!) {
+  query ProtocolAnalytics($first: Int!, $after: String) {
     protocol {
       stats {
         ...ProtocolStatFields
       }
-      statsHistory(first: $historyFirst) {
+      statsHistory(first: $first, after: $after) {
         nodes {
           ...ProtocolStatFields
+        }
+        pageInfo {
+          hasNextPage
+          endCursor
         }
       }
       openInterestByCategory {
@@ -92,16 +115,25 @@ export const GET_PROTOCOL_ANALYTICS = /* GraphQL */ `
     }
   }
 
-  fragment ProtocolStatFields on ProtocolStat {
-    timestamp
-    cumulativeVolume
-    cumulativeTradeCount
-    periodVolume
-    periodTradeCount
-    openInterest
-    escrowBalance
-    totalValueLocked
+  ${PROTOCOL_STAT_FIELDS}
+`;
+
+export const GET_PROTOCOL_STATS_HISTORY_PAGE = /* GraphQL */ `
+  query ProtocolStatsHistoryPage($first: Int!, $after: String) {
+    protocol {
+      statsHistory(first: $first, after: $after) {
+        nodes {
+          ...ProtocolStatFields
+        }
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+      }
+    }
   }
+
+  ${PROTOCOL_STAT_FIELDS}
 `;
 
 type WireStat = {
@@ -115,10 +147,15 @@ type WireStat = {
   totalValueLocked: string | number;
 };
 
+type StatsHistoryPage = {
+  nodes: WireStat[];
+  pageInfo: { hasNextPage: boolean; endCursor: string | null };
+};
+
 type ProtocolAnalyticsV2Response = {
   protocol: {
     stats: WireStat;
-    statsHistory: { nodes: WireStat[] };
+    statsHistory: StatsHistoryPage;
     openInterestByCategory: Array<{
       category: { name: string; slug: string };
       openInterest: string | number;
@@ -150,7 +187,8 @@ function toStat(node: WireStat): ProtocolAnalyticsStat {
 }
 
 function toProtocolAnalytics(
-  data: ProtocolAnalyticsV2Response | null
+  data: ProtocolAnalyticsV2Response | null,
+  historyNodes: WireStat[]
 ): ProtocolAnalytics {
   const protocol = data?.protocol;
   if (
@@ -167,7 +205,7 @@ function toProtocolAnalytics(
 
   return {
     stats: toStat(protocol.stats),
-    statsHistory: protocol.statsHistory.nodes
+    statsHistory: historyNodes
       .map(toStat)
       .sort((a, b) => a.timestamp - b.timestamp),
     openInterestByCategory: protocol.openInterestByCategory.map((row) => ({
@@ -190,12 +228,36 @@ function toProtocolAnalytics(
   };
 }
 
-export async function fetchProtocolAnalytics(
-  historyFirst = 1000
-): Promise<ProtocolAnalytics> {
+// Snapshot pages are capped at the API's GRAPHQL_MAX_LIST_SIZE (100). The
+// daily series is bounded, so a handful of pages covers all history; MAX_PAGES
+// guards against a non-progressing cursor.
+const HISTORY_PAGE_SIZE = 100;
+const MAX_HISTORY_PAGES = 50;
+
+export async function fetchProtocolAnalytics(): Promise<ProtocolAnalytics> {
   const data = await graphqlRequestV2<ProtocolAnalyticsV2Response>(
     GET_PROTOCOL_ANALYTICS,
-    { historyFirst }
+    { first: HISTORY_PAGE_SIZE, after: null }
   );
-  return toProtocolAnalytics(data);
+
+  const historyNodes: WireStat[] = [
+    ...(data?.protocol?.statsHistory?.nodes ?? []),
+  ];
+  let pageInfo = data?.protocol?.statsHistory?.pageInfo;
+
+  for (let page = 1; page < MAX_HISTORY_PAGES; page += 1) {
+    if (!pageInfo?.hasNextPage || !pageInfo.endCursor) break;
+    const next = await graphqlRequestV2<{
+      protocol: { statsHistory: StatsHistoryPage } | null;
+    }>(GET_PROTOCOL_STATS_HISTORY_PAGE, {
+      first: HISTORY_PAGE_SIZE,
+      after: pageInfo.endCursor,
+    });
+    const history = next?.protocol?.statsHistory;
+    if (!history || !Array.isArray(history.nodes)) break;
+    historyNodes.push(...history.nodes);
+    pageInfo = history.pageInfo;
+  }
+
+  return toProtocolAnalytics(data, historyNodes);
 }
