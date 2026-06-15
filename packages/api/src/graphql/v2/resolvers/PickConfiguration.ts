@@ -1,0 +1,70 @@
+/**
+ * v2 PickConfiguration — Node-implementing entity over the Postgres
+ * `Picks` table (legacy model name; the GraphQL surface uses the
+ * intended `PickConfiguration`).
+ *
+ * The picks list is materialized inline since a pick config has a
+ * bounded number of picks (typically 1–5 conditions).
+ */
+
+import prisma from '../../../core/db';
+import { registerNodeTypeV2, toGlobalIdV2 } from '../relay/nodeRegistry';
+import type {
+  PickConfigurationResolvers,
+  PickResolvers,
+} from '../__generated__/resolvers';
+
+registerNodeTypeV2({
+  type: 'PickConfiguration',
+  loader: async (id) =>
+    prisma.picks.findUnique({
+      where: { id: id.toLowerCase() },
+      include: { picks: true },
+    }),
+});
+
+export const PickConfiguration: PickConfigurationResolvers = {
+  id: (parent) => toGlobalIdV2('PickConfiguration', parent.id),
+  pickConfigId: (parent) => parent.id,
+  escrow: (parent) => parent.marketAddress.toLowerCase(),
+
+  // Prisma column is non-null and defaults to UNRESOLVED; the v2 wire
+  // shape uses null for that state so the enum only carries terminal
+  // outcomes.
+  result: (parent) =>
+    parent.result === 'UNRESOLVED' ? null : (parent.result as never),
+  // Convenience boolean mirroring the v1 resolved flag: true once the wire
+  // `result` is non-null, i.e. any terminal outcome including NON_DECISIVE.
+  // UNRESOLVED is the only state that maps to a null result.
+  resolved: (parent) => parent.result !== 'UNRESOLVED',
+  // Straight passthrough of the Prisma column (legacy-contract flag).
+  // Kept explicit so the legacy-market badge contract (G10) is visible
+  // here rather than relying on the default resolver.
+  isLegacy: (parent) => parent.isLegacy,
+  predictorToken: (parent) =>
+    parent.predictorToken ? parent.predictorToken.toLowerCase() : null,
+  counterpartyToken: (parent) =>
+    parent.counterpartyToken ? parent.counterpartyToken.toLowerCase() : null,
+  picks: async (parent, _args, ctx) => {
+    const withPicks = parent as typeof parent & {
+      picks?: Awaited<ReturnType<typeof prisma.pick.findMany>>;
+    };
+    if (withPicks.picks) return withPicks.picks;
+    if (ctx.loaders?.picksByPickConfigId)
+      return ctx.loaders.picksByPickConfigId.load(parent.id);
+    return prisma.pick.findMany({ where: { pickConfigId: parent.id } });
+  },
+};
+
+export const Pick: PickResolvers = {
+  conditionId: (parent) => parent.conditionId.toLowerCase(),
+  resolver: (parent) => parent.conditionResolver.toLowerCase(),
+  predictedOutcome: (parent) =>
+    (parent.predictedOutcome === 1 ? 'YES' : 'NO') as never,
+  condition: async (parent, _args, ctx) => {
+    if (!parent.conditionId) return null;
+    const id = parent.conditionId.toLowerCase();
+    if (ctx.loaders?.conditionById) return ctx.loaders.conditionById.load(id);
+    return prisma.condition.findUnique({ where: { id } });
+  },
+};

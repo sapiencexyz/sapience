@@ -23,6 +23,18 @@ const validators = {
     default: 15000,
     desc: 'Maximum allowed query complexity score',
   }),
+  GRAPHQL_V2_MAX_COMPLEXITY: num({
+    default: 10000,
+    desc: 'Maximum allowed query complexity score for /v2/graphql. Tighter than v1 because v2 surfaces are flatter and deeply-nested fan-outs are not a legitimate v2 access pattern.',
+  }),
+  GRAPHQL_V2_MAX_DEPTH: num({
+    default: 6,
+    desc: 'Maximum selection-set depth for /v2/graphql. v1 allows 7; v2 trims one level on the assumption that Relay-wrapped two-deep entity fan-outs cover every legitimate v2 client. Override if a v2 query legitimately needs greater depth.',
+  }),
+  GRAPHQL_V2_APQ_TTL_MS: num({
+    default: 24 * 60 * 60 * 1000,
+    desc: 'TTL (ms) for entries in the v2 Automatic Persisted Queries cache. After this window an unrecognized hash forces clients to resend the full query. Setting too low defeats the purpose of APQ; setting too high lets unused queries linger in memory.',
+  }),
   GRAPHQL_MAX_LIST_SIZE: num({
     default: 100,
     desc: 'Maximum allowed take/first/limit argument value',

@@ -2,8 +2,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mockPrisma = {
   $queryRaw: vi.fn(),
+  $transaction: vi.fn().mockResolvedValue([]),
   category: {
     findMany: vi.fn(),
+  },
+  popularTag: {
+    findMany: vi.fn().mockResolvedValue([]),
+    deleteMany: vi.fn(),
+    createMany: vi.fn(),
   },
 };
 
@@ -44,6 +50,58 @@ describe('popularTags TTL cache', () => {
     __clearPopularTagsCache();
     await callResolver(popularTags as never, {});
     expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('popularTags staleness refresh', () => {
+  const FIXTURE = [
+    { tag: 'Politics', cnt: 3n },
+    { tag: 'Sports', cnt: 2n },
+  ];
+
+  beforeEach(() => {
+    __clearPopularTagsCache();
+    mockPrisma.$queryRaw.mockReset();
+    mockPrisma.$queryRaw.mockResolvedValue(FIXTURE);
+    mockPrisma.$transaction.mockClear();
+    mockPrisma.popularTag.findMany.mockReset();
+  });
+
+  it('serves a fresh materialization without recomputing', async () => {
+    mockPrisma.popularTag.findMany.mockResolvedValue([
+      { tag: 'Politics', refreshedAt: new Date() },
+    ]);
+    const result = await callResolver(popularTags as never, {});
+    expect(result).toEqual(['Politics']);
+    expect(mockPrisma.$queryRaw).not.toHaveBeenCalled();
+    expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('recomputes and writes back when the materialization is stale', async () => {
+    // 61 minutes old — past the 1h max age. Without this, the table written
+    // once on cold start freezes forever (no scheduled refresher exists).
+    mockPrisma.popularTag.findMany.mockResolvedValue([
+      { tag: 'Old', refreshedAt: new Date(Date.now() - 61 * 60 * 1000) },
+    ]);
+    const result = await callResolver(popularTags as never, {});
+    expect(result).toEqual(['Politics', 'Sports']);
+    expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
+  });
+
+  it('cold start computes AND writes back (empty table)', async () => {
+    mockPrisma.popularTag.findMany.mockResolvedValue([]);
+    const result = await callResolver(popularTags as never, {});
+    expect(result).toEqual(['Politics', 'Sports']);
+    expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
+  });
+
+  it('coalesces concurrent refreshes into a single recompute', async () => {
+    mockPrisma.popularTag.findMany.mockResolvedValue([]);
+    await Promise.all([
+      callResolver(popularTags as never, {}),
+      callResolver(popularTags as never, {}),
+    ]);
+    expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -24,6 +24,7 @@ import {
   LLM_MODEL,
   LLM_ENDTIME_MODEL,
   DEFAULT_SAPIENCE_API_URL,
+  KEEPER_INTERNAL_TAGS,
 } from '../constants';
 import { inferSapienceCategorySlug } from './category';
 import { transformMatchQuestion, getPolymarketUrl } from './transform';
@@ -568,9 +569,21 @@ export function computeMetadataUpdates(
     if (!existing) continue;
 
     const groupInfo = groupByConditionId.get(market.conditionId);
-    const tagsForMarket = groupInfo?.eventSlug
+    const polymarketTags = groupInfo?.eventSlug
       ? (eventTagMap.get(groupInfo.eventSlug) ?? [])
       : [];
+    // Preserve keeper-owned internal tags (e.g. "Today") that Polymarket event
+    // data never carries. Without this, freshMetadataFor's full-array tag
+    // replace strips them, so refresh-imminent-tag has to re-add them later in
+    // the pipeline — leaving a window where the tag is missing, and dropping it
+    // entirely if an intervening step fails. See KEEPER_INTERNAL_TAGS.
+    const preservedInternalTags = (existing.tags ?? []).filter((t) =>
+      KEEPER_INTERNAL_TAGS.has(t)
+    );
+    const tagsForMarket = [
+      ...polymarketTags,
+      ...preservedInternalTags.filter((t) => !polymarketTags.includes(t)),
+    ];
     const fresh = freshMetadataFor(market, groupInfo?.title, tagsForMarket);
 
     const fields: SyncableFields = {};

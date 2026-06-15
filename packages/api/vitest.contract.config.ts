@@ -25,6 +25,16 @@ export default defineConfig({
     env: {
       DATABASE_URL: testDbUrl,
       TEST_DATABASE_URL: testDbUrl,
+      // Vitest isolates each test FILE into a fresh module registry, so
+      // every file instantiates its own Prisma singleton (src/core/db) and
+      // its own pg pool. At the production default (CONNECTION_POOL_SIZE
+      // 60, idleTimeoutMillis 10s) the connection-hungry pairs (questions
+      // hydration, activity's per-pick category N+1) leave dozens of idle
+      // connections per file that outlive the ~3s suite, blowing past a
+      // local Postgres max_connections=100 mid-run ("too many clients
+      // already" in unrelated files). A small per-file cap keeps the whole
+      // suite well under the server limit; an explicit env var still wins.
+      CONNECTION_POOL_SIZE: process.env.CONNECTION_POOL_SIZE ?? '5',
     },
     testTimeout: 30_000,
     hookTimeout: 90_000,

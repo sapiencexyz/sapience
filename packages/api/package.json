@@ -24,6 +24,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:contract": "pnpm --filter @sapience/sdk run build:lib && pnpm run prisma:generate && vitest --config vitest.contract.config.ts --run",
+    "test:parity": "pnpm --filter @sapience/sdk run build:lib && pnpm run prisma:generate && vitest --config vitest.contract.config.ts --run test/contract/parity",
     "snapshot-test-db": "tsx scripts/snapshotTestDb.ts",
     "scan-legacy-session-key": "tsx scripts/scanLegacySessionKeyData.ts",
     "test:prediction-e2e": "tsx test-prediction-indexer-e2e.ts",

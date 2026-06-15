@@ -511,6 +511,10 @@ const fetchOpenInterestByTimeToResolution = memoTtl(
       GROUP BY pi."pickConfigId"
     )
     SELECT
+      -- Bucket boundaries (1d/7d/30d/60d/90d/180d) are mirrored in v2's
+      -- TTR_BUCKET_BOUNDS map (graphql/v2/resolvers/Protocol.ts), which
+      -- decodes these ordinals into seconds-from-now ranges. Change both
+      -- together, or the v2 min/maxSecondsFromNow will misreport.
       CASE
         WHEN (x.max_end_time - EXTRACT(EPOCH FROM NOW()))::numeric <= 86400 THEN 1
         WHEN (x.max_end_time - EXTRACT(EPOCH FROM NOW()))::numeric <= 7 * 86400 THEN 2

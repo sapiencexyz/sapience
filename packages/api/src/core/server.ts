@@ -7,6 +7,8 @@ import type { IncomingMessage } from 'http';
 import type { Socket } from 'net';
 import { initSentry } from './instrument';
 import { initializeApolloServer } from '../graphql/startApolloServer';
+import { initializeApolloServerV2 } from '../graphql/v2/startApolloServer';
+import { createLoaders } from '../graphql/sdl/resolvers/loaders';
 import { startInflightDump } from '../runtime/inflightDump';
 import Sentry from './instrument';
 import { NextFunction, Request, Response } from 'express';
@@ -54,6 +56,7 @@ const startServer = async () => {
   }
 
   const apolloServer = await initializeApolloServer();
+  const apolloServerV2 = await initializeApolloServerV2();
 
   // Health check endpoint — verifies DB connectivity for load balancers
   app.get('/health', async (_req, res) => {
@@ -134,8 +137,55 @@ const startServer = async () => {
       context: async ({ req }) => ({
         prisma,
         pickConditions: new Map<string, unknown>(),
+        loaders: createLoaders(prisma),
         // pino-http attaches `id` and `log` to req; passed through so the
         // operation-timing plugin can include reqId in the structured log.
+        req,
+      }),
+    })
+  );
+
+  // Mount the v2 endpoint on /v2/graphql. Shares the same hardening
+  // middleware as v1 (timing + concurrency + CDN cache headers) and the
+  // same per-request DataLoader factory; the schema and Node registry
+  // are independent. See packages/api/src/graphql/v2/PLAN.md.
+  app.use(
+    '/v2/graphql',
+    (req: Request, res: Response, next: NextFunction) => {
+      const requestId = (req.headers['x-request-id'] as string) || '';
+      const store = { count: 0, requestId };
+      requestContext.run(store, () => {
+        const start = performance.now();
+        const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+        res.on('finish', () => {
+          const durationMs = Number((performance.now() - start).toFixed(1));
+          log.info(
+            {
+              event: 'http_graphql_v2_request',
+              method: req.method,
+              statusCode: res.statusCode,
+              durationMs,
+              prismaQueryCount: store.count,
+              ip,
+              requestId: requestId || undefined,
+            },
+            'http /v2/graphql'
+          );
+        });
+        next();
+      });
+    },
+    timeoutMiddleware,
+    concurrencyMiddleware,
+    cdnCacheMiddleware as unknown as (
+      req: Request,
+      res: Response,
+      next: NextFunction
+    ) => void,
+    expressMiddleware(apolloServerV2, {
+      context: async ({ req }) => ({
+        prisma,
+        loaders: createLoaders(prisma),
         req,
       }),
     })

@@ -73,89 +73,120 @@ function makeMarket(
   };
 }
 
+function conditionsPage(
+  nodes: unknown[],
+  pageInfo: { hasNextPage: boolean; endCursor: string | null }
+): Response {
+  return jsonResponse({ data: { conditions: { nodes, pageInfo } } });
+}
+
+function makeConditionNode(overrides: Record<string, unknown> = {}) {
+  return {
+    conditionId: '0x001',
+    endTime: 1700000000,
+    question: 'Q',
+    shortName: null,
+    optionName: null,
+    description: '',
+    tags: [],
+    similarMarket: {
+      markets: ['https://polymarket.com/event/x#y'],
+      image: null,
+      volume: 0,
+    },
+    conditionGroup: null,
+    ...overrides,
+  };
+}
+
 describe('fetchAllExistingConditions', () => {
-  it('sends a where clause that filters to public + unsettled + non-empty similarMarkets', async () => {
-    fetchQueue.push(() => jsonResponse({ data: { conditions: [] } }));
+  it('queries /v2/graphql for public + unsettled conditions', async () => {
+    fetchQueue.push(() =>
+      conditionsPage([], { hasNextPage: false, endCursor: null })
+    );
 
     await fetchAllExistingConditions('https://api.example.com');
 
     expect(fetchCalls).toHaveLength(1);
+    expect(fetchCalls[0].url).toBe('https://api.example.com/v2/graphql');
     const body = JSON.parse(fetchCalls[0].init!.body as string);
-    expect(body.variables.where).toEqual({
-      public: { equals: true },
-      settled: { equals: false },
-      similarMarkets: { isEmpty: false },
-    });
-    expect(body.variables.orderBy).toEqual([{ id: 'asc' }]);
-    expect(fetchCalls[0].url.endsWith('/graphql')).toBe(true);
+    expect(body.variables.filter).toEqual({ public: true, settled: false });
   });
 
-  it('paginates with deterministic orderBy until a page returns < pageSize', async () => {
-    // Two full pages of 100 then an empty short page — same shape
-    // refresh-volume's fetchActiveConditionIds uses.
-    const page1 = Array.from({ length: 100 }, (_, i) => ({
-      id: `0x${(i + 1).toString().padStart(3, '0')}`,
-      endTime: 1700000000,
-      similarMarkets: ['https://polymarket.com/event/x#y'],
-    }));
-    const page2 = Array.from({ length: 100 }, (_, i) => ({
-      id: `0x${(i + 101).toString().padStart(3, '0')}`,
-      endTime: 1700000000,
-      similarMarkets: ['https://polymarket.com/event/x#y'],
-    }));
-    const page3 = [
-      {
-        id: '0x999',
-        endTime: 1700000000,
-        similarMarkets: ['https://polymarket.com/event/x#y'],
-      },
-    ];
+  it('paginates via the relay cursor until exhausted', async () => {
+    const page1 = Array.from({ length: 100 }, (_, i) =>
+      makeConditionNode({
+        conditionId: `0x${(i + 1).toString().padStart(3, '0')}`,
+      })
+    );
+    const page2 = [makeConditionNode({ conditionId: '0x999' })];
 
-    fetchQueue.push(() => jsonResponse({ data: { conditions: page1 } }));
-    fetchQueue.push(() => jsonResponse({ data: { conditions: page2 } }));
-    fetchQueue.push(() => jsonResponse({ data: { conditions: page3 } }));
+    fetchQueue.push(() =>
+      conditionsPage(page1, { hasNextPage: true, endCursor: 'cur1' })
+    );
+    fetchQueue.push(() =>
+      conditionsPage(page2, { hasNextPage: false, endCursor: null })
+    );
 
     const result = await fetchAllExistingConditions('https://api.example.com');
 
-    expect(result.size).toBe(201);
-    expect(fetchCalls).toHaveLength(3);
-    expect(JSON.parse(fetchCalls[0].init!.body as string).variables.skip).toBe(
-      0
+    expect(result.size).toBe(101);
+    expect(fetchCalls).toHaveLength(2);
+    expect(
+      JSON.parse(fetchCalls[0].init!.body as string).variables.after
+    ).toBeNull();
+    expect(JSON.parse(fetchCalls[1].init!.body as string).variables.after).toBe(
+      'cur1'
     );
-    expect(JSON.parse(fetchCalls[1].init!.body as string).variables.skip).toBe(
-      100
+  });
+
+  it('drops conditions without similarMarket links (no server-side isEmpty filter)', async () => {
+    fetchQueue.push(() =>
+      conditionsPage(
+        [
+          makeConditionNode({ conditionId: '0xa' }),
+          makeConditionNode({
+            conditionId: '0xb',
+            similarMarket: { markets: [], image: null, volume: 0 },
+          }),
+          makeConditionNode({ conditionId: '0xc', similarMarket: null }),
+        ],
+        { hasNextPage: false, endCursor: null }
+      )
     );
-    expect(JSON.parse(fetchCalls[2].init!.body as string).variables.skip).toBe(
-      200
-    );
+
+    const result = await fetchAllExistingConditions('https://api.example.com');
+    expect([...result.keys()]).toEqual(['0xa']);
   });
 
   it('maps GraphQL fields onto the ExistingCondition shape', async () => {
     fetchQueue.push(() =>
-      jsonResponse({
-        data: {
-          conditions: [
-            {
-              id: '0xabc',
-              endTime: 1700000000,
-              question: 'Will X happen?',
-              shortName: 'X?',
-              optionName: 'Yes side',
-              description: 'A description',
-              similarMarkets: ['https://polymarket.com/event/foo#bar'],
-              tags: ['crypto', 'btc'],
-              similarMarketVolume: 1234,
-              similarMarketImage: 'https://img.example/x.png',
-              conditionGroup: {
-                id: 7,
-                name: 'Group Name',
-                similarMarkets: ['https://polymarket.com/event/foo#bar'],
-                negRisk: true,
-              },
+      conditionsPage(
+        [
+          {
+            conditionId: '0xabc',
+            endTime: 1700000000,
+            question: 'Will X happen?',
+            shortName: 'X?',
+            optionName: 'Yes side',
+            description: 'A description',
+            tags: ['crypto', 'btc'],
+            similarMarket: {
+              markets: ['https://polymarket.com/event/foo#bar'],
+              image: 'https://img.example/x.png',
+              volume: 1234,
             },
-          ],
-        },
-      })
+            conditionGroup: {
+              groupId: 7,
+              name: 'Group Name',
+              similarMarkets: ['https://polymarket.com/event/foo#bar'],
+              negRisk: true,
+              externalEventId: 'evt-42',
+            },
+          },
+        ],
+        { hasNextPage: false, endCursor: null }
+      )
     );
 
     const result = await fetchAllExistingConditions('https://api.example.com');
@@ -172,6 +203,7 @@ describe('fetchAllExistingConditions', () => {
       similarMarketVolume: 1234,
       similarMarketImage: 'https://img.example/x.png',
       groupName: 'Group Name',
+      externalEventId: 'evt-42',
       conditionGroupId: 7,
       conditionGroupSimilarMarkets: ['https://polymarket.com/event/foo#bar'],
       conditionGroupNegRisk: true,
