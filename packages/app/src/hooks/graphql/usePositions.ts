@@ -1,16 +1,19 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import {
-  graphqlRequest,
-  graphqlRequestV2,
-} from '@sapience/sdk/queries/client/graphqlClient';
+import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { graphqlRequestV2 } from '@sapience/sdk/queries/client/graphqlClient';
 import {
   PICK_CONFIGURATION_V2_FIELDS,
   toPickConfigData,
   type PickConfigurationV2Node,
 } from '~/lib/adapters/pickConfig';
+import {
+  POSITION_V2_FIELDS,
+  toPositionBalance,
+  type PositionV2Node,
+} from '~/lib/adapters/position';
+import { useCursorPagination } from '~/hooks/useCursorPagination';
 
 /**
  * Prediction - individual prediction record. v2 drops the numeric Prisma
@@ -99,16 +102,6 @@ export type PickConfigData = {
 };
 
 /**
- * Server-truth paginated wrapper. `hasMore` reflects whether at least one
- * more raw position row exists past this page; trust this over
- * `items.length`, which the resolver can return as 0 for non-final pages.
- */
-export type PositionBalancePage = {
-  items: PositionBalance[];
-  hasMore: boolean;
-};
-
-/**
  * Position Balance - ERC20 token balance for a user
  */
 export type PositionBalance = {
@@ -122,63 +115,14 @@ export type PositionBalance = {
   userCollateral?: string | null;
   totalPayout?: string | null;
   realizedPnL?: string | null;
+  /** v2 lifecycle discriminator. v1 encoded SOLD rows implicitly in the id
+   *  shape (`<rowId>-sell-<tradeHash>`); v2 surfaces it explicitly. Absent on
+   *  rows not produced by the positions synthesis. */
+  status?: 'OPEN' | 'SOLD' | null;
   createdAt: string;
   updatedAt: string;
   pickConfig?: PickConfigData | null;
 };
-
-// GraphQL queries
-//
-// `picks.condition` is fetched inline so consumers can render the full
-// row without a follow-up `useConditionsByIds` round trip. The server
-// pre-loads conditions per request — see Pick resolver + escrow/activity
-// resolvers.
-const PICK_CONDITION_FRAGMENT = `
-  condition {
-    id
-    shortName
-    optionName
-    question
-    description
-    endTime
-    resolver
-    settled
-    resolvedToYes
-    nonDecisive
-    estimatedPrice
-    category {
-      slug
-    }
-  }
-`;
-
-const PICK_CONFIG_FRAGMENT = `
-  pickConfig {
-    id
-    chainId
-    marketAddress
-    totalPredictorCollateral
-    totalCounterpartyCollateral
-    claimedPredictorCollateral
-    claimedCounterpartyCollateral
-    resolved
-    result
-    resolvedAt
-    predictorToken
-    counterpartyToken
-    endsAt
-    isLegacy
-    predictionId
-    picks {
-      id
-      pickConfigId
-      conditionResolver
-      conditionId
-      predictedOutcome
-      ${PICK_CONDITION_FRAGMENT}
-    }
-  }
-`;
 
 // ─── v2 prediction documents + mapper ────────────────────────────────────────
 //
@@ -418,74 +362,27 @@ export const PREDICTION_QUERY = `
   }
 `;
 
-// Server-truth paginated query. The resolver synthesizes events per raw
-// position and can emit zero rows for some pages (zero-balance unresolved
-// positions with no sells), so the client-side `lastPage.length === 0`
-// stop signal is unsafe — use the response's `hasMore` flag instead.
-const POSITION_BALANCES_QUERY = /* GraphQL */ `
-  query Positions(
-    $holder: String!
-    $chainId: Int
-    $settled: Boolean
-    $take: Int
-    $skip: Int
-  ) {
-    positionsPage(
-      holder: $holder
-      chainId: $chainId
-      settled: $settled
-      take: $take
-      skip: $skip
-    ) {
-      hasMore
-      items {
-        id
-        chainId
-        tokenAddress
-        pickConfigId
-        isPredictorToken
-        holder
-        balance
-        userCollateral
-        totalPayout
-        realizedPnL
-        createdAt
-        updatedAt
-        ${PICK_CONFIG_FRAGMENT}
+// v2 connection over synthesized position rows — replaces v1's skip/take
+// `positionsPage`. Both the by-holder and by-condition hooks share this
+// document; only the `PositionFilter` differs (passed as a variable).
+//
+// `pageInfo.hasNextPage` is raw-row truth: a page whose rows all synthesized
+// away still reports `true` while more underlying rows exist, so always page
+// on `pageInfo` (which `useCursorPagination` does), never on node count.
+export const POSITIONS_V2_QUERY = `
+  query Positions($filter: PositionFilter, $first: Int!, $after: String) {
+    positions(filter: $filter, first: $first, after: $after) {
+      edges {
+        node {
+          ${POSITION_V2_FIELDS}
+        }
+        cursor
       }
-    }
-  }
-`;
-
-const POSITION_BALANCES_BY_CONDITION_QUERY = /* GraphQL */ `
-  query PositionsByCondition(
-    $conditionId: String!
-    $take: Int
-    $skip: Int
-    $settled: Boolean
-  ) {
-    positionsPage(
-      conditionId: $conditionId
-      take: $take
-      skip: $skip
-      settled: $settled
-    ) {
-      hasMore
-      items {
-        id
-        chainId
-        tokenAddress
-        pickConfigId
-        isPredictorToken
-        holder
-        balance
-        userCollateral
-        totalPayout
-        realizedPnL
-        createdAt
-        updatedAt
-        ${PICK_CONFIG_FRAGMENT}
+      pageInfo {
+        hasNextPage
+        endCursor
       }
+      totalCount
     }
   }
 `;
@@ -574,61 +471,41 @@ export function usePositionBalances(params: {
     settled,
     pageSize = DEFAULT_POSITIONS_PAGE_SIZE,
   } = params;
-  const enabled = Boolean(holder);
+
+  const filter = useMemo(() => {
+    const f: Record<string, unknown> = { holder };
+    if (chainId != null) f.chainId = chainId;
+    if (settled != null) f.settled = settled;
+    return f;
+  }, [holder, chainId, settled]);
 
   const {
-    data,
+    data: nodes,
     isLoading,
+    isFetchingMore,
     isFetching,
-    isFetchingNextPage,
-    fetchNextPage,
     hasNextPage,
+    loadMore,
     error,
     refetch,
-  } = useInfiniteQuery({
-    queryKey: ['positionBalances', holder, chainId, settled, pageSize],
-    enabled,
-    staleTime: 30_000,
-    gcTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-    initialPageParam: 0,
-    // The server uses a `take + 1` raw-row trick to compute hasMore
-    // server-truth. Synthesized event-stream rows from the resolver can be
-    // empty for some pages (zero-balance unresolved positions with no
-    // sells), so we cannot infer "exhausted" from `items.length === 0`.
-    // Trust the API's hasMore flag.
-    getNextPageParam: (lastPage: PositionBalancePage, allPages) =>
-      lastPage.hasMore ? allPages.length * pageSize : undefined,
-    queryFn: async ({ pageParam = 0 }) => {
-      const resp = await graphqlRequest<{
-        positionsPage: PositionBalancePage;
-      }>(POSITION_BALANCES_QUERY, {
-        holder,
-        chainId: chainId ?? null,
-        settled: settled ?? null,
-        take: pageSize,
-        skip: pageParam,
-      });
-      return resp?.positionsPage ?? { items: [], hasMore: false };
-    },
+  } = useCursorPagination<PositionV2Node>({
+    queryKey: ['positionBalances', holder, chainId, settled],
+    query: POSITIONS_V2_QUERY,
+    connectionKey: 'positions',
+    pageSize,
+    variables: { filter },
+    enabled: Boolean(holder),
   });
 
-  const items = useMemo(
-    () => data?.pages.flatMap((p) => p.items) ?? [],
-    [data]
-  );
-  const fetchMore = useCallback(() => {
-    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+  const items = useMemo(() => nodes.map(toPositionBalance), [nodes]);
 
   return {
     data: items,
-    isLoading: !!enabled && isLoading,
-    isFetchingMore: isFetchingNextPage,
-    isFetching: !!enabled && isFetching,
-    hasMore: Boolean(hasNextPage),
-    fetchMore,
+    isLoading,
+    isFetchingMore,
+    isFetching,
+    hasMore: hasNextPage,
+    fetchMore: loadMore,
     error,
     refetch,
   };
@@ -647,56 +524,40 @@ export function usePositionBalancesByConditionId(params: {
     pageSize = DEFAULT_POSITIONS_PAGE_SIZE,
     settled,
   } = params;
-  const enabled = Boolean(conditionId);
+
+  const filter = useMemo(() => {
+    const f: Record<string, unknown> = { conditionIds: [conditionId] };
+    if (settled != null) f.settled = settled;
+    return f;
+  }, [conditionId, settled]);
 
   const {
-    data,
+    data: nodes,
     isLoading,
+    isFetchingMore,
     isFetching,
-    isFetchingNextPage,
-    fetchNextPage,
     hasNextPage,
+    loadMore,
     error,
     refetch,
-  } = useInfiniteQuery({
-    queryKey: ['positionBalancesByCondition', conditionId, pageSize, settled],
-    enabled,
-    staleTime: 30_000,
-    gcTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-    initialPageParam: 0,
-    // Same hasMore-from-server signal — see `usePositionBalances` for why.
-    getNextPageParam: (lastPage: PositionBalancePage, allPages) =>
-      lastPage.hasMore ? allPages.length * pageSize : undefined,
-    queryFn: async ({ pageParam = 0 }) => {
-      const resp = await graphqlRequest<{
-        positionsPage: PositionBalancePage;
-      }>(POSITION_BALANCES_BY_CONDITION_QUERY, {
-        conditionId,
-        take: pageSize,
-        skip: pageParam,
-        settled: settled ?? null,
-      });
-      return resp?.positionsPage ?? { items: [], hasMore: false };
-    },
+  } = useCursorPagination<PositionV2Node>({
+    queryKey: ['positionBalancesByCondition', conditionId, settled],
+    query: POSITIONS_V2_QUERY,
+    connectionKey: 'positions',
+    pageSize,
+    variables: { filter },
+    enabled: Boolean(conditionId),
   });
 
-  const items = useMemo(
-    () => data?.pages.flatMap((p) => p.items) ?? [],
-    [data]
-  );
-  const fetchMore = useCallback(() => {
-    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+  const items = useMemo(() => nodes.map(toPositionBalance), [nodes]);
 
   return {
     data: items,
-    isLoading: !!enabled && isLoading,
-    isFetchingMore: isFetchingNextPage,
-    isFetching: !!enabled && isFetching,
-    hasMore: Boolean(hasNextPage),
-    fetchMore,
+    isLoading,
+    isFetchingMore,
+    isFetching,
+    hasMore: hasNextPage,
+    fetchMore: loadMore,
     error,
     refetch,
   };
