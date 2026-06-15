@@ -15,7 +15,7 @@ import {
   CHAIN_ID_ETHEREAL_TESTNET,
   DEFAULT_CHAIN_ID,
 } from '@sapience/sdk/constants';
-import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
+import { fetchUserReferralStatus } from '~/hooks/referrals/useReferrals';
 import { useAuth } from '~/lib/context/AuthContext';
 import { useSession } from '~/lib/context/SessionContext';
 import {
@@ -25,21 +25,6 @@ import {
 
 // On staging (Ethereal Testnet) we don't gate access behind an invite code.
 const IS_STAGING = DEFAULT_CHAIN_ID === CHAIN_ID_ETHEREAL_TESTNET;
-
-const USER_REFERRAL_STATUS_QUERY = `
-  query UserReferralStatus($wallet: String!) {
-    user(where: { address: $wallet }) {
-      address
-      refCodeHash
-      referredBy {
-        id
-      }
-      referredByCode {
-        id
-      }
-    }
-  }
-`;
 
 // EIP-6963 types
 interface EIP6963ProviderInfo {
@@ -255,27 +240,20 @@ export default function ConnectDialog({
 
           if (!IS_STAGING) {
             try {
-              const data = await graphqlRequest<{
-                user: {
-                  address: string;
-                  refCodeHash?: string | null;
-                  referredBy?: { id: number } | null;
-                  referredByCode?: { id: number } | null;
-                } | null;
-              }>(USER_REFERRAL_STATUS_QUERY, { wallet: currentAddress });
+              const status = await fetchUserReferralStatus(currentAddress);
 
-              const user = data?.user;
               hasReferral = !!(
-                user &&
-                (user.refCodeHash || user.referredBy || user.referredByCode)
+                status.refCodeHash ||
+                status.referredBy ||
+                status.referredByCode
               );
 
               console.debug('[ConnectDialog] Referral check:', {
                 currentAddress,
                 hasReferral,
-                refCodeHash: user?.refCodeHash,
-                referredBy: user?.referredBy,
-                referredByCode: user?.referredByCode,
+                refCodeHash: status.refCodeHash,
+                referredBy: status.referredBy,
+                referredByCode: status.referredByCode,
               });
             } catch (error) {
               console.error(
