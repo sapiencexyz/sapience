@@ -24,19 +24,9 @@ import {
   createErrorImageResponse,
 } from '../_shared';
 import { PREFERRED_ESTIMATE_QUOTER } from '~/lib/constants';
+import { getGraphQLEndpointV2 } from '~/lib/data/graphql';
 
 export const runtime = 'nodejs';
-
-function getGraphQLEndpoint(): string {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz';
-  try {
-    const u = new URL(baseUrl);
-    return `${u.origin}/graphql`;
-  } catch {
-    return 'https://api.sapience.xyz/graphql';
-  }
-}
 
 // Category colors as rgb() for satori compatibility (can't use CSS vars or hsl alpha syntax)
 const CATEGORY_COLORS: Record<string, [number, number, number]> = {
@@ -170,34 +160,39 @@ async function fetchConditionData(
   resolver?: string
 ): Promise<ConditionData> {
   try {
+    // v2: by-ids lookups skip the public-only listing default, and
+    // `resolvers` composes with `conditionIds` for the multi-resolver
+    // disambiguation (both matched case-insensitively server-side).
     const query = `
-      query ConditionForOG($where: ConditionWhereInput!) {
-        conditions(where: $where, take: 1) {
-          question
-          category { slug }
+      query ConditionForOG($ids: [Bytes!]!, $resolvers: [Address!]) {
+        conditions(
+          first: 1
+          orderBy: { field: CREATED_AT, direction: DESC }
+          filter: { conditionIds: $ids, resolvers: $resolvers }
+        ) {
+          nodes {
+            question
+            category { slug }
+          }
         }
       }
     `;
 
-    const whereClause: { AND: Array<Record<string, unknown>> } = {
-      AND: [{ id: { in: [conditionId] } }],
+    const variables = {
+      ids: [conditionId],
+      resolvers: resolver ? [resolver] : null,
     };
-    if (resolver) {
-      whereClause.AND.push({
-        resolver: { equals: resolver, mode: 'insensitive' },
-      });
-    }
 
-    const response = await fetch(getGraphQLEndpoint(), {
+    const response = await fetch(getGraphQLEndpointV2(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, variables: { where: whereClause } }),
+      body: JSON.stringify({ query, variables }),
     });
 
     if (!response.ok) return { question: null, categorySlug: null };
 
     const result = await response.json();
-    const condition = result?.data?.conditions?.[0];
+    const condition = result?.data?.conditions?.nodes?.[0];
     return {
       question: condition?.question || null,
       categorySlug: condition?.category?.slug || null,

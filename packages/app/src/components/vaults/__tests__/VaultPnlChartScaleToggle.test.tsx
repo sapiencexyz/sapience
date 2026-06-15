@@ -64,7 +64,7 @@ vi.mock('~/components/shared/Loader', () => {
 });
 
 vi.mock('~/hooks/graphql/useAnalytics', () => ({
-  useProtocolStats: () => ({ data: undefined, isLoading: false }),
+  useVaultStats: () => ({ data: undefined, isLoading: false }),
 }));
 
 import VaultPnlChart from '~/components/vaults/VaultPnlChart';
@@ -76,31 +76,37 @@ import VaultPnlChart from '~/components/vaults/VaultPnlChart';
 const DAY = 24 * 60 * 60;
 const nowSec = Math.floor(Date.now() / 1000);
 
-const protocolStats = [
+// v2 VaultStat shape: TVL = balance + deployedCollateral + unredeemedClaim,
+// PnL = cumulativePnl (all wei strings).
+const vaultStats = [
   {
     timestamp: nowSec - 2 * DAY,
-    vaultCumulativePnL: '0',
-    vaultBalance: (1000n * 10n ** 18n).toString(),
-    escrowBalance: '0',
+    balance: (1000n * 10n ** 18n).toString(),
+    deployedCollateral: '0',
+    undeployedCollateral: '0',
+    cumulativePnl: '0',
+    unredeemedClaim: '0',
   },
   {
     timestamp: nowSec - DAY,
-    vaultCumulativePnL: (50n * 10n ** 18n).toString(),
-    vaultBalance: (1050n * 10n ** 18n).toString(),
-    escrowBalance: '0',
+    balance: (1050n * 10n ** 18n).toString(),
+    deployedCollateral: '0',
+    undeployedCollateral: '0',
+    cumulativePnl: (50n * 10n ** 18n).toString(),
+    unredeemedClaim: '0',
   },
   {
     timestamp: nowSec,
-    vaultCumulativePnL: (120n * 10n ** 18n).toString(),
-    vaultBalance: (1120n * 10n ** 18n).toString(),
-    escrowBalance: '0',
+    balance: (1120n * 10n ** 18n).toString(),
+    deployedCollateral: '0',
+    undeployedCollateral: '0',
+    cumulativePnl: (120n * 10n ** 18n).toString(),
+    unredeemedClaim: '0',
   },
 ] as never[];
 
 function renderChart() {
-  return render(
-    <VaultPnlChart protocolStats={protocolStats} isLoading={false} />
-  );
+  return render(<VaultPnlChart vaultStats={vaultStats} isLoading={false} />);
 }
 
 // ---------------------------------------------------------------------------

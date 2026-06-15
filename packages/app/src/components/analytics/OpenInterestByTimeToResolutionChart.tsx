@@ -12,18 +12,44 @@ import {
 } from 'recharts';
 import { Card, CardContent } from '@sapience/ui/components/ui/card';
 import { COLLATERAL_SYMBOLS, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
-import { useOpenInterestByTimeToResolution } from '~/hooks/graphql/useAnalytics';
+import { useProtocolAnalytics } from '~/hooks/graphql/useAnalytics';
 import Loader from '~/components/shared/Loader';
 
-const BUCKET_LABELS: Array<{ bucket: number; label: string }> = [
-  { bucket: 1, label: '≤1 day' },
-  { bucket: 2, label: '2-7 days' },
-  { bucket: 3, label: '8-30 days' },
-  { bucket: 4, label: '1-2 mo.' },
-  { bucket: 5, label: '2-3 mo.' },
-  { bucket: 6, label: '3-6 mo.' },
-  { bucket: 7, label: '6 mo.+' },
-];
+const DAY_SECONDS = 86400;
+const MONTH_SECONDS = 30 * DAY_SECONDS;
+
+/**
+ * Derives a display label from a bucket's explicit bounds. The window is
+ * `(minSecondsFromNow, maxSecondsFromNow]` — left-EXCLUSIVE,
+ * right-INCLUSIVE (server bug #13 fixed the orientation; do not re-derive
+ * with `[min, max)`). For the current server buckets
+ * (1d / 7d / 30d / 60d / 90d / 180d / beyond) this reproduces the v1
+ * labels exactly: "≤1 day", "2-7 days", "8-30 days", "1-2 mo.",
+ * "2-3 mo.", "3-6 mo.", "6 mo.+".
+ */
+function formatBucketLabel(min: number | null, max: number | null): string {
+  if (max == null) {
+    // Open-ended tail.
+    if (min == null) return 'All';
+    return min % MONTH_SECONDS === 0
+      ? `${min / MONTH_SECONDS} mo.+`
+      : `${Math.ceil(min / DAY_SECONDS)}+ days`;
+  }
+  if (min == null) {
+    // First bucket — also absorbs overdue predictions.
+    const days = Math.max(1, Math.round(max / DAY_SECONDS));
+    return days === 1 ? '≤1 day' : `≤${days} days`;
+  }
+  if (max > MONTH_SECONDS) {
+    const minMonths = Math.max(1, Math.round(min / MONTH_SECONDS));
+    const maxMonths = Math.round(max / MONTH_SECONDS);
+    return `${minMonths}-${maxMonths} mo.`;
+  }
+  // Exclusive lower bound: the bucket starts the day AFTER `min`.
+  const lowerDay = Math.floor(min / DAY_SECONDS) + 1;
+  const upperDay = Math.round(max / DAY_SECONDS);
+  return `${lowerDay}-${upperDay} days`;
+}
 
 interface BarDatum {
   bucket: number;
@@ -69,28 +95,19 @@ function ResolutionTooltip({
 }
 
 export default function OpenInterestByTimeToResolutionChart() {
-  const { data, isLoading } = useOpenInterestByTimeToResolution();
+  const { data: analytics, isLoading } = useProtocolAnalytics();
   const symbol = COLLATERAL_SYMBOLS[DEFAULT_CHAIN_ID] ?? 'USDe';
 
   const bars = useMemo<BarDatum[]>(() => {
-    const byBucket = new Map<number, { oi: bigint; count: number }>();
-    for (const row of data ?? []) {
-      byBucket.set(row.bucket, {
-        oi: BigInt(row.openInterest || '0'),
-        count: row.predictionCount,
-      });
-    }
-    return BUCKET_LABELS.map(({ bucket, label }) => {
-      const entry = byBucket.get(bucket);
-      const value = entry ? Number(entry.oi) / 1e18 : 0;
-      return {
-        bucket,
-        label,
-        value,
-        predictionCount: entry?.count ?? 0,
-      };
-    });
-  }, [data]);
+    // Already sorted ascending by maxSecondsFromNow (tail last) by the SDK.
+    const rows = analytics?.openInterestByTimeToResolution ?? [];
+    return rows.map((row, index) => ({
+      bucket: index + 1,
+      label: formatBucketLabel(row.minSecondsFromNow, row.maxSecondsFromNow),
+      value: Number(BigInt(row.openInterest || '0')) / 1e18,
+      predictionCount: row.predictionCount,
+    }));
+  }, [analytics]);
 
   const hasData = bars.some((b) => b.value > 0);
 

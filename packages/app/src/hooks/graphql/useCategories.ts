@@ -3,15 +3,13 @@ import {
   fetchCategories,
   type CategoryQueryResult,
 } from '@sapience/sdk/queries';
-import type { Category as CategoryType } from '@sapience/sdk/types/graphql';
 
 export const useCategories = () => {
-  return useQuery<CategoryType[], Error>({
+  return useQuery<CategoryQueryResult[], Error>({
     queryKey: ['categories'],
-    queryFn: async (): Promise<CategoryType[]> => {
+    queryFn: async (): Promise<CategoryQueryResult[]> => {
       try {
-        const categories = await fetchCategories();
-        return categories as unknown as CategoryType[];
+        return await fetchCategories();
       } catch (err) {
         console.error('Error fetching categories:', err);
         throw err instanceof Error

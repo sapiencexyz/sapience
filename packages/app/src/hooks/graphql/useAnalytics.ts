@@ -1,61 +1,51 @@
 import { useQuery } from '@tanstack/react-query';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import {
-  fetchOpenInterestByCategory,
-  fetchOpenInterestByTimeToResolution,
-  fetchProtocolStats,
-  type CategoryOpenInterest,
-  type ProtocolStat,
-  type TimeToResolutionBucket,
+  fetchProtocolAnalytics,
+  fetchVaultStats,
+  type ProtocolAnalytics,
+  type VaultStat,
 } from '@sapience/sdk/queries';
 
 const CACHE_TIME_MS = 60 * 1000;
 
-export function useProtocolStats(vaultAddress?: string) {
-  return useQuery<ProtocolStat[]>({
-    queryKey: ['protocolStats', vaultAddress?.toLowerCase() ?? null],
-    queryFn: () => fetchProtocolStats(vaultAddress),
+/**
+ * Per-vault snapshot series from the v2 `vault(address:).statsHistory`
+ * surface. Backs the vault dashboard (VaultsPageContent, VaultPnlChart) — the
+ * migration off v1's `protocolStats(vaultAddress:)`.
+ *
+ * Returns an empty array (not undefined) when no address is provided so call
+ * sites can read it unconditionally; `enabled` keeps the network call gated.
+ */
+export function useVaultStats(vaultAddress?: string) {
+  return useQuery<VaultStat[]>({
+    queryKey: ['vaultStats', vaultAddress?.toLowerCase() ?? null],
+    queryFn: () =>
+      vaultAddress
+        ? fetchVaultStats(vaultAddress, DEFAULT_CHAIN_ID)
+        : Promise.resolve([]),
+    enabled: !!vaultAddress,
     staleTime: CACHE_TIME_MS,
     refetchInterval: CACHE_TIME_MS,
   });
 }
-
-export function useOpenInterestByCategory() {
-  return useQuery<CategoryOpenInterest[]>({
-    queryKey: ['openInterestByCategory'],
-    queryFn: fetchOpenInterestByCategory,
-    staleTime: CACHE_TIME_MS,
-    refetchInterval: CACHE_TIME_MS,
-  });
-}
-
-export function useOpenInterestByTimeToResolution() {
-  return useQuery<TimeToResolutionBucket[]>({
-    queryKey: ['openInterestByTimeToResolution'],
-    queryFn: fetchOpenInterestByTimeToResolution,
-    staleTime: CACHE_TIME_MS,
-    refetchInterval: CACHE_TIME_MS,
-  });
-}
-
-export type { CategoryOpenInterest, ProtocolStat, TimeToResolutionBucket };
 
 /**
- * Protocol TVL = escrow balance + undeployed vault funds (wei).
- *
- * `escrowBalance` is the live on-chain collateral balance held by the current
- * and legacy escrow contracts, so it includes settled-but-unclaimed winnings.
- * Open interest drops the moment a condition settles, which is not what we
- * want TVL to reflect — funds haven't actually left the protocol until the
- * user redeems.
+ * v2 protocol analytics: live stats, the recorded snapshot series and both
+ * open-interest breakdowns in a single `protocol { ... }` query.
  */
-export function getProtocolTvlWei(
-  stat:
-    | Pick<ProtocolStat, 'escrowBalance' | 'vaultAvailableAssets'>
-    | null
-    | undefined
-): bigint {
-  if (!stat) return 0n;
-  return (
-    BigInt(stat.escrowBalance || '0') + BigInt(stat.vaultAvailableAssets || '0')
-  );
+export function useProtocolAnalytics() {
+  return useQuery<ProtocolAnalytics>({
+    queryKey: ['protocolAnalytics'],
+    queryFn: () => fetchProtocolAnalytics(),
+    staleTime: CACHE_TIME_MS,
+    refetchInterval: CACHE_TIME_MS,
+  });
 }
+
+export type { ProtocolAnalytics, VaultStat };
+export type {
+  ProtocolAnalyticsStat,
+  ProtocolCategoryOpenInterest,
+  ProtocolTimeToResolutionBucket,
+} from '@sapience/sdk/queries';

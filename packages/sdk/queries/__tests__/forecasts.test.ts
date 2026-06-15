@@ -1,5 +1,7 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import {
+  GET_FORECASTS_QUERY,
+  GET_FORECASTS_PAGINATED_QUERY,
   formatAttestationData,
   generateForecastsQueryKey,
   fetchForecasts,
@@ -7,13 +9,61 @@ import {
   fetchUserForecasts,
 } from '../forecasts';
 
-const mockGraphqlRequest = vi.fn();
+const mockGraphqlRequestV2 = vi.fn();
 vi.mock('../client/graphqlClient', () => ({
-  graphqlRequest: (...args: unknown[]) => mockGraphqlRequest(...args),
+  graphqlRequestV2: (...args: unknown[]) => mockGraphqlRequestV2(...args),
 }));
 
 beforeEach(() => {
   vi.clearAllMocks();
+});
+
+const DEFAULT_SCHEMA_UID =
+  '0x7df55bcec6eb3b17b25c503cc318a36d33b0a9bbc2d6bc0d9788f9bd61980d49';
+
+function makeNode(overrides: Record<string, unknown> = {}) {
+  return {
+    uid: '0xabc123',
+    attester: '0x1234567890abcdef1234567890abcdef12345678',
+    attestedAt: 1700000000,
+    value: '75',
+    comment: 'I think yes',
+    conditionId: '0xcond1',
+    ...overrides,
+  };
+}
+
+// ============================================================================
+// v2 documents
+// ============================================================================
+
+describe('v2 forecast documents', () => {
+  test('list query targets the forecasts connection with explicit ATTESTED_AT DESC', () => {
+    expect(GET_FORECASTS_QUERY).toContain('forecasts(');
+    expect(GET_FORECASTS_QUERY).toContain(
+      'orderBy: { field: ATTESTED_AT, direction: DESC }'
+    );
+    expect(GET_FORECASTS_QUERY).toContain('first: $first');
+    expect(GET_FORECASTS_QUERY).toContain('filter: $filter');
+    expect(GET_FORECASTS_QUERY).toContain('nodes');
+    // v2 field names — not the v1 attestation row shape
+    expect(GET_FORECASTS_QUERY).toContain('attestedAt');
+    expect(GET_FORECASTS_QUERY).toContain('value');
+    expect(GET_FORECASTS_QUERY).not.toContain('prediction');
+    expect(GET_FORECASTS_QUERY).not.toMatch(/\bid\b/);
+    expect(GET_FORECASTS_QUERY).not.toMatch(/\btime\b/);
+  });
+
+  test('paginated query threads first/after and selects pageInfo', () => {
+    expect(GET_FORECASTS_PAGINATED_QUERY).toContain('first: $first');
+    expect(GET_FORECASTS_PAGINATED_QUERY).toContain('after: $after');
+    expect(GET_FORECASTS_PAGINATED_QUERY).toContain('orderBy: $orderBy');
+    expect(GET_FORECASTS_PAGINATED_QUERY).toContain('hasNextPage');
+    expect(GET_FORECASTS_PAGINATED_QUERY).toContain('endCursor');
+    expect(GET_FORECASTS_PAGINATED_QUERY).not.toContain('skip');
+    expect(GET_FORECASTS_PAGINATED_QUERY).not.toContain('cursor:');
+    expect(GET_FORECASTS_PAGINATED_QUERY).not.toMatch(/\bid\b/);
+  });
 });
 
 // ============================================================================
@@ -21,64 +71,53 @@ beforeEach(() => {
 // ============================================================================
 
 describe('formatAttestationData', () => {
-  const baseAttestation = {
-    id: '42',
-    uid: '0xabc123',
-    attester: '0x1234567890abcdef1234567890abcdef12345678',
-    time: 1700000000,
-    prediction: '75',
-    comment: 'I think yes',
-    conditionId: 'cond-1',
-  };
-
-  test('maps prediction to value field', () => {
-    const result = formatAttestationData(baseAttestation);
-    expect(result.value).toBe('75');
+  test('maps v2 value straight through', () => {
+    expect(formatAttestationData(makeNode()).value).toBe('75');
   });
 
-  test('converts id to string', () => {
-    const result = formatAttestationData({ ...baseAttestation, id: '123' });
-    expect(result.id).toBe('123');
+  test('keys id on the EAS uid (no numeric row id in v2)', () => {
+    const result = formatAttestationData(makeNode());
+    expect(result.id).toBe('0xabc123');
+    expect(result.uid).toBe('0xabc123');
+  });
+
+  test('maps attestedAt to rawTime (epoch seconds)', () => {
+    expect(formatAttestationData(makeNode()).rawTime).toBe(1700000000);
   });
 
   test('shortens attester to first 6 + last 4 chars', () => {
-    const result = formatAttestationData(baseAttestation);
-    expect(result.shortAttester).toBe('0x1234...5678');
+    expect(formatAttestationData(makeNode()).shortAttester).toBe(
+      '0x1234...5678'
+    );
   });
 
-  test('preserves raw time as number', () => {
-    const result = formatAttestationData(baseAttestation);
-    expect(result.rawTime).toBe(1700000000);
-  });
-
-  test('converts unix timestamp to locale string', () => {
-    const result = formatAttestationData(baseAttestation);
-    // The formatted time should be a non-empty string from Date.toLocaleString
+  test('converts attestedAt to a locale string for display', () => {
+    const result = formatAttestationData(makeNode());
     expect(typeof result.time).toBe('string');
     expect(result.time.length).toBeGreaterThan(0);
   });
 
-  test('preserves all passthrough fields', () => {
-    const result = formatAttestationData(baseAttestation);
-    expect(result.uid).toBe('0xabc123');
-    expect(result.attester).toBe(baseAttestation.attester);
+  test('preserves passthrough fields', () => {
+    const result = formatAttestationData(makeNode());
+    expect(result.attester).toBe('0x1234567890abcdef1234567890abcdef12345678');
     expect(result.comment).toBe('I think yes');
-    expect(result.conditionId).toBe('cond-1');
+    expect(result.conditionId).toBe('0xcond1');
   });
 
-  test('handles missing conditionId', () => {
-    const { conditionId: _, ...noCondition } = baseAttestation;
-    const result = formatAttestationData(noCondition);
-    expect(result.conditionId).toBeUndefined();
+  test('null comment becomes empty string (v2 comment is nullable)', () => {
+    expect(formatAttestationData(makeNode({ comment: null })).comment).toBe('');
+  });
+
+  test('null conditionId becomes undefined (v2 conditionId is nullable)', () => {
+    expect(
+      formatAttestationData(makeNode({ conditionId: null })).conditionId
+    ).toBeUndefined();
   });
 
   test('handles short attester addresses', () => {
-    const result = formatAttestationData({
-      ...baseAttestation,
-      attester: '0x1234',
-    });
-    // slice(0,6) = '0x1234', slice(-4) = '1234'
-    expect(result.shortAttester).toBe('0x1234...1234');
+    expect(
+      formatAttestationData(makeNode({ attester: '0x1234' })).shortAttester
+    ).toBe('0x1234...1234');
   });
 });
 
@@ -90,14 +129,13 @@ describe('generateForecastsQueryKey', () => {
   test('uses default schema UID when not provided', () => {
     const key = generateForecastsQueryKey({});
     expect(key[0]).toBe('attestations');
-    expect(key[1]).toBe(
-      '0x7df55bcec6eb3b17b25c503cc318a36d33b0a9bbc2d6bc0d9788f9bd61980d49'
-    );
+    expect(key[1]).toBe(DEFAULT_SCHEMA_UID);
   });
 
   test('uses custom schema UID', () => {
-    const key = generateForecastsQueryKey({ schemaId: '0xcustom' });
-    expect(key[1]).toBe('0xcustom');
+    expect(generateForecastsQueryKey({ schemaId: '0xcustom' })[1]).toBe(
+      '0xcustom'
+    );
   });
 
   test('uses null for missing optional fields', () => {
@@ -120,9 +158,9 @@ describe('generateForecastsQueryKey', () => {
 
   test('produces consistent keys for same params', () => {
     const params = { attesterAddress: '0xabc', chainId: 1 };
-    const key1 = generateForecastsQueryKey(params);
-    const key2 = generateForecastsQueryKey(params);
-    expect(key1).toEqual(key2);
+    expect(generateForecastsQueryKey(params)).toEqual(
+      generateForecastsQueryKey(params)
+    );
   });
 });
 
@@ -131,48 +169,62 @@ describe('generateForecastsQueryKey', () => {
 // ============================================================================
 
 describe('fetchForecasts', () => {
-  test('uses default schema UID', async () => {
-    mockGraphqlRequest.mockResolvedValue({ attestations: [] });
+  test('defaults filter.schemaId to the forecast schema UID', async () => {
+    mockGraphqlRequestV2.mockResolvedValue({ forecasts: { nodes: [] } });
     await fetchForecasts({});
-    const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].where.schemaId.equals).toBe(
-      '0x7df55bcec6eb3b17b25c503cc318a36d33b0a9bbc2d6bc0d9788f9bd61980d49'
-    );
+    const [doc, vars] = mockGraphqlRequestV2.mock.calls[0];
+    expect(doc).toBe(GET_FORECASTS_QUERY);
+    expect(vars.filter.schemaId).toBe(DEFAULT_SCHEMA_UID);
   });
 
-  test('requests max 100 attestations', async () => {
-    mockGraphqlRequest.mockResolvedValue({ attestations: [] });
+  test('requests max 100 forecasts (v2 maxTake)', async () => {
+    mockGraphqlRequestV2.mockResolvedValue({ forecasts: { nodes: [] } });
     await fetchForecasts({});
-    const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].take).toBe(100);
+    expect(mockGraphqlRequestV2.mock.calls[0][1].first).toBe(100);
   });
 
   test('normalizes attester address with EIP-55 checksum', async () => {
-    mockGraphqlRequest.mockResolvedValue({ attestations: [] });
+    mockGraphqlRequestV2.mockResolvedValue({ forecasts: { nodes: [] } });
     await fetchForecasts({
       attesterAddress: '0x1234567890abcdef1234567890abcdef12345678',
     });
-    const call = mockGraphqlRequest.mock.calls[0];
-    const attesterFilter = call[1].where.AND[0];
-    // viem getAddress returns EIP-55 checksummed version
-    expect(attesterFilter.attester.equals).toBe(
+    expect(mockGraphqlRequestV2.mock.calls[0][1].filter.attester).toBe(
       '0x1234567890AbcdEF1234567890aBcdef12345678'
     );
   });
 
-  test('includes conditionId filter when provided', async () => {
-    mockGraphqlRequest.mockResolvedValue({ attestations: [] });
-    await fetchForecasts({ conditionId: 'cond-1' });
-    const call = mockGraphqlRequest.mock.calls[0];
-    const condFilter = call[1].where.AND[0];
-    expect(condFilter.conditionId.equals).toBe('cond-1');
+  test('keeps an unparseable attester address as provided', async () => {
+    mockGraphqlRequestV2.mockResolvedValue({ forecasts: { nodes: [] } });
+    await fetchForecasts({ attesterAddress: 'not-an-address' });
+    expect(mockGraphqlRequestV2.mock.calls[0][1].filter.attester).toBe(
+      'not-an-address'
+    );
   });
 
-  test('returns raw response', async () => {
-    const response = { attestations: [{ id: '1' }] };
-    mockGraphqlRequest.mockResolvedValue(response);
+  test('maps single conditionId onto the v2 conditionIds list filter', async () => {
+    mockGraphqlRequestV2.mockResolvedValue({ forecasts: { nodes: [] } });
+    await fetchForecasts({ conditionId: '0xcond1' });
+    expect(mockGraphqlRequestV2.mock.calls[0][1].filter.conditionIds).toEqual([
+      '0xcond1',
+    ]);
+  });
+
+  test('returns nodes mapped through formatAttestationData', async () => {
+    mockGraphqlRequestV2.mockResolvedValue({
+      forecasts: { nodes: [makeNode()] },
+    });
     const result = await fetchForecasts({});
-    expect(result).toEqual(response);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('0xabc123');
+    expect(result[0].value).toBe('75');
+    expect(result[0].rawTime).toBe(1700000000);
+  });
+
+  test('throws on invalid response structure', async () => {
+    mockGraphqlRequestV2.mockResolvedValue({});
+    await expect(fetchForecasts({})).rejects.toThrow(
+      'Failed to fetch forecasts: Invalid response structure'
+    );
   });
 });
 
@@ -181,28 +233,63 @@ describe('fetchForecasts', () => {
 // ============================================================================
 
 describe('fetchForecastsPage', () => {
-  test('sends take and orderBy', async () => {
-    mockGraphqlRequest.mockResolvedValue({ attestations: [] });
-    await fetchForecastsPage({}, { take: 20 });
-    const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].take).toBe(20);
-    expect(call[1].orderBy).toEqual([{ time: 'desc' }]);
+  const page = (overrides: Record<string, unknown> = {}) => ({
+    forecasts: {
+      nodes: [makeNode()],
+      pageInfo: { hasNextPage: true, endCursor: 'cursor-1' },
+      ...overrides,
+    },
   });
 
-  test('includes cursor and skip=1 when cursorId provided', async () => {
-    mockGraphqlRequest.mockResolvedValue({ attestations: [] });
-    await fetchForecastsPage({}, { take: 20, cursorId: 42 });
-    const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].cursor).toEqual({ id: 42 });
-    expect(call[1].skip).toBe(1);
+  test('sends first with explicit ATTESTED_AT DESC by default', async () => {
+    mockGraphqlRequestV2.mockResolvedValue(page());
+    await fetchForecastsPage({}, { first: 20 });
+    const [doc, vars] = mockGraphqlRequestV2.mock.calls[0];
+    expect(doc).toBe(GET_FORECASTS_PAGINATED_QUERY);
+    expect(vars.first).toBe(20);
+    expect(vars.after).toBeNull();
+    expect(vars.orderBy).toEqual({ field: 'ATTESTED_AT', direction: 'DESC' });
   });
 
-  test('omits cursor when cursorId not provided', async () => {
-    mockGraphqlRequest.mockResolvedValue({ attestations: [] });
-    await fetchForecastsPage({}, { take: 20 });
-    const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].cursor).toBeUndefined();
-    expect(call[1].skip).toBeUndefined();
+  test('threads the after cursor', async () => {
+    mockGraphqlRequestV2.mockResolvedValue(page());
+    await fetchForecastsPage({}, { first: 20, after: 'cursor-0' });
+    expect(mockGraphqlRequestV2.mock.calls[0][1].after).toBe('cursor-0');
+  });
+
+  test('supports ascending direction', async () => {
+    mockGraphqlRequestV2.mockResolvedValue(page());
+    await fetchForecastsPage({}, { first: 20, orderDirection: 'asc' });
+    expect(mockGraphqlRequestV2.mock.calls[0][1].orderBy).toEqual({
+      field: 'ATTESTED_AT',
+      direction: 'ASC',
+    });
+  });
+
+  test('returns formatted items plus pageInfo', async () => {
+    mockGraphqlRequestV2.mockResolvedValue(page());
+    const result = await fetchForecastsPage({}, { first: 20 });
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].uid).toBe('0xabc123');
+    expect(result.pageInfo).toEqual({
+      hasNextPage: true,
+      endCursor: 'cursor-1',
+    });
+  });
+
+  test('normalizes a missing endCursor to null', async () => {
+    mockGraphqlRequestV2.mockResolvedValue(
+      page({ pageInfo: { hasNextPage: false } })
+    );
+    const result = await fetchForecastsPage({}, { first: 20 });
+    expect(result.pageInfo).toEqual({ hasNextPage: false, endCursor: null });
+  });
+
+  test('throws on invalid response structure', async () => {
+    mockGraphqlRequestV2.mockResolvedValue({ forecasts: null });
+    await expect(fetchForecastsPage({}, { first: 20 })).rejects.toThrow(
+      'Failed to fetch forecasts: Invalid response structure'
+    );
   });
 });
 
@@ -211,70 +298,63 @@ describe('fetchForecastsPage', () => {
 // ============================================================================
 
 describe('fetchUserForecasts', () => {
-  test('formats attestations through formatAttestationData', async () => {
-    mockGraphqlRequest.mockResolvedValue({
-      attestations: [
-        {
-          id: '1',
-          uid: '0xabc',
-          attester: '0x1234567890abcdef1234567890abcdef12345678',
-          time: 1700000000,
-          prediction: '80',
-          comment: 'test',
-        },
-      ],
+  test('filters by attester and returns a formatted page', async () => {
+    mockGraphqlRequestV2.mockResolvedValue({
+      forecasts: {
+        nodes: [makeNode({ value: '80' })],
+        pageInfo: { hasNextPage: false, endCursor: null },
+      },
     });
 
     const result = await fetchUserForecasts({
       attesterAddress: '0x1234567890abcdef1234567890abcdef12345678',
-      take: 10,
-      skip: 0,
-      orderBy: 'time',
+      first: 10,
       orderDirection: 'desc',
     });
 
-    expect(result).toHaveLength(1);
-    expect(result[0].value).toBe('80'); // mapped from prediction
-    expect(result[0].shortAttester).toBe('0x1234...5678');
+    const vars = mockGraphqlRequestV2.mock.calls[0][1];
+    expect(vars.filter.attester).toBe(
+      '0x1234567890AbcdEF1234567890aBcdef12345678'
+    );
+    expect(vars.filter.schemaId).toBe(DEFAULT_SCHEMA_UID);
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].value).toBe('80');
+    expect(result.items[0].shortAttester).toBe('0x1234...5678');
   });
 
-  test('passes orderBy and orderDirection', async () => {
-    mockGraphqlRequest.mockResolvedValue({ attestations: [] });
+  test('passes after cursor and ascending direction', async () => {
+    mockGraphqlRequestV2.mockResolvedValue({
+      forecasts: {
+        nodes: [],
+        pageInfo: { hasNextPage: false, endCursor: null },
+      },
+    });
     await fetchUserForecasts({
       attesterAddress: '0x1234567890abcdef1234567890abcdef12345678',
-      take: 10,
-      skip: 5,
-      orderBy: 'time',
+      first: 10,
+      after: 'cursor-5',
       orderDirection: 'asc',
     });
 
-    const call = mockGraphqlRequest.mock.calls[0];
-    expect(call[1].orderBy).toEqual([{ time: 'asc' }]);
-    expect(call[1].take).toBe(10);
-    expect(call[1].skip).toBe(5);
+    const vars = mockGraphqlRequestV2.mock.calls[0][1];
+    expect(vars.after).toBe('cursor-5');
+    expect(vars.first).toBe(10);
+    expect(vars.orderBy).toEqual({ field: 'ATTESTED_AT', direction: 'ASC' });
   });
 
-  test('returns empty array when no attestations', async () => {
-    mockGraphqlRequest.mockResolvedValue({ attestations: [] });
+  test('returns empty items when the page has no nodes', async () => {
+    mockGraphqlRequestV2.mockResolvedValue({
+      forecasts: {
+        nodes: [],
+        pageInfo: { hasNextPage: false, endCursor: null },
+      },
+    });
     const result = await fetchUserForecasts({
       attesterAddress: '0x1234567890abcdef1234567890abcdef12345678',
-      take: 10,
-      skip: 0,
-      orderBy: 'time',
+      first: 10,
       orderDirection: 'desc',
     });
-    expect(result).toEqual([]);
-  });
-
-  test('handles null attestations response', async () => {
-    mockGraphqlRequest.mockResolvedValue({ attestations: null });
-    const result = await fetchUserForecasts({
-      attesterAddress: '0x1234567890abcdef1234567890abcdef12345678',
-      take: 10,
-      skip: 0,
-      orderBy: 'time',
-      orderDirection: 'desc',
-    });
-    expect(result).toEqual([]);
+    expect(result.items).toEqual([]);
+    expect(result.pageInfo.hasNextPage).toBe(false);
   });
 });

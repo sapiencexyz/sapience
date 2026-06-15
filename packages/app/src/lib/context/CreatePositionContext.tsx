@@ -171,11 +171,17 @@ export const CreatePositionProvider = ({
     const conditionIds = selections.map((s) => s.conditionId);
     if (conditionIds.length === 0) return;
 
-    const QUERY = /* GraphQL */ `
-      query ConditionsByIds($where: ConditionWhereInput!) {
-        conditions(where: $where, take: 100) {
-          id
-          settled
+    const QUERY = `
+      query ConditionsByIds($ids: [Bytes!]!) {
+        conditions(
+          first: 100
+          orderBy: { field: CREATED_AT, direction: DESC }
+          filter: { conditionIds: $ids }
+        ) {
+          nodes {
+            id: conditionId
+            settled
+          }
         }
       }
     `;

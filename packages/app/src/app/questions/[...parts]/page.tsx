@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import QuestionPageClient from './QuestionPageClient';
+import { getGraphQLEndpointV2 } from '~/lib/data/graphql';
 
 const APP_URL = 'https://sapience.xyz';
 
@@ -11,51 +12,45 @@ type Props = {
   params: Promise<{ parts: string[] }>;
 };
 
-function getGraphQLEndpoint(): string {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz';
-  try {
-    const u = new URL(baseUrl);
-    return `${u.origin}/graphql`;
-  } catch {
-    return 'https://api.sapience.xyz/graphql';
-  }
-}
-
 async function fetchQuestionTitle(
   conditionId: string,
   resolverAddress?: string
 ): Promise<string | null> {
   try {
+    // v2: by-ids lookups skip the public-only listing default, and
+    // `resolvers` composes with `conditionIds` for the multi-resolver
+    // disambiguation (both matched case-insensitively server-side).
     const query = `
-      query ConditionForMeta($where: ConditionWhereInput!) {
-        conditions(where: $where, take: 1) {
-          shortName
-          question
+      query ConditionForMeta($ids: [Bytes!]!, $resolvers: [Address!]) {
+        conditions(
+          first: 1
+          orderBy: { field: CREATED_AT, direction: DESC }
+          filter: { conditionIds: $ids, resolvers: $resolvers }
+        ) {
+          nodes {
+            shortName
+            question
+          }
         }
       }
     `;
 
-    const whereClause: { AND: Array<Record<string, unknown>> } = {
-      AND: [{ id: { in: [conditionId] } }],
+    const variables = {
+      ids: [conditionId],
+      resolvers: resolverAddress ? [resolverAddress] : null,
     };
-    if (resolverAddress) {
-      whereClause.AND.push({
-        resolver: { equals: resolverAddress, mode: 'insensitive' },
-      });
-    }
 
-    const response = await fetch(getGraphQLEndpoint(), {
+    const response = await fetch(getGraphQLEndpointV2(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, variables: { where: whereClause } }),
+      body: JSON.stringify({ query, variables }),
       next: { revalidate: 60 },
     });
 
     if (!response.ok) return null;
 
     const result = await response.json();
-    const condition = result?.data?.conditions?.[0];
+    const condition = result?.data?.conditions?.nodes?.[0];
     return condition?.question || null;
   } catch {
     return null;

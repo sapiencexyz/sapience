@@ -4,49 +4,41 @@ import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { ToastAction } from '@sapience/ui/components/ui/toast';
 import { useRouter } from 'next/navigation';
-import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
+import { graphqlRequestV2 } from '@sapience/sdk/queries/client/graphqlClient';
 import { useTerminalLogs } from '~/components/terminal/TerminalLogsContext';
 
-const RECENT_PREDICTIONS_QUERY = /* GraphQL */ `
-  query RecentCounterpartyPredictions(
-    $address: String!
-    $take: Int
-    $skip: Int
-    $orderBy: PredictionSortField
-    $orderDirection: SortOrder
-  ) {
+// v2: participant filter collapses v1's address arg; orderBy is explicit.
+// v2 drops the numeric row id — notifications key on `predictionId`.
+const RECENT_PREDICTIONS_QUERY = `
+  query RecentCounterpartyPredictions($participant: Address!, $first: Int) {
     predictions(
-      address: $address
-      take: $take
-      skip: $skip
-      orderBy: $orderBy
-      orderDirection: $orderDirection
+      filter: { participant: $participant }
+      first: $first
+      orderBy: { field: CREATED_AT, direction: DESC }
     ) {
-      id
-      predictionId
-      chainId
-      predictor
-      counterparty
-      marketAddress
-      createTxHash
-      createdAt
+      nodes {
+        predictionId
+        chainId
+        predictor
+        counterparty
+        createTxHash
+        createdAt
+      }
     }
   }
 `;
 
-type Prediction = {
-  id: number;
+type PredictionNode = {
   predictionId: string;
   chainId: number;
   predictor: string;
   counterparty: string;
-  marketAddress: string;
   createTxHash: string;
   createdAt: string;
 };
 
 type PredictionsQueryResponse = {
-  predictions: Prediction[];
+  predictions: { nodes: PredictionNode[] } | null;
 };
 
 export function useTradeSettledNotifications() {
@@ -55,24 +47,24 @@ export function useTradeSettledNotifications() {
   const { toast } = useToast();
   const router = useRouter();
 
-  // Track the latest createdAt timestamp we've processed
-  const latestCreatedAtRef = useRef<number>(Math.floor(Date.now() / 1000));
+  // Only notify for predictions created after mount…
+  const mountTsRef = useRef<number>(Math.floor(Date.now() / 1000));
+  // …and never twice for the same prediction. Keyed on predictionId — the
+  // v1 moving created-at cutoff silently dropped same-second predictions.
+  const notifiedRef = useRef<Set<string>>(new Set());
 
   const { data: predictions } = useQuery({
     queryKey: ['recentCounterpartyPredictions', address],
     queryFn: async () => {
       if (!address) return [];
-      const result = await graphqlRequest<PredictionsQueryResponse>(
+      const result = await graphqlRequestV2<PredictionsQueryResponse>(
         RECENT_PREDICTIONS_QUERY,
         {
-          address: address.toLowerCase(),
-          take: 10,
-          skip: 0,
-          orderBy: 'CREATED_AT',
-          orderDirection: 'desc',
+          participant: address.toLowerCase(),
+          first: 10,
         }
       );
-      return result.predictions;
+      return result?.predictions?.nodes ?? [];
     },
     enabled: !!address,
     refetchInterval: 3000, // Poll every 3 seconds
@@ -82,34 +74,34 @@ export function useTradeSettledNotifications() {
     if (!predictions || !address) return;
 
     const addressLower = address.toLowerCase();
-    let maxCreatedAt = latestCreatedAtRef.current;
 
     for (const pred of predictions) {
       const createdAtTs = Math.floor(new Date(pred.createdAt).getTime() / 1000);
 
-      // Skip if prediction is older than or equal to when we last processed
-      if (createdAtTs <= latestCreatedAtRef.current) continue;
+      // Skip predictions that predate this session
+      if (createdAtTs <= mountTsRef.current) continue;
+
+      // Skip already-notified predictions
+      if (notifiedRef.current.has(pred.predictionId)) continue;
 
       // Ensure user is counterparty (not predictor)
       if (pred.counterparty?.toLowerCase() !== addressLower) continue;
       if (pred.predictor.toLowerCase() === addressLower) continue;
 
-      // Track the newest prediction we've seen
-      if (createdAtTs > maxCreatedAt) {
-        maxCreatedAt = createdAtTs;
-      }
+      notifiedRef.current.add(pred.predictionId);
 
-      // Format predictor address for display
+      // Format addresses/ids for display
       const truncatedPredictor = `${pred.predictor.slice(0, 6)}...${pred.predictor.slice(-4)}`;
+      const shortPredictionId = pred.predictionId.slice(0, 10);
       const shareUrl = `/predictions/${pred.predictionId}`;
 
       // Push log entry
       pushLogEntry({
         kind: 'match',
         severity: 'success',
-        message: `Trade #${pred.id} was completed with ${truncatedPredictor}`,
+        message: `Trade #${shortPredictionId} was completed with ${truncatedPredictor}`,
         meta: {
-          positionId: pred.id,
+          positionId: pred.predictionId,
           predictor: pred.predictor,
         },
       });
@@ -120,7 +112,8 @@ export function useTradeSettledNotifications() {
         description: (
           <div className="flex flex-col gap-4">
             <span>
-              Prediction #{pred.id} was completed with {truncatedPredictor}
+              Prediction #{shortPredictionId} was completed with{' '}
+              {truncatedPredictor}
             </span>
             <ToastAction
               altText="View position"
@@ -134,8 +127,5 @@ export function useTradeSettledNotifications() {
         duration: 5000,
       });
     }
-
-    // Update the timestamp cutoff after processing
-    latestCreatedAtRef.current = maxCreatedAt;
   }, [predictions, address, pushLogEntry, toast, router]);
 }

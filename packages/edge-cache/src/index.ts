@@ -21,16 +21,34 @@ interface Env {
   ORIGIN_URL: string;
 }
 
+/**
+ * Returns true if the given pathname targets a cacheable GraphQL endpoint.
+ *
+ * Both the legacy `/graphql` endpoint and the `/v2/graphql` endpoint are
+ * served by the same origin and use the same @cacheControl-driven caching
+ * model, so both must pass through the edge cache. The per-user-query
+ * caution still applies: only public queries carry @cacheControl and get
+ * cached — user-specific queries never set it, so they are never stored.
+ */
+export function isCacheableGraphqlPath(pathname: string): boolean {
+  return (
+    pathname === '/graphql' ||
+    pathname.startsWith('/graphql/') ||
+    pathname === '/v2/graphql' ||
+    pathname.startsWith('/v2/graphql/')
+  );
+}
+
 export default {
   async fetch(
     request: Request,
     env: Env,
     ctx: ExecutionContext
   ): Promise<Response> {
-    // Only cache POST requests to /graphql
+    // Only cache POST requests to /graphql or /v2/graphql
     if (
       request.method !== 'POST' ||
-      !new URL(request.url).pathname.startsWith('/graphql')
+      !isCacheableGraphqlPath(new URL(request.url).pathname)
     ) {
       return forwardToOrigin(request, env);
     }

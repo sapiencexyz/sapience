@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 import { Card, CardContent } from '@sapience/ui/components/ui/card';
-import { useOpenInterestByCategory } from '~/hooks/graphql/useAnalytics';
+import { useProtocolAnalytics } from '~/hooks/graphql/useAnalytics';
 import {
   collapsePriceCategories,
   getCategoryColor,
@@ -22,7 +22,10 @@ interface SliceDatum {
 }
 
 export default function OpenInterestByCategoryChart() {
-  const { data, isLoading } = useOpenInterestByCategory();
+  const { data: analytics, isLoading } = useProtocolAnalytics();
+  // v2 categories are slug-keyed (no numeric row id) — the chart already
+  // keys slices on `slug`, so the shape change is invisible here.
+  const data = analytics?.openInterestByCategory;
 
   const slices = useMemo<SliceDatum[]>(() => {
     if (!data || data.length === 0) return [];

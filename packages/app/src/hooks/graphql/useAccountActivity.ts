@@ -3,9 +3,20 @@
 import { useCallback, useMemo } from 'react';
 import type { Address } from 'viem';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
-import type { Prediction, PickConfigData } from '~/hooks/graphql/usePositions';
+import { graphqlRequestV2 } from '@sapience/sdk/queries/client/graphqlClient';
+import {
+  PREDICTION_V2_FIELDS,
+  toPrediction,
+  type Prediction,
+  type PredictionV2Node,
+  type PickConfigData,
+} from '~/hooks/graphql/usePositions';
 import type { SecondaryTrade } from '~/hooks/graphql/useSecondaryTrades';
+import {
+  PICK_CONFIGURATION_V2_FIELDS,
+  toPickConfigData,
+  type PickConfigurationV2Node,
+} from '~/lib/adapters/pickConfig';
 
 export type PredictionActivity = {
   type: 'prediction';
@@ -25,138 +36,57 @@ export type TradeActivity = {
 
 export type ActivityItem = PredictionActivity | TradeActivity;
 
-const ACCOUNT_ACTIVITY_QUERY = /* GraphQL */ `
+// v2 returns the Prediction | Trade union directly under
+// `edges { node }` — v1's `accountActivity` envelope (with its
+// per-type `prediction` / `trade` wrappers and double query) is gone.
+// `edges { timestamp }` (epoch seconds) is the interleave sort key for
+// BOTH types; using it as the single source of time kills the v1
+// mixed-units bug (trades in seconds vs predictions in ISO strings).
+export const ACCOUNT_ACTIVITY_QUERY = `
   query AccountActivity(
-    $address: String
-    $take: Int
-    $skip: Int
-    $type: String
-    $pickConfigId: String
-    $conditionId: String
+    $account: Address
+    $conditionIds: [Bytes!]
+    $pickConfigId: Bytes32
+    $types: [ActivityType!]
+    $first: Int!
+    $after: String
   ) {
-    accountActivity(
-      address: $address
-      take: $take
-      skip: $skip
-      type: $type
-      pickConfigId: $pickConfigId
-      conditionId: $conditionId
-    ) {
-      type
-      timestamp
-      prediction {
-        id
-        predictionId
-        chainId
-        marketAddress
-        predictor
-        counterparty
-        predictorToken
-        counterpartyToken
-        predictorCollateral
-        counterpartyCollateral
-        collateralDeposited
-        collateralDepositedAt
-        settled
-        settledAt
-        settleTxHash
-        result
-        predictorClaimable
-        counterpartyClaimable
-        createTxHash
-        createdAt
-        refCode
-        isLegacy
-        pickConfig {
-          id
-          chainId
-          marketAddress
-          totalPredictorCollateral
-          totalCounterpartyCollateral
-          claimedPredictorCollateral
-          claimedCounterpartyCollateral
-          resolved
-          result
-          resolvedAt
-          predictorToken
-          counterpartyToken
-          endsAt
-          isLegacy
-          predictionId
-          picks {
-            id
-            pickConfigId
-            conditionResolver
-            conditionId
-            predictedOutcome
-            condition {
-              id
-              shortName
-              optionName
-              question
-              description
-              endTime
-              resolver
-              settled
-              resolvedToYes
-              nonDecisive
-              estimatedPrice
-              category {
-                slug
-              }
-            }
-          }
-        }
+    activity(
+      first: $first
+      after: $after
+      filter: {
+        account: $account
+        conditionIds: $conditionIds
+        pickConfigId: $pickConfigId
+        types: $types
       }
-      trade {
-        id
-        tradeHash
-        chainId
-        token
-        collateral
-        seller
-        buyer
-        tokenAmount
-        price
-        txHash
-        blockNumber
-        executedAt
-        pickConfig {
-          id
-          chainId
-          marketAddress
-          totalPredictorCollateral
-          totalCounterpartyCollateral
-          claimedPredictorCollateral
-          claimedCounterpartyCollateral
-          resolved
-          result
-          resolvedAt
-          predictorToken
-          counterpartyToken
-          endsAt
-          isLegacy
-          picks {
-            id
-            pickConfigId
-            conditionResolver
-            conditionId
-            predictedOutcome
-            condition {
-              id
-              shortName
-              optionName
-              question
-              description
-              endTime
-              resolver
-              settled
-              resolvedToYes
-              nonDecisive
-              estimatedPrice
-              category {
-                slug
-              }
+    ) {
+      totalCount
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      edges {
+        timestamp
+        node {
+          __typename
+          ... on Prediction {
+            ${PREDICTION_V2_FIELDS}
+          }
+          ... on Trade {
+            tradeHash
+            chainId
+            token
+            collateral
+            seller
+            buyer
+            tokenAmount
+            price
+            txHash
+            blockNumber
+            executedAt
+            pickConfig {
+              ${PICK_CONFIGURATION_V2_FIELDS}
             }
           }
         }
@@ -165,12 +95,98 @@ const ACCOUNT_ACTIVITY_QUERY = /* GraphQL */ `
   }
 `;
 
-type RawActivityItem = {
-  type: 'prediction' | 'trade';
-  timestamp: number;
-  prediction: Prediction | null;
-  trade: (SecondaryTrade & { pickConfig?: PickConfigData | null }) | null;
+/** v2 wire shape of a Trade in the activity union (BigInt scalars may
+ *  arrive as numbers). */
+type TradeV2ActivityNode = {
+  __typename: 'Trade';
+  tradeHash: string;
+  chainId: number;
+  token: string;
+  collateral: string;
+  seller: string;
+  buyer: string;
+  tokenAmount: string | number;
+  price: string | number;
+  txHash: string;
+  blockNumber: number;
+  executedAt: number;
+  pickConfig?: PickConfigurationV2Node | null;
 };
+
+type PredictionV2ActivityNode = PredictionV2Node & {
+  __typename: 'Prediction';
+};
+
+type ActivityEdgeV2 = {
+  /** Interleave sort key: `Trade.executedAt` for trades, epoch seconds of
+   *  `Prediction.createdAt` for predictions. */
+  timestamp: number;
+  node: PredictionV2ActivityNode | TradeV2ActivityNode;
+};
+
+type ActivityConnectionV2 = {
+  totalCount: number;
+  pageInfo: { hasNextPage: boolean; endCursor: string | null };
+  edges: ActivityEdgeV2[];
+};
+
+const EMPTY_ACTIVITY_PAGE: ActivityConnectionV2 = {
+  totalCount: 0,
+  pageInfo: { hasNextPage: false, endCursor: null },
+  edges: [],
+};
+
+/**
+ * Pure mapper: one v2 activity edge → the hook's item envelope. The edge's
+ * `timestamp` (epoch seconds) is THE time for every item type (×1000 for
+ * ms); pickConfigs map through the shared adapter.
+ */
+function toActivityItem(
+  edge: ActivityEdgeV2,
+  account?: string
+): ActivityItem | null {
+  const timestampMs = edge.timestamp * 1000;
+  const { node } = edge;
+
+  if (node.__typename === 'Prediction') {
+    const prediction = toPrediction(node);
+    return {
+      type: 'prediction',
+      timestamp: timestampMs,
+      prediction,
+      pickConfig: prediction.pickConfig ?? null,
+      isPredictorSide: account
+        ? prediction.predictor.toLowerCase() === account.toLowerCase()
+        : true,
+    };
+  }
+
+  if (node.__typename === 'Trade') {
+    return {
+      type: 'trade',
+      timestamp: timestampMs,
+      trade: {
+        tradeHash: node.tradeHash,
+        chainId: node.chainId,
+        token: node.token,
+        collateral: node.collateral,
+        seller: node.seller,
+        buyer: node.buyer,
+        tokenAmount: String(node.tokenAmount),
+        price: String(node.price),
+        txHash: node.txHash,
+        blockNumber: node.blockNumber,
+        executedAt: node.executedAt,
+      },
+      pickConfig: node.pickConfig ? toPickConfigData(node.pickConfig) : null,
+      isBuyer: account
+        ? node.buyer.toLowerCase() === account.toLowerCase()
+        : false,
+    };
+  }
+
+  return null;
+}
 
 const DEFAULT_PAGE_SIZE = 20;
 
@@ -205,6 +221,14 @@ export function useAccountActivity({
 
   const typeFilter =
     activityType && activityType !== 'all' ? activityType : undefined;
+  // v2 ActivityFilter.types: null means "all"; [] would be a zero-result
+  // query, so the unfiltered case must send null.
+  const types =
+    typeFilter === 'prediction'
+      ? ['PREDICTION']
+      : typeFilter === 'trade'
+        ? ['TRADE']
+        : null;
 
   const {
     data,
@@ -225,58 +249,52 @@ export function useAccountActivity({
     staleTime: 30_000,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
-    initialPageParam: 0,
-    getNextPageParam: (lastPage: RawActivityItem[], allPages) =>
-      lastPage.length < pageSize ? undefined : allPages.length * pageSize,
-    queryFn: async ({ pageParam = 0 }) => {
-      const resp = await graphqlRequest<{
-        accountActivity: RawActivityItem[];
+    // Forward-only cursor pagination: thread the previous page's endCursor
+    // in as `after` (v1 was skip/take with a length-based stop signal).
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage: ActivityConnectionV2) =>
+      lastPage.pageInfo.hasNextPage
+        ? (lastPage.pageInfo.endCursor ?? undefined)
+        : undefined,
+    queryFn: async ({ pageParam }) => {
+      const resp = await graphqlRequestV2<{
+        activity: ActivityConnectionV2 | null;
       }>(ACCOUNT_ACTIVITY_QUERY, {
-        address: account ?? null,
-        take: pageSize,
-        skip: pageParam,
-        type: typeFilter ?? null,
+        account: account ?? null,
+        conditionIds: conditionId ? [conditionId] : null,
         pickConfigId: pickConfigId ?? null,
-        conditionId: conditionId ?? null,
+        types,
+        first: pageSize,
+        after: pageParam ?? null,
       });
-      return resp?.accountActivity ?? [];
+      return resp?.activity ?? EMPTY_ACTIVITY_PAGE;
     },
   });
-
-  const rawItems = useMemo(() => data?.pages.flat() ?? [], [data]);
 
   // Only show loading spinner on true initial load (no data yet)
   const isLoading = initialLoading && !data;
   const isFetchingMore = isFetchingNextPage;
 
-  // Map raw items to typed ActivityItems, skipping malformed entries
+  // Map edges to typed ActivityItems, deduping on the domain id
+  // (predictionId / tradeHash) — cursor boundaries can overlap on refetch.
   const items: ActivityItem[] = useMemo(() => {
+    const seen = new Set<string>();
     const mapped: ActivityItem[] = [];
-    for (const raw of rawItems) {
-      if (raw.type === 'prediction' && raw.prediction) {
-        mapped.push({
-          type: 'prediction',
-          timestamp: raw.timestamp * 1000,
-          prediction: raw.prediction,
-          pickConfig: raw.prediction.pickConfig ?? null,
-          isPredictorSide: account
-            ? raw.prediction.predictor.toLowerCase() === account.toLowerCase()
-            : true,
-        });
-      } else if (raw.type === 'trade' && raw.trade) {
-        mapped.push({
-          type: 'trade',
-          timestamp: raw.timestamp * 1000,
-          trade: raw.trade,
-          pickConfig: raw.trade.pickConfig ?? null,
-          isBuyer: account
-            ? raw.trade.buyer.toLowerCase() === account.toLowerCase()
-            : false,
-        });
+    for (const page of data?.pages ?? []) {
+      for (const edge of page.edges) {
+        const item = toActivityItem(edge, account);
+        if (!item) continue;
+        const key =
+          item.type === 'prediction'
+            ? `Prediction:${item.prediction.predictionId}`
+            : `Trade:${item.trade.tradeHash}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        mapped.push(item);
       }
     }
     return mapped;
-  }, [rawItems, account]);
+  }, [data, account]);
 
   const hasMore = Boolean(hasNextPage);
   const fetchMore = useCallback(() => {
