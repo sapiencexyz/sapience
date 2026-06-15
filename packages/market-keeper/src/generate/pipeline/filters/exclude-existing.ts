@@ -92,15 +92,28 @@ export async function checkExistingConditions(
   apiUrl: string,
   conditionIds: string[]
 ): Promise<Map<string, ExistingCondition>> {
-  if (conditionIds.length === 0) {
+  // Drop empty/malformed ids before querying. The v2 `conditionIds` filter is a
+  // strict `Bytes` scalar that 500s the ENTIRE variable if any element isn't
+  // valid hex — so one bad id (e.g. a Polymarket market with no conditionId)
+  // would poison its whole 100-id chunk, the catch below would skip all 100,
+  // and the pipeline would treat those existing markets as new and re-create
+  // them. Log the drop so a real upstream data problem still surfaces.
+  const valid = conditionIds.filter((id) => /^0x[0-9a-fA-F]+$/.test(id));
+  const dropped = conditionIds.length - valid.length;
+  if (dropped > 0) {
+    console.warn(
+      `[API] Skipping ${dropped} market(s) with missing/invalid conditionId`
+    );
+  }
+  if (valid.length === 0) {
     return new Map();
   }
 
   const url = graphqlUrl(apiUrl);
   const PAGE_SIZE = 100;
   const chunks: string[][] = [];
-  for (let i = 0; i < conditionIds.length; i += PAGE_SIZE) {
-    chunks.push(conditionIds.slice(i, i + PAGE_SIZE));
+  for (let i = 0; i < valid.length; i += PAGE_SIZE) {
+    chunks.push(valid.slice(i, i + PAGE_SIZE));
   }
   const existing = new Map<string, ExistingCondition>();
 
@@ -146,7 +159,7 @@ export async function checkExistingConditions(
   }
 
   console.log(
-    `[API] Found ${existing.size}/${conditionIds.length} conditions already exist`
+    `[API] Found ${existing.size}/${valid.length} conditions already exist`
   );
   return existing;
 }

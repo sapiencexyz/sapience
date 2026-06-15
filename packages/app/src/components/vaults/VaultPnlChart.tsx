@@ -10,6 +10,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  type YAxisProps,
 } from 'recharts';
 import { Tabs, TabsTrigger } from '@sapience/ui/components/ui/tabs';
 import { Button } from '@sapience/ui/components/ui/button';
@@ -189,6 +190,9 @@ export default function VaultPnlChart({
   const period = externalPeriod ?? internalPeriod;
   const setPeriod = setInternalPeriod;
   const [displayMode, setDisplayMode] = useState<DisplayMode>('pct');
+  // 'symlog' rather than 'log': PnL deltas cross zero, where a pure log
+  // scale is undefined. Symlog stays linear near zero and log beyond it.
+  const [logScale, setLogScale] = useState(false);
 
   // Use internal fetch if no external data provided
   const { data: internalStats, isLoading: internalLoading } =
@@ -298,7 +302,7 @@ export default function VaultPnlChart({
         </div>
       )}
       <div
-        className={`${useFlexHeight ? 'flex-1' : ''} relative`}
+        className={`${useFlexHeight ? 'flex-1' : ''} relative group`}
         style={{
           height: useFlexHeight ? undefined : height,
           minHeight: height,
@@ -365,6 +369,13 @@ export default function VaultPnlChart({
                 />
                 <YAxis
                   {...CHART_AXIS_STYLE}
+                  // recharts resolves any d3-scale name at runtime, but its
+                  // ScaleType union omits 'symlog', hence the cast.
+                  scale={
+                    (logScale
+                      ? 'symlog'
+                      : 'linear') as unknown as YAxisProps['scale']
+                  }
                   domain={yDomain}
                   tickFormatter={(v) => {
                     if (v < 0) return '';
@@ -400,6 +411,18 @@ export default function VaultPnlChart({
                 />
               </AreaChart>
             </ResponsiveContainer>
+            <Button
+              variant="outline"
+              size="sm"
+              className={`absolute -bottom-0.5 -left-0.5 z-10 h-5 px-1.5 text-[10px] font-mono uppercase opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity hover:text-brand-white ${
+                logScale ? 'text-brand-white' : 'text-muted-foreground/60'
+              }`}
+              onClick={() => setLogScale((s) => !s)}
+              aria-pressed={logScale}
+              aria-label="Toggle logarithmic scale"
+            >
+              Log
+            </Button>
           </div>
         )}
       </div>

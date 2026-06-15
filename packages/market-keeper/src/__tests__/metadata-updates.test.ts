@@ -52,6 +52,8 @@ import {
 } from '../generate/grouping';
 import { checkExistingConditions } from '../generate/pipeline';
 import type { ExistingCondition } from '../generate/pipeline';
+import { KEEPER_INTERNAL_TAGS } from '../constants';
+import { TODAY_TAG } from '../refresh-imminent-tag/match';
 
 const mockCheckExisting = vi.mocked(checkExistingConditions);
 const API_URL = 'https://test-api.example.com';
@@ -431,6 +433,49 @@ describe('computeMetadataUpdates', () => {
       [
         '0xordered',
         existingFromMarket(market, { tags: ['price', 'crypto', 'btc'] }),
+      ],
+    ]);
+
+    const { metadataUpdates } = runDiff([market], existing, eventTagMap);
+
+    expect(metadataUpdates).toHaveLength(0);
+  });
+
+  it('preserves the keeper-owned "Today" tag while applying real Polymarket drift', () => {
+    // refresh-metadata replaces tags with Polymarket event tags, which never
+    // carry the Sapience-internal "Today". Without preservation it would strip
+    // Today every run; with it, the genuine drift ('price' added) applies AND
+    // Today rides along.
+    const eventTagMap = new Map([
+      ['btc-milestones', ['crypto', 'btc', 'price']],
+    ]);
+    const market = makeMarket({ conditionId: '0xtoday' });
+
+    const existing = new Map([
+      [
+        '0xtoday',
+        existingFromMarket(market, { tags: ['crypto', 'btc', 'Today'] }),
+      ],
+    ]);
+
+    const { metadataUpdates } = runDiff([market], existing, eventTagMap);
+
+    expect(metadataUpdates).toHaveLength(1);
+    expect([...(metadataUpdates[0].fields.tags ?? [])].sort()).toEqual(
+      ['Today', 'btc', 'crypto', 'price'].sort()
+    );
+  });
+
+  it('does not strip "Today" as spurious drift when Polymarket tags are unchanged', () => {
+    // The daily no-op case: a Today-tagged market whose Polymarket tags already
+    // match must produce ZERO updates, not an update that removes Today.
+    const eventTagMap = new Map([['btc-milestones', ['crypto', 'btc']]]);
+    const market = makeMarket({ conditionId: '0xtoday2' });
+
+    const existing = new Map([
+      [
+        '0xtoday2',
+        existingFromMarket(market, { tags: ['crypto', 'btc', 'Today'] }),
       ],
     ]);
 
@@ -1065,5 +1110,15 @@ describe('groupMarkets new-condition routing', () => {
     expect(group).toBeDefined();
     // Single-condition bucket — vote returns that one condition's category.
     expect(group.categorySlug).toBe(group.conditions[0].categorySlug);
+  });
+});
+
+describe('KEEPER_INTERNAL_TAGS', () => {
+  // The tag-preservation logic duplicates the 'Today' literal (constants.ts
+  // can't import the feature module). This guards the two from drifting apart:
+  // if TODAY_TAG ever changes, the set must follow or refresh-metadata would
+  // resume stripping it.
+  it('contains the today tag (kept in sync with refresh-imminent-tag)', () => {
+    expect(KEEPER_INTERNAL_TAGS.has(TODAY_TAG)).toBe(true);
   });
 });

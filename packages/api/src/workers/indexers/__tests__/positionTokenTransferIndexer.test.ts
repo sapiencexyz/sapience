@@ -168,4 +168,107 @@ describe('PositionTokenTransferIndexer', () => {
       expect(mockPrisma.$executeRaw).not.toHaveBeenCalled();
     });
   });
+
+  describe('watch list', () => {
+    it('keeps fullyRedeemed tokens in scope while any indexed Position balance is non-zero', async () => {
+      const indexer = new Indexer(42161);
+      mockPrisma.picks.findMany.mockResolvedValue([
+        {
+          id: PICK_CONFIG_ID,
+          predictorToken: TOKEN,
+          counterpartyToken: HOLDER_B,
+          fullyRedeemed: true,
+        },
+      ]);
+
+      const result = await indexer.loadWatchList();
+
+      expect(mockPrisma.picks.findMany).toHaveBeenCalledWith({
+        where: expect.objectContaining({
+          chainId: 42161,
+          OR: [
+            { fullyRedeemed: false },
+            { positionBalances: { some: { NOT: { balance: '0' } } } },
+          ],
+        }),
+        select: {
+          id: true,
+          predictorToken: true,
+          counterpartyToken: true,
+          fullyRedeemed: true,
+        },
+      });
+      expect(result.tokenAddresses).toContain(TOKEN.toLowerCase());
+    });
+  });
+
+  describe('indexBlocks (reconciler replay)', () => {
+    const WATCHED_PICK = {
+      id: PICK_CONFIG_ID,
+      predictorToken: TOKEN,
+      counterpartyToken: HOLDER_B,
+      fullyRedeemed: false,
+    };
+
+    function makeBurnLog() {
+      return {
+        ...makeTransferLog(),
+        args: {
+          from: HOLDER_A as `0x${string}`,
+          to: ZERO_ADDRESS as `0x${string}`,
+          value: 1000n,
+        },
+      };
+    }
+
+    it('replays watch-list Transfer logs over the given block range', async () => {
+      const indexer = new Indexer(42161);
+      mockPrisma.picks.findMany.mockResolvedValue([WATCHED_PICK]);
+      indexer.client.getLogs = vi.fn().mockResolvedValue([makeBurnLog()]);
+      indexer.client.getBlock = vi
+        .fn()
+        .mockResolvedValue({ number: 50n, timestamp: 1700000000n });
+
+      const ok = await indexer.indexBlocks('transfer-42161', [49, 50, 51]);
+
+      expect(ok).toBe(true);
+      expect(indexer.client.getLogs).toHaveBeenCalledWith(
+        expect.objectContaining({ fromBlock: 49n, toBlock: 51n })
+      );
+      // Missed burn applied: event row + sender decrement.
+      expect(mockPrisma.event.create).toHaveBeenCalledTimes(1);
+      expect(mockPrisma.$executeRaw).toHaveBeenCalledTimes(1);
+    });
+
+    it('is a no-op for already-indexed logs (P2002 replay guard)', async () => {
+      const indexer = new Indexer(42161);
+      mockPrisma.picks.findMany.mockResolvedValue([WATCHED_PICK]);
+      indexer.client.getLogs = vi.fn().mockResolvedValue([makeBurnLog()]);
+      indexer.client.getBlock = vi
+        .fn()
+        .mockResolvedValue({ number: 50n, timestamp: 1700000000n });
+      mockPrisma.event.create.mockRejectedValueOnce(
+        new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+          code: 'P2002',
+          clientVersion: 'test',
+        })
+      );
+
+      const ok = await indexer.indexBlocks('transfer-42161', [50]);
+
+      expect(ok).toBe(true);
+      expect(mockPrisma.$executeRaw).not.toHaveBeenCalled();
+    });
+
+    it('skips log fetching entirely when the watch list is empty', async () => {
+      const indexer = new Indexer(42161);
+      mockPrisma.picks.findMany.mockResolvedValue([]);
+      indexer.client.getLogs = vi.fn();
+
+      const ok = await indexer.indexBlocks('transfer-42161', [50]);
+
+      expect(ok).toBe(true);
+      expect(indexer.client.getLogs).not.toHaveBeenCalled();
+    });
+  });
 });

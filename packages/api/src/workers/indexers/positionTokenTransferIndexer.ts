@@ -89,11 +89,65 @@ class PositionTokenTransferIndexer implements IIndexer {
     return true;
   }
 
-  async indexBlocks(
-    _resourceSlug: string,
-    _blocks: number[]
-  ): Promise<boolean> {
-    return true;
+  /**
+   * Reconciler entry point: replay Transfer logs for the current watch list
+   * over an explicit block range. Replays route through processTransfer,
+   * whose event-row P2002 guard makes overlap with the live poller a no-op —
+   * only genuinely missed logs produce balance writes. Without this the
+   * reconciler had no second layer for position balances at all (this method
+   * used to be a stub), which is how stale-balance rows survived undetected.
+   */
+  async indexBlocks(_resourceSlug: string, blocks: number[]): Promise<boolean> {
+    if (blocks.length === 0) return true;
+    const fromBlock = Math.min(...blocks);
+    const toBlock = Math.max(...blocks);
+
+    const watchList = await this.loadWatchList();
+    if (watchList.tokenAddresses.length === 0) return true;
+
+    try {
+      const logs = await this.client.getLogs({
+        address: watchList.tokenAddresses as `0x${string}`[],
+        event: TRANSFER_EVENT,
+        fromBlock: BigInt(fromBlock),
+        toBlock: BigInt(toBlock),
+      });
+
+      if (logs.length > 0) {
+        logger.info(
+          `[TransferIndexer:${this.chainId}] Reconciler replay: ${logs.length} Transfer events in blocks ${fromBlock}-${toBlock}`
+        );
+      }
+
+      const blockTimestamps = new Map<bigint, bigint>();
+      for (const log of logs) {
+        const { from, to, value } = log.args;
+        if (!from || !to || value === undefined) continue;
+
+        const blockNum = log.blockNumber ?? 0n;
+        if (!blockTimestamps.has(blockNum)) {
+          const block = await this.client.getBlock({ blockNumber: blockNum });
+          blockTimestamps.set(blockNum, block.timestamp);
+        }
+
+        await this.processTransfer(
+          log,
+          from,
+          to,
+          value,
+          blockTimestamps.get(blockNum)!,
+          watchList.tokenInfoMap
+        );
+      }
+
+      return true;
+    } catch (error) {
+      logger.error(
+        { err: error, chainId: this.chainId, fromBlock, toBlock },
+        '[TransferIndexer] Error reconciling block range'
+      );
+      throw error;
+    }
   }
 
   async watchBlocksForResource(_resourceSlug: string): Promise<void> {
@@ -320,10 +374,13 @@ class PositionTokenTransferIndexer implements IIndexer {
     const where: NonNullable<
       Parameters<typeof prisma.picks.findMany>[0]
     >['where'] = {
-      fullyRedeemed: false,
       chainId: this.chainId,
       predictorToken: { not: null },
       counterpartyToken: { not: null },
+      OR: [
+        { fullyRedeemed: false },
+        { positionBalances: { some: { NOT: { balance: '0' } } } },
+      ],
     };
 
     // Legacy instances only watch tokens from their specific escrow contract
@@ -337,8 +394,24 @@ class PositionTokenTransferIndexer implements IIndexer {
         id: true,
         predictorToken: true,
         counterpartyToken: true,
+        fullyRedeemed: true,
       },
     });
+
+    // fullyRedeemed configs only match via the nonzero-balance OR arm: they
+    // are kept watched until their burn logs are processed and balances
+    // drain to zero. Transient while the cursor catches up to the burn
+    // block; if the same ids persist across many cycles, the burn logs were
+    // missed for good (e.g. beyond reconciler lookback) and the balances
+    // need a manual replay/repair.
+    const retained = configs.filter((c) => c.fullyRedeemed);
+    if (retained.length > 0) {
+      logger.warn(
+        `[TransferIndexer:${this.chainId}] ${retained.length} fullyRedeemed pickConfig(s) retained in watch list pending burn-log catch-up: ${retained
+          .map((c) => c.id)
+          .join(', ')}`
+      );
+    }
 
     const tokenAddresses: string[] = [];
     const tokenInfoMap = new Map<string, TokenInfo>();
