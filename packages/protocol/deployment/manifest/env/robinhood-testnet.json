@@ -19,7 +19,9 @@
       "contract": "ManualConditionResolver",
       "contractPath": "src/resolvers/mocks/ManualConditionResolver.sol:ManualConditionResolver",
       "script": "src/scripts/deploy/DeployResolver.s.sol:DeployResolver",
-      "produces": ["RESOLVER_ADDRESS"],
+      "produces": [
+        "RESOLVER_ADDRESS"
+      ],
       "constructorDeps": [],
       "wiringPeers": [],
       "configureScripts": [],
@@ -42,9 +44,13 @@
       "contract": "PredictionMarketTokenFactory",
       "contractPath": "src/PredictionMarketTokenFactory.sol:PredictionMarketTokenFactory",
       "script": "src/scripts/deploy/DeployFactory.s.sol:DeployFactory",
-      "produces": ["FACTORY_ADDRESS"],
+      "produces": [
+        "FACTORY_ADDRESS"
+      ],
       "constructorDeps": [],
-      "stateInvalidatedBy": ["PredictionMarketEscrow"],
+      "stateInvalidatedBy": [
+        "PredictionMarketEscrow"
+      ],
       "wiringPeers": [],
       "configureScripts": [
         "src/scripts/deploy/ConfigureFactory.s.sol:ConfigureFactory"
@@ -52,15 +58,27 @@
       "sdkExport": "predictionMarketTokenFactory",
       "notes": "CREATE3 factory. Standalone deploy (no arbitrum twin — bridge disabled), so no twinOf. Configure-step sets escrow as authorized deployer.",
       "state": {
-        "address": "0xb1c97B09B62F398296481f9Df65eea0c6b78A441",
+        "address": "0x4bAab8C9212b3670285640d262279bce500aE408",
         "addresses": {
-          "FACTORY_ADDRESS": "0xb1c97B09B62F398296481f9Df65eea0c6b78A441"
+          "FACTORY_ADDRESS": "0x4bAab8C9212b3670285640d262279bce500aE408"
         },
         "bytecodeHash": "0x58630bdcdee928cd1863849ee86a0e60aa7e6725b43d46a96d9d36e7c54d9062",
         "onchainBytecodeHash": "0x58630bdcdee928cd1863849ee86a0e60aa7e6725b43d46a96d9d36e7c54d9062",
-        "gitSha": "f2166db28",
-        "deployedAt": "2026-06-09T15:16:23.328Z",
-        "blockCreated": 72253717
+        "gitSha": "c874dda1c",
+        "deployedAt": "2026-06-15T14:21:14.402Z",
+        "blockCreated": 76353392,
+        "legacy": [
+          {
+            "address": "0xb1c97B09B62F398296481f9Df65eea0c6b78A441",
+            "addresses": {
+              "FACTORY_ADDRESS": "0xb1c97B09B62F398296481f9Df65eea0c6b78A441"
+            },
+            "blockCreated": 72253717,
+            "deployedAt": "2026-06-09T15:16:23.328Z",
+            "gitSha": "f2166db28",
+            "replacedAt": "2026-06-15T14:21:14.402Z"
+          }
+        ]
       }
     },
     "PredictionMarketEscrow": {
@@ -68,22 +86,38 @@
       "contract": "PredictionMarketEscrow",
       "contractPath": "src/PredictionMarketEscrow.sol:PredictionMarketEscrow",
       "script": "src/scripts/deploy/DeployPredictionMarket.s.sol:DeployPredictionMarket",
-      "produces": ["PREDICTION_MARKET_ADDRESS"],
-      "constructorDeps": ["PredictionMarketTokenFactory"],
+      "produces": [
+        "PREDICTION_MARKET_ADDRESS"
+      ],
+      "constructorDeps": [
+        "PredictionMarketTokenFactory"
+      ],
       "wiringPeers": [],
       "configureScripts": [],
       "sdkExport": "predictionMarketEscrow",
       "notes": "Takes factory + COLLATERAL_TOKEN_ADDRESS (external, set in config.json) in constructor. Redeploy re-runs ConfigureFactory on the factory.",
       "state": {
-        "address": "0x1847e316e6e4302b23B5Ab5BE078926386D78E95",
+        "address": "0xf03eFa8bF3271Fe347bF750D72baAF2F9b6Ffc29",
         "addresses": {
-          "PREDICTION_MARKET_ADDRESS": "0x1847e316e6e4302b23B5Ab5BE078926386D78E95"
+          "PREDICTION_MARKET_ADDRESS": "0xf03eFa8bF3271Fe347bF750D72baAF2F9b6Ffc29"
         },
         "bytecodeHash": "0xdc1a1ae542c954dd62137cc9012e16e1d30acbae8c5ebd70e84a6d69255fdd35",
         "onchainBytecodeHash": "0xdc1a1ae542c954dd62137cc9012e16e1d30acbae8c5ebd70e84a6d69255fdd35",
-        "gitSha": "f2166db28",
-        "deployedAt": "2026-06-09T15:16:31.034Z",
-        "blockCreated": 72253766
+        "gitSha": "c874dda1c",
+        "deployedAt": "2026-06-15T14:21:42.656Z",
+        "blockCreated": 76353587,
+        "legacy": [
+          {
+            "address": "0x1847e316e6e4302b23B5Ab5BE078926386D78E95",
+            "addresses": {
+              "PREDICTION_MARKET_ADDRESS": "0x1847e316e6e4302b23B5Ab5BE078926386D78E95"
+            },
+            "blockCreated": 72253766,
+            "deployedAt": "2026-06-09T15:16:31.034Z",
+            "gitSha": "f2166db28",
+            "replacedAt": "2026-06-15T14:21:42.656Z"
+          }
+        ]
       }
     },
     "SecondaryMarketEscrow": {
@@ -91,7 +125,9 @@
       "contract": "SecondaryMarketEscrow",
       "contractPath": "src/SecondaryMarketEscrow.sol:SecondaryMarketEscrow",
       "script": "src/scripts/deploy/DeploySecondaryMarketEscrow.s.sol:DeploySecondaryMarketEscrow",
-      "produces": ["SECONDARY_MARKET_ESCROW_ADDRESS"],
+      "produces": [
+        "SECONDARY_MARKET_ESCROW_ADDRESS"
+      ],
       "constructorDeps": [],
       "wiringPeers": [],
       "configureScripts": [],
@@ -114,22 +150,36 @@
       "contract": "PredictionMarketVault",
       "contractPath": "src/vault/PredictionMarketVault.sol:PredictionMarketVault",
       "script": "src/scripts/deploy/vault/DeployVault.s.sol:DeployVault",
-      "produces": ["VAULT_ADDRESS"],
+      "produces": [
+        "VAULT_ADDRESS"
+      ],
       "constructorDeps": [],
       "wiringPeers": [],
       "configureScripts": [],
       "sdkExport": "predictionMarketVault",
       "notes": "Default vault instance. Reads VAULT_MANAGER/NAME/SYMBOL env vars; collateral is COLLATERAL_TOKEN_ADDRESS.",
       "state": {
-        "address": "0x887aB0a9e185795A4279D136EcEc208146a915E3",
+        "address": "0x02cB04155cdDBFb0Ee894f8D352395785130f3Ad",
         "addresses": {
-          "VAULT_ADDRESS": "0x887aB0a9e185795A4279D136EcEc208146a915E3"
+          "VAULT_ADDRESS": "0x02cB04155cdDBFb0Ee894f8D352395785130f3Ad"
         },
         "bytecodeHash": "0x47e7db0904d7f793be14f71ae5e8de4c44712bc37d318bef4d598c0ed821eed4",
         "onchainBytecodeHash": "0x47e7db0904d7f793be14f71ae5e8de4c44712bc37d318bef4d598c0ed821eed4",
-        "gitSha": "f2166db28",
-        "deployedAt": "2026-06-09T15:16:39.487Z",
-        "blockCreated": 72253813
+        "gitSha": "c874dda1c",
+        "deployedAt": "2026-06-15T14:22:13.550Z",
+        "blockCreated": 76353815,
+        "legacy": [
+          {
+            "address": "0x887aB0a9e185795A4279D136EcEc208146a915E3",
+            "addresses": {
+              "VAULT_ADDRESS": "0x887aB0a9e185795A4279D136EcEc208146a915E3"
+            },
+            "blockCreated": 72253813,
+            "deployedAt": "2026-06-09T15:16:39.487Z",
+            "gitSha": "f2166db28",
+            "replacedAt": "2026-06-15T14:22:13.550Z"
+          }
+        ]
       }
     },
     "OnboardingSponsor": {
@@ -137,22 +187,39 @@
       "contract": "OnboardingSponsor",
       "contractPath": "src/sponsors/OnboardingSponsor.sol:OnboardingSponsor",
       "script": "src/scripts/deploy/DeployOnboardingSponsor.s.sol:DeployOnboardingSponsor",
-      "produces": ["ONBOARDING_SPONSOR_ADDRESS"],
-      "constructorDeps": ["PredictionMarketEscrow", "PredictionMarketVault"],
+      "produces": [
+        "ONBOARDING_SPONSOR_ADDRESS"
+      ],
+      "constructorDeps": [
+        "PredictionMarketEscrow",
+        "PredictionMarketVault"
+      ],
       "wiringPeers": [],
       "configureScripts": [],
       "sdkExport": "onboardingSponsor",
       "notes": "Reads MAX_ENTRY_PRICE_BPS + VAULT_ADDRESS. Optional — remove this unit if onboarding sponsorship is not needed on Robinhood testnet.",
       "state": {
-        "address": "0x4252a5dc77997ED60b4D33741867cDAe7a4A7c54",
+        "address": "0x14B6B27B9Bb95BA772A99bb265Eb8860491A0A08",
         "addresses": {
-          "ONBOARDING_SPONSOR_ADDRESS": "0x4252a5dc77997ED60b4D33741867cDAe7a4A7c54"
+          "ONBOARDING_SPONSOR_ADDRESS": "0x14B6B27B9Bb95BA772A99bb265Eb8860491A0A08"
         },
         "bytecodeHash": "0x22e124108236992a9fd136e8a8e6c1faf6497972c31ba52ad68e590499091fef",
         "onchainBytecodeHash": "0x22e124108236992a9fd136e8a8e6c1faf6497972c31ba52ad68e590499091fef",
-        "gitSha": "f2166db28",
-        "deployedAt": "2026-06-09T15:16:47.585Z",
-        "blockCreated": 72253863
+        "gitSha": "c874dda1c",
+        "deployedAt": "2026-06-15T14:22:41.720Z",
+        "blockCreated": 76354062,
+        "legacy": [
+          {
+            "address": "0x4252a5dc77997ED60b4D33741867cDAe7a4A7c54",
+            "addresses": {
+              "ONBOARDING_SPONSOR_ADDRESS": "0x4252a5dc77997ED60b4D33741867cDAe7a4A7c54"
+            },
+            "blockCreated": 72253863,
+            "deployedAt": "2026-06-09T15:16:47.585Z",
+            "gitSha": "f2166db28",
+            "replacedAt": "2026-06-15T14:22:41.720Z"
+          }
+        ]
       }
     }
   }
