@@ -4,8 +4,7 @@
  * LayerZero — i.e. each contract's BridgeConfig points at the other, and each
  * OApp peer entry authorises the other contract's address.
  *
- * Requires RUN_LZ_CONFIG_INTEGRATION=true and POLYGON_RPC_URL to be set;
- * skipped otherwise so the default unit-test CI does not depend on a live RPC.
+ * Requires POLYGON_RPC_URL to be set; skipped otherwise.
  */
 import { describe, it, expect } from 'vitest';
 import { createPublicClient, http, getAddress } from 'viem';
@@ -15,8 +14,6 @@ import {
 } from '@sapience/sdk/contracts';
 
 const POLYGON_RPC_URL = process.env.POLYGON_RPC_URL;
-const RUN_LZ_CONFIG_INTEGRATION =
-  process.env.RUN_LZ_CONFIG_INTEGRATION === 'true';
 const ETHEREAL_RPC = 'https://rpc.ethereal.trade';
 
 const CHAIN_ID_ETHEREAL = 5064014;
@@ -58,7 +55,7 @@ const peersAbi = [
   },
 ] as const;
 
-describe.skipIf(!RUN_LZ_CONFIG_INTEGRATION || !POLYGON_RPC_URL)(
+describe.skipIf(!POLYGON_RPC_URL)(
   'LayerZero config cross-check (integration)',
   () => {
     // http() throws if URL is undefined even inside a skipped describe,
