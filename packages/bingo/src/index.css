@@ -167,6 +167,43 @@ body {
   }
 }
 
+/* ---------- card dealing loader (centered rainbow ring) ---------- */
+.card-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  min-height: 45vh;
+  text-align: center;
+}
+
+.card-loader-ring {
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 50%;
+  background: var(--rainbow);
+  /* Punch out the center so only a ring of the rainbow shows. */
+  -webkit-mask: radial-gradient(
+    farthest-side,
+    transparent calc(100% - 5px),
+    #000 calc(100% - 4px)
+  );
+  mask: radial-gradient(
+    farthest-side,
+    transparent calc(100% - 5px),
+    #000 calc(100% - 4px)
+  );
+  animation: card-loader-spin 0.9s linear infinite;
+  filter: drop-shadow(0 0 8px rgba(124, 140, 248, 0.25));
+}
+
+@keyframes card-loader-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* ---------- small left-aligned back link ---------- */
 .back-link {
   align-self: flex-start;
@@ -1045,18 +1082,52 @@ button.quick-pick:hover {
 .locked-grid {
   position: relative;
   display: grid;
-  grid-template-columns: 4.75rem repeat(4, 1fr) 4.75rem;
-  grid-template-rows: repeat(4, 1fr) auto;
-  gap: 0.4rem;
+  /* Thin gutter tracks (cols 2 & 7, row 5) separate the flush 4×4 block from
+     the payout columns; the cells themselves butt together with no gap. */
+  grid-template-columns: 4.75rem 0.4rem repeat(4, 1fr) 0.4rem 4.75rem;
+  grid-template-rows: repeat(4, 1fr) 0.4rem auto;
+  gap: 0;
 }
 
 .locked-cell {
   position: relative;
   overflow: hidden;
+  padding: 1rem 0.95rem;
   background: var(--surface-2);
   border: 1px solid var(--hairline);
-  border-radius: var(--r-sm);
+  border-radius: 0;
   color: var(--text);
+}
+
+/* Round only the four outer corners of the flush 4×4 block. The 16 cells are
+   the grid's first children, so corners are nth-child 1/4/13/16. */
+.locked-cell:nth-child(1) {
+  border-top-left-radius: var(--r-md);
+}
+.locked-cell:nth-child(4) {
+  border-top-right-radius: var(--r-md);
+}
+.locked-cell:nth-child(13) {
+  border-bottom-left-radius: var(--r-md);
+}
+.locked-cell:nth-child(16) {
+  border-bottom-right-radius: var(--r-md);
+}
+
+/* Rainbow gradient ring drawn over the 4×4 block's outer edge (mask cuts the
+   centre so only the border shows). */
+.locked-frame {
+  position: relative;
+  z-index: 3;
+  border-radius: var(--r-md);
+  padding: 1.5px;
+  background: var(--rainbow);
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
 }
 
 /* Background market image + dark scrim, same as the picking cells. */
@@ -1083,26 +1154,27 @@ button.quick-pick:hover {
 .locked-cell .cell-text {
   color: var(--text);
   font-family: var(--font-sans);
-  font-size: 0.74rem;
+  font-size: 0.92rem;
+  line-height: 1.3;
 }
 
-.locked-cell.pick-yes {
-  border-color: rgba(62, 207, 142, 0.3);
-  background: linear-gradient(180deg, var(--yes-soft), var(--surface-2) 85%);
+/* Pick badge (left) and the resolution icon (right) share the bottom row. */
+.locked-foot {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
 }
 
-.locked-cell.pick-no {
-  border-color: rgba(240, 88, 109, 0.3);
-  background: linear-gradient(180deg, var(--no-soft), var(--surface-2) 85%);
-}
-
+/* Small status badge sized to its text (YES / NO). */
 .locked-cell .locked-pick {
   font-family: var(--font-sans);
-  font-size: 0.62rem;
+  font-size: 0.82rem;
   font-weight: 600;
-  letter-spacing: 0.06em;
-  text-align: center;
-  padding: 0.22rem 0;
+  letter-spacing: 0.01em;
+  padding: 0.3rem 0.62rem;
   border-radius: var(--r-sm);
   background: var(--surface-3);
   color: var(--text-muted);
@@ -1147,6 +1219,38 @@ button.quick-pick:hover {
 .payout-cell:hover {
   border-color: rgba(124, 140, 248, 0.45);
   box-shadow: 0 6px 18px rgba(124, 140, 248, 0.16);
+}
+
+/* Row/col payouts butt together into a single flush strip: square off every
+   corner, then re-round only the two ends, and drop the shared border edge so
+   neighbours are divided by a single 1px line (not a doubled 2px one). */
+.payout-vert,
+.payout-horz {
+  border-radius: 0;
+}
+
+.payout-vert:not(.payout-end-first) {
+  border-top: 0;
+}
+.payout-vert.payout-end-first {
+  border-top-left-radius: var(--r-sm);
+  border-top-right-radius: var(--r-sm);
+}
+.payout-vert.payout-end-last {
+  border-bottom-left-radius: var(--r-sm);
+  border-bottom-right-radius: var(--r-sm);
+}
+
+.payout-horz:not(.payout-end-first) {
+  border-left: 0;
+}
+.payout-horz.payout-end-first {
+  border-top-left-radius: var(--r-sm);
+  border-bottom-left-radius: var(--r-sm);
+}
+.payout-horz.payout-end-last {
+  border-top-right-radius: var(--r-sm);
+  border-bottom-right-radius: var(--r-sm);
 }
 
 .payout-amount {
@@ -1231,19 +1335,16 @@ button.quick-pick:hover {
 
 /* ---------- per-cell resolution icon (loading / check / x) ---------- */
 .cell-status {
-  position: absolute;
-  top: 0.4rem;
-  right: 0.4rem;
-  z-index: 2;
-  width: 1.05rem;
-  height: 1.05rem;
+  flex-shrink: 0;
+  width: 1.15rem;
+  height: 1.15rem;
   display: grid;
   place-items: center;
 }
 
 .cell-status svg {
-  width: 1.05rem;
-  height: 1.05rem;
+  width: 1.15rem;
+  height: 1.15rem;
 }
 
 .cell-status-correct {
@@ -1449,8 +1550,19 @@ button.quick-pick:hover {
   opacity: 0.65;
 }
 
+/* The primary call-to-action of the strip — lime accent so it reads as
+   "add a card" rather than just another receipt chip. */
 .card-chip-new {
-  border-style: dashed;
+  color: var(--lime);
+  font-weight: 600;
+  border-color: var(--lime-line);
+  background: var(--lime-soft);
+}
+
+.card-chip-new:hover {
+  color: #0a0a0c;
+  background: var(--lime);
+  border-color: var(--lime);
 }
 
 /* ---------- admin ---------- */
@@ -1841,18 +1953,45 @@ button.quick-pick:hover {
 .cell-tip {
   position: fixed;
   z-index: 100;
-  max-width: 20rem;
-  padding: 0.55rem 0.75rem;
-  background: var(--surface-3);
+  max-width: 19rem;
+  padding: 0.7rem 0.85rem;
+  background: var(--surface-2);
   border: 1px solid var(--hairline-strong);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-md);
   color: var(--text);
   font-family: var(--font-sans);
-  font-size: 0.82rem;
-  line-height: 1.4;
-  white-space: pre-line;
   pointer-events: none;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+  box-shadow:
+    0 14px 38px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+/* The market question — the tooltip's heading. */
+.cell-tip-q {
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+/* Only divide from the meta rows when there ARE meta rows. */
+.cell-tip-q:not(:last-child) {
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid var(--hairline);
+}
+
+/* Est. price / Est. end — mono, tracked, muted. */
+.cell-tip-meta {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+
+.cell-tip-meta + .cell-tip-meta {
+  margin-top: 0.22rem;
 }
 
 .bingo-cell .truncate {
@@ -2053,7 +2192,7 @@ button.quick-pick:hover {
     padding: 0;
   }
   .locked-grid {
-    grid-template-columns: 3rem repeat(4, 1fr) 3rem;
+    grid-template-columns: 3rem 0.4rem repeat(4, 1fr) 0.4rem 3rem;
   }
   .tier-price {
     font-size: 1.55rem;
@@ -2145,7 +2284,9 @@ button.quick-pick:hover {
   display: flex;
   align-items: center;
   gap: 1rem;
-  margin-bottom: 1.75rem;
+  /* Sits between the card-chips row and the grid: clear gap above (off the
+     chips), tighter below so it reads as a header for the card. */
+  margin: 1.5rem 0 0.6rem;
 }
 
 /* Push the share/details actions to the right edge, aligned with the
@@ -2219,47 +2360,85 @@ button.quick-pick:hover {
   margin: 0;
 }
 
-/* ---------- stat strip (stake / bonus / payout) ---------- */
+/* ---------- stat strip (stake / bonus / payout) — single box ---------- */
 .stat-strip {
   display: grid;
-  grid-template-columns: 1fr 1fr 1.15fr;
-  gap: 0.75rem;
+  grid-template-columns: 1fr 1fr 1.2fr;
+  align-items: stretch;
   margin-top: 1.1rem;
-}
-
-.stat {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  padding: 1.15rem 1.25rem;
   background: var(--surface);
   border: 1px solid var(--hairline);
   border-radius: var(--r-lg);
 }
 
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1.3rem 1.5rem;
+  min-width: 0;
+}
+
+/* thin divider between each section */
+.stat + .stat {
+  border-left: 1px solid var(--hairline);
+}
+
+/* larger labels to match the reference slip */
+.stat > .label {
+  font-size: 0.92rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
 .stat-value {
   font-family: var(--font-sans);
   font-weight: 600;
-  font-size: 2.6rem;
+  font-size: 2.7rem;
   line-height: 1;
   letter-spacing: -0.03em;
   color: var(--text);
   font-variant-numeric: tabular-nums;
 }
 
-.stat.payout {
-  background: var(--surface-2);
+/* Small currency suffix after a stat value (e.g. "1 USDe"). */
+.stat-unit {
+  margin-left: 0.35rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--text-muted);
 }
 
-.stat.payout .stat-value {
+/* payout is just another section — its value tints green only when there's
+   something to collect; a $0.00 payout stays the neutral text colour. */
+.stat.payout .stat-value.payout-win {
   color: var(--yes);
 }
 
-/* Bonus stat reveals the full prize ladder on hover/focus. */
+/* The bonus prize ladder is revealed by hovering/focusing the info icon. */
 .bonus-stat {
   position: relative;
+}
+
+.bonus-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.bonus-info {
+  display: inline-flex;
+  color: var(--text-faint);
   cursor: help;
   outline: none;
+  transition: color 0.12s;
+}
+
+.bonus-info:hover,
+.bonus-info:focus-visible {
+  color: var(--text);
 }
 
 .bonus-popover {
@@ -2285,15 +2464,15 @@ button.quick-pick:hover {
   z-index: 30;
 }
 
-.bonus-stat:hover .bonus-popover,
-.bonus-stat:focus-within .bonus-popover {
+.bonus-stat:has(.bonus-info:hover) .bonus-popover,
+.bonus-stat:has(.bonus-info:focus-visible) .bonus-popover {
   opacity: 1;
   visibility: visible;
   transform: translateX(-50%) translateY(0);
 }
 
 .bonus-popover .bonus-prize-title {
-  margin-top: 0;
+  margin: 0 0 0.6rem;
 }
 
 /* ---------- receipt meta (position id / placed / qr) ---------- */

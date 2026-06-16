@@ -34,13 +34,16 @@ import trophyUrl from '../assets/world-cup-trophy.png';
 const LINES = buildLines();
 
 /** Where each line's status square sits around the 4×4 grid:
- *  rows on the right edge, cols along the bottom, diagonals in the corners. */
+ *  rows on the right edge, cols along the bottom, diagonals in the corners.
+ *  Columns 2 and 7 (and row 5) are thin gutter tracks separating the flush
+ *  4×4 block from the payout columns, so cells live in columns 3–6 / rows 1–4
+ *  and the payouts in columns 1 / 8 / row 6. */
 const LINE_POS: Record<string, { gridColumn: number; gridRow: number }> = (() => {
   const m: Record<string, { gridColumn: number; gridRow: number }> = {};
-  for (let r = 0; r < 4; r++) m[`row-${r}`] = { gridColumn: 6, gridRow: r + 1 };
-  for (let c = 0; c < 4; c++) m[`col-${c}`] = { gridColumn: c + 2, gridRow: 5 };
-  m['diag-tr-bl'] = { gridColumn: 1, gridRow: 5 };
-  m['diag-tl-br'] = { gridColumn: 6, gridRow: 5 };
+  for (let r = 0; r < 4; r++) m[`row-${r}`] = { gridColumn: 8, gridRow: r + 1 };
+  for (let c = 0; c < 4; c++) m[`col-${c}`] = { gridColumn: c + 3, gridRow: 6 };
+  m['diag-tr-bl'] = { gridColumn: 1, gridRow: 6 };
+  m['diag-tl-br'] = { gridColumn: 8, gridRow: 6 };
   return m;
 })();
 
@@ -778,52 +781,6 @@ export default function CardDetailScreen() {
     <main>
       <Nav />
       {card && (
-        <div className="card-meta-bar">
-          {pool && (
-            <span className="label muted">
-              Pool #{pool.poolNumber} ·{' '}
-              {card.open
-                ? `closes ${new Date(card.cutoff * 1000).toLocaleString(
-                    undefined,
-                    {
-                      month: 'short',
-                      day: 'numeric',
-                      hour: 'numeric',
-                      minute: '2-digit',
-                    },
-                  )}`
-                : 'closed'}
-            </span>
-          )}
-          <span className="card-meta-actions">
-            {card.receiptTokenId && (
-              <button
-                type="button"
-                className="details-link"
-                onClick={() => {
-                  // The public, view-only permalink for this card —
-                  // anyone can open it, no wallet needed.
-                  const url = `${window.location.origin}/card?receipt=${card.receiptTokenId}`;
-                  void navigator.clipboard.writeText(url).then(() => {
-                    setShareCopied(true);
-                    window.setTimeout(() => setShareCopied(false), 1500);
-                  });
-                }}
-              >
-                {shareCopied ? 'Copied!' : 'Share'}
-              </button>
-            )}
-            <button
-              type="button"
-              className="details-link"
-              onClick={() => setDetailsOpen(true)}
-            >
-              Details
-            </button>
-          </span>
-        </div>
-      )}
-      {card && (
         <header className="receipt-head">
           <img className="receipt-thumb" src={trophyUrl} alt="" aria-hidden />
 
@@ -914,6 +871,53 @@ export default function CardDetailScreen() {
         </section>
       )}
 
+      {card && (
+        <div className="card-meta-bar">
+          {pool && (
+            <span className="label muted">
+              Pool #{pool.poolNumber} ·{' '}
+              {card.open
+                ? `closes ${new Date(card.cutoff * 1000).toLocaleString(
+                    undefined,
+                    {
+                      month: 'short',
+                      day: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                    },
+                  )}`
+                : 'closed'}
+            </span>
+          )}
+          <span className="card-meta-actions">
+            {card.receiptTokenId && (
+              <button
+                type="button"
+                className="details-link"
+                onClick={() => {
+                  // The public, view-only permalink for this card —
+                  // anyone can open it, no wallet needed.
+                  const url = `${window.location.origin}/card?receipt=${card.receiptTokenId}`;
+                  void navigator.clipboard.writeText(url).then(() => {
+                    setShareCopied(true);
+                    window.setTimeout(() => setShareCopied(false), 1500);
+                  });
+                }}
+              >
+                {shareCopied ? 'Copied!' : 'Share'}
+              </button>
+            )}
+            <button
+              type="button"
+              className="details-link"
+              onClick={() => setDetailsOpen(true)}
+            >
+              Details
+            </button>
+          </span>
+        </div>
+      )}
+
       {card && (player || viewOnly) && (
         <section className="screen admin-section">
           {!submitted && (
@@ -925,23 +929,24 @@ export default function CardDetailScreen() {
                   const yes = isPicked && (pickedSides & (1 << i)) !== 0;
                   const no = isPicked && (pickedSides & (1 << i)) === 0;
                   return (
-                    <div key={i} className="bingo-cell">
-                      <div
-                        className="bingo-cell-title"
-                        onMouseEnter={(e) =>
-                          setTip({
-                            text: cellTipText(cell),
-                            x: e.clientX,
-                            y: e.clientY,
-                          })
-                        }
-                        onMouseMove={(e) =>
-                          setTip((t) =>
-                            t ? { ...t, x: e.clientX, y: e.clientY } : t,
-                          )
-                        }
-                        onMouseLeave={() => setTip(null)}
-                      >
+                    <div
+                      key={i}
+                      className="bingo-cell"
+                      onMouseEnter={(e) =>
+                        setTip({
+                          text: cellTipText(cell),
+                          x: e.clientX,
+                          y: e.clientY,
+                        })
+                      }
+                      onMouseMove={(e) =>
+                        setTip((t) =>
+                          t ? { ...t, x: e.clientX, y: e.clientY } : t,
+                        )
+                      }
+                      onMouseLeave={() => setTip(null)}
+                    >
+                      <div className="bingo-cell-title">
                         {cell.shortName ?? cell.question ?? cell.conditionId}
                       </div>
                       <div className="bingo-side-toggle">
@@ -1074,41 +1079,49 @@ export default function CardDetailScreen() {
                       className={`cell locked-cell pick-${yes ? 'yes' : 'no'} ${
                         highlighted ? 'cell-highlight' : ''
                       }`}
-                      style={{ gridColumn: col + 2, gridRow: row + 1 }}
+                      style={{ gridColumn: col + 3, gridRow: row + 1 }}
+                      onMouseEnter={(e) =>
+                        setTip({
+                          text: cellTipText(cell),
+                          x: e.clientX,
+                          y: e.clientY,
+                        })
+                      }
+                      onMouseMove={(e) =>
+                        setTip((t) =>
+                          t ? { ...t, x: e.clientX, y: e.clientY } : t,
+                        )
+                      }
+                      onMouseLeave={() => setTip(null)}
                     >
-                      {/* Once resolved, mark the cell correct/wrong; while
-                          pending we show no icon — the estimated end time lives
-                          in the hover popover instead. */}
-                      {cardComplete &&
-                        (cellStatus[idx] ?? 'pending') !== 'pending' && (
-                          <span
-                            className={`cell-status cell-status-${cellStatus[idx]}`}
-                          >
-                            <CellStatusIcon status={cellStatus[idx]!} />
-                          </span>
-                        )}
-                      <div
-                        className="cell-text"
-                        onMouseEnter={(e) =>
-                          setTip({
-                            text: cellTipText(cell),
-                            x: e.clientX,
-                            y: e.clientY,
-                          })
-                        }
-                        onMouseMove={(e) =>
-                          setTip((t) =>
-                            t ? { ...t, x: e.clientX, y: e.clientY } : t,
-                          )
-                        }
-                        onMouseLeave={() => setTip(null)}
-                      >
+                      <div className="cell-text">
                         {cell.shortName ?? cell.question ?? cell.conditionId}
                       </div>
-                      <div className="locked-pick">{yes ? 'YES' : 'NO'}</div>
+                      <div className="locked-foot">
+                        <span className="locked-pick">{yes ? 'YES' : 'NO'}</span>
+                        {/* Once resolved, mark the cell correct/wrong, right
+                            of the pick; while pending we show no icon — the
+                            estimated end time lives in the hover popover. */}
+                        {cardComplete &&
+                          (cellStatus[idx] ?? 'pending') !== 'pending' && (
+                            <span
+                              className={`cell-status cell-status-${cellStatus[idx]}`}
+                            >
+                              <CellStatusIcon status={cellStatus[idx]!} />
+                            </span>
+                          )}
+                      </div>
                     </article>
                   );
                 })}
+
+                {/* Rainbow frame drawn over the flush 4×4 block (the payout
+                    columns sit outside it). */}
+                <div
+                  className="locked-frame"
+                  style={{ gridColumn: '3 / 7', gridRow: '1 / 5' }}
+                  aria-hidden
+                />
 
                 {LINES.map((l) => {
                   const apiLine = card.lines.find((x) => x.lineId === l.id);
@@ -1120,25 +1133,38 @@ export default function CardDetailScreen() {
                   const inflight = !done && run?.status === 'funding';
                   const o = lineOutcomes[l.id];
 
+                  // The per-cell resolution tells us the line outcome before
+                  // the escrow's own flag. A line is a parlay of its cells: it
+                  // LOSES the moment any one cell is wrong, and only WINS once
+                  // every cell has come in correct.
+                  const lineCellStatuses = l.cellIndices.map(
+                    (i) => cellStatus[i] ?? 'pending',
+                  );
+                  const lineLost =
+                    cardComplete && lineCellStatuses.some((s) => s === 'wrong');
+                  const lineWon =
+                    cardComplete &&
+                    lineCellStatuses.every((s) => s === 'correct');
+
                   // Resolve the line's display verb/amount/tone.
                   let verb: string | null = null;
                   let amount: string | null = null;
                   let lost = submitFailed;
                   let won = false;
-                  if (done && o) {
-                    if (!o.resolved) {
-                      verb = 'PENDING';
-                      amount = fmtWin(o.pool);
-                    } else if (o.predictorWon) {
-                      verb = o.claimed ? 'WON' : 'CLAIM';
-                      amount = fmtWin(o.pool);
-                      won = true;
-                    } else {
+                  if (done) {
+                    if (lineLost) {
                       verb = 'LOST';
                       lost = true;
+                    } else if (lineWon) {
+                      // Claimable only once the escrow itself has resolved the
+                      // win and it's still unclaimed.
+                      verb = o?.predictorWon && !o.claimed ? 'CLAIM' : 'WON';
+                      won = true;
+                      if (o) amount = fmtWin(o.pool);
+                    } else {
+                      verb = 'PENDING';
+                      if (o) amount = fmtWin(o.pool);
                     }
-                  } else if (done) {
-                    verb = 'PENDING';
                   }
 
                   // Claiming needs the viewer's session to BE the card's
@@ -1147,10 +1173,28 @@ export default function CardDetailScreen() {
                     verb === 'CLAIM' &&
                     isActive &&
                     player?.toLowerCase() === card.player.toLowerCase();
+                  // Each row/col forms a flush strip (right edge / bottom edge);
+                  // only the two end boxes get rounded outer corners, the rest
+                  // share a single 1px divider. Diagonals stand alone.
+                  const stripIdx = Number(l.id.slice(l.id.lastIndexOf('-') + 1));
+                  const stripClass =
+                    l.kind === 'row'
+                      ? 'payout-vert'
+                      : l.kind === 'col'
+                        ? 'payout-horz'
+                        : '';
+                  const stripEnd =
+                    l.kind === 'diag'
+                      ? ''
+                      : stripIdx === 0
+                        ? 'payout-end-first'
+                        : stripIdx === 3
+                          ? 'payout-end-last'
+                          : '';
                   return (
                     <div
                       key={l.id}
-                      className={`payout-cell ${
+                      className={`payout-cell ${stripClass} ${stripEnd} ${
                         l.kind === 'diag' ? 'diag-payout' : ''
                       } ${lost ? 'payout-failed' : ''} ${
                         inflight ? 'payout-inflight' : ''
@@ -1249,29 +1293,52 @@ export default function CardDetailScreen() {
             <div className="stat-strip">
               <div className="stat">
                 <span className="label">Stake</span>
-                <span className="stat-value">{fmtUnits(cardPriceWei)}</span>
+                <span className="stat-value">
+                  {fmtUnits(cardPriceWei)}
+                  <span className="stat-unit">USDe</span>
+                </span>
               </div>
 
-              <div className="stat bonus-stat" tabIndex={0}>
-                <span className="label">Bonus</span>
+              <div className="stat bonus-stat">
+                <span className="label bonus-label">
+                  Bonus
+                  <span
+                    className="bonus-info"
+                    tabIndex={0}
+                    role="button"
+                    aria-label="Bonus prize details"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="14"
+                      height="14"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M12 16v-4" />
+                      <path d="M12 8h.01" />
+                    </svg>
+                  </span>
+                </span>
                 <span className="stat-value">
                   {pool.multiplierBps[wins] && pool.multiplierBps[wins] > 0
                     ? `${(pool.multiplierBps[wins] / 10_000)
                         .toFixed(2)
                         .replace(/\.?0+$/, '')}x`
-                    : '—'}
+                    : '1x'}
                 </span>
-                {/* Hover (or focus) the Bonus stat to reveal the full ladder. */}
+                {/* The info icon (in the label) reveals the full ladder. */}
                 <div className="bonus-popover" role="tooltip">
                   <div className="bonus-prize-title">Bonus Prize</div>
-                  <p className="muted small">
-                    Bonuses are paid out directly by COMBO.BINGO.
-                  </p>
                   <ol className="wizard bonus-wizard">
                     {pool.multiplierBps.map((bps, i) => {
                       const status =
                         i < wins ? 'done' : i === wins ? 'current' : 'pending';
-                      const tierPayout = (cardPriceWei * BigInt(bps)) / 10_000n;
                       return (
                         <li key={i} className={`wizard-step status-${status}`}>
                           <div className="wizard-step-marker" aria-hidden>
@@ -1286,7 +1353,7 @@ export default function CardDetailScreen() {
                                 ? 'No Bonus'
                                 : `${(bps / 10_000)
                                     .toFixed(2)
-                                    .replace(/\.?0+$/, '')}× · $${fmtUnits(tierPayout)}`}
+                                    .replace(/\.?0+$/, '')}×`}
                             </span>
                           </div>
                         </li>
@@ -1308,7 +1375,13 @@ export default function CardDetailScreen() {
 
               <div className="stat payout">
                 <span className="label">Payout</span>
-                <span className="stat-value">{fmtWin(totalToWinWei)}</span>
+                <span
+                  className={`stat-value ${
+                    totalToWinWei > 0n ? 'payout-win' : ''
+                  }`}
+                >
+                  {fmtWin(totalToWinWei)}
+                </span>
               </div>
             </div>
           )}
@@ -1320,7 +1393,9 @@ export default function CardDetailScreen() {
 
       {!card && (player || viewOnly) && !statusMsg && (
         <section className="screen admin-section">
-          <p className="muted small">Dealing your card…</p>
+          <div className="card-loader">
+            <div className="card-loader-ring" aria-hidden />
+          </div>
         </section>
       )}
       {!card && statusMsg && (
@@ -1360,7 +1435,7 @@ export default function CardDetailScreen() {
         >
           <div className="bingo-modal" onClick={(e) => e.stopPropagation()}>
             <div className="card-header">
-              <h2>Card details</h2>
+              <h2>Card Details</h2>
               <button
                 type="button"
                 className="ghost"
@@ -1403,7 +1478,14 @@ export default function CardDetailScreen() {
           className="cell-tip"
           style={{ left: tip.x + 14, top: tip.y + 16 }}
         >
-          {tip.text}
+          {tip.text.split('\n').map((line, i) => (
+            <div
+              key={i}
+              className={i === 0 ? 'cell-tip-q' : 'cell-tip-meta'}
+            >
+              {line}
+            </div>
+          ))}
         </div>
       )}
     </main>
