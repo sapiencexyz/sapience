@@ -27,11 +27,6 @@ export default function ReferScreen() {
   return (
     <main>
       <Nav />
-      <header className="header">
-        <div className="title-block">
-          <h1>Refer</h1>
-        </div>
-      </header>
 
       <section className="screen admin-section">
         <h2>Share your link</h2>
