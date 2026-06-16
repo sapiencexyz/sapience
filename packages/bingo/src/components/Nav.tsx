@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import SettingsDialog from './SettingsDialog';
+import logoUrl from '../assets/combo-bingo-logo.png';
 
 interface NavLink {
   href: string;
@@ -12,9 +13,8 @@ interface NavLink {
 
 const LINKS: NavLink[] = [
   { href: '/', label: 'Draw', match: ['/'], exact: true },
-  { href: '/card', label: 'My Card', match: ['/card'] },
+  { href: '/card', label: 'Cards', match: ['/card'] },
   { href: '/refer', label: 'Refer', match: ['/refer'] },
-  { href: '/admin', label: 'Admin', match: ['/admin'] },
 ];
 
 interface Props {
@@ -30,14 +30,7 @@ export default function Nav({ trailing }: Props) {
     <>
       <nav className="brand-bar">
         <a href="/" className="brand" aria-label="combo.bingo home">
-          <span className="brand-word">COMBO.BINGO</span>
-          <span className="brand-squares" aria-hidden="true">
-            <i className="brand-square" />
-            <i className="brand-square" />
-            <i className="brand-square" />
-            <i className="brand-square" />
-            <i className="brand-square" />
-          </span>
+          <img className="brand-logo" src={logoUrl} alt="COMBO.BINGO" />
         </a>
         <div className="bingo-nav-trailing">
           {trailing}
