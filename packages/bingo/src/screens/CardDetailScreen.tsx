@@ -29,6 +29,7 @@ import { useSession } from '../hooks/useSession';
 import { useCollateralBalance } from '../hooks/blockchain/useCollateralBalance';
 import { buildLines } from '../parlay';
 import Nav from '../components/Nav';
+import trophyUrl from '../assets/world-cup-trophy.png';
 
 const LINES = buildLines();
 
@@ -98,6 +99,22 @@ function fmtEndTime(unixSeconds: number): string {
 function fmtOdds(price?: number | null): string | null {
   if (typeof price !== 'number' || !Number.isFinite(price)) return null;
   return `${Math.round(price * 100)}%`;
+}
+
+/** Hover popover for a cell: the full question, plus the estimated price and
+ *  estimated end time when known (each on its own line). */
+function cellTipText(cell: {
+  question?: string | null;
+  shortName?: string | null;
+  conditionId: string;
+  estimatedPrice?: number | null;
+  endTime?: number | null;
+}): string {
+  const lines = [cell.question ?? cell.shortName ?? cell.conditionId];
+  const price = fmtOdds(cell.estimatedPrice);
+  if (price) lines.push(`Est. price ${price}`);
+  if (cell.endTime) lines.push(`Est. end ${fmtEndTime(cell.endTime)}`);
+  return lines.join('\n');
 }
 
 /** Gross payout if a line hits = the whole prediction pool (stake + counterparty). */
@@ -397,6 +414,13 @@ export default function CardDetailScreen() {
   );
   const anyFailed = (card?.lines ?? []).some(
     (l) => !lineDone(l) && lineRuns[l.lineId]?.status === 'failed',
+  );
+  // While the 10 lines are being funded, fade the card and overlay a progress
+  // bar + running total-to-win (sum of every line's pool as each one fills).
+  const submitting = card != null && !cardComplete && (anyInflight || actionBusy);
+  const totalToWinWei = LINES.reduce(
+    (sum, l) => sum + (lineOutcomes[l.id]?.pool ?? 0n),
+    0n,
   );
 
   // The signed-in player IS this card's player — write actions (fund,
@@ -754,59 +778,60 @@ export default function CardDetailScreen() {
     <main>
       <Nav />
       {card && (
-        <header className="receipt-head">
-          <div className="receipt-thumb receipt-thumb-trophy" aria-hidden>
-            ⚽
-          </div>
-          <div className="receipt-titles">
-            <div className="receipt-eyebrow-row">
-              <span className="label">
-                Combo Bingo · {cardComplete ? 'Live Bet' : 'Ready to Submit'}
-              </span>
-              <span>
-                {card.receiptTokenId && (
-                  <button
-                    type="button"
-                    className="details-link"
-                    onClick={() => {
-                      // The public, view-only permalink for this card —
-                      // anyone can open it, no wallet needed.
-                      const url = `${window.location.origin}/card?receipt=${card.receiptTokenId}`;
-                      void navigator.clipboard.writeText(url).then(() => {
-                        setShareCopied(true);
-                        window.setTimeout(() => setShareCopied(false), 1500);
-                      });
-                    }}
-                  >
-                    {shareCopied ? 'Copied!' : 'Share'}
-                  </button>
-                )}{' '}
-                <button
-                  type="button"
-                  className="details-link"
-                  onClick={() => setDetailsOpen(true)}
-                >
-                  Details
-                </button>
-              </span>
-            </div>
-            <h2 className="receipt-title">World Cup 2026</h2>
-            {pool && (
-              <span className="label muted">
-                Pool #{pool.poolNumber} ·{' '}
-                {card.open
-                  ? `closes ${new Date(card.cutoff * 1000).toLocaleString(
-                      undefined,
-                      {
-                        month: 'short',
-                        day: 'numeric',
-                        hour: 'numeric',
-                        minute: '2-digit',
-                      },
-                    )}`
-                  : 'closed'}
-              </span>
+        <div className="card-meta-bar">
+          {pool && (
+            <span className="label muted">
+              Pool #{pool.poolNumber} ·{' '}
+              {card.open
+                ? `closes ${new Date(card.cutoff * 1000).toLocaleString(
+                    undefined,
+                    {
+                      month: 'short',
+                      day: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                    },
+                  )}`
+                : 'closed'}
+            </span>
+          )}
+          <span className="card-meta-actions">
+            {card.receiptTokenId && (
+              <button
+                type="button"
+                className="details-link"
+                onClick={() => {
+                  // The public, view-only permalink for this card —
+                  // anyone can open it, no wallet needed.
+                  const url = `${window.location.origin}/card?receipt=${card.receiptTokenId}`;
+                  void navigator.clipboard.writeText(url).then(() => {
+                    setShareCopied(true);
+                    window.setTimeout(() => setShareCopied(false), 1500);
+                  });
+                }}
+              >
+                {shareCopied ? 'Copied!' : 'Share'}
+              </button>
             )}
+            <button
+              type="button"
+              className="details-link"
+              onClick={() => setDetailsOpen(true)}
+            >
+              Details
+            </button>
+          </span>
+        </div>
+      )}
+      {card && (
+        <header className="receipt-head">
+          <img className="receipt-thumb" src={trophyUrl} alt="" aria-hidden />
+
+          <div className="receipt-titles">
+            <span className="label">
+              Combo Bingo · {cardComplete ? 'Live Bet' : 'Ready to Submit'}
+            </span>
+            <h2 className="receipt-title">World Cup 2026</h2>
           </div>
         </header>
       )}
@@ -835,64 +860,56 @@ export default function CardDetailScreen() {
       {player && cardsSummary && stripGroups.some((g) => g.cards.length > 0) && (
         <section className="screen admin-section">
           <div className="card-strip">
-            {stripGroups.map((g) => (
-              <div className="card-strip-pool" key={g.poolNumber}>
-                <span className="card-strip-label">Pool {g.poolNumber}</span>
-                <div className="card-strip-chips">
-                  {g.cards.map((c) => {
-                    const current = viewOnly
-                      ? c.receiptTokenId === receiptId
-                      : c.poolId === cardsSummary.poolId &&
-                        c.cardIndex === cardIndex;
-                    return (
-                      <a
-                        key={c.receiptTokenId}
-                        href={`/card?receipt=${c.receiptTokenId}`}
-                        className={`card-chip ${current ? 'current' : ''} ${
-                          c.linesFunded >= 10 ? 'filled' : ''
-                        }`}
-                      >
-                        <span className="card-chip-id">
-                          #{c.receiptTokenId}
-                        </span>
-                        <span className="card-chip-sub">
-                          {c.linesFunded >= 10 ? '✓' : `${c.linesFunded}/10`}
-                        </span>
-                      </a>
-                    );
-                  })}
-                  {cardsSummary.open && g.poolNumber === activePoolNumber && (
-                    <a
-                      href={`/card?card=${cardsSummary.cardCount}`}
-                      className={`card-chip card-chip-new ${
-                        !viewOnly && cardIndex === cardsSummary.cardCount
-                          ? 'current'
-                          : ''
-                      }`}
-                      onClick={(e) => {
-                        // A card with unfunded lines forfeits bonus
-                        // eligibility — block the next card until every
-                        // line of the ACTIVE pool's cards is funded (old
-                        // pools are closed; they can't be filled, so they
-                        // don't gate).
-                        const unfilled = cardsSummary.cards.some(
-                          (c) => c.linesFunded < 10,
-                        );
-                        if (unfilled) {
-                          e.preventDefault();
-                          setFillPreviousOpen(true);
-                        } else if (!viewOnly) {
-                          e.preventDefault();
-                          selectCard(cardsSummary.cardCount);
-                        }
-                      }}
-                    >
-                      + New
-                    </a>
-                  )}
-                </div>
-              </div>
-            ))}
+            {stripGroups
+              .flatMap((g) => g.cards)
+              .map((c) => {
+                const current = viewOnly
+                  ? c.receiptTokenId === receiptId
+                  : c.poolId === cardsSummary.poolId &&
+                    c.cardIndex === cardIndex;
+                return (
+                  <a
+                    key={c.receiptTokenId}
+                    href={`/card?receipt=${c.receiptTokenId}`}
+                    className={`card-chip ${current ? 'current' : ''} ${
+                      c.linesFunded >= 10 ? 'filled' : ''
+                    }`}
+                  >
+                    <span className="card-chip-id">Card #{c.receiptTokenId}</span>
+                    <span className="card-chip-sub">
+                      {c.linesFunded >= 10 ? '✓' : `${c.linesFunded}/10`}
+                    </span>
+                  </a>
+                );
+              })}
+            {cardsSummary.open && (
+              <a
+                href={`/card?card=${cardsSummary.cardCount}`}
+                className={`card-chip card-chip-new ${
+                  !viewOnly && cardIndex === cardsSummary.cardCount
+                    ? 'current'
+                    : ''
+                }`}
+                onClick={(e) => {
+                  // A card with unfunded lines forfeits bonus eligibility —
+                  // block the next card until every line of the ACTIVE pool's
+                  // cards is funded (old pools are closed; they can't be
+                  // filled, so they don't gate).
+                  const unfilled = cardsSummary.cards.some(
+                    (c) => c.linesFunded < 10,
+                  );
+                  if (unfilled) {
+                    e.preventDefault();
+                    setFillPreviousOpen(true);
+                  } else if (!viewOnly) {
+                    e.preventDefault();
+                    selectCard(cardsSummary.cardCount);
+                  }
+                }}
+              >
+                + New
+              </a>
+            )}
           </div>
         </section>
       )}
@@ -901,30 +918,19 @@ export default function CardDetailScreen() {
         <section className="screen admin-section">
           {!submitted && (
             <div className="admin-action">
-              <div className="bingo-grid">
+              <div className="card-frame">
+                <div className="bingo-grid">
                 {card.cells.map((cell, i) => {
                   const isPicked = (pickedMask & (1 << i)) !== 0;
                   const yes = isPicked && (pickedSides & (1 << i)) !== 0;
                   const no = isPicked && (pickedSides & (1 << i)) === 0;
-                  const odds = fmtOdds(cell.estimatedPrice);
                   return (
                     <div key={i} className="bingo-cell">
-                      {cell.imageUrl && (
-                        <img
-                          className="cell-thumb"
-                          src={cell.imageUrl}
-                          alt=""
-                          aria-hidden
-                        />
-                      )}
                       <div
                         className="bingo-cell-title"
                         onMouseEnter={(e) =>
                           setTip({
-                            text:
-                              cell.question ??
-                              cell.shortName ??
-                              cell.conditionId,
+                            text: cellTipText(cell),
                             x: e.clientX,
                             y: e.clientY,
                           })
@@ -938,7 +944,6 @@ export default function CardDetailScreen() {
                       >
                         {cell.shortName ?? cell.question ?? cell.conditionId}
                       </div>
-                      {odds && <div className="cell-odds">Odds {odds}</div>}
                       <div className="bingo-side-toggle">
                         <button
                           type="button"
@@ -964,6 +969,7 @@ export default function CardDetailScreen() {
                     </div>
                   );
                 })}
+                </div>
               </div>
               <div className="field price-field">
                 <div className="price-field-labels">
@@ -1051,10 +1057,9 @@ export default function CardDetailScreen() {
                   in an offset square: rows on the right, cols on the bottom,
                   diagonals in the corners. */}
               <div className="submit-panel">
-              <div className="locked-grid">
+              <div className={`locked-grid${submitting ? ' is-funding' : ''}`}>
                 {card.cells.map((cell, idx) => {
                   const yes = (yesMask & (1 << idx)) !== 0;
-                  const odds = fmtOdds(cell.estimatedPrice);
                   const row = Math.floor(idx / 4);
                   const col = idx % 4;
                   const highlighted =
@@ -1071,49 +1076,22 @@ export default function CardDetailScreen() {
                       }`}
                       style={{ gridColumn: col + 2, gridRow: row + 1 }}
                     >
-                      {cell.imageUrl && (
-                        <img
-                          className="cell-thumb"
-                          src={cell.imageUrl}
-                          alt=""
-                          aria-hidden
-                        />
-                      )}
-                      {cardComplete && (
-                        <span
-                          className={`cell-status cell-status-${
-                            cellStatus[idx] ?? 'pending'
-                          }`}
-                          onMouseEnter={(e) =>
-                            (cellStatus[idx] ?? 'pending') === 'pending' &&
-                            cell.endTime
-                              ? setTip({
-                                  text: `Est. end ${fmtEndTime(cell.endTime)}`,
-                                  x: e.clientX,
-                                  y: e.clientY,
-                                })
-                              : undefined
-                          }
-                          onMouseMove={(e) =>
-                            setTip((t) =>
-                              t ? { ...t, x: e.clientX, y: e.clientY } : t,
-                            )
-                          }
-                          onMouseLeave={() => setTip(null)}
-                        >
-                          <CellStatusIcon
-                            status={cellStatus[idx] ?? 'pending'}
-                          />
-                        </span>
-                      )}
+                      {/* Once resolved, mark the cell correct/wrong; while
+                          pending we show no icon — the estimated end time lives
+                          in the hover popover instead. */}
+                      {cardComplete &&
+                        (cellStatus[idx] ?? 'pending') !== 'pending' && (
+                          <span
+                            className={`cell-status cell-status-${cellStatus[idx]}`}
+                          >
+                            <CellStatusIcon status={cellStatus[idx]!} />
+                          </span>
+                        )}
                       <div
                         className="cell-text"
                         onMouseEnter={(e) =>
                           setTip({
-                            text:
-                              cell.question ??
-                              cell.shortName ??
-                              cell.conditionId,
+                            text: cellTipText(cell),
                             x: e.clientX,
                             y: e.clientY,
                           })
@@ -1127,7 +1105,6 @@ export default function CardDetailScreen() {
                       >
                         {cell.shortName ?? cell.question ?? cell.conditionId}
                       </div>
-                      {odds && <div className="cell-odds">Odds {odds}</div>}
                       <div className="locked-pick">{yes ? 'YES' : 'NO'}</div>
                     </article>
                   );
@@ -1210,6 +1187,31 @@ export default function CardDetailScreen() {
                   );
                 })}
               </div>
+              {submitting && (
+                <div className="funding-overlay">
+                  <div className="funding-overlay-inner">
+                    <div className="funding-head">Submitting your card</div>
+                    <div className="funding-count">
+                      {lineCount}
+                      <span>/{card.lines.length}</span> lines funded
+                    </div>
+                    <div className="funding-bar">
+                      <div
+                        className="funding-bar-fill"
+                        style={{
+                          width: `${(lineCount / card.lines.length) * 100}%`,
+                        }}
+                      />
+                    </div>
+                    <div className="funding-towin">
+                      <span className="funding-towin-label">Total to win</span>
+                      <span className="funding-towin-amount">
+                        {fmtWin(totalToWinWei)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
               </div>
 
               {!cardComplete && (!viewOnly || isOwner) && (
@@ -1243,50 +1245,71 @@ export default function CardDetailScreen() {
             </>
           )}
 
-          {cardComplete && pool && cardPriceWei != null && (
-            <div className="bonus-curve">
-              <div className="bonus-prize-title">Bonus Prize</div>
-              <p className="muted small">
-                Bonuses are paid out directly by COMBO.BINGO.
-              </p>
-              <ol className="wizard bonus-wizard">
-                {pool.multiplierBps.map((bps, i) => {
-                  const status =
-                    i < wins ? 'done' : i === wins ? 'current' : 'pending';
-                  const payout = (cardPriceWei * BigInt(bps)) / 10_000n;
-                  return (
-                    <li key={i} className={`wizard-step status-${status}`}>
-                      <div className="wizard-step-marker" aria-hidden>
-                        {i}
-                      </div>
-                      <div className="wizard-step-body bonus-wizard-body">
-                        <span className="bonus-wizard-wins">
-                          {i} {i === 1 ? 'Bingo' : 'Bingos'}
-                        </span>
-                        <span className="bonus-wizard-prize">
-                          {bps === 0
-                            ? 'No Bonus'
-                            : `${(bps / 10_000)
-                                .toFixed(2)
-                                .replace(/\.?0+$/, '')}× · $${fmtUnits(payout)}`}
-                        </span>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ol>
-              {wins > 0 && (
-                <p className="muted small">
-                  Current entitlement: $
-                  {fmtUnits(
-                    (cardPriceWei *
-                      BigInt(pool.multiplierBps[wins] ?? 0)) /
-                      10_000n,
-                  )}{' '}
-                  ({wins} {wins === 1 ? 'bingo' : 'bingos'}) — paid out
-                  directly by COMBO.BINGO.
-                </p>
-              )}
+          {pool && cardPriceWei != null && (
+            <div className="stat-strip">
+              <div className="stat">
+                <span className="label">Stake</span>
+                <span className="stat-value">{fmtUnits(cardPriceWei)}</span>
+              </div>
+
+              <div className="stat bonus-stat" tabIndex={0}>
+                <span className="label">Bonus</span>
+                <span className="stat-value">
+                  {pool.multiplierBps[wins] && pool.multiplierBps[wins] > 0
+                    ? `${(pool.multiplierBps[wins] / 10_000)
+                        .toFixed(2)
+                        .replace(/\.?0+$/, '')}x`
+                    : '—'}
+                </span>
+                {/* Hover (or focus) the Bonus stat to reveal the full ladder. */}
+                <div className="bonus-popover" role="tooltip">
+                  <div className="bonus-prize-title">Bonus Prize</div>
+                  <p className="muted small">
+                    Bonuses are paid out directly by COMBO.BINGO.
+                  </p>
+                  <ol className="wizard bonus-wizard">
+                    {pool.multiplierBps.map((bps, i) => {
+                      const status =
+                        i < wins ? 'done' : i === wins ? 'current' : 'pending';
+                      const tierPayout = (cardPriceWei * BigInt(bps)) / 10_000n;
+                      return (
+                        <li key={i} className={`wizard-step status-${status}`}>
+                          <div className="wizard-step-marker" aria-hidden>
+                            {i}
+                          </div>
+                          <div className="wizard-step-body bonus-wizard-body">
+                            <span className="bonus-wizard-wins">
+                              {i} {i === 1 ? 'Bingo' : 'Bingos'}
+                            </span>
+                            <span className="bonus-wizard-prize">
+                              {bps === 0
+                                ? 'No Bonus'
+                                : `${(bps / 10_000)
+                                    .toFixed(2)
+                                    .replace(/\.?0+$/, '')}× · $${fmtUnits(tierPayout)}`}
+                            </span>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                  {wins > 0 && (
+                    <p className="muted small">
+                      Current entitlement: $
+                      {fmtUnits(
+                        (cardPriceWei * BigInt(pool.multiplierBps[wins] ?? 0)) /
+                          10_000n,
+                      )}{' '}
+                      ({wins} {wins === 1 ? 'bingo' : 'bingos'}).
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="stat payout">
+                <span className="label">Payout</span>
+                <span className="stat-value">{fmtWin(totalToWinWei)}</span>
+              </div>
             </div>
           )}
 

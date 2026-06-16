@@ -950,10 +950,96 @@ button.quick-pick:hover {
    TO WIN side columns overhang into the gutters. The negative margin equals
    exactly one side column + gap so the first/last cell sit at the content edge. */
 .submit-panel {
+  position: relative;
   margin: 0.5rem -5.15rem 0;
   padding: 0;
   background: none;
   border: 0;
+}
+
+/* While funding, fade the card right down and float progress over it. */
+.locked-grid.is-funding {
+  opacity: 0.14;
+  filter: saturate(0.55);
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.funding-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.funding-overlay-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.85rem;
+  width: min(72%, 21rem);
+  text-align: center;
+}
+
+.funding-head {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.funding-count {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.funding-count span {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.funding-bar {
+  width: 100%;
+  height: 0.7rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  border: 1px solid rgba(124, 140, 248, 0.24);
+  overflow: hidden;
+}
+
+.funding-bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), var(--yes));
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.funding-towin {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-top: 0.2rem;
+}
+
+.funding-towin-label {
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.funding-towin-amount {
+  font-size: 2.1rem;
+  font-weight: 700;
+  color: var(--yes);
+  font-variant-numeric: tabular-nums;
 }
 
 .locked-grid {
@@ -1314,28 +1400,6 @@ button.quick-pick:hover {
 
 /* ---------- card strip (all cards across pools) ---------- */
 .card-strip {
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
-}
-
-.card-strip-pool {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-}
-
-.card-strip-label {
-  flex: 0 0 auto;
-  min-width: 3.4rem;
-  font-size: 0.66rem;
-  font-weight: 600;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-.card-strip-chips {
   display: flex;
   gap: 0.35rem;
   flex-wrap: wrap;
@@ -1772,7 +1836,8 @@ button.quick-pick:hover {
   padding: 0.18rem 0.42rem;
 }
 
-/* Hover tooltip showing the full question (escapes the grid's overflow). */
+/* Hover popover: the full question plus estimated price / end time, one per
+   line. Escapes the grid's overflow (position: fixed). */
 .cell-tip {
   position: fixed;
   z-index: 100;
@@ -1785,6 +1850,7 @@ button.quick-pick:hover {
   font-family: var(--font-sans);
   font-size: 0.82rem;
   line-height: 1.4;
+  white-space: pre-line;
   pointer-events: none;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
 }
@@ -2049,40 +2115,14 @@ button.quick-pick:hover {
   text-decoration: none;
 }
 
-.brand-word {
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: 1.35rem;
-  letter-spacing: -0.02em;
-  color: var(--text);
-  line-height: 1;
-}
-
-.brand-squares {
-  display: flex;
-  gap: 0.28rem;
-}
-
-.brand-square {
-  width: 1.55rem;
-  height: 0.5rem;
-  border-radius: 2px;
-}
-
-.brand-square:nth-child(1) {
-  background: #3b82f6;
-}
-.brand-square:nth-child(2) {
-  background: #ec4899;
-}
-.brand-square:nth-child(3) {
-  background: #d946ef;
-}
-.brand-square:nth-child(4) {
-  background: #f59e0b;
-}
-.brand-square:nth-child(5) {
-  background: var(--lime);
+.brand-logo {
+  display: block;
+  height: 2.5rem;
+  width: auto;
+  /* Image ships on a black plate. `screen` makes pure black contribute
+     nothing, so the plate disappears against the near-black header and only
+     the wordmark + colored bars show — no transparent PNG needed. */
+  mix-blend-mode: screen;
 }
 
 /* ---------- lime context pill ---------- */
@@ -2100,6 +2140,23 @@ button.quick-pick:hover {
   white-space: nowrap;
 }
 
+/* ---------- per-card meta bar (pool + closes, share/details) ---------- */
+.card-meta-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+}
+
+/* Push the share/details actions to the right edge, aligned with the
+   pool line, regardless of whether the pool label is present. */
+.card-meta-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 /* ---------- receipt header (eyebrow + title + thumb) ---------- */
 .receipt-head {
   display: flex;
@@ -2115,15 +2172,9 @@ button.quick-pick:hover {
   border-radius: var(--r-md);
   object-fit: cover;
   background: var(--surface-2);
-  border: 1px solid var(--hairline);
-}
-
-.receipt-thumb-trophy {
-  display: grid;
-  place-items: center;
-  font-size: 2.75rem;
-  line-height: 1;
-  background: radial-gradient(circle at 50% 35%, #2a2d36, #14161d 75%);
+  /* Subtle frame so the bright photo reads as a contained thumbnail. */
+  border: 1px solid var(--hairline-strong);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
 }
 
 .receipt-titles {
@@ -2134,15 +2185,7 @@ button.quick-pick:hover {
   flex: 1;
 }
 
-/* eyebrow row: brand label left, Details chip right */
-.receipt-eyebrow-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-/* "Details" chip, right-aligned next to the eyebrow */
+/* "Details" / "Share" chip, right-aligned in the card meta bar */
 .details-link {
   flex-shrink: 0;
   background: transparent;
@@ -2210,6 +2253,47 @@ button.quick-pick:hover {
 
 .stat.payout .stat-value {
   color: var(--yes);
+}
+
+/* Bonus stat reveals the full prize ladder on hover/focus. */
+.bonus-stat {
+  position: relative;
+  cursor: help;
+  outline: none;
+}
+
+.bonus-popover {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 0.55rem);
+  transform: translateX(-50%) translateY(4px);
+  width: min(21rem, 82vw);
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 1.1rem 1.2rem;
+  text-align: left;
+  background: var(--surface-2);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--r-lg);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 0.14s ease,
+    transform 0.14s ease;
+  z-index: 30;
+}
+
+.bonus-stat:hover .bonus-popover,
+.bonus-stat:focus-within .bonus-popover {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+.bonus-popover .bonus-prize-title {
+  margin-top: 0;
 }
 
 /* ---------- receipt meta (position id / placed / qr) ---------- */
