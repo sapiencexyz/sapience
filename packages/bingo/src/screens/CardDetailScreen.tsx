@@ -6,9 +6,9 @@ import {
 } from '@sapience/sdk/auction/escrowEncoding';
 import { OutcomeSide, type Pick } from '@sapience/sdk/types/escrow';
 import { predictionMarketEscrow as escrowAddresses } from '@sapience/sdk/contracts';
-import { usePublicClient } from 'wagmi';
+import { useAccount, usePublicClient } from 'wagmi';
 import { CHAIN_ID } from '../lib/chain';
-import { fmtUnits, shortAddress } from '../lib/format/balance';
+import { fmtUnits } from '../lib/format/balance';
 import {
   fetchCard,
   fetchCards,
@@ -213,8 +213,14 @@ function mergeCardMonotonic(
 
 export default function CardDetailScreen() {
   const publicClient = usePublicClient({ chainId: CHAIN_ID });
+  const { isConnecting, isReconnecting } = useAccount();
 
-  const { client: sessionClient, isActive, config } = useSession();
+  const {
+    client: sessionClient,
+    isActive,
+    isRestoring,
+    config,
+  } = useSession();
   // The card is per-player: the connected session's smart account is the player.
   const player = config?.smartAccountAddress;
 
@@ -222,6 +228,13 @@ export default function CardDetailScreen() {
   // no session required, all write actions hidden.
   const [receiptId] = useState<string | null>(receiptIdFromUrl());
   const viewOnly = receiptId != null;
+
+  // We don't yet know whether the user has a session: wagmi is still
+  // reconnecting a saved wallet, or a stored session is being restored. Show
+  // the loader during this window instead of flashing the get-ready wizard
+  // (which assumes "not set up") before the session settles.
+  const booting =
+    !viewOnly && (isConnecting || isReconnecting || isRestoring);
 
   const [pool, setPool] = useState<PoolResponse | null>(null);
   const [card, setCard] = useState<CardResponse | null>(null);
@@ -246,7 +259,6 @@ export default function CardDetailScreen() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [actionBusy, setActionBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [detailsOpen, setDetailsOpen] = useState(false);
   const [fillPreviousOpen, setFillPreviousOpen] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const [tip, setTip] = useState<{
@@ -791,8 +803,9 @@ export default function CardDetailScreen() {
 
       {/* Not set up yet → the get-ready wizard (connect → fund → sign). Once
           the session is active it falls away and the card below renders.
-          Funding lives inside the wizard, between connect and sign. */}
-      {!viewOnly && !isActive && (
+          Funding lives inside the wizard, between connect and sign. Held back
+          while booting so a reconnecting wallet doesn't flash onboarding. */}
+      {!viewOnly && !isActive && !booting && (
         <section className="screen admin-section">
           <SetupWizard />
         </section>
@@ -807,23 +820,34 @@ export default function CardDetailScreen() {
           <div className="card-strip">
             {stripGroups
               .flatMap((g) => g.cards)
+              // Stable numeric order so the strip never reshuffles between
+              // polls (Card #1, #4, #7 …).
+              .sort((a, b) =>
+                BigInt(a.receiptTokenId) < BigInt(b.receiptTokenId) ? -1 : 1,
+              )
               .map((c) => {
                 const current = viewOnly
                   ? c.receiptTokenId === receiptId
                   : c.poolId === cardsSummary.poolId &&
                     c.cardIndex === cardIndex;
+                const sameSession =
+                  !viewOnly && c.poolId === cardsSummary.poolId;
                 return (
                   <a
                     key={c.receiptTokenId}
                     href={`/card?receipt=${c.receiptTokenId}`}
-                    className={`card-chip ${current ? 'current' : ''} ${
-                      c.linesFunded >= 10 ? 'filled' : ''
-                    }`}
+                    className={`card-chip ${current ? 'current' : ''}`}
+                    onClick={(e) => {
+                      // Switch our own active-pool cards in place — a full
+                      // navigation here remounts the app and flashes the nav.
+                      // Cross-pool / view-only chips keep the receipt permalink.
+                      if (sameSession) {
+                        e.preventDefault();
+                        selectCard(c.cardIndex);
+                      }
+                    }}
                   >
                     <span className="card-chip-id">Card #{c.receiptTokenId}</span>
-                    <span className="card-chip-sub">
-                      {c.linesFunded >= 10 ? '✓' : `${c.linesFunded}/10`}
-                    </span>
                   </a>
                 );
               })}
@@ -895,13 +919,6 @@ export default function CardDetailScreen() {
                 {shareCopied ? 'Copied!' : 'Share'}
               </button>
             )}
-            <button
-              type="button"
-              className="details-link"
-              onClick={() => setDetailsOpen(true)}
-            >
-              Details
-            </button>
           </span>
         </div>
       )}
@@ -1379,7 +1396,7 @@ export default function CardDetailScreen() {
         </section>
       )}
 
-      {!card && (player || viewOnly) && !statusMsg && (
+      {(booting || (!card && (player || viewOnly) && !statusMsg)) && (
         <section className="screen admin-section">
           <div className="card-loader">
             <div className="card-loader-ring" aria-hidden />
@@ -1416,51 +1433,6 @@ export default function CardDetailScreen() {
         </div>
       )}
 
-      {detailsOpen && card && (
-        <div
-          className="bingo-modal-backdrop"
-          onClick={() => setDetailsOpen(false)}
-        >
-          <div className="bingo-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="card-header">
-              <h2>Card Details</h2>
-              <button
-                type="button"
-                className="ghost"
-                onClick={() => setDetailsOpen(false)}
-              >
-                Close
-              </button>
-            </div>
-            <div className="admin-kv">
-              <div>Pool</div>
-              <div className="mono">{card.poolId}</div>
-              <div>Card</div>
-              <div className="mono">
-                #{card.cardIndex + 1} of {Math.max(card.cardCount, card.cardIndex + 1)}
-              </div>
-              <div>Player</div>
-              <div className="mono">{shortAddress(card.player)}</div>
-              <div>Card price</div>
-              <div className="mono">{fmtUnits(cardPriceWei ?? undefined)}</div>
-              <div>Submitted</div>
-              <div className="mono">
-                {card.submittedAt
-                  ? new Date(card.submittedAt).toLocaleString()
-                  : 'no'}
-              </div>
-              <div>Lines funded</div>
-              <div className="mono">
-                {lineCount} / {card.lines.length}
-              </div>
-              <div>Pool cutoff</div>
-              <div className="mono">
-                {new Date(card.cutoff * 1000).toLocaleString()}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
       {tip && (
         <div
           className="cell-tip"
