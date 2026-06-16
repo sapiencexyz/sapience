@@ -2,7 +2,7 @@
   "env": "robinhood-mainnet",
   "chain": {
     "name": "Robinhood Mainnet",
-    "chainId": 0,
+    "chainId": 4663,
     "rpcUrlEnv": "PM_NETWORK_RPC_URL",
     "deployerPrivateKeyEnv": "PM_NETWORK_DEPLOYER_PRIVATE_KEY",
     "deployerAddressEnv": "PM_NETWORK_DEPLOYER_ADDRESS",
@@ -24,7 +24,7 @@
       "wiringPeers": [],
       "configureScripts": [],
       "sdkExport": "manualConditionResolver",
-      "notes": "SCAFFOLD — chainId is a placeholder (0). Set the real Robinhood mainnet chain id + config before running manifest:apply --bundle mainnet."
+      "notes": "Admin-controlled resolver. Standalone — no deps. Default resolver until Pyth is available on Robinhood mainnet."
     },
     "PredictionMarketTokenFactory": {
       "name": "PredictionMarketTokenFactory",
