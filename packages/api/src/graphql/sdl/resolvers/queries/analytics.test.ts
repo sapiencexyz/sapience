@@ -29,7 +29,9 @@ vi.mock('../../../../lib/utils', () => ({
   getProviderForChain: vi.fn(),
 }));
 
-const { protocolStats } = await import('./analytics');
+const { protocolStats, __clearProtocolStatsCache } = await import(
+  './analytics'
+);
 
 type ProtocolStatsFn = (
   parent: unknown,
@@ -39,19 +41,17 @@ type ProtocolStatsFn = (
 ) => Promise<unknown[]>;
 const protocolStatsFn = protocolStats as unknown as ProtocolStatsFn;
 
+const PROTOCOL_VAULT = {
+  kind: 'protocol',
+  address: '0xprotocol',
+  config: { address: '0xprotocol', legacy: [] },
+};
+
 describe('Query.protocolStats', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetConfiguredVaults.mockReturnValue([
-      {
-        kind: 'protocol',
-        address: '0xprotocol',
-        config: {
-          address: '0xprotocol',
-          legacy: [],
-        },
-      },
-    ]);
+    __clearProtocolStatsCache();
+    mockGetConfiguredVaults.mockReturnValue([PROTOCOL_VAULT]);
   });
 
   it('returns [] for an unknown vaultAddress instead of falling back to all vaults', async () => {
@@ -144,5 +144,129 @@ describe('Query.protocolStats', () => {
     expect(result[1].periodPnL).toBe('-80');
     // Live candle: realizedPnL(-970) + unredeemed(988) + sold(7) - bought(5) = 20
     expect(result[2].vaultCumulativePnL).toBe('20');
+  });
+});
+
+describe('Query.protocolStats TTL cache', () => {
+  // Minimal happy-path mocks so a full compute can run end to end. The series
+  // SQL is mocked to [] (its correctness is covered by the integration test);
+  // here we only care how many times the underlying work is triggered.
+  const primeMocks = async () => {
+    mockGetConfiguredVaults.mockReturnValue([PROTOCOL_VAULT]);
+    mockGetProtocolStatsTimeSeries.mockResolvedValue([
+      {
+        vaultAddress: '0xprotocol',
+        timestamp: 1_000_000,
+        vaultBalance: '0',
+        vaultAvailableAssets: '0',
+        vaultDeployed: '0',
+        escrowBalance: '0',
+        vaultPositionsWon: 0,
+        vaultPositionsLost: 0,
+        vaultDeposits: '0',
+        vaultWithdrawals: '0',
+        vaultAirdropGains: '0',
+        vaultRealizedPnL: '0',
+        vaultUnredeemedClaim: '0',
+        vaultSecondaryBought: '0',
+        vaultSecondarySold: '0',
+      },
+    ]);
+    mockQueryRaw.mockResolvedValue([]);
+    const svc = await import('../../../../services/protocolStats');
+    vi.mocked(svc.fetchVaultTVL).mockResolvedValue(0n);
+    vi.mocked(svc.fetchVaultAvailableAssets).mockResolvedValue(0n);
+    vi.mocked(svc.fetchVaultDeployed).mockResolvedValue(0n);
+    vi.mocked(svc.sumEscrowBalancesAtBlock).mockResolvedValue(0n);
+    vi.mocked(svc.calculateVaultPnL).mockResolvedValue({
+      realizedPnL: 0n,
+      positionsWon: 0,
+      positionsLost: 0,
+      totalCollateralWon: 0n,
+      totalCollateralLost: 0n,
+    });
+    vi.mocked(svc.calculateVaultFlows).mockResolvedValue({
+      totalDeposits: 0n,
+      totalWithdrawals: 0n,
+    });
+    vi.mocked(svc.calculateVaultSecondaryFlows).mockResolvedValue({
+      bought: 0n,
+      sold: 0n,
+    });
+    vi.mocked(svc.calculateVaultAirdrops).mockResolvedValue(0n);
+    vi.mocked(svc.calculateVaultUnredeemedClaim).mockResolvedValue(0n);
+  };
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    __clearProtocolStatsCache();
+    await primeMocks();
+  });
+
+  const call = () =>
+    protocolStatsFn(
+      {} as never,
+      { vaultAddress: null },
+      {} as never,
+      {} as never
+    );
+
+  it('computes once and serves cached result on repeat calls within the TTL', async () => {
+    await call();
+    await call();
+    await call();
+
+    // The 3 series queries run on the first call only; later calls are cached.
+    expect(mockQueryRaw).toHaveBeenCalledTimes(3);
+    expect(mockGetProtocolStatsTimeSeries).toHaveBeenCalledTimes(1);
+  });
+
+  it('single-flights concurrent calls into one computation', async () => {
+    await Promise.all([call(), call(), call(), call()]);
+
+    // The dashboard's concurrent `stats` + `statsHistory` resolvers (and any
+    // overlapping refetch) collapse to a single DB+RPC pass.
+    expect(mockGetProtocolStatsTimeSeries).toHaveBeenCalledTimes(1);
+    expect(mockQueryRaw).toHaveBeenCalledTimes(3);
+  });
+
+  it('re-computes after the cache is cleared (TTL expiry)', async () => {
+    await call();
+    __clearProtocolStatsCache();
+    await call();
+
+    expect(mockGetProtocolStatsTimeSeries).toHaveBeenCalledTimes(2);
+  });
+
+  it('keys the cache by vault address — a different vault is not a cache hit', async () => {
+    mockGetConfiguredVaults.mockReturnValue([
+      PROTOCOL_VAULT,
+      {
+        kind: 'pyth',
+        address: '0xpyth',
+        config: { address: '0xpyth', legacy: [] },
+      },
+    ]);
+
+    await call();
+    await protocolStatsFn(
+      {} as never,
+      { vaultAddress: '0xpyth' },
+      {} as never,
+      {} as never
+    );
+
+    expect(mockGetProtocolStatsTimeSeries).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not cache a rejected computation', async () => {
+    mockGetProtocolStatsTimeSeries.mockRejectedValueOnce(new Error('db down'));
+
+    await expect(call()).rejects.toThrow('db down');
+    // Next call must retry rather than replay the cached rejection.
+    const result = await call();
+
+    expect(Array.isArray(result)).toBe(true);
+    expect(mockGetProtocolStatsTimeSeries).toHaveBeenCalledTimes(2);
   });
 });
