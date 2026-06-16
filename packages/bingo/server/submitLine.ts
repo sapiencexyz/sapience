@@ -35,6 +35,16 @@ const BID_WAIT_MS = 45_000;
  *  UI display, deliberately unfunded — its bids can never be filled. Skip
  *  them entirely so timeouts report the truth ("no fillable bids"). */
 const ESTIMATE_QUOTER = '0xe02ed37d0458c8999943cbe6d1c9db597f3ee572';
+
+/** Only fill against our own funded market makers — quotes from any other
+ *  counterparty are ignored. Lowercased for case-insensitive comparison. */
+const ALLOWED_COUNTERPARTIES = new Set(
+  [
+    '0x1f5fF6074095cd27A7EaBd75F0A1Ac4243ecCE91',
+    '0xAE53E270ad4Ac82E87270f26C903fc76Cb209D19',
+  ].map((a) => a.toLowerCase())
+);
+
 const WS_CONNECT_TIMEOUT_MS = 15_000;
 const AUCTION_START_TIMEOUT_MS = 10_000;
 
@@ -443,11 +453,16 @@ export async function submitLine(
           if (settled) return;
           const fresh = incoming.filter((b) => {
             if (b.counterparty.toLowerCase() === ESTIMATE_QUOTER) return false;
+            // Only our own funded market makers may fill a line.
+            if (!ALLOWED_COUNTERPARTIES.has(b.counterparty.toLowerCase()))
+              return false;
+            // Sponsored mints narrow further: only the sponsor's required
+            // counterparty (the vault) can fill, or fundMint reverts on-chain.
             if (
               sponsorCounterparty &&
               b.counterparty.toLowerCase() !== sponsorCounterparty.toLowerCase()
             ) {
-              return false; // sponsored: only the vault counterparty can fill
+              return false;
             }
             if (seenSigs.has(b.counterpartySignature)) return false;
             seenSigs.add(b.counterpartySignature);

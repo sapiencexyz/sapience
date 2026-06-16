@@ -1540,25 +1540,11 @@ button.quick-pick:hover {
   background: rgba(255, 255, 255, 0.03);
 }
 
-.card-chip-sub {
-  font-size: 0.66rem;
-  color: var(--text-muted);
-}
-
-.card-chip.filled .card-chip-sub {
-  color: var(--yes);
-}
-
 .card-chip.current {
   color: #0a0a0c;
   background: var(--text);
   border-color: transparent;
   font-weight: 600;
-}
-
-.card-chip.current .card-chip-sub {
-  color: inherit;
-  opacity: 0.65;
 }
 
 /* The primary call-to-action of the strip — lime accent so it reads as
