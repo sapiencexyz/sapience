@@ -25,6 +25,7 @@ import {
   sponsorAddress,
 } from './chain.js';
 import {
+  getRemainingBudget,
   getSponsorStatus,
   grantBudgetIfNew,
   isSponsorshipEnabled,
@@ -557,14 +558,9 @@ export async function handleApi(
       poolId?: string;
       cardIndex?: number;
       lineIndex?: number;
-      sponsored?: boolean;
       session?: SerializedSession;
     }>(req);
     const { player, cardIndex, lineIndex } = body;
-    const sponsor =
-      body.sponsored === true && isSponsorshipEnabled(network)
-        ? (sponsorAddress(network) ?? undefined)
-        : undefined;
     if (!player || !isAddress(player)) {
       json(res, 400, { error: 'player required' });
       return true;
@@ -597,10 +593,15 @@ export async function handleApi(
     // on the already-funded path — runLine re-awaits and surfaces it.
     const sessionClientPromise = sessionFor(network, player, body.session);
     sessionClientPromise.catch(() => {});
-    // The two chain reads don't depend on each other — overlap them.
-    const [submission, fundedEvents] = await Promise.all([
+    // The chain reads don't depend on each other — overlap them. The remaining
+    // sponsorship budget rides along so the per-line sponsor decision adds no
+    // latency (and survives reloads: no client-held flag, just on-chain budget).
+    const [submission, fundedEvents, sponsorRemaining] = await Promise.all([
       chainSubmission(network, pool.poolId, player, cardIndex),
       fundedPredictions(network, player),
+      isSponsorshipEnabled(network)
+        ? getRemainingBudget(network, player)
+        : Promise.resolve(0n),
     ]);
     if (!submission) {
       json(res, 409, { error: 'No submission — POST /api/card/submit first' });
@@ -610,6 +611,11 @@ export async function handleApi(
     const cells = drawCells(pool.conditions, submission.seed);
     const stakePerLineWei =
       BigInt(submission.cardPriceWei) / BigInt(LINES_PER_CARD);
+    // House-fund this line iff the player's budget still covers its stake.
+    const sponsor =
+      sponsorRemaining >= stakePerLineWei
+        ? (sponsorAddress(network) ?? undefined)
+        : undefined;
     // Monotonic funded check (escrow events): never double-mint a line,
     // even after the player redeemed (burned) the position.
     const tag = cardTag(pool.poolId, player, cardIndex);

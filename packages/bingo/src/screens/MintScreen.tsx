@@ -9,6 +9,7 @@ import {
 } from '../lib/format/balance';
 import { fetchPool, type PoolResponse } from '../lib/backendApi';
 import { useSession } from '../hooks/useSession';
+import { useSponsorStatus } from '../hooks/useSponsorStatus';
 import { useCollateralBalance } from '../hooks/blockchain/useCollateralBalance';
 import Nav from '../components/Nav';
 import BungeeBridge from '../components/BungeeBridge';
@@ -77,6 +78,11 @@ export default function MintScreen() {
       ? needed - rawBalance
       : (needed ?? 0n);
 
+  // Sponsored new users skip the deposit entirely — the house funds the card.
+  const { eligible: sponsorEligible } = useSponsorStatus(sa);
+  // Either funded OR sponsored unblocks Sign + Play (the deposit is optional).
+  const readyToSign = funded || sponsorEligible;
+
   // ---------- session ----------
   const {
     isActive,
@@ -99,15 +105,16 @@ export default function MintScreen() {
   const connectStatus: StepStatus = isConnected ? 'done' : 'current';
   const fundStatus: StepStatus = !isConnected
     ? 'pending'
-    : funded
+    : funded || sponsorEligible
       ? 'done'
       : 'current';
-  const signStatus: StepStatus = !funded
+  const signStatus: StepStatus = !readyToSign
     ? 'pending'
     : isActive
       ? 'done'
       : 'current';
-  const viewStatus: StepStatus = !funded || !isActive ? 'pending' : 'current';
+  const viewStatus: StepStatus =
+    !readyToSign || !isActive ? 'pending' : 'current';
 
   return (
     <main>
@@ -198,6 +205,10 @@ export default function MintScreen() {
                 <p className="muted small">
                   {formatDollarLikeBalance(balance)} USDe available
                 </p>
+              ) : sponsorEligible ? (
+                <p className="muted small">
+                  Sponsored — no deposit needed. Your first card is on us 🎟️
+                </p>
               ) : (
                 <>
                   <p className="muted small">
@@ -235,7 +246,7 @@ export default function MintScreen() {
             </div>
             <div className="wizard-step-body">
               <div className="wizard-step-title">Sign</div>
-              {!funded ? (
+              {!readyToSign ? (
                 <p className="muted small">
                   Fund your account to enable signing.
                 </p>
@@ -267,7 +278,7 @@ export default function MintScreen() {
                   </button>
                 </>
               )}
-              {funded && sessionError && (
+              {readyToSign && sessionError && (
                 <p className="error small">{sessionError.message}</p>
               )}
             </div>
@@ -279,7 +290,7 @@ export default function MintScreen() {
             </div>
             <div className="wizard-step-body">
               <div className="wizard-step-title">Play</div>
-              {!funded ? (
+              {!readyToSign ? (
                 <p className="muted small">
                   Fund your account to see your card.
                 </p>

@@ -203,6 +203,29 @@ export async function grantBudgetIfNew(
   }
 }
 
+/** A player's remaining sponsorship budget (one read). Used by the line
+ *  handler to decide, per line, whether the house funds the stake — which
+ *  keeps funding correct across page reloads (no client-held "sponsored"
+ *  flag to lose): each line is sponsored iff budget still covers its stake. */
+export async function getRemainingBudget(
+  network: Network,
+  player: Address,
+): Promise<bigint> {
+  const sponsor = sponsorAddress(network);
+  if (!sponsor) return 0n;
+  try {
+    return (await getPublicClient(network).readContract({
+      address: sponsor,
+      abi: SPONSOR_ABI,
+      functionName: 'remainingBudget',
+      args: [player],
+    })) as bigint;
+  } catch (e) {
+    console.warn(`[sponsorship] remainingBudget read failed for ${player}:`, e);
+    return 0n;
+  }
+}
+
 /** The counterparty the sponsor will fund against (the vault). Sponsored line
  *  auctions must settle against it or the on-chain fundMint reverts, so the
  *  bid loop filters to it. Read from the contract — avoids hardcoding per

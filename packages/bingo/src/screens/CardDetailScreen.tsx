@@ -26,6 +26,7 @@ import {
   redeemViaSession,
 } from '../lib/session/sessionKeyManager';
 import { useSession } from '../hooks/useSession';
+import { useSponsorStatus } from '../hooks/useSponsorStatus';
 import { useCollateralBalance } from '../hooks/blockchain/useCollateralBalance';
 import { buildLines } from '../parlay';
 import Nav from '../components/Nav';
@@ -353,6 +354,18 @@ export default function CardDetailScreen() {
   const cardPriceWei =
     card?.cardPriceWei != null ? BigInt(card.cardPriceWei) : null;
 
+  // Sponsorship: a new player mints their first card on the house. Only
+  // relevant before submit — an already-submitted card funds its lines from
+  // the on-chain budget, decided server-side. The price is locked to the
+  // sponsored amount.
+  const { status: sponsorStatus, eligible: sponsorEligible } = useSponsorStatus(
+    viewOnly ? undefined : player,
+  );
+  const sponsored = sponsorEligible && !submitted;
+  const sponsoredPriceWei = sponsorStatus
+    ? BigInt(sponsorStatus.sponsoredCardPriceWei)
+    : null;
+
   // Validate the entered price: wei, ≥ pool minimum, divisible by 10 lines.
   const enteredPriceWei: bigint | null = useMemo(() => {
     const v = priceInput.trim();
@@ -368,6 +381,10 @@ export default function CardDetailScreen() {
     }
   }, [priceInput, pool]);
 
+  // The price actually submitted: locked to the sponsored amount for a
+  // sponsored card, otherwise the validated input.
+  const effectivePriceWei = sponsored ? sponsoredPriceWei : enteredPriceWei;
+
   // Spendable collateral = native USDe + wrapped (the backend wraps any
   // native shortfall). Drives the balance display + the pre-submit check —
   // without it, a too-high price only fails server-side AFTER the receipt
@@ -378,6 +395,7 @@ export default function CardDetailScreen() {
     enabled: !!player && !submitted,
   });
   const insufficientBalance =
+    !sponsored &&
     enteredPriceWei != null &&
     availableWei != null &&
     enteredPriceWei > availableWei;
@@ -448,7 +466,7 @@ export default function CardDetailScreen() {
   // price on-chain), then this client drives the 10 line mints.
   const submitPicks = async () => {
     const session = loadSession();
-    if (!player || enteredPriceWei == null || !session || cardIndex == null)
+    if (!player || effectivePriceWei == null || !session || cardIndex == null)
       return;
     setActionError(null);
     setActionBusy(true);
@@ -457,8 +475,9 @@ export default function CardDetailScreen() {
         player,
         cardIndex,
         yesMask: pickedSides,
-        cardPriceWei: enteredPriceWei.toString(),
+        cardPriceWei: effectivePriceWei.toString(),
         ref: loadRef(),
+        sponsored,
         session,
       });
       // Optimistic flip to the submitted view — without this the pick form
@@ -469,7 +488,7 @@ export default function CardDetailScreen() {
           ? {
               ...prev,
               yesMask: pickedSides,
-              cardPriceWei: enteredPriceWei.toString(),
+              cardPriceWei: effectivePriceWei.toString(),
               submittedAt: Date.now(),
               receiptTokenId: res.receiptTokenId,
             }
@@ -965,47 +984,61 @@ export default function CardDetailScreen() {
                   );
                 })}
               </div>
-              <div className="field price-field">
-                <div className="price-field-labels">
-                  <label className="label" htmlFor="card-price">
-                    Card price (USDe)
-                  </label>
-                  {availableWei != null && (
-                    <span className="label muted">
-                      Available: {fmtUnits(availableWei)} USDe
-                    </span>
+              {sponsored ? (
+                <div className="field price-field">
+                  <div className="price-field-labels">
+                    <label className="label">Card price (USDe)</label>
+                    <span className="label muted">Sponsored 🎟️</span>
+                  </div>
+                  <p className="muted small">
+                    Your first card is on us —{' '}
+                    {fmtUnits(sponsoredPriceWei ?? 0n)} USDe sponsored. No
+                    deposit needed.
+                  </p>
+                </div>
+              ) : (
+                <div className="field price-field">
+                  <div className="price-field-labels">
+                    <label className="label" htmlFor="card-price">
+                      Card price (USDe)
+                    </label>
+                    {availableWei != null && (
+                      <span className="label muted">
+                        Available: {fmtUnits(availableWei)} USDe
+                      </span>
+                    )}
+                  </div>
+                  <input
+                    id="card-price"
+                    className="admin-input"
+                    inputMode="decimal"
+                    placeholder={
+                      pool ? fmtUnits(BigInt(pool.minCardPriceWei)) : '10'
+                    }
+                    value={priceInput}
+                    onChange={(e) => {
+                      setPriceTouched(true);
+                      setPriceInput(e.target.value);
+                    }}
+                    disabled={actionBusy}
+                  />
+                  {priceInput.trim() && enteredPriceWei == null && (
+                    <p className="muted small">
+                      Must be a multiple of 10 wei
+                      {pool
+                        ? ` and at least ${fmtUnits(BigInt(pool.minCardPriceWei))}`
+                        : ''}
+                      .
+                    </p>
+                  )}
+                  {insufficientBalance && (
+                    <p className="error small">
+                      Not enough USDe — you have {fmtUnits(availableWei)}{' '}
+                      available.
+                    </p>
                   )}
                 </div>
-                <input
-                  id="card-price"
-                  className="admin-input"
-                  inputMode="decimal"
-                  placeholder={
-                    pool ? fmtUnits(BigInt(pool.minCardPriceWei)) : '10'
-                  }
-                  value={priceInput}
-                  onChange={(e) => {
-                    setPriceTouched(true);
-                    setPriceInput(e.target.value);
-                  }}
-                  disabled={actionBusy}
-                />
-                {priceInput.trim() && enteredPriceWei == null && (
-                  <p className="muted small">
-                    Must be a multiple of 10 wei
-                    {pool
-                      ? ` and at least ${fmtUnits(BigInt(pool.minCardPriceWei))}`
-                      : ''}
-                    .
-                  </p>
-                )}
-                {insufficientBalance && (
-                  <p className="error small">
-                    Not enough USDe — you have {fmtUnits(availableWei)}{' '}
-                    available.
-                  </p>
-                )}
-              </div>
+              )}
               <div className="pick-actions">
                 <button
                   type="button"
@@ -1022,16 +1055,18 @@ export default function CardDetailScreen() {
                     actionBusy ||
                     !isActive ||
                     !allCellsPicked ||
-                    enteredPriceWei == null ||
+                    effectivePriceWei == null ||
                     insufficientBalance
                   }
                   onClick={submitPicks}
                 >
                   {actionBusy
                     ? 'Submitting…'
-                    : allCellsPicked
-                      ? 'Submit Picks'
-                      : 'Make All Picks'}
+                    : !allCellsPicked
+                      ? 'Make All Picks'
+                      : sponsored
+                        ? 'Mint with sponsorship balance'
+                        : 'Submit Picks'}
                 </button>
               </div>
             </div>
