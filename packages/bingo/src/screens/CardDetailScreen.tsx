@@ -31,6 +31,7 @@ import { buildLines } from '../parlay';
 import Nav from '../components/Nav';
 import SetupWizard from '../components/SetupWizard';
 import trophyUrl from '../assets/world-cup-trophy.png';
+import comboQrUrl from '../assets/combo-bingo-qr.svg';
 
 const LINES = buildLines();
 
@@ -105,29 +106,47 @@ function fmtOdds(price?: number | null): string | null {
   return `${Math.round(price * 100)}%`;
 }
 
-/** Hover popover for a cell: the full question, plus the estimated price and
- *  estimated end time when known (each on its own line). */
-function cellTipText(cell: {
+/** Hover popover for a cell: the full question, plus labelled meta rows
+ *  (estimated price / end time) when known. */
+function cellTipData(cell: {
   question?: string | null;
   shortName?: string | null;
   conditionId: string;
   estimatedPrice?: number | null;
   endTime?: number | null;
-}): string {
-  const lines = [cell.question ?? cell.shortName ?? cell.conditionId];
+}): { question: string; meta: { label: string; value: string }[] } {
+  const meta: { label: string; value: string }[] = [];
   const price = fmtOdds(cell.estimatedPrice);
-  if (price) lines.push(`Est. price ${price}`);
-  if (cell.endTime) lines.push(`Est. end ${fmtEndTime(cell.endTime)}`);
-  return lines.join('\n');
+  if (price) meta.push({ label: 'Estimated Price', value: price });
+  if (cell.endTime)
+    meta.push({ label: 'Estimated End', value: fmtEndTime(cell.endTime) });
+  return {
+    question: cell.question ?? cell.shortName ?? cell.conditionId,
+    meta,
+  };
 }
 
 /** Gross payout if a line hits = the whole prediction pool (stake + counterparty). */
 function fmtWin(wei: bigint): string {
   const n = Number(wei) / 1e18;
-  if (n >= 100) return `$${n.toFixed(0)}`;
-  if (n >= 10) return `$${n.toFixed(1)}`;
+  // Money is either whole dollars (large amounts, comma-grouped) or full
+  // dollars-and-cents — never a lone single decimal like "$10.1".
+  if (n >= 100) return `$${Math.round(n).toLocaleString('en-US')}`;
   return `$${n.toFixed(2)}`;
 }
+
+/** Submission time (ms) → local time, e.g. "Jun 16, 2026, 2:32 PM" — same
+ *  local-time style as the cell tooltips' end time. */
+function fmtPlacedAt(ms: number): string {
+  return new Date(ms).toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
 
 /** A dollar amount that smoothly counts up whenever `value` increases — used
  *  for the funding overlay's running max payout. */
@@ -260,9 +279,9 @@ export default function CardDetailScreen() {
   const [actionBusy, setActionBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [fillPreviousOpen, setFillPreviousOpen] = useState(false);
-  const [shareCopied, setShareCopied] = useState(false);
   const [tip, setTip] = useState<{
-    text: string;
+    question: string;
+    meta: { label: string; value: string }[];
     x: number;
     y: number;
   } | null>(null);
@@ -459,6 +478,23 @@ export default function CardDetailScreen() {
     (sum, l) => sum + (lineOutcomes[l.id]?.pool ?? 0n),
     0n,
   );
+
+  // Realized winnings: only lines that have resolved in the player's favour.
+  // Stays $0 until something actually comes in — the to-win figure lives on
+  // the per-line strips, not the PAYOUT stat.
+  const wonTotalWei = LINES.reduce((sum, l) => {
+    const o = lineOutcomes[l.id];
+    return o?.resolved && o.predictorWon ? sum + o.pool : sum;
+  }, 0n);
+
+  // The headline prize: every line wins (max payout) AND the card lands the
+  // top of the bonus ladder. The bonus is expressed as a multiplier on the
+  // payout, so the max bonus multiplier is the largest rung of multiplierBps.
+  const maxBonusBps = pool ? Math.max(0, ...pool.multiplierBps) : 0;
+  const maxPayoutWithBonusWei =
+    maxBonusBps > 0
+      ? (totalToWinWei * BigInt(maxBonusBps)) / 10_000n
+      : totalToWinWei;
 
   // The signed-in player IS this card's player — write actions (fund,
   // claim) hang off this, so a receipt permalink works as the owner's own
@@ -752,6 +788,14 @@ export default function CardDetailScreen() {
     (l) => lineOutcomes[l.id]?.resolved && lineOutcomes[l.id]?.predictorWon,
   ).length;
 
+  // The PAYOUT stat: realized winnings with the bonus ladder applied. A 0-bps
+  // rung means "no bonus" (1×), so floor the multiplier at 1× rather than
+  // zeroing the payout out.
+  const payoutBonusBps = pool?.multiplierBps[wins] ?? 0;
+  const wonPayoutWei =
+    (wonTotalWei * (payoutBonusBps > 0 ? BigInt(payoutBonusBps) : 10_000n)) /
+    10_000n;
+
   // Card strip: every card the player holds, across all pools, grouped by
   // pool (newest first). Old pools' cards stay reachable after rollover —
   // chips link to receipt permalinks, which never go stale. The active
@@ -885,8 +929,16 @@ export default function CardDetailScreen() {
 
       {card && (
         <div className="card-meta-bar">
+          {totalToWinWei > 0n && (
+            <span className="pool-max-payout">
+              <span className="pool-max-payout-label">Max payout</span>
+              <span className="pool-max-payout-amount">
+                {fmtWin(maxPayoutWithBonusWei)}
+              </span>
+            </span>
+          )}
           {pool && (
-            <span className="label muted">
+            <span className="label muted pool-meta-line">
               Pool #{pool.poolNumber} ·{' '}
               {card.open
                 ? `closes ${new Date(card.cutoff * 1000).toLocaleString(
@@ -901,25 +953,6 @@ export default function CardDetailScreen() {
                 : 'closed'}
             </span>
           )}
-          <span className="card-meta-actions">
-            {card.receiptTokenId && (
-              <button
-                type="button"
-                className="details-link"
-                onClick={() => {
-                  // The public, view-only permalink for this card —
-                  // anyone can open it, no wallet needed.
-                  const url = `${window.location.origin}/card?receipt=${card.receiptTokenId}`;
-                  void navigator.clipboard.writeText(url).then(() => {
-                    setShareCopied(true);
-                    window.setTimeout(() => setShareCopied(false), 1500);
-                  });
-                }}
-              >
-                {shareCopied ? 'Copied!' : 'Share'}
-              </button>
-            )}
-          </span>
         </div>
       )}
 
@@ -939,7 +972,7 @@ export default function CardDetailScreen() {
                       className="bingo-cell"
                       onMouseEnter={(e) =>
                         setTip({
-                          text: cellTipText(cell),
+                          ...cellTipData(cell),
                           x: e.clientX,
                           y: e.clientY,
                         })
@@ -1087,7 +1120,7 @@ export default function CardDetailScreen() {
                       style={{ gridColumn: col + 3, gridRow: row + 1 }}
                       onMouseEnter={(e) =>
                         setTip({
-                          text: cellTipText(cell),
+                          ...cellTipData(cell),
                           x: e.clientX,
                           y: e.clientY,
                         })
@@ -1355,7 +1388,7 @@ export default function CardDetailScreen() {
                             </span>
                             <span className="bonus-wizard-prize">
                               {bps === 0
-                                ? 'No Bonus'
+                                ? '1×'
                                 : `${(bps / 10_000)
                                     .toFixed(2)
                                     .replace(/\.?0+$/, '')}×`}
@@ -1382,12 +1415,36 @@ export default function CardDetailScreen() {
                 <span className="label">Payout</span>
                 <span
                   className={`stat-value ${
-                    totalToWinWei > 0n ? 'payout-win' : ''
+                    wonPayoutWei > 0n ? 'payout-win' : ''
                   }`}
                 >
-                  {fmtWin(totalToWinWei)}
+                  {fmtWin(wonPayoutWei)}
                 </span>
               </div>
+            </div>
+          )}
+
+          {card.receiptTokenId && card.submittedAt != null && (
+            <div className="receipt-footer">
+              <dl className="receipt-footer-meta">
+                <div className="receipt-footer-field">
+                  <dt>Card</dt>
+                  <dd>#{card.receiptTokenId}</dd>
+                </div>
+                <div className="receipt-footer-field">
+                  <dt>Placed</dt>
+                  <dd>{fmtPlacedAt(card.submittedAt)}</dd>
+                </div>
+              </dl>
+              <a
+                className="receipt-footer-qr"
+                href="https://combo.bingo"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Open combo.bingo"
+              >
+                <img src={comboQrUrl} alt="QR code linking to combo.bingo" />
+              </a>
             </div>
           )}
 
@@ -1438,14 +1495,17 @@ export default function CardDetailScreen() {
           className="cell-tip"
           style={{ left: tip.x + 14, top: tip.y + 16 }}
         >
-          {tip.text.split('\n').map((line, i) => (
-            <div
-              key={i}
-              className={i === 0 ? 'cell-tip-q' : 'cell-tip-meta'}
-            >
-              {line}
-            </div>
-          ))}
+          <div className="cell-tip-q">{tip.question}</div>
+          {tip.meta.length > 0 && (
+            <dl className="cell-tip-meta">
+              {tip.meta.map((m) => (
+                <div key={m.label} className="cell-tip-row">
+                  <dt>{m.label}</dt>
+                  <dd>{m.value}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
         </div>
       )}
     </main>

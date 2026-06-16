@@ -1216,7 +1216,7 @@ button.quick-pick:hover {
   justify-content: center;
   align-items: center;
   gap: 0.15rem;
-  padding: 0.4rem 0.45rem;
+  padding: 0.7rem 0.45rem;
   background: var(--surface-2);
   border: 1px solid var(--hairline-strong);
   border-radius: var(--r-sm);
@@ -1989,16 +1989,38 @@ button.quick-pick:hover {
   border-bottom: 1px solid var(--hairline);
 }
 
-/* Est. price / Est. end — mono, tracked, muted. */
+/* Estimated Price / Estimated End — a small definition list: muted, tracked
+   uppercase labels on the left; brighter mono values on the right. */
 .cell-tip-meta {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  letter-spacing: 0.03em;
-  color: var(--text-muted);
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.34rem;
 }
 
-.cell-tip-meta + .cell-tip-meta {
-  margin-top: 0.22rem;
+.cell-tip-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1.25rem;
+}
+
+.cell-tip-row dt {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.cell-tip-row dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
 }
 
 .bingo-cell .truncate {
@@ -2026,23 +2048,25 @@ button.quick-pick:hover {
 
 /* Compact "wizard" meter: dots light up green as more bingos are won. */
 .bonus-wizard {
-  margin-top: 0.75rem;
+  margin-top: 0.5rem;
 }
 
+/* 11 rungs (0–10 bingos) must all fit above the trigger without the climax
+   row (10 bingos = 100×) being shaved off the bottom — keep each rung tight. */
 .bonus-wizard .wizard-step {
-  grid-template-columns: 1.75rem 1fr;
-  padding-bottom: 0.7rem;
+  grid-template-columns: 1.5rem 1fr;
+  padding-bottom: 0.32rem;
 }
 
 .bonus-wizard .wizard-step::after {
-  left: calc(0.875rem - 0.5px);
-  top: 1.75rem;
+  left: calc(0.75rem - 0.5px);
+  top: 1.5rem;
 }
 
 .bonus-wizard .wizard-step-marker {
-  width: 1.75rem;
-  height: 1.75rem;
-  font-size: 0.72rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 0.68rem;
 }
 
 /* Reached tiers turn green like a completed step. */
@@ -2057,7 +2081,7 @@ button.quick-pick:hover {
   justify-content: space-between;
   align-items: center;
   gap: 0.75rem;
-  padding-top: 0.2rem;
+  padding-top: 0;
 }
 
 .bonus-wizard-wins {
@@ -2071,6 +2095,9 @@ button.quick-pick:hover {
   font-size: 0.82rem;
   color: var(--text-faint);
   font-variant-numeric: tabular-nums;
+  /* Never let a wide multiplier (e.g. "100×") wrap or get shaved off. */
+  flex: none;
+  white-space: nowrap;
 }
 
 .bonus-wizard .status-done .bonus-wizard-wins,
@@ -2289,11 +2316,42 @@ button.quick-pick:hover {
 /* ---------- per-card meta bar (pool + closes, share/details) ---------- */
 .card-meta-bar {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 1rem;
   /* Sits between the card-chips row and the grid: clear gap above (off the
      chips), tighter below so it reads as a header for the card. */
   margin: 1.5rem 0 0.6rem;
+}
+
+/* The headline max-payout-with-bonus prize, sitting on the pool line. Bright
+   and bold so it reads as the prize you're playing for. */
+.pool-max-payout {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--yes) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--yes) 35%, transparent);
+}
+
+.pool-max-payout-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--yes) 80%, var(--text));
+}
+
+.pool-max-payout-amount {
+  font-weight: 800;
+  /* Match the label text size — the amount reads as part of the same line,
+     not an oversized headline. */
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  color: var(--yes);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Push the share/details actions to the right edge, aligned with the
@@ -2424,6 +2482,66 @@ button.quick-pick:hover {
   color: var(--yes);
 }
 
+/* Receipt footer: card number + placed timestamp on the left, a QR linking to
+   combo.bingo on the right. Sits directly under the STAKE/BONUS/PAYOUT slip. */
+.receipt-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-top: 1.4rem;
+  padding: 0 0.25rem;
+}
+
+.receipt-footer-meta {
+  display: flex;
+  gap: 2.5rem;
+  margin: 0;
+}
+
+.receipt-footer-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.receipt-footer-field dt {
+  font-size: 0.82rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.receipt-footer-field dd {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.receipt-footer-qr {
+  flex: none;
+  display: block;
+  width: 84px;
+  height: 84px;
+  /* The SVG carries its own white background + quiet zone, so no wrapper fill
+     or padding — just round the corners and clip the QR to match. */
+  border-radius: 5px;
+  overflow: hidden;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.receipt-footer-qr img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
 /* The bonus prize ladder is revealed by hovering/focusing the info icon. */
 .bonus-stat {
   position: relative;
@@ -2456,6 +2574,9 @@ button.quick-pick:hover {
   width: min(21rem, 82vw);
   max-height: 60vh;
   overflow-y: auto;
+  /* Reserve the scrollbar's gutter so it can't overlap (and shave off) the
+     right-aligned prize multipliers when the ladder scrolls. */
+  scrollbar-gutter: stable;
   padding: 1.1rem 1.2rem;
   text-align: left;
   background: var(--surface-2);
