@@ -1857,6 +1857,16 @@ button.quick-pick:hover {
   margin-top: 0;
 }
 
+/* Settings dialog: give each section's controls room below (radios + the URL
+   input felt cramped against the next divider / the action buttons). */
+.bingo-modal .admin-action {
+  padding-bottom: 1.25rem;
+}
+
+.bingo-modal > .admin-row {
+  margin-top: 0.75rem;
+}
+
 /* Rainbow frame: conic-gradient padding border around the grid. */
 .card-frame {
   padding: 1.5px;
