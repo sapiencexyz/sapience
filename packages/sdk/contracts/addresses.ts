@@ -58,9 +58,14 @@ export const eas: ChainAddressMap = {
  */
 export const predictionMarketEscrow: ChainAddressMap = {
   46630: {
-    address: '0x1847e316e6e4302b23B5Ab5BE078926386D78E95',
-    blockCreated: 72253766,
-    legacy: [] as const,
+    address: '0xf03eFa8bF3271Fe347bF750D72baAF2F9b6Ffc29',
+    blockCreated: 76353587,
+    legacy: [
+      {
+        address: '0x1847e316e6e4302b23B5Ab5BE078926386D78E95',
+        blockCreated: 72253766,
+      },
+    ] as const,
   },
   5064014: {
     address: '0xe7e515FC1DF93565A47770a4110f4366E26a2D3F',
@@ -134,9 +139,14 @@ export const predictionMarketEscrow: ChainAddressMap = {
  */
 export const predictionMarketVault: ChainAddressMap = {
   46630: {
-    address: '0x887aB0a9e185795A4279D136EcEc208146a915E3',
-    blockCreated: 72253813,
-    legacy: [] as const,
+    address: '0x02cB04155cdDBFb0Ee894f8D352395785130f3Ad',
+    blockCreated: 76353815,
+    legacy: [
+      {
+        address: '0x887aB0a9e185795A4279D136EcEc208146a915E3',
+        blockCreated: 72253813,
+      },
+    ] as const,
   },
   5064014: {
     address: '0x1f5fF6074095cd27A7EaBd75F0A1Ac4243ecCE91',
@@ -564,9 +574,14 @@ export const predictionMarketTokenFactory: ChainAddressMap = {
     ] as const,
   },
   46630: {
-    address: '0xb1c97B09B62F398296481f9Df65eea0c6b78A441',
-    blockCreated: 72253717,
-    legacy: [] as const,
+    address: '0x4bAab8C9212b3670285640d262279bce500aE408',
+    blockCreated: 76353392,
+    legacy: [
+      {
+        address: '0xb1c97B09B62F398296481f9Df65eea0c6b78A441',
+        blockCreated: 72253717,
+      },
+    ] as const,
   },
   421614: {
     address: '0xda16846B0F1A0C5292ed0177B343470E364C27F3',
@@ -724,9 +739,14 @@ export const secondaryMarketEscrow: ChainAddressMap = {
  */
 export const onboardingSponsor: ChainAddressMap = {
   46630: {
-    address: '0x4252a5dc77997ED60b4D33741867cDAe7a4A7c54',
-    blockCreated: 72253863,
-    legacy: [] as const,
+    address: '0x14B6B27B9Bb95BA772A99bb265Eb8860491A0A08',
+    blockCreated: 76354062,
+    legacy: [
+      {
+        address: '0x4252a5dc77997ED60b4D33741867cDAe7a4A7c54',
+        blockCreated: 72253863,
+      },
+    ] as const,
   },
   5064014: {
     address: '0x52Ec7ba755d65d469188ee56Eec44ea88975b24c',
