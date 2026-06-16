@@ -11,6 +11,7 @@ import type { Pick } from '@sapience/sdk/types/escrow';
 import {
   predictionMarketEscrow as escrowAddresses,
   collateralToken as collateralAddresses,
+  onboardingSponsor as sponsorAddresses,
 } from '@sapience/sdk/contracts';
 import { NETWORK_CONFIG, type Network } from './network.js';
 import { chainFor, getPublicClient } from './session.js';
@@ -31,6 +32,13 @@ export function collateralAddress(network: Network): Address {
     | undefined;
   if (!a) throw new Error(`Collateral not configured for ${network}`);
   return a;
+}
+
+/** The OnboardingSponsor that funds sponsored predictor stakes — the SAME
+ *  deployed instance /app uses (pinned to this escrow + the vault counterparty).
+ *  Returns null if no instance is registered for the network. */
+export function sponsorAddress(network: Network): Address | null {
+  return (sponsorAddresses[chainFor(network).id]?.address as Address) ?? null;
 }
 
 const RESOLVER_ABI = parseAbi([

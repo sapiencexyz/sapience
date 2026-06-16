@@ -22,7 +22,14 @@ import {
   fundedPredictions,
   lineIsFunded,
   linePicks,
+  sponsorAddress,
 } from './chain.js';
+import {
+  getSponsorStatus,
+  grantBudgetIfNew,
+  isSponsorshipEnabled,
+  SPONSORED_CARD_PRICE_WEI,
+} from './sponsorship.js';
 import { buildLines, LINES_PER_CARD } from './lines.js';
 import { NETWORK_CONFIG, resolveNetwork, type Network } from './network.js';
 import { activePoolOf, loadPools, parsePools, poolIsOpen } from './pool.js';
@@ -224,6 +231,18 @@ export async function handleApi(
     return true;
   }
 
+  // Stateless on-chain read of a player's sponsorship: drives "skip Fund" +
+  // the "Mint with sponsorship balance" button. player = smart account.
+  if (route === 'GET /api/sponsor/status') {
+    const player = url.searchParams.get('player');
+    if (!player || !isAddress(player)) {
+      json(res, 400, { error: 'player query param required' });
+      return true;
+    }
+    json(res, 200, await getSponsorStatus(network, player));
+    return true;
+  }
+
   if (route === 'GET /api/card') {
     const player = url.searchParams.get('player');
     if (!player || !isAddress(player)) {
@@ -404,9 +423,11 @@ export async function handleApi(
       yesMask?: number;
       cardPriceWei?: string;
       ref?: string;
+      sponsored?: boolean;
       session?: SerializedSession;
     }>(req);
     const { player, cardIndex, yesMask, cardPriceWei, ref } = body;
+    const sponsored = body.sponsored === true && isSponsorshipEnabled(network);
     const pool = activePool(network);
     if (!player || !isAddress(player)) {
       json(res, 400, { error: 'player required' });
@@ -444,6 +465,14 @@ export async function handleApi(
     }
     if (price % BigInt(LINES_PER_CARD) !== 0n) {
       json(res, 400, { error: 'cardPriceWei must be divisible by 10' });
+      return true;
+    }
+    // A sponsored card is funded by the per-wallet budget, which equals the
+    // fixed sponsored amount — any other price would over/under-run the budget.
+    if (sponsored && price !== SPONSORED_CARD_PRICE_WEI) {
+      json(res, 400, {
+        error: `sponsored cardPriceWei must equal ${SPONSORED_CARD_PRICE_WEI}`,
+      });
       return true;
     }
     if (ref !== undefined && ref !== null && !isAddress(ref)) {
@@ -490,7 +519,17 @@ export async function handleApi(
         cardPriceWei: price.toString(),
         ref: (ref as Address | undefined) ?? null,
       }),
-      prepareCollateral(network, sessionClient, player, price, undefined, true),
+      // Sponsored: the house funds the stake, so there's nothing to wrap —
+      // grant the budget (awaited to confirmation, so fundMint sees it when the
+      // 10 lines run) AND send ONE enable-only session op (a 0-wei prep) so the
+      // fresh session key is enabled serially, not raced by the line mints.
+      // Otherwise (deposit path) wrap + approve the whole card up front.
+      sponsored
+        ? Promise.all([
+            grantBudgetIfNew(network, player),
+            prepareCollateral(network, sessionClient, player, 0n, undefined, true),
+          ])
+        : prepareCollateral(network, sessionClient, player, price, undefined, true),
     ]);
     // Idempotent retry: the chain locked sides/price at first submit.
     if (
@@ -518,9 +557,14 @@ export async function handleApi(
       poolId?: string;
       cardIndex?: number;
       lineIndex?: number;
+      sponsored?: boolean;
       session?: SerializedSession;
     }>(req);
     const { player, cardIndex, lineIndex } = body;
+    const sponsor =
+      body.sponsored === true && isSponsorshipEnabled(network)
+        ? (sponsorAddress(network) ?? undefined)
+        : undefined;
     if (!player || !isAddress(player)) {
       json(res, 400, { error: 'player required' });
       return true;
@@ -592,6 +636,7 @@ export async function handleApi(
         lineIndex,
         cardIndex,
         poolId: pool.poolId,
+        sponsor,
       });
     try {
       let result;

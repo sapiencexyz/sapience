@@ -22,6 +22,14 @@ const addressOrEmpty = makeValidator<string>((v) => {
   return t;
 });
 
+const hex32OrEmpty = makeValidator<string>((v) => {
+  const t = v.trim();
+  if (t && !/^0x[0-9a-fA-F]{64}$/.test(t)) {
+    throw new Error('must be 0x-prefixed 32-byte hex (or empty)');
+  }
+  return t;
+});
+
 // Per-network facts (chain, relayer, receipt contract, log-scan floor) are
 // NOT env vars — they're hardcoded in network.ts; one deployment serves
 // both networks. The env is only secrets + deployment plumbing.
@@ -55,4 +63,9 @@ export const env = cleanEnv(process.env, {
    *  minter — the SAME smart-account address on both networks (kernel
    *  accounts are deterministic), so one key serves both. */
   MINTER_PRIVATE_KEY: hex32(),
+  /** Budget-manager EOA authorized to call OnboardingSponsor.setBudget — the
+   *  SAME key /app uses (the contract has a single budgetManager). Empty
+   *  disables sponsorship; the app then runs deposit-only. Serves both
+   *  networks (one budgetManager address across staging + main). */
+  BUDGET_MANAGER_PRIVATE_KEY: hex32OrEmpty({ default: '' }),
 });
