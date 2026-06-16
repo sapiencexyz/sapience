@@ -2495,15 +2495,28 @@ button.quick-pick:hover {
 
 .receipt-footer-meta {
   display: flex;
-  gap: 2.5rem;
+  gap: 0;
   margin: 0;
 }
 
 .receipt-footer-field {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: 0.45rem;
   min-width: 0;
+  /* Match the QR height so the divider between fields runs its full length. */
+  height: 84px;
+}
+
+.receipt-footer-field:first-child {
+  padding-right: 2rem;
+}
+
+/* Subtle full-height divider between the Card and Placed columns. */
+.receipt-footer-field + .receipt-footer-field {
+  padding-left: 2rem;
+  border-left: 1px solid var(--hairline);
 }
 
 .receipt-footer-field dt {
