@@ -995,13 +995,8 @@ button.quick-pick:hover {
 }
 
 /* While funding, fade the card right down and float progress over it. */
-.locked-grid.is-funding {
-  opacity: 0.14;
-  filter: saturate(0.55);
-  pointer-events: none;
-  transition: opacity 0.3s ease;
-}
-
+/* Dim the card with a dark scrim (keeps it dark — no rainbow bleed-through)
+   and float the progress over it. The card stays at full opacity underneath. */
 .funding-overlay {
   position: absolute;
   inset: 0;
@@ -1010,6 +1005,10 @@ button.quick-pick:hover {
   align-items: center;
   justify-content: center;
   pointer-events: none;
+  background: rgba(8, 9, 12, 0.84);
+  border-radius: var(--r-xl);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
 }
 
 .funding-overlay-inner {
@@ -1045,29 +1044,41 @@ button.quick-pick:hover {
   width: 100%;
   height: 0.7rem;
   border-radius: 999px;
-  background: var(--accent-soft);
-  border: 1px solid rgba(124, 140, 248, 0.24);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   overflow: hidden;
 }
 
+/* The rainbow lives here — only on the progress fill. */
 .funding-bar-fill {
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--accent), var(--yes));
+  background: linear-gradient(
+    90deg,
+    #5b8cff,
+    #7c5bff,
+    #c44bff,
+    #ff4d8d,
+    #ff8a3d,
+    #ffd23d,
+    #6be38a,
+    #3ddc91
+  );
   transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .funding-towin {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
-  margin-top: 0.2rem;
+  gap: 0.02rem;
+  margin-top: 0.9rem;
 }
 
+/* Match the "Submitting your card" heading typeface. */
 .funding-towin-label {
   font-family: var(--font-mono);
-  font-size: 0.64rem;
-  letter-spacing: 0.14em;
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--text-muted);
 }

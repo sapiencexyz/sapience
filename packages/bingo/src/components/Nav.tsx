@@ -12,8 +12,9 @@ interface NavLink {
 }
 
 const LINKS: NavLink[] = [
-  { href: '/', label: 'Draw', match: ['/'], exact: true },
-  { href: '/card', label: 'Cards', match: ['/card'] },
+  // The play hub answers both '/' and '/card'. A '/' match entry is treated as
+  // exact below so it doesn't light up every route.
+  { href: '/card', label: 'Play', match: ['/card', '/'] },
   { href: '/refer', label: 'Refer', match: ['/refer'] },
 ];
 
@@ -38,7 +39,9 @@ export default function Nav({ trailing }: Props) {
             {LINKS.map((l) => {
               const active = l.exact
                 ? path === l.href
-                : l.match.some((p) => path.startsWith(p));
+                : l.match.some((p) =>
+                    p === '/' ? path === '/' : path.startsWith(p),
+                  );
               return (
                 <a
                   key={l.href}

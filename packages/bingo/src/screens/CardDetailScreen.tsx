@@ -6,7 +6,7 @@ import {
 } from '@sapience/sdk/auction/escrowEncoding';
 import { OutcomeSide, type Pick } from '@sapience/sdk/types/escrow';
 import { predictionMarketEscrow as escrowAddresses } from '@sapience/sdk/contracts';
-import { useAccount, useConnect, usePublicClient } from 'wagmi';
+import { usePublicClient } from 'wagmi';
 import { CHAIN_ID } from '../lib/chain';
 import { fmtUnits, shortAddress } from '../lib/format/balance';
 import {
@@ -30,6 +30,7 @@ import { useSponsorStatus } from '../hooks/useSponsorStatus';
 import { useCollateralBalance } from '../hooks/blockchain/useCollateralBalance';
 import { buildLines } from '../parlay';
 import Nav from '../components/Nav';
+import SetupWizard from '../components/SetupWizard';
 import trophyUrl from '../assets/world-cup-trophy.png';
 
 const LINES = buildLines();
@@ -129,6 +130,36 @@ function fmtWin(wei: bigint): string {
   return `$${n.toFixed(2)}`;
 }
 
+/** A dollar amount that smoothly counts up whenever `value` increases — used
+ *  for the funding overlay's running max payout. */
+function AnimatedAmount({ value }: { value: number }) {
+  const [display, setDisplay] = useState(value);
+  const fromRef = useRef(value);
+  const rafRef = useRef<number | null>(null);
+  useEffect(() => {
+    const from = fromRef.current;
+    const to = value;
+    if (from === to) return;
+    const start = performance.now();
+    const dur = 450;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / dur);
+      const eased = 1 - Math.pow(1 - t, 3); // easeOutCubic
+      setDisplay(from + (to - from) * eased);
+      if (t < 1) {
+        rafRef.current = requestAnimationFrame(tick);
+      } else {
+        fromRef.current = to;
+      }
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [value]);
+  return <>${display.toFixed(2)}</>;
+}
+
 /** Client-side per-line progress — the client drives each line's funding
  *  request against the stateless backend. */
 type LineRun =
@@ -182,18 +213,9 @@ function mergeCardMonotonic(
 }
 
 export default function CardDetailScreen() {
-  const { isConnected } = useAccount();
-  const { connectors, connect, isPending: connectPending } = useConnect();
   const publicClient = usePublicClient({ chainId: CHAIN_ID });
 
-  const {
-    client: sessionClient,
-    isActive,
-    isStarting,
-    isRestoring,
-    config,
-    start,
-  } = useSession();
+  const { client: sessionClient, isActive, config } = useSession();
   // The card is per-player: the connected session's smart account is the player.
   const player = config?.smartAccountAddress;
 
@@ -770,32 +792,6 @@ export default function CardDetailScreen() {
       .map(([poolNumber, g]) => ({ poolNumber, ...g }));
   }, [cardsSummary, activePoolNumber]);
 
-  const injected = connectors.find((c) => c.id === 'injected');
-
-  // A session is required: it identifies the player (smart account) and lets
-  // the backend mint lines on their behalf.
-  const needsSession = isConnected && !isActive;
-
-  const sessionPrompt = needsSession ? (
-    <div className="admin-action">
-      <p className="muted small">
-        Sign in to see your card, pick sides, and submit.
-      </p>
-      <button
-        type="button"
-        className="primary"
-        disabled={isStarting || isRestoring}
-        onClick={() => start(24 * 7)}
-      >
-        {isStarting
-          ? 'Awaiting signature…'
-          : isRestoring
-            ? 'Restoring session…'
-            : 'Sign in'}
-      </button>
-    </div>
-  ) : null;
-
   return (
     <main>
       <Nav />
@@ -812,21 +808,13 @@ export default function CardDetailScreen() {
         </header>
       )}
 
-      {!viewOnly && !isConnected && injected && (
+      {/* Not set up yet → the get-ready wizard (connect → fund → sign). Once
+          the session is active it falls away and the card below renders.
+          Funding lives inside the wizard, between connect and sign. */}
+      {!viewOnly && !isActive && (
         <section className="screen admin-section">
-          <button
-            type="button"
-            className="primary block"
-            disabled={connectPending}
-            onClick={() => connect({ connector: injected })}
-          >
-            {connectPending ? 'Opening wallet…' : 'Connect wallet'}
-          </button>
+          <SetupWizard />
         </section>
-      )}
-
-      {!viewOnly && needsSession && (
-        <section className="screen admin-section">{sessionPrompt}</section>
       )}
 
       {/* Card strip — every card the player holds, across all pools.
@@ -1097,7 +1085,7 @@ export default function CardDetailScreen() {
                   in an offset square: rows on the right, cols on the bottom,
                   diagonals in the corners. */}
               <div className="submit-panel">
-              <div className={`locked-grid${submitting ? ' is-funding' : ''}`}>
+              <div className="locked-grid">
                 {card.cells.map((cell, idx) => {
                   const yes = (yesMask & (1 << idx)) !== 0;
                   const row = Math.floor(idx / 4);
@@ -1272,7 +1260,7 @@ export default function CardDetailScreen() {
                     <div className="funding-head">Submitting your card</div>
                     <div className="funding-count">
                       {lineCount}
-                      <span>/{card.lines.length}</span> lines funded
+                      <span>/{card.lines.length}</span> lines created
                     </div>
                     <div className="funding-bar">
                       <div
@@ -1283,9 +1271,9 @@ export default function CardDetailScreen() {
                       />
                     </div>
                     <div className="funding-towin">
-                      <span className="funding-towin-label">Total to win</span>
+                      <span className="funding-towin-label">Max payout</span>
                       <span className="funding-towin-amount">
-                        {fmtWin(totalToWinWei)}
+                        <AnimatedAmount value={Number(totalToWinWei) / 1e18} />
                       </span>
                     </div>
                   </div>
