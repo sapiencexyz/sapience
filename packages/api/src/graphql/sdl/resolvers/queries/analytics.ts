@@ -66,9 +66,159 @@ const buildTimestampMap = <T extends { timestamp: bigint }>(
   return map;
 };
 
-export const protocolStats: NonNullable<
-  QueryResolvers['protocolStats']
-> = async (_parent, { vaultAddress: vaultAddressArg }) => {
+export interface ProtocolSeriesAggregates {
+  /** boundary ts → cumulative volume (wei, decimal string) as of that ts. */
+  volumeMap: Map<number, string>;
+  /** boundary ts → cumulative trade count as of that ts. */
+  tradeCountMap: Map<number, string>;
+  /** boundary ts → open interest (wei, decimal string) live at that ts. */
+  oiMap: Map<number, string>;
+}
+
+/**
+ * Cumulative volume, cumulative trade count, and point-in-time open interest
+ * evaluated at each timestamp in `queryTimestamps`.
+ *
+ * Rewritten from a per-boundary triangular range-join
+ * (`UNNEST(boundaries) LEFT JOIN <all events> ON created_ts <= boundary`,
+ * roughly O(boundaries × events) — which grew quadratically as both the
+ * snapshot count and the event history climbed) into an *as-of running sum*:
+ * union the events with the boundary rows, order by `(ts, is_boundary)` so an
+ * event landing exactly on a boundary's timestamp sorts *before* that boundary
+ * (preserving the old `<=` inclusivity), take a cumulative
+ * `SUM() OVER (ROWS UNBOUNDED PRECEDING)`, then read the value off each
+ * boundary row. One sort instead of a nested loop — O((events+boundaries)·log).
+ *
+ * Open interest is a point-in-time "currently open" total, not a monotonic
+ * cumulative: each prediction contributes +collateral at creation and
+ * −collateral at settlement, so the same running-sum-of-signed-deltas yields
+ * `Σ collateral WHERE created ≤ T AND (settled IS NULL OR settled > T)` — the
+ * exact predicate the old correlated filter expressed. A prediction settling
+ * exactly at boundary T is excluded (its −delta sorts before the boundary),
+ * matching the old `settled > T` open condition.
+ */
+export const fetchProtocolSeriesAggregates = async (
+  queryTimestamps: number[],
+  chainId: number,
+  db: Pick<typeof prisma, '$queryRaw'> = prisma
+): Promise<ProtocolSeriesAggregates> => {
+  const [cumulativeVolumes, cumulativeTradeCounts, openInterests] =
+    await Promise.all([
+      db.$queryRaw<CumulativeVolumeRow[]>`
+      WITH events AS (
+        SELECT "mintedAt" AS ts, CAST("totalCollateral" AS DECIMAL) AS vol
+        FROM position
+        WHERE "chainId" = ${chainId} AND "mintedAt" IS NOT NULL
+        UNION ALL
+        SELECT "onChainCreatedAt" AS ts,
+          CAST("predictorCollateral" AS DECIMAL) + CAST("counterpartyCollateral" AS DECIMAL) AS vol
+        FROM "Prediction"
+        WHERE "chainId" = ${chainId} AND "onChainCreatedAt" IS NOT NULL
+        UNION ALL
+        SELECT "executedAt" AS ts, CAST(price AS DECIMAL) AS vol
+        FROM secondary_trade
+        WHERE "chainId" = ${chainId} AND "executedAt" IS NOT NULL
+      ),
+      combined AS (
+        SELECT ts, vol, 0 AS is_boundary FROM events
+        UNION ALL
+        SELECT b AS ts, 0::DECIMAL AS vol, 1 AS is_boundary
+        FROM UNNEST(${queryTimestamps}::BIGINT[]) AS b
+      ),
+      running AS (
+        SELECT ts, is_boundary,
+          SUM(vol) OVER (
+            ORDER BY ts, is_boundary
+            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+          ) AS cum
+        FROM combined
+      )
+      SELECT ts AS timestamp, COALESCE(MAX(cum), 0)::TEXT AS cumulative_volume
+      FROM running
+      WHERE is_boundary = 1
+      GROUP BY ts
+      ORDER BY ts
+    `,
+      db.$queryRaw<CumulativeTradeCountRow[]>`
+      WITH events AS (
+        SELECT "onChainCreatedAt" AS ts
+        FROM "Prediction"
+        WHERE "chainId" = ${chainId} AND "onChainCreatedAt" IS NOT NULL
+        UNION ALL
+        SELECT "executedAt" AS ts
+        FROM secondary_trade
+        WHERE "chainId" = ${chainId} AND "executedAt" IS NOT NULL
+      ),
+      combined AS (
+        SELECT ts, 1::BIGINT AS cnt, 0 AS is_boundary FROM events
+        UNION ALL
+        SELECT b AS ts, 0::BIGINT AS cnt, 1 AS is_boundary
+        FROM UNNEST(${queryTimestamps}::BIGINT[]) AS b
+      ),
+      running AS (
+        SELECT ts, is_boundary,
+          SUM(cnt) OVER (
+            ORDER BY ts, is_boundary
+            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+          ) AS cum
+        FROM combined
+      )
+      SELECT ts AS timestamp, COALESCE(MAX(cum), 0) AS cumulative_trade_count
+      FROM running
+      WHERE is_boundary = 1
+      GROUP BY ts
+      ORDER BY ts
+    `,
+      db.$queryRaw<DailyOIRow[]>`
+      WITH oi_base AS (
+        SELECT p."onChainCreatedAt" AS created_ts, pk."resolvedAt" AS settled_ts,
+          CAST(p."predictorCollateral" AS DECIMAL) + CAST(p."counterpartyCollateral" AS DECIMAL) AS vol
+        FROM "Prediction" p
+        LEFT JOIN "Picks" pk ON pk.id = p."pickConfigId"
+        WHERE p."chainId" = ${chainId} AND p."onChainCreatedAt" IS NOT NULL
+      ),
+      deltas AS (
+        -- +collateral when the prediction is created …
+        SELECT created_ts AS ts, vol FROM oi_base
+        UNION ALL
+        -- … −collateral once it settles (open interest is released).
+        SELECT settled_ts AS ts, -vol AS vol FROM oi_base WHERE settled_ts IS NOT NULL
+      ),
+      combined AS (
+        SELECT ts, vol, 0 AS is_boundary FROM deltas
+        UNION ALL
+        SELECT b AS ts, 0::DECIMAL AS vol, 1 AS is_boundary
+        FROM UNNEST(${queryTimestamps}::BIGINT[]) AS b
+      ),
+      running AS (
+        SELECT ts, is_boundary,
+          SUM(vol) OVER (
+            ORDER BY ts, is_boundary
+            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+          ) AS cum
+        FROM combined
+      )
+      SELECT ts AS timestamp, COALESCE(MAX(cum), 0)::TEXT AS open_interest
+      FROM running
+      WHERE is_boundary = 1
+      GROUP BY ts
+      ORDER BY ts
+    `,
+    ]);
+
+  return {
+    volumeMap: buildTimestampMap(cumulativeVolumes, 'cumulative_volume'),
+    tradeCountMap: buildTimestampMap(
+      cumulativeTradeCounts,
+      'cumulative_trade_count'
+    ),
+    oiMap: buildTimestampMap(openInterests, 'open_interest'),
+  };
+};
+
+const computeProtocolStats = async (
+  vaultAddressArg: string | null | undefined
+): Promise<ProtocolStat[]> => {
   const chainId = DEFAULT_CHAIN_ID;
 
   // Resolve which vault category the caller wants. Without `vaultAddressArg`
@@ -152,75 +302,8 @@ export const protocolStats: NonNullable<
   const nowTimestamp = Math.floor(Date.now() / 1000);
   const queryTimestamps = [...snapshotTimestamps, nowTimestamp];
 
-  const [cumulativeVolumes, cumulativeTradeCounts, openInterests] =
-    await Promise.all([
-      prisma.$queryRaw<CumulativeVolumeRow[]>`
-      SELECT
-        ts.timestamp,
-        COALESCE(SUM(vol), 0)::TEXT as cumulative_volume
-      FROM UNNEST(${queryTimestamps}::BIGINT[]) AS ts(timestamp)
-      LEFT JOIN (
-        SELECT "mintedAt" AS created_ts, CAST("totalCollateral" AS DECIMAL) AS vol, "chainId"
-        FROM position
-        UNION ALL
-        SELECT "onChainCreatedAt" AS created_ts,
-          CAST("predictorCollateral" AS DECIMAL) + CAST("counterpartyCollateral" AS DECIMAL) AS vol,
-          "chainId"
-        FROM "Prediction"
-        UNION ALL
-        SELECT "executedAt" AS created_ts,
-          CAST(price AS DECIMAL) AS vol,
-          "chainId"
-        FROM secondary_trade
-      ) combined ON
-        combined.created_ts <= ts.timestamp
-        AND combined."chainId" = ${chainId}
-      GROUP BY ts.timestamp
-      ORDER BY ts.timestamp
-    `,
-      prisma.$queryRaw<CumulativeTradeCountRow[]>`
-      SELECT
-        ts.timestamp,
-        COALESCE(COUNT(combined.created_ts), 0) as cumulative_trade_count
-      FROM UNNEST(${queryTimestamps}::BIGINT[]) AS ts(timestamp)
-      LEFT JOIN (
-        SELECT "onChainCreatedAt" AS created_ts, "chainId"
-        FROM "Prediction"
-        UNION ALL
-        SELECT "executedAt" AS created_ts, "chainId"
-        FROM secondary_trade
-      ) combined ON
-        combined.created_ts <= ts.timestamp
-        AND combined."chainId" = ${chainId}
-      GROUP BY ts.timestamp
-      ORDER BY ts.timestamp
-    `,
-      prisma.$queryRaw<DailyOIRow[]>`
-      SELECT
-        ts.timestamp,
-        COALESCE(SUM(vol), 0)::TEXT as open_interest
-      FROM UNNEST(${queryTimestamps}::BIGINT[]) AS ts(timestamp)
-      LEFT JOIN (
-        SELECT p."onChainCreatedAt" AS created_ts, pk."resolvedAt" AS settled_ts,
-          CAST(p."predictorCollateral" AS DECIMAL) + CAST(p."counterpartyCollateral" AS DECIMAL) AS vol,
-          p."chainId"
-        FROM "Prediction" p
-        LEFT JOIN "Picks" pk ON pk.id = p."pickConfigId"
-      ) combined ON
-        combined.created_ts <= ts.timestamp
-        AND (combined.settled_ts IS NULL OR combined.settled_ts > ts.timestamp)
-        AND combined."chainId" = ${chainId}
-      GROUP BY ts.timestamp
-      ORDER BY ts.timestamp
-    `,
-    ]);
-
-  const volumeMap = buildTimestampMap(cumulativeVolumes, 'cumulative_volume');
-  const tradeCountMap = buildTimestampMap(
-    cumulativeTradeCounts,
-    'cumulative_trade_count'
-  );
-  const oiMap = buildTimestampMap(openInterests, 'open_interest');
+  const { volumeMap, tradeCountMap, oiMap } =
+    await fetchProtocolSeriesAggregates(queryTimestamps, chainId);
 
   // Display each bar one interval *before* the snapshot's capture timestamp
   // so the label reflects "the period/state represented" rather than "the
@@ -375,6 +458,51 @@ export const protocolStats: NonNullable<
   }
 
   return results;
+};
+
+const PROTOCOL_STATS_TTL_MS = 60_000;
+
+type ProtocolStatsCacheEntry = {
+  promise: Promise<ProtocolStat[]>;
+  expiresAt: number;
+};
+
+// Keyed by the requested vault family ('__default__' = the protocol family,
+// which is what the analytics page asks for). The value is the in-flight
+// promise, not the resolved array, so concurrent callers single-flight onto
+// one computation: the analytics dashboard fires `stats` and `statsHistory`
+// (sibling resolvers, evaluated concurrently) plus up to ~50 sequential
+// history-pagination requests, and every one re-runs this whole pipeline
+// (3 series queries + the live candle's on-chain RPC) with no dependence on
+// the page/cursor. Collapsing them to one DB+RPC pass per TTL window is the
+// dominant win for the dashboard's load time.
+const protocolStatsCache = new Map<string, ProtocolStatsCacheEntry>();
+
+/** Test hook — drop all memoized protocol-stats entries. */
+export const __clearProtocolStatsCache = (): void => {
+  protocolStatsCache.clear();
+};
+
+export const protocolStats: NonNullable<QueryResolvers['protocolStats']> = (
+  _parent,
+  { vaultAddress: vaultAddressArg }
+) => {
+  const key = vaultAddressArg ? vaultAddressArg.toLowerCase() : '__default__';
+  const now = Date.now();
+  const hit = protocolStatsCache.get(key);
+  if (hit && hit.expiresAt > now) return hit.promise;
+
+  // Don't cache rejections: evict on failure so a transient RPC/DB blip isn't
+  // pinned as the answer for the whole TTL window (the next caller retries).
+  const promise = computeProtocolStats(vaultAddressArg).catch((err) => {
+    protocolStatsCache.delete(key);
+    throw err;
+  });
+  protocolStatsCache.set(key, {
+    promise,
+    expiresAt: now + PROTOCOL_STATS_TTL_MS,
+  });
+  return promise;
 };
 
 interface CategoryOpenInterestRow {
