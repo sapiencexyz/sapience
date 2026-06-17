@@ -21,6 +21,7 @@ import {
   collateralBalanceField,
   collateralBalanceHistoryField,
 } from './CollateralBalance';
+import { statsHistoryField } from './AccountStatsHistory';
 
 // Account global ids are keyed `(chainId, address)` — an account is a
 // wallet view scoped to one chain, so the same address on two chains is
@@ -91,12 +92,12 @@ export const Account: AccountResolvers = {
     totalVolume: await getAccountTotalVolume(addressOf(parent)),
   }),
 
-  // DEFERRED — the rest of the account stats surface beyond
-  // `stats.totalVolume` (which ships, G6): PnL/accuracy fields on
-  // AccountStat and a `statsHistory` bucketed series — the account's
-  // return-on-deployed PnL (same numerator a vault plots on-total). No
-  // per-account time-series source exists yet — accountStats.ts is a
-  // windowed leaderboard aggregate, not a bucketed series — so statsHistory
-  // needs a new per-account snapshot writer/table. No consumer today. See
-  // the matching note on the `Account` type in schema.graphql.
+  /**
+   * Live, time-bucketed activity series (deployed/claimable collateral,
+   * volume, settlement PnL, prediction outcome counts). Computed on demand
+   * from the shared `services/timeSeriesQueries` SQL — the same source the v1
+   * `accountBalance`/`accountPnl`/`accountVolume`/`accountPredictionCount`
+   * queries read — so it needs no per-account snapshot table.
+   */
+  statsHistory: statsHistoryField,
 };

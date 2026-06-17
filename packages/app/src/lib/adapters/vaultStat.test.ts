@@ -11,18 +11,18 @@ function makeStat(overrides: Partial<VaultStat> = {}): VaultStat {
     deployedCollateral: '0',
     undeployedCollateral: '0',
     cumulativePnl: '0',
-    unredeemedClaim: '0',
+    claimableCollateral: '0',
     ...overrides,
   };
 }
 
 describe('toVaultStatPoint', () => {
-  it('computes TVL = balance + deployedCollateral + unredeemedClaim (scaled to wUSDe)', () => {
+  it('computes TVL = balance + deployedCollateral + claimableCollateral (scaled to wUSDe)', () => {
     const point = toVaultStatPoint(
       makeStat({
         balance: (100n * ONE_WUSDE).toString(),
         deployedCollateral: (40n * ONE_WUSDE).toString(),
-        unredeemedClaim: (10n * ONE_WUSDE).toString(),
+        claimableCollateral: (10n * ONE_WUSDE).toString(),
       })
     );
     // 100 + 40 + 10 = 150
@@ -51,7 +51,7 @@ describe('toVaultStatPoint', () => {
 
   it('treats missing/empty wei strings as zero', () => {
     const point = toVaultStatPoint(
-      makeStat({ balance: '', deployedCollateral: '', unredeemedClaim: '' })
+      makeStat({ balance: '', deployedCollateral: '', claimableCollateral: '' })
     );
     expect(point.tvl).toBe(0);
     expect(point.pnl).toBe(0);

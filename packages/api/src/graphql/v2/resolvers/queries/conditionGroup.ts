@@ -52,6 +52,11 @@ export const conditionGroups: NonNullable<
   if (args.filter?.search?.trim()) {
     where.name = { contains: args.filter.search.trim(), mode: 'insensitive' };
   }
+  // Batch-by-id lookup (markets-by-id hydration): `groupId` is the group's
+  // numeric domain id, which is the `ConditionGroup` table primary key.
+  if (args.filter?.groupIds?.length) {
+    where.id = { in: args.filter.groupIds };
+  }
 
   const usesOffset =
     field === 'totalOpenInterest' || field === 'totalPredictionCount';

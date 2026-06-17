@@ -33,6 +33,9 @@ const SCHEMA = `bal_it_${process.pid}_${Date.now()}`;
 const HOLDER_REDEEMS = '0xaaaa000000000000000000000000000000000001';
 // Predictor whose only claim is on the OTHER side — claimable must persist.
 const HOLDER_OTHER_SIDE = '0xbbbb000000000000000000000000000000000002';
+// Predictor who redeems only PART of a winning side — claimable must decrement
+// by the redeemed amount, not drop to zero.
+const HOLDER_PARTIAL_CLAIM = '0xcccc000000000000000000000000000000000003';
 
 // Minimal slices of the tables queryAccountBalance touches. `position` (the V1
 // legacy table) exists only so the all_deployed UNION branch resolves; it stays
@@ -46,7 +49,7 @@ const DDL = `
     "predictorClaimable" text, "counterpartyClaimable" text,
     "onChainCreatedAt" integer, "settledAt" integer
   );
-  CREATE TABLE "Claim" (holder text, "pickConfigId" text, "positionToken" text, "redeemedAt" integer);
+  CREATE TABLE "Claim" (holder text, "pickConfigId" text, "positionToken" text, "redeemedAt" integer, "collateralPaid" text);
   CREATE TABLE "position" (
     predictor text, counterparty text, "predictorCollateral" text,
     "counterpartyCollateral" text, "mintedAt" integer, "settledAt" integer
@@ -90,7 +93,8 @@ let dbAvailable = false;
     await client.$executeRawUnsafe(
       `INSERT INTO "Picks" (id, "predictorToken", "counterpartyToken") VALUES
          ('pcA', 'ptokA', 'ctokA'),
-         ('pcB', 'ptokB', 'ctokB')`
+         ('pcB', 'ptokB', 'ctokB'),
+         ('pcC', 'ptokC', 'ctokC')`
     );
 
     // Scenario A — predictor with 100 claimable on a position settled day(2),
@@ -107,8 +111,8 @@ let dbAvailable = false;
           '100', '0', '100', '0', ${day(1)}, ${day(1)})`
     );
     await client.$executeRawUnsafe(
-      `INSERT INTO "Claim" (holder, "pickConfigId", "positionToken", "redeemedAt")
-       VALUES ('${HOLDER_REDEEMS}', 'pcA', 'ptokA', ${day(4)})`
+      `INSERT INTO "Claim" (holder, "pickConfigId", "positionToken", "redeemedAt", "collateralPaid")
+       VALUES ('${HOLDER_REDEEMS}', 'pcA', 'ptokA', ${day(4)}, '100')`
     );
 
     // Scenario B — predictor with 50 claimable on a position settled day(2),
@@ -125,8 +129,26 @@ let dbAvailable = false;
           '50', '0', '50', '0', ${day(1)}, ${day(1)})`
     );
     await client.$executeRawUnsafe(
-      `INSERT INTO "Claim" (holder, "pickConfigId", "positionToken", "redeemedAt")
-       VALUES ('${HOLDER_OTHER_SIDE}', 'pcB', 'ctokB', ${day(4)})`
+      `INSERT INTO "Claim" (holder, "pickConfigId", "positionToken", "redeemedAt", "collateralPaid")
+       VALUES ('${HOLDER_OTHER_SIDE}', 'pcB', 'ctokB', ${day(4)}, '50')`
+    );
+
+    // Scenario C — PARTIAL redemption. Predictor with 100 claimable settled
+    // day(1), redeems only 40 of it on day(4). Remaining claimable must read
+    // 100 through day(3) and 60 from day(5) — not 0.
+    await client.$executeRawUnsafe(
+      `INSERT INTO "Prediction"
+         ("predictionId", "pickConfigId", predictor, counterparty,
+          "predictorCollateral", "counterpartyCollateral",
+          "predictorClaimable", "counterpartyClaimable",
+          "onChainCreatedAt", "settledAt")
+       VALUES
+         ('pred-C', 'pcC', '${HOLDER_PARTIAL_CLAIM}', '0xother',
+          '100', '0', '100', '0', ${day(1)}, ${day(1)})`
+    );
+    await client.$executeRawUnsafe(
+      `INSERT INTO "Claim" (holder, "pickConfigId", "positionToken", "redeemedAt", "collateralPaid")
+       VALUES ('${HOLDER_PARTIAL_CLAIM}', 'pcC', 'ptokC', ${day(4)}, '40')`
     );
   }
 }
@@ -178,6 +200,17 @@ describe.skipIf(!dbAvailable)(
       expect(byDay.get(2)).toBe(50);
       expect(byDay.get(5)).toBe(50);
       expect(byDay.get(7)).toBe(50);
+    });
+
+    it('decrements by the redeemed amount on a partial redemption, not to zero', async () => {
+      const byDay = await claimableByDay(HOLDER_PARTIAL_CLAIM);
+
+      // 100 claimable, only 40 redeemed on day(4).
+      expect(byDay.get(2)).toBe(100);
+      expect(byDay.get(3)).toBe(100);
+      // From day(5): 100 − 40 = 60 (the all-or-nothing bug reported 0 here).
+      expect(byDay.get(5)).toBe(60);
+      expect(byDay.get(7)).toBe(60);
     });
   }
 );

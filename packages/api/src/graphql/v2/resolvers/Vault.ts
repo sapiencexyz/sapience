@@ -118,12 +118,15 @@ const mapVaultStat = (row: SnapshotRow) => ({
   deployedCollateral: BigInt(row.vaultDeployed ?? '0'),
   undeployedCollateral: BigInt(row.vaultAvailableAssets ?? '0'),
   realizedPnl: BigInt(row.vaultRealizedPnL ?? '0'),
-  // Cumulative trading PnL — same roll-up v1's analytics chart uses
-  // (settlement + unredeemed wins + net secondary flow). Sourced entirely
+  // Cumulative trading PnL: settlement PnL + net secondary flow. PnL realizes
+  // only when a position is actually redeemed/settled — the unredeemed-claim
+  // term is intentionally NOT added (it used to be), so the line stays correct
+  // when a winning token is sold pre-redeem: the redeemer collects the prize,
+  // not whoever minted it. Matches AccountStatPoint.cumulativePnl. Trade-off:
+  // a resolved-but-unredeemed win isn't marked until it's claimed. Sourced
   // from existing snapshot columns; no live recomputation here.
   cumulativePnl:
     BigInt(row.vaultRealizedPnL ?? '0') +
-    BigInt(row.vaultUnredeemedClaim ?? '0') +
     BigInt(row.vaultSecondarySold ?? '0') -
     BigInt(row.vaultSecondaryBought ?? '0'),
   deposits: BigInt(row.vaultDeposits ?? '0'),
@@ -133,15 +136,19 @@ const mapVaultStat = (row: SnapshotRow) => ({
   collateralWon: BigInt(row.vaultCollateralWon ?? '0'),
   collateralLost: BigInt(row.vaultCollateralLost ?? '0'),
   // wUSDe owed to the vault on resolved-but-not-yet-redeemed winning sides,
-  // net of what it has already claimed. Also a term in `cumulativePnl` above;
-  // surfaced on its own so the vault dashboard's TVL line can include it.
-  unredeemedClaim: BigInt(row.vaultUnredeemedClaim ?? '0'),
+  // net of what it has already claimed. A pending-balance figure for the TVL
+  // line only — NOT part of `cumulativePnl` (PnL realizes at redemption). The
+  // public field is `claimableCollateral` (matches `AccountStatPoint`); the DB
+  // column keeps its `vaultUnredeemedClaim` name.
+  claimableCollateral: BigInt(row.vaultUnredeemedClaim ?? '0'),
 });
 
 /**
  * `stats` reads the vault's latest snapshot; `statsHistory` pages the
- * time series newest-first with an offset cursor (snapshots are a
- * bounded daily series). Both key on `(chainId, vaultAddress)`, indexed
+ * time series oldest-first (ascending `timestamp`, matching
+ * `Account.statsHistory` — chart-ready, no consumer re-sort) with an
+ * offset cursor (snapshots are a bounded daily series). Both key on
+ * `(chainId, vaultAddress)`, indexed
  * on `protocol_stats_snapshot`. Identity (`id`, `address`, `chainId`)
  * stays a plain property read off the mapped row.
  */
@@ -227,7 +234,7 @@ export const Vault: VaultResolvers = {
     // skip/take can't dedupe-then-page correctly, so paginate after the dedupe.
     const allRows = await prisma.protocolStatsSnapshot.findMany({
       where,
-      orderBy: { timestamp: 'desc' },
+      orderBy: { timestamp: 'asc' },
     });
     const dedup = new Map<number, (typeof allRows)[number]>();
     for (const s of allRows) {
@@ -236,8 +243,10 @@ export const Vault: VaultResolvers = {
         dedup.set(s.timestamp, s);
       }
     }
+    // Oldest-first, matching Account.statsHistory so chart consumers don't
+    // re-sort. The offset cursor pages forward from the earliest snapshot.
     const deduped = Array.from(dedup.values()).sort(
-      (a, b) => b.timestamp - a.timestamp
+      (a, b) => a.timestamp - b.timestamp
     );
     const totalCount = deduped.length;
     const pageRows = deduped.slice(skip, skip + first + 1);

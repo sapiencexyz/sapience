@@ -39,22 +39,32 @@ export function resolveDefaults(
 ): ResolvedRange {
   const now = new Date();
   const resolvedTo = to ?? now;
-  const resolvedFrom =
-    from ?? new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
 
   const pgTrunc = INTERVAL_TO_PG[interval];
   const pgStep = INTERVAL_TO_PG_STEP[interval];
 
-  // Estimate bucket count
-  const diffMs = resolvedTo.getTime() - resolvedFrom.getTime();
   const stepMs: Record<TimeInterval, number> = {
     [TimeInterval.HOUR]: 3_600_000,
     [TimeInterval.DAY]: 86_400_000,
     [TimeInterval.WEEK]: 604_800_000,
     [TimeInterval.MONTH]: 2_592_000_000, // ~30 days
   };
-  const bucketCount = Math.ceil(diffMs / stepMs[interval]);
   const max = MAX_BUCKETS[interval];
+
+  // Default window is 90 days, but never wider than the interval's bucket cap
+  // spans (HOUR caps at 168 buckets = 7 days). Without this an unfiltered
+  // `HOUR` request would default to 90 days = 2160 buckets and throw below;
+  // clamping the *default* keeps every interval usable with no explicit range,
+  // while an explicit over-wide `from`/`to` still trips the cap on purpose.
+  const defaultWindowMs = Math.min(
+    90 * 24 * 60 * 60 * 1000,
+    max * stepMs[interval]
+  );
+  const resolvedFrom = from ?? new Date(resolvedTo.getTime() - defaultWindowMs);
+
+  // Estimate bucket count
+  const diffMs = resolvedTo.getTime() - resolvedFrom.getTime();
+  const bucketCount = Math.ceil(diffMs / stepMs[interval]);
 
   if (bucketCount > max) {
     throw new GraphQLError(
@@ -207,6 +217,11 @@ export async function queryAccountPnl(
         ${Prisma.raw(`'${pgStep}'::INTERVAL`)}
       ) gs
     ),
+    -- Start of the first bucket. cumulative_pnl is a running total, so PnL
+    -- realized before the window must seed the line rather than resetting it to
+    -- zero at the window start; events earlier than this seed the baseline below
+    -- and never land in a per-bucket sum.
+    window_bounds AS (SELECT MIN(bucket_epoch) AS first_bucket FROM buckets),
     -- Cost basis for claims: the holder's collateral staked per pick
     -- configuration, per side, plus the tokens they were minted on that side.
     -- Each mint issues totalCollateral (= predictor + counterparty stake) tokens
@@ -257,8 +272,10 @@ export async function queryAccountPnl(
              WHEN cl."positionToken" = pk."predictorToken" THEN 'predictor'
              WHEN cl."positionToken" = pk."counterpartyToken" THEN 'counterparty'
            END
+      -- No lower bound: pre-window claims feed the cumulative baseline; the
+      -- per-bucket join below keeps them out of in-window bucket sums.
       WHERE cl.holder = ${addr}
-        AND cl."redeemedAt" >= ${fromEpoch} AND cl."redeemedAt" <= ${toEpoch}
+        AND cl."redeemedAt" <= ${toEpoch}
       UNION ALL
       -- Closes: position settlement
       SELECT
@@ -275,7 +292,7 @@ export async function queryAccountPnl(
         END AS pnl
       FROM "Close" c
       WHERE (c."predictorHolder" = ${addr} OR c."counterpartyHolder" = ${addr})
-        AND c."burnedAt" >= ${fromEpoch} AND c."burnedAt" <= ${toEpoch}
+        AND c."burnedAt" <= ${toEpoch}
       UNION ALL
       -- V1 Legacy settled positions
       SELECT
@@ -294,15 +311,68 @@ export async function queryAccountPnl(
       FROM position lp
       WHERE (lp.predictor = ${addr} OR lp.counterparty = ${addr})
         AND lp."settledAt" IS NOT NULL
-        AND lp."settledAt" >= ${fromEpoch} AND lp."settledAt" <= ${toEpoch}
+        AND lp."settledAt" <= ${toEpoch}
+      UNION ALL
+      -- Secondary-market trades: sale proceeds when this account is the seller,
+      -- purchase cost when it's the buyer (buyer and seller are distinct per
+      -- trade, so those two legs never both fire).
+      --
+      -- When the seller SOLD tokens it originally minted, also book the mint
+      -- cost basis allocated to the sold tokens — stake × tokenAmount / minted,
+      -- the same proportional rule the Claim branch uses. Without this a seller
+      -- who never redeems never books their stake and overstates by it (their
+      -- mint cost only gets deducted in the Claim branch, which never fires for
+      -- a sold-off position). cs is NULL → basis 0 for buyers and for tokens
+      -- the seller didn't mint; the token → Picks side → claim_stake join is the
+      -- same identity mapping the Claim branch uses on positionToken.
+      --
+      -- FOLLOW-UP (PnL rework): this per-branch cost-basis patching is why the
+      -- model is hard to reason about. The durable fix is a single cash-flow +
+      -- token-ledger per address (mint −stake/+tokens, buy −price/+tokens, sell
+      -- +price/−tokens, redeem +payout/−tokens; PnL = Σcash + held×rate), which
+      -- dissolves these cases and makes holder attribution fall out for free.
+      SELECT
+        st."executedAt" AS event_ts,
+        CASE WHEN st.seller = ${addr} THEN CAST(st.price AS DECIMAL) ELSE 0 END
+          - CASE WHEN st.buyer = ${addr} THEN CAST(st.price AS DECIMAL) ELSE 0 END
+          - CASE
+              WHEN st.seller = ${addr}
+              THEN COALESCE(
+                     cs.stake
+                       * CAST(st."tokenAmount" AS DECIMAL)
+                       / NULLIF(cs.minted, 0),
+                     0
+                   )
+              ELSE 0
+            END AS pnl
+      FROM secondary_trade st
+      LEFT JOIN "Picks" pk
+        ON st.token = pk."predictorToken" OR st.token = pk."counterpartyToken"
+      LEFT JOIN claim_stake cs
+        ON cs.pc = pk.id
+       AND cs.side = CASE
+             WHEN st.token = pk."predictorToken" THEN 'predictor'
+             WHEN st.token = pk."counterpartyToken" THEN 'counterparty'
+           END
+      WHERE (st.buyer = ${addr} OR st.seller = ${addr})
+        AND st."executedAt" <= ${toEpoch}
+    ),
+    -- Sum of all PnL realized strictly before the first bucket — the running
+    -- line's starting value. Pre-window events match no bucket below, so they
+    -- contribute here only, never to a per-bucket pnl value.
+    baseline AS (
+      SELECT COALESCE(SUM(e.pnl), 0) AS base
+      FROM pnl_events e, window_bounds w
+      WHERE e.event_ts < w.first_bucket
     )
     SELECT
       b.bucket_epoch AS timestamp,
       COALESCE(SUM(e.pnl), 0)::TEXT AS pnl,
-      SUM(COALESCE(SUM(e.pnl), 0)) OVER (ORDER BY b.bucket_epoch)::TEXT AS cumulative_pnl
+      (bl.base + SUM(COALESCE(SUM(e.pnl), 0)) OVER (ORDER BY b.bucket_epoch))::TEXT AS cumulative_pnl
     FROM buckets b
+    CROSS JOIN baseline bl
     LEFT JOIN pnl_events e ON e.event_ts >= b.bucket_epoch AND e.event_ts < b.next_epoch
-    GROUP BY b.bucket_epoch
+    GROUP BY b.bucket_epoch, bl.base
     ORDER BY b.bucket_epoch
   `;
 
@@ -376,16 +446,19 @@ export async function queryAccountBalance(
       WHERE (p.predictor = ${addr} OR p.counterparty = ${addr})
         AND p."settledAt" IS NOT NULL
     ),
-    -- A redeem burns the holder's whole position token for one (pickConfig,
-    -- side). Claim.pickConfigId gives the config; the side is identified by
-    -- matching the burned positionToken to the pick configuration's
-    -- predictor/counterparty token, the same way the accountPnl query does.
+    -- The holder's redemptions, keyed to (pickConfig, side) by matching the
+    -- burned positionToken to the pick configuration's predictor/counterparty
+    -- token (same identity mapping the accountPnl query uses). collateralPaid
+    -- is the wUSDe each redeem actually pulled out — used to decrement the
+    -- side's remaining claimable, so a partial redeem subtracts only what it
+    -- redeemed rather than zeroing the whole side.
     account_claims AS (
       SELECT cl."pickConfigId" AS pick_config_id,
              CASE WHEN cl."positionToken" = pk."predictorToken" THEN 'predictor'
                   WHEN cl."positionToken" = pk."counterpartyToken" THEN 'counterparty'
              END AS side,
-             cl."redeemedAt"
+             cl."redeemedAt",
+             CAST(COALESCE(cl."collateralPaid", '0') AS DECIMAL) AS collateral_paid
       FROM "Claim" cl
       LEFT JOIN "Picks" pk ON cl."pickConfigId" = pk.id
       WHERE cl.holder = ${addr}
@@ -398,18 +471,31 @@ export async function queryAccountBalance(
         WHERE d.created_ts <= b.bucket_epoch
           AND (d.settled_ts IS NULL OR d.settled_ts > b.bucket_epoch)
       ), 0)::TEXT AS deployed_collateral,
+      -- Claimable remaining = gross owed on each settled-won (pickConfig, side)
+      -- MINUS the collateral already redeemed on that side up to the bucket,
+      -- floored at 0 per side (mirrors the vault's owed − claimed). A partial
+      -- redeem decrements by the amount it pulled out instead of dropping the
+      -- whole side, and the per-side floor keeps a redeemed bought-token from
+      -- netting against a different, still-unredeemed minted win.
+      -- (Attribution still follows the original minter, not secondary token
+      -- transfers — the deferred ledger-rework limitation noted on
+      -- AccountStatPoint.claimableCollateral; orthogonal to this fix.)
       COALESCE((
-        SELECT SUM(ac.claimable)
-        FROM all_claimable ac
-        WHERE ac.settled_ts <= b.bucket_epoch
-          AND NOT EXISTS (
-            -- Stop counting this position's claimable once the holder has
-            -- redeemed that (pickConfig, side) at or before the bucket.
-            SELECT 1 FROM account_claims c
-            WHERE c.pick_config_id = ac.pick_config_id
-              AND c.side = ac.side
-              AND c."redeemedAt" <= b.bucket_epoch
-          )
+        SELECT SUM(GREATEST(per_side.owed - per_side.redeemed, 0))
+        FROM (
+          SELECT ac.pick_config_id, ac.side,
+                 SUM(ac.claimable) AS owed,
+                 COALESCE((
+                   SELECT SUM(c.collateral_paid)
+                   FROM account_claims c
+                   WHERE c.pick_config_id = ac.pick_config_id
+                     AND c.side = ac.side
+                     AND c."redeemedAt" <= b.bucket_epoch
+                 ), 0) AS redeemed
+          FROM all_claimable ac
+          WHERE ac.settled_ts <= b.bucket_epoch
+          GROUP BY ac.pick_config_id, ac.side
+        ) per_side
       ), 0)::TEXT AS claimable_collateral
     FROM buckets b
     ORDER BY b.bucket_epoch

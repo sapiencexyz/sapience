@@ -53,6 +53,15 @@ describe('resolveDefaults', () => {
     expect(result.toEpoch - result.fromEpoch).toBeCloseTo(ninetyDays, -2);
   });
 
+  it('clamps the default window per interval so an unfiltered HOUR request does not throw', () => {
+    // 90 days of hourly buckets (2160) would blow the 168 cap; the default
+    // window must clamp to the interval's max span (7 days) instead.
+    expect(() => resolveDefaults(TimeInterval.HOUR)).not.toThrow();
+    const result = resolveDefaults(TimeInterval.HOUR);
+    const sevenDays = 7 * 24 * 60 * 60;
+    expect(result.toEpoch - result.fromEpoch).toBeCloseTo(sevenDays, -2);
+  });
+
   it('respects explicit from and to dates', () => {
     const from = new Date('2024-01-01T00:00:00Z');
     const to = new Date('2024-01-31T00:00:00Z');

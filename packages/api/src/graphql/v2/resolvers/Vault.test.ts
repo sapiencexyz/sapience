@@ -133,17 +133,20 @@ describe('Vault (v2)', () => {
       balance: bigint;
       realizedPnl: bigint;
       cumulativePnl: bigint;
-      unredeemedClaim: bigint;
+      claimableCollateral: bigint;
       positionsWon: number;
     }>(Vault.stats)({ chainId: 13374202, address: '0xAAAA' }, {}, {}, null);
     expect(stat.deployedCollateral).toBe(500n);
     expect(stat.undeployedCollateral).toBe(1500n);
     expect(stat.balance).toBe(1000n);
     expect(stat.realizedPnl).toBe(42n);
-    // cumulativePnl = realized + unredeemed + secondarySold − secondaryBought
-    expect(stat.cumulativePnl).toBe(54n);
-    // unredeemedClaim is surfaced directly from vaultUnredeemedClaim.
-    expect(stat.unredeemedClaim).toBe(10n);
+    // cumulativePnl = realized + secondarySold − secondaryBought (42 + 5 − 3).
+    // The unredeemed-claim term (10) is intentionally NOT included — PnL
+    // realizes at redemption, so claimable never marks the line.
+    expect(stat.cumulativePnl).toBe(44n);
+    // claimableCollateral is still surfaced directly from vaultUnredeemedClaim
+    // (for the TVL line), just not folded into cumulativePnl.
+    expect(stat.claimableCollateral).toBe(10n);
     expect(stat.positionsWon).toBe(7);
   });
 
@@ -164,8 +167,8 @@ describe('Vault (v2)', () => {
     (getConfiguredVaults as Mock).mockReturnValueOnce([
       { kind: 'protocol', address: PRIMARY, config: { legacy: [LEGACY] } },
     ]);
-    // Returned newest-first; timestamp 100 appears under BOTH the legacy and
-    // the current primary address (a redeploy day).
+    // timestamp 100 appears under BOTH the legacy and the current primary
+    // address (a redeploy day).
     (prisma.protocolStatsSnapshot.findMany as Mock).mockResolvedValueOnce([
       { timestamp: 200, vaultAddress: PRIMARY, vaultBalance: '200' },
       { timestamp: 100, vaultAddress: LEGACY, vaultBalance: '50' },
@@ -194,5 +197,7 @@ describe('Vault (v2)', () => {
     expect(conn.totalCount).toBe(2);
     const ts100 = conn.nodes.find((n) => n.timestamp === 100);
     expect(ts100?.balance).toBe(999n);
+    // Oldest-first ordering (ascending timestamp), matching Account.statsHistory.
+    expect(conn.nodes.map((n) => n.timestamp)).toEqual([100, 200]);
   });
 });
