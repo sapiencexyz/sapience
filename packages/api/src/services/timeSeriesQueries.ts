@@ -446,16 +446,19 @@ export async function queryAccountBalance(
       WHERE (p.predictor = ${addr} OR p.counterparty = ${addr})
         AND p."settledAt" IS NOT NULL
     ),
-    -- A redeem burns the holder's whole position token for one (pickConfig,
-    -- side). Claim.pickConfigId gives the config; the side is identified by
-    -- matching the burned positionToken to the pick configuration's
-    -- predictor/counterparty token, the same way the accountPnl query does.
+    -- The holder's redemptions, keyed to (pickConfig, side) by matching the
+    -- burned positionToken to the pick configuration's predictor/counterparty
+    -- token (same identity mapping the accountPnl query uses). collateralPaid
+    -- is the wUSDe each redeem actually pulled out — used to decrement the
+    -- side's remaining claimable, so a partial redeem subtracts only what it
+    -- redeemed rather than zeroing the whole side.
     account_claims AS (
       SELECT cl."pickConfigId" AS pick_config_id,
              CASE WHEN cl."positionToken" = pk."predictorToken" THEN 'predictor'
                   WHEN cl."positionToken" = pk."counterpartyToken" THEN 'counterparty'
              END AS side,
-             cl."redeemedAt"
+             cl."redeemedAt",
+             CAST(COALESCE(cl."collateralPaid", '0') AS DECIMAL) AS collateral_paid
       FROM "Claim" cl
       LEFT JOIN "Picks" pk ON cl."pickConfigId" = pk.id
       WHERE cl.holder = ${addr}
@@ -468,18 +471,31 @@ export async function queryAccountBalance(
         WHERE d.created_ts <= b.bucket_epoch
           AND (d.settled_ts IS NULL OR d.settled_ts > b.bucket_epoch)
       ), 0)::TEXT AS deployed_collateral,
+      -- Claimable remaining = gross owed on each settled-won (pickConfig, side)
+      -- MINUS the collateral already redeemed on that side up to the bucket,
+      -- floored at 0 per side (mirrors the vault's owed − claimed). A partial
+      -- redeem decrements by the amount it pulled out instead of dropping the
+      -- whole side, and the per-side floor keeps a redeemed bought-token from
+      -- netting against a different, still-unredeemed minted win.
+      -- (Attribution still follows the original minter, not secondary token
+      -- transfers — the deferred ledger-rework limitation noted on
+      -- AccountStatPoint.claimableCollateral; orthogonal to this fix.)
       COALESCE((
-        SELECT SUM(ac.claimable)
-        FROM all_claimable ac
-        WHERE ac.settled_ts <= b.bucket_epoch
-          AND NOT EXISTS (
-            -- Stop counting this position's claimable once the holder has
-            -- redeemed that (pickConfig, side) at or before the bucket.
-            SELECT 1 FROM account_claims c
-            WHERE c.pick_config_id = ac.pick_config_id
-              AND c.side = ac.side
-              AND c."redeemedAt" <= b.bucket_epoch
-          )
+        SELECT SUM(GREATEST(per_side.owed - per_side.redeemed, 0))
+        FROM (
+          SELECT ac.pick_config_id, ac.side,
+                 SUM(ac.claimable) AS owed,
+                 COALESCE((
+                   SELECT SUM(c.collateral_paid)
+                   FROM account_claims c
+                   WHERE c.pick_config_id = ac.pick_config_id
+                     AND c.side = ac.side
+                     AND c."redeemedAt" <= b.bucket_epoch
+                 ), 0) AS redeemed
+          FROM all_claimable ac
+          WHERE ac.settled_ts <= b.bucket_epoch
+          GROUP BY ac.pick_config_id, ac.side
+        ) per_side
       ), 0)::TEXT AS claimable_collateral
     FROM buckets b
     ORDER BY b.bucket_epoch
