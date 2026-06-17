@@ -23,7 +23,6 @@ import { validateBidOnChain } from '@sapience/sdk/auction/validation';
 import { createEscrowAuctionWs } from '@sapience/sdk/relayer/escrowAuctionWs';
 import { cardTag } from './draw.js';
 import { collateralAddress, escrowAddress, linePicks } from './chain.js';
-import { requiredCounterparty } from './sponsorship.js';
 import { buildLines } from './lines.js';
 import { NETWORK_CONFIG, type Network } from './network.js';
 import { chainFor } from './session.js';
@@ -99,10 +98,11 @@ export interface SubmitLineParams {
   cardIndex: number;
   /** Pool the card belongs to (for the per-card refCode tag). */
   poolId: string;
-  /** OnboardingSponsor address when the house funds this stake. Set => the
-   *  escrow pulls the predictor collateral from the sponsor (not the player),
-   *  and the bid must settle against the sponsor's required counterparty. */
-  sponsor?: Address;
+  /** Set when the house funds this stake: the escrow pulls the predictor
+   *  collateral from `sponsor`, and the bid MUST settle against
+   *  `requiredCounterparty`. Resolved upstream (getSponsoredLineContext) —
+   *  submitLine doesn't discover sponsorship, it just executes it. */
+  sponsorContext?: { sponsor: Address; requiredCounterparty: Address };
 }
 
 interface BidShape {
@@ -255,7 +255,7 @@ export async function submitLine(
     lineIndex,
     cardIndex,
     poolId,
-    sponsor,
+    sponsorContext,
   } = params;
   const chain = chainFor(network);
   const chainId = chain.id;
@@ -277,10 +277,9 @@ export async function submitLine(
   //
   // Sponsored: the escrow funds the stake via the sponsor's fundMint hook, so
   // the predictor wraps/approves NOTHING — skip prep (the session-enable op
-  // already ran at submit). In parallel, read the counterparty the sponsor will
-  // fund against (the vault): sponsored bids must settle against it or fundMint
-  // reverts, so we filter the auction to it below.
-  const collateralReady = sponsor
+  // already ran at submit). The sponsor + required counterparty are supplied in
+  // sponsorContext; bids are filtered to that counterparty below.
+  const collateralReady = sponsorContext
     ? Promise.resolve()
     : prepareCollateral(
         network,
@@ -290,10 +289,6 @@ export async function submitLine(
         BigInt((cardIndex + 1) * 1000 + 101 + lineIndex)
       );
   collateralReady.catch(() => {}); // awaited below; don't also reject unhandled
-  const sponsorCounterpartyPromise: Promise<Address | null> = sponsor
-    ? requiredCounterparty(network)
-    : Promise.resolve(null);
-  sponsorCounterpartyPromise.catch(() => {});
   const HINT_LARGE = (1n << 255n) - 1n;
 
   const publicClient = createPublicClient({
@@ -349,11 +344,6 @@ export async function submitLine(
     // Collateral prep (started before the WS) and the WS connect overlap.
     await Promise.all([collateralReady, wsConnected]);
 
-    // Sponsored mints can only settle against the sponsor's required
-    // counterparty (the vault); any other bid would revert in fundMint. Filter
-    // the auction to it (null = not sponsored, accept any funded bid).
-    const sponsorCounterparty = await sponsorCounterpartyPromise;
-
     // Fund this line, retrying the whole auction on a stale-bid revert. Each
     // attempt runs a fresh RFQ (new bid, deadline, predictor nonce + sig). We
     // only loop on a CONFIRMED revert below — never after the UserOp is sent
@@ -383,8 +373,11 @@ export async function submitLine(
           // Threaded into the RFQ so the relayer broadcasts it and the vault MM
           // signs its bid over the SAME sponsor-inclusive prediction hash the
           // escrow verifies — otherwise the counterparty signature fails on mint.
-          ...(sponsor
-            ? { predictorSponsor: sponsor, predictorSponsorData: '0x' as Hex }
+          ...(sponsorContext
+            ? {
+                predictorSponsor: sponsorContext.sponsor,
+                predictorSponsorData: '0x' as Hex,
+              }
             : {}),
         },
       });
@@ -459,8 +452,9 @@ export async function submitLine(
             // Sponsored mints narrow further: only the sponsor's required
             // counterparty (the vault) can fill, or fundMint reverts on-chain.
             if (
-              sponsorCounterparty &&
-              b.counterparty.toLowerCase() !== sponsorCounterparty.toLowerCase()
+              sponsorContext &&
+              b.counterparty.toLowerCase() !==
+                sponsorContext.requiredCounterparty.toLowerCase()
             ) {
               return false;
             }
@@ -562,7 +556,7 @@ export async function submitLine(
         counterparty: resolved.counterparty,
         predictorNonce: BigInt(predictorNonce),
         predictorDeadline: BigInt(payload.predictorDeadline),
-        predictorSponsor: sponsor,
+        predictorSponsor: sponsorContext?.sponsor,
         predictorSponsorData: '0x' as Hex,
         verifyingContract: escrow,
         chainId,
@@ -603,7 +597,7 @@ export async function submitLine(
           refCode: cardTag(poolId, smartAccountAddress, cardIndex),
           // House-funded stake: escrow calls sponsor.fundMint instead of pulling
           // from the predictor. Must match what was signed above + by the vault.
-          predictorSponsor: sponsor,
+          predictorSponsor: sponsorContext?.sponsor,
           predictorSponsorData: '0x' as Hex,
         },
         predictionMarketAddress: escrow,

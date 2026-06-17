@@ -28,3 +28,65 @@ export function sponsorEligibility(s: {
   const bankrollOk = s.bankroll >= s.cardPrice;
   return bankrollOk && (s.remaining >= s.cardPrice || s.allocated === 0n);
 }
+
+/**
+ * Is THIS card a sponsored bingo card? Card-level, on-chain-derivable, so it
+ * survives a page reload without any client-held flag. Both must hold:
+ *   - price is exactly the sponsored amount, AND
+ *   - the wallet holds a FULL bingo grant (`allocated === SPONSORED_CARD_PRICE_WEI`).
+ * The `allocated` check is what stops a partial cross-product budget (e.g. an
+ * /app 1-USDe grant) from ever being read as a bingo-sponsored card (E11), and
+ * a price ≠ the sponsored amount means it's a paid card — never sponsor it.
+ */
+export function isSponsoredCard(s: {
+  cardPriceWei: bigint;
+  allocated: bigint;
+}): boolean {
+  return (
+    s.cardPriceWei === SPONSORED_CARD_PRICE_WEI &&
+    s.allocated === SPONSORED_CARD_PRICE_WEI
+  );
+}
+
+/** Whether a single line of a card should be house-funded: the card is a
+ *  sponsored card AND the remaining budget still covers this line's stake. */
+export function isLineSponsored(s: {
+  cardPriceWei: bigint;
+  allocated: bigint;
+  remaining: bigint;
+  stakePerLineWei: bigint;
+}): boolean {
+  return (
+    isSponsoredCard({ cardPriceWei: s.cardPriceWei, allocated: s.allocated }) &&
+    s.remaining >= s.stakePerLineWei
+  );
+}
+
+/** What `ensureSponsoredBudget` must do for a wallet about to submit a
+ *  sponsored card, decided purely from on-chain shapes:
+ *   - `reject` (with reason) — caller throws, no receipt is minted;
+ *   - `grant`  — never granted (allocated 0) → grant a full budget, confirm;
+ *   - `ok`     — already holds a usable full budget → submit, no new tx. */
+export type BudgetAction =
+  | { kind: 'ok' }
+  | { kind: 'grant' }
+  | { kind: 'reject'; reason: string };
+
+export function sponsoredBudgetAction(s: {
+  bankroll: bigint;
+  allocated: bigint;
+  remaining: bigint;
+}): BudgetAction {
+  if (s.bankroll < SPONSORED_CARD_PRICE_WEI) {
+    return { kind: 'reject', reason: 'Sponsor bankroll underfunded' };
+  }
+  if (s.allocated === 0n) return { kind: 'grant' };
+  if (
+    s.allocated === SPONSORED_CARD_PRICE_WEI &&
+    s.remaining >= SPONSORED_CARD_PRICE_WEI
+  ) {
+    return { kind: 'ok' };
+  }
+  // Partial (/app) or already-spent bingo budget → not eligible for a new one.
+  return { kind: 'reject', reason: 'Wallet not eligible for a sponsored card' };
+}

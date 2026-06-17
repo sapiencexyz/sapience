@@ -22,12 +22,11 @@ import {
   fundedPredictions,
   lineIsFunded,
   linePicks,
-  sponsorAddress,
 } from './chain.js';
 import {
-  getRemainingBudget,
+  ensureSponsoredBudget,
+  getSponsoredLineContext,
   getSponsorStatus,
-  grantBudgetIfNew,
   isSponsorshipEnabled,
   SPONSORED_CARD_PRICE_WEI,
 } from './sponsorship.js';
@@ -502,13 +501,26 @@ export async function handleApi(
     }
 
     const seed = cardSeed(secretFor(pool.poolId), pool.poolId, player, cardIndex);
+    // Sponsored: ensure a usable on-chain budget BEFORE minting the receipt, and
+    // FAIL CLOSED — if the grant can't be confirmed (dry bankroll, ineligible
+    // wallet, tx failure) we error out and never lock in an unfundable card.
+    if (sponsored) {
+      try {
+        await ensureSponsoredBudget(network, player);
+      } catch (e) {
+        json(res, 409, {
+          error: e instanceof Error ? e.message : 'Sponsorship unavailable',
+        });
+        return true;
+      }
+    }
     // Two independent UserOps from two different signers — run together:
-    // the MINTER mints the receipt while the PLAYER's session wraps +
-    // approves for the whole card (one op, so the 10 concurrent line
-    // requests that follow don't each race their own prep). ensureSessionOp:
-    // even when collateral is already prepared, send one op so a fresh
-    // session key gets ENABLED here, serially — not by 10 concurrent line
-    // mints racing the kernel's enable nonce.
+    // the MINTER mints the receipt while the PLAYER's session wraps + approves
+    // for the whole card (one op, so the 10 concurrent line requests that follow
+    // don't each race their own prep). ensureSessionOp: even when collateral is
+    // already prepared (or there's none to wrap — sponsored), send one op so a
+    // fresh session key gets ENABLED here, serially. Sponsored wraps 0 (the
+    // house funds the stake); the deposit path wraps the whole card up front.
     const [submission] = await Promise.all([
       mintReceipt({
         network,
@@ -520,17 +532,14 @@ export async function handleApi(
         cardPriceWei: price.toString(),
         ref: (ref as Address | undefined) ?? null,
       }),
-      // Sponsored: the house funds the stake, so there's nothing to wrap —
-      // grant the budget (awaited to confirmation, so fundMint sees it when the
-      // 10 lines run) AND send ONE enable-only session op (a 0-wei prep) so the
-      // fresh session key is enabled serially, not raced by the line mints.
-      // Otherwise (deposit path) wrap + approve the whole card up front.
-      sponsored
-        ? Promise.all([
-            grantBudgetIfNew(network, player),
-            prepareCollateral(network, sessionClient, player, 0n, undefined, true),
-          ])
-        : prepareCollateral(network, sessionClient, player, price, undefined, true),
+      prepareCollateral(
+        network,
+        sessionClient,
+        player,
+        sponsored ? 0n : price,
+        undefined,
+        true,
+      ),
     ]);
     // Idempotent retry: the chain locked sides/price at first submit.
     if (
@@ -593,15 +602,10 @@ export async function handleApi(
     // on the already-funded path — runLine re-awaits and surfaces it.
     const sessionClientPromise = sessionFor(network, player, body.session);
     sessionClientPromise.catch(() => {});
-    // The chain reads don't depend on each other — overlap them. The remaining
-    // sponsorship budget rides along so the per-line sponsor decision adds no
-    // latency (and survives reloads: no client-held flag, just on-chain budget).
-    const [submission, fundedEvents, sponsorRemaining] = await Promise.all([
+    // The two chain reads don't depend on each other — overlap them.
+    const [submission, fundedEvents] = await Promise.all([
       chainSubmission(network, pool.poolId, player, cardIndex),
       fundedPredictions(network, player),
-      isSponsorshipEnabled(network)
-        ? getRemainingBudget(network, player)
-        : Promise.resolve(0n),
     ]);
     if (!submission) {
       json(res, 409, { error: 'No submission — POST /api/card/submit first' });
@@ -611,11 +615,6 @@ export async function handleApi(
     const cells = drawCells(pool.conditions, submission.seed);
     const stakePerLineWei =
       BigInt(submission.cardPriceWei) / BigInt(LINES_PER_CARD);
-    // House-fund this line iff the player's budget still covers its stake.
-    const sponsor =
-      sponsorRemaining >= stakePerLineWei
-        ? (sponsorAddress(network) ?? undefined)
-        : undefined;
     // Monotonic funded check (escrow events): never double-mint a line,
     // even after the player redeemed (burned) the position.
     const tag = cardTag(pool.poolId, player, cardIndex);
@@ -631,6 +630,27 @@ export async function handleApi(
       json(res, 200, { lineIndex, funded: true, alreadyFunded: true });
       return true;
     }
+    // Card-level sponsor context (or undefined = pay normally), derived from the
+    // card's price + on-chain budget — never from leftover budget alone, and it
+    // survives reloads. Throws if the card is sponsored but the required
+    // counterparty can't be read, so we never start an unfillable auction.
+    let sponsorContext;
+    try {
+      sponsorContext =
+        (await getSponsoredLineContext(
+          network,
+          player,
+          BigInt(submission.cardPriceWei),
+          stakePerLineWei,
+        )) ?? undefined;
+    } catch (e) {
+      json(res, 502, {
+        error: e instanceof Error ? e.message : 'Sponsorship error',
+        lineIndex,
+        funded: false,
+      });
+      return true;
+    }
     const runLine = async (client: Awaited<typeof sessionClientPromise>) =>
       submitLine({
         network,
@@ -642,7 +662,7 @@ export async function handleApi(
         lineIndex,
         cardIndex,
         poolId: pool.poolId,
-        sponsor,
+        sponsorContext,
       });
     try {
       let result;

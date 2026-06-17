@@ -59,6 +59,27 @@ Solidity, no relayer/MM changes.**
 - **E12** Sponsored winners still accrue bonus/referral entitlements (extra
   house cost) — confirm intended.
 
+## PR-review hardening (2026-06-16)
+
+Tightened from the first working version after review — sponsorship is now
+**fail-closed and card-level**, not inferred from leftover budget:
+
+- **Card-level, not per-line.** A line is sponsored only if the CARD is sponsored
+  — `cardPrice == SPONSORED_CARD_PRICE_WEI` AND `allocated == SPONSORED_CARD_PRICE_WEI`
+  (full bingo grant shape) AND remaining covers the stake. A partial `/app`
+  budget (E11) or a paid card can never accidentally consume sponsorship.
+  Derived from on-chain state, so it survives a reload.
+- **Submit fails closed.** `ensureSponsoredBudget` confirms the budget (already
+  held, or granted + tx-confirmed) BEFORE the receipt is minted; throws on dry
+  bankroll / ineligible wallet / grant failure → no unfundable sponsored card.
+- **Complete line context or no auction.** `getSponsoredLineContext` resolves
+  `{sponsor, requiredCounterparty}` up front and throws if the counterparty
+  can't be read; `submitLine` only executes, it no longer discovers sponsorship.
+- **Service boundary + tests.** Pure decisions in `sponsorshipPolicy.ts`
+  (`isSponsoredCard`, `isLineSponsored`, `sponsoredBudgetAction`), IO in
+  `sponsorship.ts` with injectable `SponsorshipDeps`; orchestration tests cover
+  grant-failure, partial-`/app`, counterparty-fail-closed, no-re-grant, resume.
+
 ## Implementation map
 
 - `server/network.ts` — add `onboardingSponsor` per network.
