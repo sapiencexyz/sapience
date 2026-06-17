@@ -1649,11 +1649,12 @@ export default function CardDetailScreen() {
         </section>
       )}
 
-      {/* A pool whose markets nearly all cleared the odds filter can't deal a
-          card. Reachable only by a direct ?pool= link (the picker and active
-          pool skip unavailable pools) — show a friendly notice, not a raw
-          error, with the card strip above still offering valid pools. */}
-      {!viewOnly && pool?.available === false && (
+      {/* A pool whose markets have mostly resolved (live odds) can't deal a
+          NEW card — show a friendly notice instead of a raw error, with the
+          card strip above still offering valid pools. Only when there's no
+          card to show: an already-submitted card stays viewable here even
+          after its pool goes unavailable. */}
+      {!viewOnly && !card && pool?.available === false && (
         <section className="screen admin-section">
           <div className="pool-unavailable">
             <h2>Pool currently unavailable</h2>

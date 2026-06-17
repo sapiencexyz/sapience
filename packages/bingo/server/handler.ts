@@ -25,13 +25,8 @@ import {
 } from './chain.js';
 import { buildLines, LINES_PER_CARD } from './lines.js';
 import { NETWORK_CONFIG, resolveNetwork, type Network } from './network.js';
-import {
-  activePoolOf,
-  loadPools,
-  parsePools,
-  poolIsAvailable,
-  poolIsOpen,
-} from './pool.js';
+import { activePoolOf, loadPools, parsePools, poolIsOpen } from './pool.js';
+import { liveAvailability, liveOddsFor, withLiveOdds } from './odds.js';
 import {
   cardCount,
   chainSubmission,
@@ -186,6 +181,7 @@ export async function handleApi(
 
   if (route === 'GET /api/pool') {
     const pool = resolvePool(network, url.searchParams.get('poolId'));
+    const { available, odds } = await liveAvailability(network, pool.conditions);
     json(res, 200, {
       poolId: pool.poolId,
       title: pool.title,
@@ -197,10 +193,10 @@ export async function handleApi(
       poolNumber: poolsFor[network].indexOf(pool) + 1,
       cutoff: pool.cutoff,
       open: poolIsOpen(pool),
-      /** False when too few markets cleared the odds filter to deal a card —
-       *  the frontend shows "currently unavailable" instead of a card. */
-      available: poolIsAvailable(pool),
-      conditions: pool.conditions,
+      /** False when too few markets are still uncertain (per LIVE odds) to
+       *  deal a card — the frontend shows "currently unavailable" instead. */
+      available,
+      conditions: withLiveOdds(pool.conditions, odds),
       multiplierBps: pool.multiplierBps,
       referralBps: pool.referralBps,
       minCardPriceWei: pool.minCardPriceWei,
@@ -215,18 +211,26 @@ export async function handleApi(
   // this list automatically once its cutoff passes (poolIsOpen → false), so
   // special pools (e.g. fed-day) disappear as options the moment they close.
   if (route === 'GET /api/pools') {
+    // Open pools only; then keep those still available per LIVE odds — an
+    // open pool whose markets have mostly resolved is never offered as a
+    // "+ New" option. Availability checks run in parallel.
+    // NB: arrow-wrap so Array.filter's index arg isn't passed as nowSec.
+    const open = poolsFor[network].filter((pool) => poolIsOpen(pool));
+    const avail = await Promise.all(
+      open.map((pool) => liveAvailability(network, pool.conditions)),
+    );
     json(res, 200, {
-      pools: poolsFor[network]
-        // Open AND available (enough dealable conditions) — an unavailable
-        // pool can't deal a card, so it's never offered as a "+ New" option.
-        .filter((pool) => poolIsOpen(pool) && poolIsAvailable(pool))
-        .map((pool) => ({
+      pools: open
+        .map((pool, i) => ({
           poolId: pool.poolId,
           title: pool.title ?? null,
           poolNumber: poolsFor[network].indexOf(pool) + 1,
           cutoff: pool.cutoff,
           open: true,
-        })),
+          available: avail[i].available,
+        }))
+        .filter((p) => p.available)
+        .map(({ available: _drop, ...p }) => p),
     });
     return true;
   }
@@ -262,10 +266,6 @@ export async function handleApi(
       return true;
     }
     const pool = resolvePool(network, url.searchParams.get('poolId'));
-    if (!poolIsAvailable(pool)) {
-      json(res, 409, { error: 'Pool currently unavailable' });
-      return true;
-    }
     const rawIndex = url.searchParams.get('cardIndex');
     const cardIndex = rawIndex == null ? 0 : Number(rawIndex);
     if (!Number.isInteger(cardIndex) || cardIndex < 0) {
@@ -280,6 +280,14 @@ export async function handleApi(
       });
       return true;
     }
+    // Live odds drive the displayed prices and the new-card gate. An existing
+    // (submitted) card stays viewable even after its pool's markets resolve;
+    // only a fresh preview (cardIndex === count) is refused when unavailable.
+    const { available, odds } = await liveAvailability(network, pool.conditions);
+    if (cardIndex === count && !available) {
+      json(res, 409, { error: 'Pool currently unavailable' });
+      return true;
+    }
     const submission =
       cardIndex < count
         ? await chainSubmission(network, pool.poolId, player, cardIndex)
@@ -288,7 +296,7 @@ export async function handleApi(
     const seed =
       submission?.seed ??
       cardSeed(secretFor(pool.poolId), pool.poolId, player, cardIndex);
-    const cells = drawCells(pool.conditions, seed);
+    const cells = withLiveOdds(drawCells(pool.conditions, seed), odds);
     const funded = submission
       ? await fundedLineFlags(
           network,
@@ -342,7 +350,10 @@ export async function handleApi(
       json(res, 404, { error: 'Receipt belongs to an unknown pool' });
       return true;
     }
-    const cells = drawCells(pool.conditions, receipt.seed);
+    const cells = withLiveOdds(
+      drawCells(pool.conditions, receipt.seed),
+      await liveOddsFor(network, pool.conditions.map((c) => c.conditionId)),
+    );
     const funded = await fundedLineFlags(
       network,
       receipt.player,
@@ -490,7 +501,9 @@ export async function handleApi(
       json(res, 409, { error: 'Pool is closed (cutoff passed)' });
       return true;
     }
-    if (!poolIsAvailable(pool)) {
+    // Can't lock in a fresh card when the pool's markets have mostly resolved
+    // (live odds). Existing cards still fund their lines below, unguarded.
+    if (!(await liveAvailability(network, pool.conditions)).available) {
       json(res, 409, { error: 'Pool currently unavailable' });
       return true;
     }
@@ -587,10 +600,8 @@ export async function handleApi(
       json(res, 409, { error: 'Pool is closed (cutoff passed)' });
       return true;
     }
-    if (!poolIsAvailable(pool)) {
-      json(res, 409, { error: 'Pool currently unavailable' });
-      return true;
-    }
+    // No availability gate here: funding the lines of an ALREADY-submitted
+    // card must keep working even if the pool's markets resolved after submit.
     // Speculative: restored in parallel with the chain reads below; only
     // awaited if this line actually needs funding. The floating catch keeps
     // an early rejection (bad session) from becoming an unhandled rejection

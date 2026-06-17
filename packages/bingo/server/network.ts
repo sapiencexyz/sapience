@@ -30,6 +30,9 @@ export interface NetworkConfig {
   receiptContract: Address;
   /** Lower bound for on-chain log scans = the receipt's deploy block. */
   logFromBlock: number;
+  /** Sapience GraphQL endpoint — source of live market odds (estimatedPrice /
+   *  settled) for the cells, refreshed at request time. */
+  graphqlUrl: string;
 }
 
 export const NETWORK_CONFIG: Record<Network, NetworkConfig> = {
@@ -38,12 +41,14 @@ export const NETWORK_CONFIG: Record<Network, NetworkConfig> = {
     relayerWsUrl: 'wss://relayer.staging.sapience.xyz/auction',
     receiptContract: '0x67fB8B733Fe4E523d7d491785A86748a4ee9112c',
     logFromBlock: 4828264,
+    graphqlUrl: 'https://api.staging.sapience.xyz/graphql',
   },
   main: {
     chain: etherealChain,
     relayerWsUrl: 'wss://relayer.sapience.xyz/auction',
     receiptContract: '0xdb89F60983C7f943FD683Da0c3F6418d38e3732d',
     logFromBlock: 5041801,
+    graphqlUrl: 'https://api.sapience.xyz/graphql',
   },
 };
 

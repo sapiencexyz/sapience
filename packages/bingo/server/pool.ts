@@ -9,13 +9,19 @@ const BYTES32_RE = /^0x[0-9a-fA-F]{64}$/;
 // the YES/NO pick carries no real risk. Drop any condition whose consensus YES
 // odds sit outside this band from the dealable set. Conditions with no known
 // price are kept (we only exclude on a real signal, never on missing data).
-const MIN_CELL_PRICE = 0.2;
-const MAX_CELL_PRICE = 0.8;
+export const MIN_CELL_PRICE = 0.2;
+export const MAX_CELL_PRICE = 0.8;
 
-function isDealableCell(c: PoolCondition): boolean {
-  const p = c.estimatedPrice;
+/** True when a market's YES odds are uncertain enough to deal (or unknown —
+ *  we only exclude on a real signal). Shared by the static config filter and
+ *  the live-odds availability check. */
+export function priceIsDealable(p: number | null | undefined): boolean {
   if (typeof p !== 'number' || !Number.isFinite(p)) return true;
   return p >= MIN_CELL_PRICE && p <= MAX_CELL_PRICE;
+}
+
+function isDealableCell(c: PoolCondition): boolean {
+  return priceIsDealable(c.estimatedPrice);
 }
 
 /** A pool is playable only if it has enough dealable conditions to fill a
