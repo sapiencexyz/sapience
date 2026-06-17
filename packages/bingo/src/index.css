@@ -1086,7 +1086,9 @@ button.quick-pick:hover {
   overflow: hidden;
 }
 
-/* The rainbow lives here — only on the progress fill. */
+/* The rainbow lives here — only on the progress fill. The gradient is laid
+   out at 2× width and its position drifts back and forth so the colours
+   subtly flow while lines are being created. */
 .funding-bar-fill {
   height: 100%;
   border-radius: inherit;
@@ -1101,7 +1103,25 @@ button.quick-pick:hover {
     #6be38a,
     #3ddc91
   );
+  background-size: 200% 100%;
+  background-position: 0% 50%;
+  animation: funding-bar-flow 4s ease-in-out infinite alternate;
   transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes funding-bar-flow {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: 100% 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .funding-bar-fill {
+    animation: none;
+  }
 }
 
 .funding-towin {
