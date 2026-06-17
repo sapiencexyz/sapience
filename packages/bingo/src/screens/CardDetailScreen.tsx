@@ -13,6 +13,7 @@ import {
   fetchCard,
   fetchCards,
   fetchPool,
+  fetchPools,
   fetchReceiptCard,
   submitCard,
   submitLine,
@@ -20,6 +21,7 @@ import {
   type CardsResponse,
   type PoolCardSummary,
   type PoolResponse,
+  type PoolSummary,
 } from '../lib/backendApi';
 import {
   loadSession,
@@ -295,6 +297,11 @@ export default function CardDetailScreen() {
     cardIndexFromUrl(),
   );
   const [cardsSummary, setCardsSummary] = useState<CardsResponse | null>(null);
+  // Open pools the player can start a new card in (the "+ New" picker). The
+  // active world-cup pool plus any open special pool (e.g. fed-day); a pool
+  // leaves this list automatically once its cutoff passes.
+  const [openPools, setOpenPools] = useState<PoolSummary[]>([]);
+  const [newMenuOpen, setNewMenuOpen] = useState(false);
 
   const [pickedSides, setPickedSides] = useState(0);
   const [pickedMask, setPickedMask] = useState(0);
@@ -350,6 +357,26 @@ export default function CardDetailScreen() {
       stop = true;
     };
   }, [viewOnly, viewedPoolId]);
+
+  // The open pools a new card can be started in. Refetched on each action so
+  // a pool that just closed drops out of the "+ New" picker. View-only card
+  // permalinks have no new-card flow, so they skip this.
+  useEffect(() => {
+    if (viewOnly) return;
+    let stop = false;
+    fetchPools()
+      .then((r) => {
+        if (!stop) setOpenPools(r.pools);
+      })
+      .catch(() => {
+        // Picker is auxiliary — on an older backend without /api/pools it
+        // stays empty and "+ New" falls back to the active pool.
+        if (!stop) setOpenPools([]);
+      });
+    return () => {
+      stop = true;
+    };
+  }, [viewOnly, refreshKey]);
 
   // Default the price input to the pool minimum once known.
   useEffect(() => {
@@ -623,12 +650,38 @@ export default function CardDetailScreen() {
     setCardIndex(i);
   };
 
-  const newCardHref = useMemo(() => {
+  // The "+ New" picker options: every open pool, active/world-cup first
+  // (highest ordinal), special pools after.
+  const newCardPools = useMemo(
+    () => [...openPools].sort((a, b) => b.poolNumber - a.poolNumber),
+    [openPools],
+  );
+
+  // Start a fresh card in the chosen pool. Same pool we're viewing → switch
+  // in place; a different pool → full navigation so the screen reloads under
+  // the new ?pool=. A previous card in THAT pool left unfilled blocks the new
+  // one (unfunded lines forfeit bonus eligibility).
+  const startNewCard = (poolId: string) => {
+    setNewMenuOpen(false);
+    if (viewOnly) return;
+    const inPool = (cardsSummary?.allCards ?? []).filter(
+      (c) => c.poolId === poolId,
+    );
+    if (inPool.some((c) => c.linesFunded < 10)) {
+      setFillPreviousOpen(true);
+      return;
+    }
+    const next = inPool.length;
+    const currentPoolId = selectedPoolId ?? cardsSummary?.poolId;
+    if (poolId === currentPoolId) {
+      selectCard(next);
+      return;
+    }
     const params = new URLSearchParams();
-    if (selectedPoolId) params.set('pool', selectedPoolId);
-    params.set('card', String(cardsSummary?.cardCount ?? 0));
-    return `/card?${params.toString()}`;
-  }, [cardsSummary?.cardCount, selectedPoolId]);
+    params.set('pool', poolId);
+    params.set('card', String(next));
+    window.location.href = `/card?${params.toString()}`;
+  };
 
   // Retry/resume: fund whichever lines aren't on-chain yet.
   const retryLines = async () => {
@@ -942,32 +995,64 @@ export default function CardDetailScreen() {
                 );
               })}
             {cardsSummary.open && (
-              <a
-                href={newCardHref}
-                className={`card-chip card-chip-new ${
-                  !viewOnly && cardIndex === cardsSummary.cardCount
-                    ? 'current'
-                    : ''
-                }`}
-                onClick={(e) => {
-                  // A card with unfunded lines forfeits bonus eligibility —
-                  // block the next card until every line of the ACTIVE pool's
-                  // cards is funded (old pools are closed; they can't be
-                  // filled, so they don't gate).
-                  const unfilled = cardsSummary.cards.some(
-                    (c) => c.linesFunded < 10,
-                  );
-                  if (unfilled) {
-                    e.preventDefault();
-                    setFillPreviousOpen(true);
-                  } else if (!viewOnly) {
-                    e.preventDefault();
-                    selectCard(cardsSummary.cardCount);
-                  }
-                }}
-              >
-                + New
-              </a>
+              <div className="card-chip-new-wrap">
+                <button
+                  type="button"
+                  className={`card-chip card-chip-new ${
+                    !viewOnly && cardIndex === cardsSummary.cardCount
+                      ? 'current'
+                      : ''
+                  }`}
+                  aria-haspopup="menu"
+                  aria-expanded={newMenuOpen}
+                  onClick={() => {
+                    // More than one pool open → let the player pick which one
+                    // the new card belongs to. Otherwise go straight into the
+                    // sole open pool (or the active pool on an old backend).
+                    if (newCardPools.length > 1) {
+                      setNewMenuOpen((o) => !o);
+                    } else {
+                      startNewCard(
+                        newCardPools[0]?.poolId ?? cardsSummary.poolId,
+                      );
+                    }
+                  }}
+                >
+                  + New
+                </button>
+                {newMenuOpen && newCardPools.length > 1 && (
+                  <>
+                    {/* Click-away catcher closes the popover. */}
+                    <button
+                      type="button"
+                      className="new-card-menu-backdrop"
+                      aria-label="Close pool picker"
+                      onClick={() => setNewMenuOpen(false)}
+                    />
+                    <div className="new-card-menu" role="menu">
+                      {newCardPools.map((p) => (
+                        <button
+                          key={p.poolId}
+                          type="button"
+                          role="menuitem"
+                          className="new-card-menu-item"
+                          onClick={() => startNewCard(p.poolId)}
+                        >
+                          <img
+                            className="new-card-menu-thumb"
+                            src={POOL_IMAGE[p.poolId] ?? trophyUrl}
+                            alt=""
+                            aria-hidden
+                          />
+                          <span className="new-card-menu-label">
+                            {p.title ?? DEFAULT_POOL_TITLE}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             )}
           </div>
         </section>

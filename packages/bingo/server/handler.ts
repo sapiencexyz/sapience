@@ -201,6 +201,25 @@ export async function handleApi(
     return true;
   }
 
+  // The pools a player can start a new card in RIGHT NOW — every open pool,
+  // not just the active one. Drives the "+ New" pool picker; a pool drops off
+  // this list automatically once its cutoff passes (poolIsOpen → false), so
+  // special pools (e.g. fed-day) disappear as options the moment they close.
+  if (route === 'GET /api/pools') {
+    json(res, 200, {
+      pools: poolsFor[network]
+        .map((pool, i) => ({
+          poolId: pool.poolId,
+          title: pool.title ?? null,
+          poolNumber: i + 1,
+          cutoff: pool.cutoff,
+          open: poolIsOpen(pool),
+        }))
+        .filter((p) => p.open),
+    });
+    return true;
+  }
+
   if (route === 'GET /api/fairness') {
     json(res, 200, {
       scheme:

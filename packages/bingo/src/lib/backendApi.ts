@@ -93,6 +93,18 @@ export interface PoolResponse {
   receiptContract: Address;
 }
 
+/** A selectable pool for the "+ New" card picker — one entry per open pool. */
+export interface PoolSummary {
+  poolId: string;
+  /** Display name; null when the pool predates per-pool titles (fall back to
+   *  the default "World Cup 2026"). */
+  title?: string | null;
+  /** 1-based display ordinal of the pool. */
+  poolNumber: number;
+  cutoff: number;
+  open: boolean;
+}
+
 export interface CardLine {
   lineId: string;
   cellIndices: [number, number, number, number];
@@ -249,6 +261,11 @@ export function fetchPool(poolId?: string | null): Promise<PoolResponse> {
   return request<PoolResponse>(
     poolId ? `/api/pool?poolId=${encodeURIComponent(poolId)}` : '/api/pool',
   );
+}
+
+/** Every pool currently open for new cards (the "+ New" picker's options). */
+export function fetchPools(): Promise<{ pools: PoolSummary[] }> {
+  return request<{ pools: PoolSummary[] }>('/api/pools');
 }
 
 export function fetchCard(
