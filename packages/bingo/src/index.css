@@ -2002,6 +2002,19 @@ button.card-chip {
   margin-top: 0.75rem;
 }
 
+/* Notice shown when a directly-linked pool has too few live markets to deal. */
+.pool-unavailable {
+  padding: 2rem 1.5rem;
+  text-align: center;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+}
+
+.pool-unavailable h2 {
+  margin: 0 0 0.5rem;
+}
+
 /* Footer actions for confirm-style modals (e.g. the fill-card warning). */
 .bingo-modal-actions {
   display: flex;

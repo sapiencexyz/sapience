@@ -32,7 +32,13 @@ import {
 } from './sponsorship.js';
 import { buildLines, LINES_PER_CARD } from './lines.js';
 import { NETWORK_CONFIG, resolveNetwork, type Network } from './network.js';
-import { activePoolOf, loadPools, parsePools, poolIsOpen } from './pool.js';
+import {
+  activePoolOf,
+  loadPools,
+  parsePools,
+  poolIsAvailable,
+  poolIsOpen,
+} from './pool.js';
 import {
   cardCount,
   chainSubmission,
@@ -198,6 +204,9 @@ export async function handleApi(
       poolNumber: poolsFor[network].indexOf(pool) + 1,
       cutoff: pool.cutoff,
       open: poolIsOpen(pool),
+      /** False when too few markets cleared the odds filter to deal a card —
+       *  the frontend shows "currently unavailable" instead of a card. */
+      available: poolIsAvailable(pool),
       conditions: pool.conditions,
       multiplierBps: pool.multiplierBps,
       referralBps: pool.referralBps,
@@ -215,14 +224,16 @@ export async function handleApi(
   if (route === 'GET /api/pools') {
     json(res, 200, {
       pools: poolsFor[network]
-        .map((pool, i) => ({
+        // Open AND available (enough dealable conditions) — an unavailable
+        // pool can't deal a card, so it's never offered as a "+ New" option.
+        .filter((pool) => poolIsOpen(pool) && poolIsAvailable(pool))
+        .map((pool) => ({
           poolId: pool.poolId,
           title: pool.title ?? null,
-          poolNumber: i + 1,
+          poolNumber: poolsFor[network].indexOf(pool) + 1,
           cutoff: pool.cutoff,
-          open: poolIsOpen(pool),
-        }))
-        .filter((p) => p.open),
+          open: true,
+        })),
     });
     return true;
   }
@@ -270,6 +281,10 @@ export async function handleApi(
       return true;
     }
     const pool = resolvePool(network, url.searchParams.get('poolId'));
+    if (!poolIsAvailable(pool)) {
+      json(res, 409, { error: 'Pool currently unavailable' });
+      return true;
+    }
     const rawIndex = url.searchParams.get('cardIndex');
     const cardIndex = rawIndex == null ? 0 : Number(rawIndex);
     if (!Number.isInteger(cardIndex) || cardIndex < 0) {
@@ -504,6 +519,10 @@ export async function handleApi(
       json(res, 409, { error: 'Pool is closed (cutoff passed)' });
       return true;
     }
+    if (!poolIsAvailable(pool)) {
+      json(res, 409, { error: 'Pool currently unavailable' });
+      return true;
+    }
     // The session isn't needed to mint the receipt (the minter does that),
     // but requiring a valid one here means a card can't be locked in for a
     // player the backend could never fund lines for.
@@ -615,6 +634,10 @@ export async function handleApi(
     const pool = resolvePool(network, body.poolId ?? null);
     if (!poolIsOpen(pool)) {
       json(res, 409, { error: 'Pool is closed (cutoff passed)' });
+      return true;
+    }
+    if (!poolIsAvailable(pool)) {
+      json(res, 409, { error: 'Pool currently unavailable' });
       return true;
     }
     // Speculative: restored in parallel with the chain reads below; only

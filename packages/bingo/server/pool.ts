@@ -1,9 +1,31 @@
 import { readFileSync } from 'node:fs';
 import { isAddress } from 'viem';
 import { CELL_COUNT, LINES_PER_CARD } from './lines.js';
-import type { PoolConfig } from './types.js';
+import type { PoolCondition, PoolConfig } from './types.js';
 
 const BYTES32_RE = /^0x[0-9a-fA-F]{64}$/;
+
+// Near-certain markets make dull cells — one side is a foregone conclusion, so
+// the YES/NO pick carries no real risk. Drop any condition whose consensus YES
+// odds sit outside this band from the dealable set. Conditions with no known
+// price are kept (we only exclude on a real signal, never on missing data).
+const MIN_CELL_PRICE = 0.2;
+const MAX_CELL_PRICE = 0.8;
+
+function isDealableCell(c: PoolCondition): boolean {
+  const p = c.estimatedPrice;
+  if (typeof p !== 'number' || !Number.isFinite(p)) return true;
+  return p >= MIN_CELL_PRICE && p <= MAX_CELL_PRICE;
+}
+
+/** A pool is playable only if it has enough dealable conditions to fill a
+ *  card. When filtering near-certain markets drops it below CELL_COUNT the
+ *  pool is "currently unavailable" — left off the picker and skipped as the
+ *  active pool — rather than dealing repeated cells. (conditions are already
+ *  filtered to the dealable set by validatePool.) */
+export function poolIsAvailable(pool: PoolConfig): boolean {
+  return pool.conditions.length >= CELL_COUNT;
+}
 
 /** Validates pool config content: a single pool object or an array of
  *  pools (the last entry is the active pool; earlier entries stay
@@ -46,8 +68,8 @@ export function validatePool(input: unknown): PoolConfig {
       throw new Error('pool: opensAt must be before cutoff');
     }
   }
-  if (!Array.isArray(raw.conditions) || raw.conditions.length < CELL_COUNT) {
-    throw new Error(`pool: need >= ${CELL_COUNT} conditions`);
+  if (!Array.isArray(raw.conditions)) {
+    throw new Error('pool: conditions must be an array');
   }
   const seen = new Set<string>();
   for (const c of raw.conditions) {
@@ -63,6 +85,12 @@ export function validatePool(input: unknown): PoolConfig {
     if (seen.has(key)) throw new Error(`pool: duplicate condition ${key}`);
     seen.add(key);
   }
+  // Only the dealable conditions are ever used to draw a card; near-certain
+  // markets are dropped here so they never appear on a cell. We do NOT throw
+  // when this leaves fewer than CELL_COUNT — such a pool simply becomes
+  // "currently unavailable" (poolIsAvailable), so the rest of the config
+  // still loads instead of crashing the whole server.
+  const dealable = raw.conditions.filter(isDealableCell);
   if (
     !Array.isArray(raw.multiplierBps) ||
     raw.multiplierBps.length !== LINES_PER_CARD + 1 ||
@@ -84,7 +112,9 @@ export function validatePool(input: unknown): PoolConfig {
   } catch {
     throw new Error('pool: minCardPriceWei must be a wei amount >= 10');
   }
-  return raw;
+  // Hand back the pool with only its dealable conditions — every draw,
+  // fairness commitment, and /api/pool response works off this set.
+  return { ...raw, conditions: dealable };
 }
 
 export function poolIsOpen(pool: PoolConfig, nowSec = Date.now() / 1000): boolean {
@@ -92,16 +122,20 @@ export function poolIsOpen(pool: PoolConfig, nowSec = Date.now() / 1000): boolea
 }
 
 /** The pool players see/play right now: the LAST pool whose opensAt has
- *  passed. Future pools sit in the file invisible until their time comes —
- *  scheduling is committing them ahead with opensAt set (typically the
- *  previous pool's cutoff). Falls back to the first pool when nothing has
- *  opened yet. */
+ *  passed AND that's still available (enough dealable conditions). Future
+ *  pools sit in the file invisible until their time comes — scheduling is
+ *  committing them ahead with opensAt set (typically the previous pool's
+ *  cutoff). An opened-but-unavailable pool is skipped so play kicks to the
+ *  next available one. Falls back to the first available pool (then the very
+ *  first) when nothing else qualifies. */
 export function activePoolOf(
   pools: readonly PoolConfig[],
   nowSec = Date.now() / 1000,
 ): PoolConfig {
   for (let i = pools.length - 1; i >= 0; i--) {
-    if ((pools[i].opensAt ?? 0) <= nowSec) return pools[i];
+    if ((pools[i].opensAt ?? 0) <= nowSec && poolIsAvailable(pools[i])) {
+      return pools[i];
+    }
   }
-  return pools[0];
+  return pools.find(poolIsAvailable) ?? pools[0];
 }

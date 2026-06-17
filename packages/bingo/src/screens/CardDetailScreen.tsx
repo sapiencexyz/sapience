@@ -1618,14 +1618,31 @@ export default function CardDetailScreen() {
         </section>
       )}
 
-      {(booting || (!card && (player || viewOnly) && !statusMsg)) && (
+      {/* A pool whose markets nearly all cleared the odds filter can't deal a
+          card. Reachable only by a direct ?pool= link (the picker and active
+          pool skip unavailable pools) — show a friendly notice, not a raw
+          error, with the card strip above still offering valid pools. */}
+      {!viewOnly && pool?.available === false && (
         <section className="screen admin-section">
-          <div className="card-loader">
-            <div className="card-loader-ring" aria-hidden />
+          <div className="pool-unavailable">
+            <h2>Pool currently unavailable</h2>
+            <p className="muted">
+              Not enough live markets to deal a card here right now. Pick
+              another pool with <strong>+ New</strong>.
+            </p>
           </div>
         </section>
       )}
-      {!card && statusMsg && (
+
+      {pool?.available !== false &&
+        (booting || (!card && (player || viewOnly) && !statusMsg)) && (
+          <section className="screen admin-section">
+            <div className="card-loader">
+              <div className="card-loader-ring" aria-hidden />
+            </div>
+          </section>
+        )}
+      {!card && statusMsg && pool?.available !== false && (
         <section className="screen admin-section">
           <p className="error small">{statusMsg}</p>
         </section>

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { activePoolOf, poolIsOpen, validatePool } from '../pool.js';
+import {
+  activePoolOf,
+  poolIsAvailable,
+  poolIsOpen,
+  validatePool,
+} from '../pool.js';
 import type { PoolConfig } from '../types.js';
 
 const CONDITION = {
@@ -34,6 +39,68 @@ describe('validatePool opensAt', () => {
   it('rejects opensAt at/after the cutoff (pool could never be played)', () => {
     expect(() => validatePool(pool({ opensAt: 2_000 }))).toThrow(/opensAt/);
     expect(() => validatePool(pool({ opensAt: 3_000 }))).toThrow(/opensAt/);
+  });
+});
+
+describe('validatePool dealable filtering', () => {
+  // 16 priced conditions: i/20 → 0.00, 0.05, …, 0.75. Those below 0.20 are the
+  // first four (0.00, 0.05, 0.10, 0.15); the rest (0.20–0.75) are dealable.
+  const priced = (prices: number[]): Partial<PoolConfig> => ({
+    conditions: prices.map((estimatedPrice, i) => ({
+      ...CONDITION,
+      conditionId: `0x${i.toString(16).padStart(2, '0').repeat(32)}`,
+      estimatedPrice,
+    })) as PoolConfig['conditions'],
+  });
+
+  it('drops conditions with odds <0.2 or >0.8 from the dealt set', () => {
+    // 18 within-band + 2 extreme → 18 dealable, both extremes removed.
+    const within = Array.from({ length: 18 }, (_, i) => 0.2 + i * 0.03); // 0.20–0.71
+    const p = validatePool(pool(priced([...within, 0.05, 0.95])));
+    expect(p.conditions).toHaveLength(18);
+    expect(
+      p.conditions.every(
+        (c) => (c.estimatedPrice ?? 0.5) >= 0.2 && (c.estimatedPrice ?? 0.5) <= 0.8,
+      ),
+    ).toBe(true);
+  });
+
+  it('keeps conditions with unknown odds (no estimatedPrice)', () => {
+    // The base pool() has 16 conditions with no estimatedPrice — all kept.
+    expect(validatePool(pool({})).conditions).toHaveLength(16);
+  });
+
+  it('does NOT throw when filtering leaves fewer than 16 — marks unavailable', () => {
+    // 14 in-band + 6 extreme → only 14 dealable. The pool still validates
+    // (no throw) but is "currently unavailable" rather than dealing repeats.
+    const within = Array.from({ length: 14 }, (_, i) => 0.2 + i * 0.04);
+    const extreme = [0.05, 0.9, 0.95, 0.01, 0.99, 0.85];
+    const p = validatePool(pool(priced([...within, ...extreme])));
+    expect(p.conditions).toHaveLength(14);
+    expect(poolIsAvailable(p)).toBe(false);
+  });
+
+  it('a fully-uncertain pool is available', () => {
+    expect(poolIsAvailable(validatePool(pool({})))).toBe(true);
+  });
+});
+
+describe('activePoolOf skips unavailable pools', () => {
+  const lowOdds = (): Partial<PoolConfig> => ({
+    conditions: Array.from({ length: 16 }, (_, i) => ({
+      ...CONDITION,
+      conditionId: `0x${i.toString(16).padStart(2, '0').repeat(32)}`,
+      estimatedPrice: 0.95, // all near-certain → 0 dealable → unavailable
+    })) as PoolConfig['conditions'],
+  });
+
+  it('kicks to the previous available pool when the newest is unavailable', () => {
+    const a = validatePool(pool({ poolId: 'a', cutoff: 1_000 }));
+    const b = validatePool(
+      pool({ poolId: 'b', opensAt: 1_000, cutoff: 2_000, ...lowOdds() }),
+    );
+    // b has opened but can't deal a card — play stays on a.
+    expect(activePoolOf([a, b], 1_500).poolId).toBe('a');
   });
 });
 
