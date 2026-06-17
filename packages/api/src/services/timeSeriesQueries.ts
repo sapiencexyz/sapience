@@ -39,22 +39,32 @@ export function resolveDefaults(
 ): ResolvedRange {
   const now = new Date();
   const resolvedTo = to ?? now;
-  const resolvedFrom =
-    from ?? new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
 
   const pgTrunc = INTERVAL_TO_PG[interval];
   const pgStep = INTERVAL_TO_PG_STEP[interval];
 
-  // Estimate bucket count
-  const diffMs = resolvedTo.getTime() - resolvedFrom.getTime();
   const stepMs: Record<TimeInterval, number> = {
     [TimeInterval.HOUR]: 3_600_000,
     [TimeInterval.DAY]: 86_400_000,
     [TimeInterval.WEEK]: 604_800_000,
     [TimeInterval.MONTH]: 2_592_000_000, // ~30 days
   };
-  const bucketCount = Math.ceil(diffMs / stepMs[interval]);
   const max = MAX_BUCKETS[interval];
+
+  // Default window is 90 days, but never wider than the interval's bucket cap
+  // spans (HOUR caps at 168 buckets = 7 days). Without this an unfiltered
+  // `HOUR` request would default to 90 days = 2160 buckets and throw below;
+  // clamping the *default* keeps every interval usable with no explicit range,
+  // while an explicit over-wide `from`/`to` still trips the cap on purpose.
+  const defaultWindowMs = Math.min(
+    90 * 24 * 60 * 60 * 1000,
+    max * stepMs[interval]
+  );
+  const resolvedFrom = from ?? new Date(resolvedTo.getTime() - defaultWindowMs);
+
+  // Estimate bucket count
+  const diffMs = resolvedTo.getTime() - resolvedFrom.getTime();
+  const bucketCount = Math.ceil(diffMs / stepMs[interval]);
 
   if (bucketCount > max) {
     throw new GraphQLError(
@@ -207,6 +217,11 @@ export async function queryAccountPnl(
         ${Prisma.raw(`'${pgStep}'::INTERVAL`)}
       ) gs
     ),
+    -- Start of the first bucket. cumulative_pnl is a running total, so PnL
+    -- realized before the window must seed the line rather than resetting it to
+    -- zero at the window start; events earlier than this seed the baseline below
+    -- and never land in a per-bucket sum.
+    window_bounds AS (SELECT MIN(bucket_epoch) AS first_bucket FROM buckets),
     -- Cost basis for claims: the holder's collateral staked per pick
     -- configuration, per side, plus the tokens they were minted on that side.
     -- Each mint issues totalCollateral (= predictor + counterparty stake) tokens
@@ -257,8 +272,10 @@ export async function queryAccountPnl(
              WHEN cl."positionToken" = pk."predictorToken" THEN 'predictor'
              WHEN cl."positionToken" = pk."counterpartyToken" THEN 'counterparty'
            END
+      -- No lower bound: pre-window claims feed the cumulative baseline; the
+      -- per-bucket join below keeps them out of in-window bucket sums.
       WHERE cl.holder = ${addr}
-        AND cl."redeemedAt" >= ${fromEpoch} AND cl."redeemedAt" <= ${toEpoch}
+        AND cl."redeemedAt" <= ${toEpoch}
       UNION ALL
       -- Closes: position settlement
       SELECT
@@ -275,7 +292,7 @@ export async function queryAccountPnl(
         END AS pnl
       FROM "Close" c
       WHERE (c."predictorHolder" = ${addr} OR c."counterpartyHolder" = ${addr})
-        AND c."burnedAt" >= ${fromEpoch} AND c."burnedAt" <= ${toEpoch}
+        AND c."burnedAt" <= ${toEpoch}
       UNION ALL
       -- V1 Legacy settled positions
       SELECT
@@ -294,15 +311,38 @@ export async function queryAccountPnl(
       FROM position lp
       WHERE (lp.predictor = ${addr} OR lp.counterparty = ${addr})
         AND lp."settledAt" IS NOT NULL
-        AND lp."settledAt" >= ${fromEpoch} AND lp."settledAt" <= ${toEpoch}
+        AND lp."settledAt" <= ${toEpoch}
+      UNION ALL
+      -- Secondary-market trades: realized as pure cash flow — sale proceeds
+      -- when this account is the seller, purchase cost when it's the buyer.
+      -- Matches the vault's cumulativePnl convention (secondarySold −
+      -- secondaryBought, per services/protocolStats/vaultAggregator). buyer and
+      -- seller are distinct per trade, so the two CASE legs never both fire.
+      SELECT
+        st."executedAt" AS event_ts,
+        CASE WHEN st.seller = ${addr} THEN CAST(st.price AS DECIMAL) ELSE 0 END
+          - CASE WHEN st.buyer = ${addr} THEN CAST(st.price AS DECIMAL) ELSE 0 END
+          AS pnl
+      FROM secondary_trade st
+      WHERE (st.buyer = ${addr} OR st.seller = ${addr})
+        AND st."executedAt" <= ${toEpoch}
+    ),
+    -- Sum of all PnL realized strictly before the first bucket — the running
+    -- line's starting value. Pre-window events match no bucket below, so they
+    -- contribute here only, never to a per-bucket pnl value.
+    baseline AS (
+      SELECT COALESCE(SUM(e.pnl), 0) AS base
+      FROM pnl_events e, window_bounds w
+      WHERE e.event_ts < w.first_bucket
     )
     SELECT
       b.bucket_epoch AS timestamp,
       COALESCE(SUM(e.pnl), 0)::TEXT AS pnl,
-      SUM(COALESCE(SUM(e.pnl), 0)) OVER (ORDER BY b.bucket_epoch)::TEXT AS cumulative_pnl
+      (bl.base + SUM(COALESCE(SUM(e.pnl), 0)) OVER (ORDER BY b.bucket_epoch))::TEXT AS cumulative_pnl
     FROM buckets b
+    CROSS JOIN baseline bl
     LEFT JOIN pnl_events e ON e.event_ts >= b.bucket_epoch AND e.event_ts < b.next_epoch
-    GROUP BY b.bucket_epoch
+    GROUP BY b.bucket_epoch, bl.base
     ORDER BY b.bucket_epoch
   `;
 

@@ -3,7 +3,7 @@
  * chart util consumes (`{ timestamp, pnl, tvl }`, both in whole wUSDe). This
  * is the one place the migrated TVL/PnL semantics live:
  *
- * - `tvl` := `balance + deployedCollateral + unredeemedClaim` (whole wUSDe).
+ * - `tvl` := `balance + deployedCollateral + claimableCollateral` (whole wUSDe).
  *   v1 used `vaultBalance + chain-wide escrowBalance`, which over-counted by
  *   mixing the vault's balance with the protocol-wide escrow; the v2 line is
  *   the vault's own AUM plus its settled-but-unredeemed winnings.
@@ -29,7 +29,7 @@ export function toVaultStatPoint(stat: VaultStat): VaultStatPoint {
   const tvlWei =
     BigInt(stat.balance || '0') +
     BigInt(stat.deployedCollateral || '0') +
-    BigInt(stat.unredeemedClaim || '0');
+    BigInt(stat.claimableCollateral || '0');
   return {
     timestamp: stat.timestamp,
     pnl: toWhole(stat.cumulativePnl),

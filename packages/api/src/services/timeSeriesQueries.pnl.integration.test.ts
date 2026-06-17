@@ -36,9 +36,16 @@ const DDL = `
   CREATE TABLE "Claim" (holder text, "redeemedAt" integer, "collateralPaid" text, "tokensBurned" text, "pickConfigId" text, "positionToken" text);
   CREATE TABLE "Close" ("burnedAt" integer, "predictorHolder" text, "predictorPayout" text, "predictorTokensBurned" text, "counterpartyHolder" text, "counterpartyPayout" text, "counterpartyTokensBurned" text);
   CREATE TABLE "position" (predictor text, "predictorWon" boolean, "totalCollateral" text, "predictorCollateral" text, counterparty text, "counterpartyCollateral" text, "settledAt" integer);
+  CREATE TABLE "secondary_trade" (buyer text, seller text, price text, "executedAt" integer);
 `;
 
 const day = (d: number) => Math.floor(Date.UTC(2026, 0, d, 12, 0, 0) / 1000);
+// A timestamp before the test window (window starts 2026-01-01), for the
+// cumulative-baseline scenario.
+const preWindow = Math.floor(Date.UTC(2025, 11, 20, 12, 0, 0) / 1000);
+
+const HOLDER_SECONDARY = '0xdddd000000000000000000000000000000000004';
+const HOLDER_BASELINE = '0xeeee000000000000000000000000000000000005';
 
 // ── Setup runs at top-level await so `dbAvailable` is known before `describe`
 //    is evaluated (vitest resolves describe.skipIf at collection time). ──
@@ -124,6 +131,25 @@ let dbAvailable = false;
       `INSERT INTO "Claim" (holder, "redeemedAt", "collateralPaid", "tokensBurned", "pickConfigId", "positionToken") VALUES
          ('${HOLDER_PARTIAL}', ${day(2)}, '60', '50', 'pcC', 'ptokC')`
     );
+
+    // Scenario D — secondary-market PnL. Buys tokens for 40 (day 2, cost) then
+    // sells for 100 (day 3, proceeds). Realized pnl = -40 then +100; the
+    // settlement-only branches book nothing for this holder.
+    await client.$executeRawUnsafe(
+      `INSERT INTO "secondary_trade" (buyer, seller, price, "executedAt") VALUES
+         ('${HOLDER_SECONDARY}', '0xother', '40',  ${day(2)}),
+         ('0xother', '${HOLDER_SECONDARY}', '100', ${day(3)})`
+    );
+
+    // Scenario E — cumulative baseline. A sale of 30 settles BEFORE the window
+    // (Dec 2025); a sale of 20 settles in-window (day 3). The in-window per-
+    // bucket pnl must show only 20, but cumulativePnl must run from the 30
+    // baseline → 50, proving the line doesn't reset at the window start.
+    await client.$executeRawUnsafe(
+      `INSERT INTO "secondary_trade" (buyer, seller, price, "executedAt") VALUES
+         ('0xother', '${HOLDER_BASELINE}', '30', ${preWindow}),
+         ('0xother', '${HOLDER_BASELINE}', '20', ${day(3)})`
+    );
   }
 }
 
@@ -192,5 +218,45 @@ describe.skipIf(!dbAvailable)('queryAccountPnl (integration: real SQL)', () => {
     // basis = stake(20) * 50/100 = 10 → pnl = 60 - 10 = 50.
     // (total-burned denominator would give 60 - 20*50/50 = 40.)
     expect(nonzero).toEqual([50]);
+  });
+
+  it('books secondary-market trades as cash flow (buy = cost, sell = proceeds)', async () => {
+    const points = await queryAccountPnl(
+      HOLDER_SECONDARY,
+      TimeInterval.DAY,
+      from,
+      to,
+      client
+    );
+
+    const nonzero = points
+      .filter((p) => Number(p.pnl) !== 0)
+      .map((p) => Number(p.pnl));
+
+    // buy 40 → -40 ; sell 100 → +100
+    expect(nonzero).toEqual([-40, 100]);
+    expect(Number(points[points.length - 1].cumulativePnl)).toBe(60);
+  });
+
+  it('seeds cumulativePnl from PnL realized before the window (no reset at the start)', async () => {
+    const points = await queryAccountPnl(
+      HOLDER_BASELINE,
+      TimeInterval.DAY,
+      from,
+      to,
+      client
+    );
+
+    // Per-bucket pnl is window-local: only the in-window sale of 20 shows up;
+    // the pre-window sale of 30 contributes to no bucket.
+    const inWindow = points
+      .filter((p) => Number(p.pnl) !== 0)
+      .map((p) => Number(p.pnl));
+    expect(inWindow).toEqual([20]);
+
+    // But the running line starts from the 30 baseline, so every bucket — and
+    // the final value — reflects 30 + 20 = 50.
+    expect(Number(points[0].cumulativePnl)).toBe(30);
+    expect(Number(points[points.length - 1].cumulativePnl)).toBe(50);
   });
 });

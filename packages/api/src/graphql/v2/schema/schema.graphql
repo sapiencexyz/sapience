@@ -161,11 +161,14 @@ type Account implements Node & AddressEntity {
   running), and prediction win / loss / pending / non-decisive counts.
   Computed live from escrow predictions, legacy positions, claims, closes,
   and secondary trades (no snapshot table), so — unlike the chain-scoped
-  identity fields — the series spans the address across chains. `interval`
+  identity fields — the series spans the address across chains. Buckets are
+  ordered oldest-first (ascending `timestamp`), ready to plot. `interval`
   sets the bucket size; `filter.timestamp` (epoch seconds, inclusive) bounds
-  the window and defaults to the last 90 days. The window is bounded per
-  interval (≤365 daily buckets), so the default page returns the whole
-  series in one shot while still honouring `first` / `after`.
+  the window. With no filter the window defaults to the last 90 days, clamped
+  to the interval's own cap so it never overflows — e.g. `HOUR` caps at 168
+  buckets, so its default is the last 7 days (an explicit wider window is
+  rejected). The defaulted window fits one page, so the default returns the
+  whole series in one shot while still honouring `first` / `after`.
   """
   statsHistory(
     interval: TimeInterval!
@@ -219,7 +222,7 @@ type AccountStatPoint {
 
   """
   Settled-and-won but not-yet-redeemed collateral owed to the account as of
-  the bucket — the account analog of `VaultStat.unredeemedClaim`.
+  the bucket — the account analog of `VaultStat.claimableCollateral`.
   """
   claimableCollateral: BigInt!
 
@@ -230,24 +233,41 @@ type AccountStatPoint {
   volume: BigInt!
 
   """
-  Settlement PnL realized within the bucket (gains − losses on positions that
-  settled in-window). Mirrors `VaultStat.realizedPnl`.
+  PnL realized within the bucket: settlement gains − losses on positions that
+  settled in-window, plus secondary-market sale proceeds net of purchase cost
+  (`sold − bought`) on trades executed in-window. Same trading-PnL definition
+  the vault plots in `VaultStat.cumulativePnl`, measured per-bucket.
   """
   realizedPnl: BigInt!
 
   """
-  Running settlement PnL through the end of the bucket. Mirrors
+  Running trading PnL through the end of the bucket — the cumulative sum of
+  `realizedPnl`, seeded by all PnL realized *before* the window so the line
+  never resets at the window start. The account analog of
   `VaultStat.cumulativePnl`.
   """
   cumulativePnl: BigInt!
 
   """
-  Predictions created in the bucket, across every outcome.
+  Predictions created in the bucket, across every outcome. Equals
+  `predictionsWon + predictionsLost + predictionsPending +
+  predictionsNonDecisive`.
   """
   predictionsTotal: Int!
+
+  """
+  Of the bucket's predictions, those that have since settled in the account's
+  favor. Counts are bucketed by creation time but reflect each prediction's
+  *current* settlement status, so a past bucket's won / lost / pending split
+  shifts as its predictions resolve (the series is computed live, not
+  snapshotted).
+  """
   predictionsWon: Int!
+  """Bucket predictions that have since settled against the account."""
   predictionsLost: Int!
+  """Bucket predictions not yet settled."""
   predictionsPending: Int!
+  """Bucket predictions that settled non-decisively (no winning side)."""
   predictionsNonDecisive: Int!
 }
 
@@ -353,8 +373,9 @@ type Vault implements Node {
   stats: VaultStat
 
   """
-  Time-series of this vault's economic snapshots, newest first. Backs the
-  vault dashboard's TVL / PnL charts. Defaults to `TIMESTAMP DESC`.
+  Time-series of this vault's economic snapshots, oldest-first (ascending
+  `timestamp`, matching `Account.statsHistory` — chart-ready, no consumer
+  re-sort). Backs the vault dashboard's TVL / PnL charts.
   """
   statsHistory(
     first: Int = 30
@@ -390,7 +411,7 @@ type VaultStat {
   """
   Cumulative trading PnL the vault dashboard plots: settlement PnL, plus
   wUSDe earmarked from resolved-but-unredeemed wins, plus net secondary-
-  market flow (`realizedPnl + unredeemedClaim + secondarySold −
+  market flow (`realizedPnl + claimableCollateral + secondarySold −
   secondaryBought`). This is the *same* numerator the account behind the
   vault carries; the vault presents it as a return on total assets
   (`balance + deployedCollateral`), where the account measures it against
@@ -408,9 +429,10 @@ type VaultStat {
   wUSDe owed to the vault on resolved-but-not-yet-redeemed winning sides,
   net of what it has already claimed. The dashboard's TVL line adds this to
   `balance + deployedCollateral` so funds that have settled in the vault's
-  favor but await an indexed redeem are not transiently dropped.
+  favor but await an indexed redeem are not transiently dropped. Named to
+  match `AccountStatPoint.claimableCollateral`, the account-level analog.
   """
-  unredeemedClaim: BigInt!
+  claimableCollateral: BigInt!
 }
 
 type VaultStatEdge {

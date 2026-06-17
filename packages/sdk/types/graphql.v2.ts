@@ -72,6 +72,22 @@ export type Account = AddressEntity &
     ranking?: Maybe<Ranking>;
     /** Aggregate statistics for this account. Cheap to resolve; always present. */
     stats: AccountStat;
+    /**
+     * Time-bucketed series of this account's prediction activity — deployed /
+     * claimable collateral, trade volume, settlement PnL (per-bucket and
+     * running), and prediction win / loss / pending / non-decisive counts.
+     * Computed live from escrow predictions, legacy positions, claims, closes,
+     * and secondary trades (no snapshot table), so — unlike the chain-scoped
+     * identity fields — the series spans the address across chains. Buckets are
+     * ordered oldest-first (ascending `timestamp`), ready to plot. `interval`
+     * sets the bucket size; `filter.timestamp` (epoch seconds, inclusive) bounds
+     * the window. With no filter the window defaults to the last 90 days, clamped
+     * to the interval's own cap so it never overflows — e.g. `HOUR` caps at 168
+     * buckets, so its default is the last 7 days (an explicit wider window is
+     * rejected). The defaulted window fits one page, so the default returns the
+     * whole series in one shot while still honouring `first` / `after`.
+     */
+    statsHistory: AccountStatPointConnection;
   };
 
 /**
@@ -102,6 +118,18 @@ export type AccountCollateralBalanceHistoryArgs = {
 export type AccountRankingArgs = {
   filter?: InputMaybe<RankingFilter>;
   metric: LeaderboardMetric;
+};
+
+/**
+ * Address-keyed account record — wallet-level identity. Synthesized for
+ * addresses that have no User row so every valid address resolves to an
+ * Account; persistent rows additionally carry referral metadata.
+ */
+export type AccountStatsHistoryArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<AccountStatFilter>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+  interval: TimeInterval;
 };
 
 export type AccountConnection = {
@@ -155,6 +183,92 @@ export type AccountStat = {
   __typename?: 'AccountStat';
   /** Cumulative trade volume across all of this account's activity, wei. */
   totalVolume: Scalars['BigInt']['output'];
+};
+
+/**
+ * Filter for `Account.statsHistory`. Mirrors `VaultStatFilter`: a `timestamp`
+ * window in epoch seconds (inclusive on both bounds), defaulting to the last
+ * 90 days when omitted.
+ */
+export type AccountStatFilter = {
+  timestamp?: InputMaybe<IntRangeFilter>;
+};
+
+/**
+ * One time bucket of an account's prediction activity. Amounts are wUSDe wei
+ * and `timestamp` is the bucket's start (epoch seconds). The field vocabulary
+ * deliberately mirrors `VaultStat` — `deployedCollateral`, `realizedPnl`,
+ * `cumulativePnl` carry the same meaning at the account level. PnL is truncated
+ * toward zero to integer wei (the proportional cost-basis math can produce
+ * sub-wei fractions).
+ */
+export type AccountStatPoint = {
+  __typename?: 'AccountStatPoint';
+  /**
+   * Settled-and-won but not-yet-redeemed collateral owed to the account as of
+   * the bucket — the account analog of `VaultStat.claimableCollateral`.
+   */
+  claimableCollateral: Scalars['BigInt']['output'];
+  /**
+   * Running trading PnL through the end of the bucket — the cumulative sum of
+   * `realizedPnl`, seeded by all PnL realized *before* the window so the line
+   * never resets at the window start. The account analog of
+   * `VaultStat.cumulativePnl`.
+   */
+  cumulativePnl: Scalars['BigInt']['output'];
+  /**
+   * Collateral staked in positions still open as of the bucket — created on or
+   * before the boundary and not yet settled. The deployed leg of the account's
+   * escrow balance; mirrors `VaultStat.deployedCollateral`.
+   */
+  deployedCollateral: Scalars['BigInt']['output'];
+  /** Bucket predictions that have since settled against the account. */
+  predictionsLost: Scalars['Int']['output'];
+  /** Bucket predictions that settled non-decisively (no winning side). */
+  predictionsNonDecisive: Scalars['Int']['output'];
+  /** Bucket predictions not yet settled. */
+  predictionsPending: Scalars['Int']['output'];
+  /**
+   * Predictions created in the bucket, across every outcome. Equals
+   * `predictionsWon + predictionsLost + predictionsPending +
+   * predictionsNonDecisive`.
+   */
+  predictionsTotal: Scalars['Int']['output'];
+  /**
+   * Of the bucket's predictions, those that have since settled in the account's
+   * favor. Counts are bucketed by creation time but reflect each prediction's
+   * *current* settlement status, so a past bucket's won / lost / pending split
+   * shifts as its predictions resolve (the series is computed live, not
+   * snapshotted).
+   */
+  predictionsWon: Scalars['Int']['output'];
+  /**
+   * PnL realized within the bucket: settlement gains − losses on positions that
+   * settled in-window, plus secondary-market sale proceeds net of purchase cost
+   * (`sold − bought`) on trades executed in-window. Same trading-PnL definition
+   * the vault plots in `VaultStat.cumulativePnl`, measured per-bucket.
+   */
+  realizedPnl: Scalars['BigInt']['output'];
+  timestamp: Scalars['UnixSeconds']['output'];
+  /**
+   * Trade volume attributed to the bucket: predictor + counterparty stake on
+   * predictions created in-window, plus secondary-market trades.
+   */
+  volume: Scalars['BigInt']['output'];
+};
+
+export type AccountStatPointConnection = {
+  __typename?: 'AccountStatPointConnection';
+  edges: Array<AccountStatPointEdge>;
+  nodes: Array<AccountStatPoint>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
+export type AccountStatPointEdge = {
+  __typename?: 'AccountStatPointEdge';
+  cursor: Scalars['String']['output'];
+  node: AccountStatPoint;
 };
 
 /**
@@ -695,6 +809,12 @@ export type ConditionGroupEdge = {
 
 export type ConditionGroupFilter = {
   categorySlug?: InputMaybe<Scalars['String']['input']>;
+  /**
+   * Restrict to condition groups whose numeric `groupId` is in this set — the
+   * batch-by-id lookup the markets-by-id hydration path uses. OR within the
+   * set, AND with the other filters.
+   */
+  groupIds?: InputMaybe<Array<Scalars['Int']['input']>>;
   /** Substring search against `name`, case-insensitive. */
   search?: InputMaybe<Scalars['String']['input']>;
 };
@@ -1840,6 +1960,13 @@ export type TagOrder = {
 export type TagOrderField = 'CONDITION_COUNT' | 'NAME';
 
 /**
+ * Bucketing granularity for `Account.statsHistory`. Unlike `Vault.statsHistory`
+ * (a fixed daily snapshot cadence written by the stats worker), the account
+ * series is computed live per request, so the caller picks the bucket size.
+ */
+export type TimeInterval = 'DAY' | 'HOUR' | 'MONTH' | 'WEEK';
+
+/**
  * Open-interest bucketed by time-to-resolution. Each unsettled prediction
  * is bucketed by the latest endTime among its constituent conditions; the
  * window is `(minSecondsFromNow, maxSecondsFromNow]` — left-exclusive,
@@ -1968,8 +2095,9 @@ export type Vault = Node & {
    */
   stats?: Maybe<VaultStat>;
   /**
-   * Time-series of this vault's economic snapshots, newest first. Backs the
-   * vault dashboard's TVL / PnL charts. Defaults to `TIMESTAMP DESC`.
+   * Time-series of this vault's economic snapshots, oldest-first (ascending
+   * `timestamp`, matching `Account.statsHistory` — chart-ready, no consumer
+   * re-sort). Backs the vault dashboard's TVL / PnL charts.
    */
   statsHistory: VaultStatConnection;
 };
@@ -2038,12 +2166,20 @@ export type VaultStat = {
    * funds.
    */
   balance: Scalars['BigInt']['output'];
+  /**
+   * wUSDe owed to the vault on resolved-but-not-yet-redeemed winning sides,
+   * net of what it has already claimed. The dashboard's TVL line adds this to
+   * `balance + deployedCollateral` so funds that have settled in the vault's
+   * favor but await an indexed redeem are not transiently dropped. Named to
+   * match `AccountStatPoint.claimableCollateral`, the account-level analog.
+   */
+  claimableCollateral: Scalars['BigInt']['output'];
   collateralLost: Scalars['BigInt']['output'];
   collateralWon: Scalars['BigInt']['output'];
   /**
    * Cumulative trading PnL the vault dashboard plots: settlement PnL, plus
    * wUSDe earmarked from resolved-but-unredeemed wins, plus net secondary-
-   * market flow (`realizedPnl + unredeemedClaim + secondarySold −
+   * market flow (`realizedPnl + claimableCollateral + secondarySold −
    * secondaryBought`). This is the *same* numerator the account behind the
    * vault carries; the vault presents it as a return on total assets
    * (`balance + deployedCollateral`), where the account measures it against
@@ -2061,13 +2197,6 @@ export type VaultStat = {
   timestamp: Scalars['UnixSeconds']['output'];
   /** Liquid collateral not yet deployed to escrow. `balance + deployed` is AUM. */
   undeployedCollateral: Scalars['BigInt']['output'];
-  /**
-   * wUSDe owed to the vault on resolved-but-not-yet-redeemed winning sides,
-   * net of what it has already claimed. The dashboard's TVL line adds this to
-   * `balance + deployedCollateral` so funds that have settled in the vault's
-   * favor but await an indexed redeem are not transiently dropped.
-   */
-  unredeemedClaim: Scalars['BigInt']['output'];
   withdrawals: Scalars['BigInt']['output'];
 };
 
