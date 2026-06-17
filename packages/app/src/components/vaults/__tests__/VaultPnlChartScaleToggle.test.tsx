@@ -76,7 +76,7 @@ import VaultPnlChart from '~/components/vaults/VaultPnlChart';
 const DAY = 24 * 60 * 60;
 const nowSec = Math.floor(Date.now() / 1000);
 
-// v2 VaultStat shape: TVL = balance + deployedCollateral + unredeemedClaim,
+// v2 VaultStat shape: TVL = balance + deployedCollateral + claimableCollateral,
 // PnL = cumulativePnl (all wei strings).
 const vaultStats = [
   {
@@ -85,7 +85,7 @@ const vaultStats = [
     deployedCollateral: '0',
     undeployedCollateral: '0',
     cumulativePnl: '0',
-    unredeemedClaim: '0',
+    claimableCollateral: '0',
   },
   {
     timestamp: nowSec - DAY,
@@ -93,7 +93,7 @@ const vaultStats = [
     deployedCollateral: '0',
     undeployedCollateral: '0',
     cumulativePnl: (50n * 10n ** 18n).toString(),
-    unredeemedClaim: '0',
+    claimableCollateral: '0',
   },
   {
     timestamp: nowSec,
@@ -101,7 +101,7 @@ const vaultStats = [
     deployedCollateral: '0',
     undeployedCollateral: '0',
     cumulativePnl: (120n * 10n ** 18n).toString(),
-    unredeemedClaim: '0',
+    claimableCollateral: '0',
   },
 ] as never[];
 

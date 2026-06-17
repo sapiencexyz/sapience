@@ -16,7 +16,7 @@ const node = (timestamp: number, overrides: Record<string, unknown> = {}) => ({
   deployedCollateral: '500',
   undeployedCollateral: '300',
   cumulativePnl: '42',
-  unredeemedClaim: '10',
+  claimableCollateral: '10',
   ...overrides,
 });
 
@@ -45,7 +45,7 @@ describe('GET_VAULT_STATS document', () => {
     expect(GET_VAULT_STATS).toContain('deployedCollateral');
     expect(GET_VAULT_STATS).toContain('undeployedCollateral');
     expect(GET_VAULT_STATS).toContain('cumulativePnl');
-    expect(GET_VAULT_STATS).toContain('unredeemedClaim');
+    expect(GET_VAULT_STATS).toContain('claimableCollateral');
     // v1-only field names must not leak into the v2 query.
     expect(GET_VAULT_STATS).not.toContain('vaultBalance');
     expect(GET_VAULT_STATS).not.toContain('escrowBalance');
@@ -105,7 +105,7 @@ describe('fetchVaultStats', () => {
         deployedCollateral: '500',
         undeployedCollateral: '300',
         cumulativePnl: '42',
-        unredeemedClaim: '10',
+        claimableCollateral: '10',
       },
       {
         timestamp: 1700000200,
@@ -113,7 +113,7 @@ describe('fetchVaultStats', () => {
         deployedCollateral: '500',
         undeployedCollateral: '300',
         cumulativePnl: '42',
-        unredeemedClaim: '10',
+        claimableCollateral: '10',
       },
     ]);
   });
@@ -136,14 +136,14 @@ describe('fetchVaultStats', () => {
           deployedCollateral: 500,
           undeployedCollateral: 300,
           cumulativePnl: 42,
-          unredeemedClaim: 10,
+          claimableCollateral: 10,
         }),
       ])
     );
     const result = await fetchVaultStats('0xabc', 42161);
     expect(result[0].balance).toBe('1000');
     expect(result[0].deployedCollateral).toBe('500');
-    expect(result[0].unredeemedClaim).toBe('10');
+    expect(result[0].claimableCollateral).toBe('10');
   });
 
   test('returns an empty array when the vault is unknown (null vault)', async () => {

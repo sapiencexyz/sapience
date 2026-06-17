@@ -6,7 +6,7 @@ import { graphqlRequestV2 } from './client/graphqlClient';
  * charts (the migration off v1's `protocolStats(vaultAddress:)`).
  *
  * Only the fields the dashboard plots are selected. `cumulativePnl` is the
- * PnL line; `balance + deployedCollateral + unredeemedClaim` is the TVL line.
+ * PnL line; `balance + deployedCollateral + claimableCollateral` is the TVL line.
  */
 export interface VaultStat {
   /** Snapshot time, epoch seconds. */
@@ -20,11 +20,12 @@ export interface VaultStat {
   /** Cumulative trading PnL the dashboard plots, wei. */
   cumulativePnl: string;
   /** wUSDe owed on resolved-but-unredeemed winning sides, net of claimed, wei. */
-  unredeemedClaim: string;
+  claimableCollateral: string;
 }
 
-// `statsHistory` defaults to TIMESTAMP DESC; the chart wants ascending, so the
-// mapper sorts oldest-first (mirroring `protocol.ts`'s statsHistory handling).
+// `statsHistory` returns ascending (oldest-first) timestamps; the final
+// `.sort()` below is a defensive no-op that also keeps the merged multi-page
+// result ordered.
 //
 // The resolver caps `first` per page (daily snapshots, bounded series), so we
 // page on `pageInfo` until exhausted rather than over-fetching a single page —
@@ -45,7 +46,7 @@ export const GET_VAULT_STATS = /* GraphQL */ `
           deployedCollateral
           undeployedCollateral
           cumulativePnl
-          unredeemedClaim
+          claimableCollateral
         }
         pageInfo {
           hasNextPage
@@ -62,7 +63,7 @@ type WireVaultStat = {
   deployedCollateral: string | number;
   undeployedCollateral: string | number;
   cumulativePnl: string | number;
-  unredeemedClaim: string | number;
+  claimableCollateral: string | number;
 };
 
 type VaultStatsResponse = {
@@ -85,7 +86,7 @@ function toVaultStat(node: WireVaultStat): VaultStat {
     deployedCollateral: wei(node.deployedCollateral),
     undeployedCollateral: wei(node.undeployedCollateral),
     cumulativePnl: wei(node.cumulativePnl),
-    unredeemedClaim: wei(node.unredeemedClaim),
+    claimableCollateral: wei(node.claimableCollateral),
   };
 }
 
