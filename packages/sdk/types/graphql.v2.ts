@@ -210,10 +210,13 @@ export type AccountStatPoint = {
    */
   claimableCollateral: Scalars['BigInt']['output'];
   /**
-   * Running trading PnL through the end of the bucket — the cumulative sum of
-   * `realizedPnl`, seeded by all PnL realized *before* the window so the line
-   * never resets at the window start. The account analog of
-   * `VaultStat.cumulativePnl`.
+   * Running trading PnL through the end of the bucket: the cumulative sum of
+   * `realizedPnl` (seeded by all PnL realized *before* the window, so the line
+   * never resets at the window start), plus the net winnings on positions that
+   * have settled in the account's favour but are not yet redeemed
+   * (`claimableCollateral` minus the stake on those wins). That unredeemed mark
+   * makes a resolved win show up at resolution rather than waiting for redemption
+   * — the account analog of `VaultStat.cumulativePnl`.
    */
   cumulativePnl: Scalars['BigInt']['output'];
   /**

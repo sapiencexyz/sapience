@@ -104,6 +104,31 @@ describe('getAccountStatsHistory', () => {
     expect(rows[1].predictionsLost).toBe(1);
   });
 
+  it('folds net unredeemed winnings into cumulativePnl, leaving claimable gross', async () => {
+    // Resolved-but-unredeemed win: realized PnL is still 0 (no claim event),
+    // but the line should mark the net win (claimable 100 − stake 20 = 80).
+    mocks.queryAccountBalance.mockResolvedValue([
+      {
+        timestamp: 100,
+        deployedCollateral: '0',
+        claimableCollateral: '100',
+        unredeemedNetGain: '80',
+      },
+    ]);
+    mocks.queryAccountPnl.mockResolvedValue([
+      { timestamp: 100, pnl: '0', cumulativePnl: '0' },
+    ]);
+
+    const rows = await getAccountStatsHistory({
+      address: '0xABC',
+      interval: 'DAY',
+    });
+
+    expect(rows[0].cumulativePnl).toBe(80n); // 0 realized + 80 net unredeemed
+    expect(rows[0].realizedPnl).toBe(0n); // per-bucket realized unaffected
+    expect(rows[0].claimableCollateral).toBe(100n); // gross field unchanged
+  });
+
   it('returns rows sorted ascending by timestamp even if a leg is out of order', async () => {
     mocks.queryAccountVolume.mockResolvedValue([
       { timestamp: 300, volume: '3' },

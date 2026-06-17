@@ -98,6 +98,7 @@ interface BalanceRow {
   timestamp: bigint;
   deployed_collateral: string;
   claimable_collateral: string;
+  unredeemed_net_gain: string;
 }
 
 interface PredictionCountRow {
@@ -408,6 +409,13 @@ export async function queryAccountBalance(
              WHEN p.counterparty = ${addr}
              THEN CAST(COALESCE(p."counterpartyClaimable", '0') AS DECIMAL)
              ELSE 0 END AS claimable,
+        -- The holder's own stake on this side, so the PnL line can mark the
+        -- *net* win (claimable − stake) without re-counting the returned stake.
+        CASE WHEN p.predictor = ${addr}
+             THEN CAST(COALESCE(p."predictorCollateral", '0') AS DECIMAL)
+             WHEN p.counterparty = ${addr}
+             THEN CAST(COALESCE(p."counterpartyCollateral", '0') AS DECIMAL)
+             ELSE 0 END AS own_stake,
         p."pickConfigId" AS pick_config_id,
         CASE WHEN p.predictor = ${addr} THEN 'predictor'
              WHEN p.counterparty = ${addr} THEN 'counterparty'
@@ -450,7 +458,23 @@ export async function queryAccountBalance(
               AND c.side = ac.side
               AND c."redeemedAt" <= b.bucket_epoch
           )
-      ), 0)::TEXT AS claimable_collateral
+      ), 0)::TEXT AS claimable_collateral,
+      -- Net winnings (claimable − own stake) on settled-won, not-yet-redeemed
+      -- positions — wins only (claimable > 0), so a settled loss never books a
+      -- negative here (its −stake belongs to realized settlement, not this
+      -- mark). Same not-yet-redeemed set as claimable_collateral above.
+      COALESCE((
+        SELECT SUM(ac.claimable - ac.own_stake)
+        FROM all_claimable ac
+        WHERE ac.settled_ts <= b.bucket_epoch
+          AND ac.claimable > 0
+          AND NOT EXISTS (
+            SELECT 1 FROM account_claims c
+            WHERE c.pick_config_id = ac.pick_config_id
+              AND c.side = ac.side
+              AND c."redeemedAt" <= b.bucket_epoch
+          )
+      ), 0)::TEXT AS unredeemed_net_gain
     FROM buckets b
     ORDER BY b.bucket_epoch
   `;
@@ -459,6 +483,7 @@ export async function queryAccountBalance(
     timestamp: Number(row.timestamp),
     deployedCollateral: row.deployed_collateral || '0',
     claimableCollateral: row.claimable_collateral || '0',
+    unredeemedNetGain: row.unredeemed_net_gain || '0',
   }));
 }
 
