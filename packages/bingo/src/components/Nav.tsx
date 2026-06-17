@@ -2,22 +2,6 @@ import { useState } from 'react';
 import SettingsDialog from './SettingsDialog';
 import logoUrl from '../assets/combo-bingo-logo.png';
 
-interface NavLink {
-  href: string;
-  label: string;
-  /** Mark active when window.location.pathname startsWith one of these. */
-  match: string[];
-  /** When true, only mark active if pathname matches exactly. */
-  exact?: boolean;
-}
-
-const LINKS: NavLink[] = [
-  // The play hub answers both '/' and '/card'. A '/' match entry is treated as
-  // exact below so it doesn't light up every route.
-  { href: '/card', label: 'Play', match: ['/card', '/'] },
-  { href: '/refer', label: 'Refer', match: ['/refer'] },
-];
-
 interface Props {
   /** Optional extra context shown to the right of the nav (e.g. a card id). */
   trailing?: React.ReactNode;
@@ -25,8 +9,6 @@ interface Props {
 
 export default function Nav({ trailing }: Props) {
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const path =
-    typeof window === 'undefined' ? '/' : window.location.pathname;
   return (
     <>
       <nav className="brand-bar">
@@ -35,24 +17,8 @@ export default function Nav({ trailing }: Props) {
         </a>
         <div className="bingo-nav-trailing">
           {trailing}
-          <div className="bingo-nav-links">
-            {LINKS.map((l) => {
-              const active = l.exact
-                ? path === l.href
-                : l.match.some((p) =>
-                    p === '/' ? path === '/' : path.startsWith(p),
-                  );
-              return (
-                <a
-                  key={l.href}
-                  href={l.href}
-                  className={`bingo-nav-link ${active ? 'active' : ''}`}
-                >
-                  {l.label}
-                </a>
-              );
-            })}
-          </div>
+          {/* Nav links (Play / Refer) are intentionally hidden — the app
+              always lands on the play hub; /refer is reachable by URL only. */}
           <button
             type="button"
             className="bingo-nav-gear"

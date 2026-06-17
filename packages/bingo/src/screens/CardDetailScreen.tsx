@@ -13,6 +13,7 @@ import {
   fetchCard,
   fetchCards,
   fetchPool,
+  fetchPools,
   fetchReceiptCard,
   submitCard,
   submitLine,
@@ -20,6 +21,7 @@ import {
   type CardsResponse,
   type PoolCardSummary,
   type PoolResponse,
+  type PoolSummary,
 } from '../lib/backendApi';
 import {
   loadSession,
@@ -33,7 +35,17 @@ import Nav from '../components/Nav';
 import CardSubmitControls from '../components/CardSubmitControls';
 import SetupWizard from '../components/SetupWizard';
 import trophyUrl from '../assets/world-cup-trophy.png';
+import fedUrl from '../assets/fed.webp';
 import comboQrUrl from '../assets/combo-bingo-qr.svg';
+
+/** Default card-header branding, overridden per-pool below. */
+const DEFAULT_POOL_TITLE = 'World Cup 2026';
+/** Per-pool header art. Title comes from the pool config (pool.title); the
+ *  image must be bundled, so it's keyed by poolId here. Falls back to the
+ *  World Cup trophy for any pool without a dedicated image. */
+const POOL_IMAGE: Record<string, string> = {
+  'fed-day': fedUrl,
+};
 
 const LINES = buildLines();
 
@@ -211,6 +223,14 @@ function loadRef(): Address | undefined {
   return v && isAddress(v) ? (v as Address) : undefined;
 }
 
+/** The ?pool=<poolId> (or legacy ?poolId=<poolId>) query param, or null when absent. */
+function poolIdFromUrl(): string | null {
+  if (typeof window === 'undefined') return null;
+  const params = new URLSearchParams(window.location.search);
+  const v = params.get('pool') ?? params.get('poolId');
+  return v && /^[a-zA-Z0-9._:-]{1,128}$/.test(v) ? v : null;
+}
+
 /** The ?card=N query param, or null when absent/invalid. */
 function cardIndexFromUrl(): number | null {
   if (typeof window === 'undefined') return null;
@@ -279,6 +299,11 @@ export default function CardDetailScreen() {
     cardIndexFromUrl(),
   );
   const [cardsSummary, setCardsSummary] = useState<CardsResponse | null>(null);
+  // Open pools the player can start a new card in (the "+ New" picker). The
+  // active world-cup pool plus any open special pool (e.g. fed-day); a pool
+  // leaves this list automatically once its cutoff passes.
+  const [openPools, setOpenPools] = useState<PoolSummary[]>([]);
+  const [newMenuOpen, setNewMenuOpen] = useState(false);
 
   const [pickedSides, setPickedSides] = useState(0);
   const [pickedMask, setPickedMask] = useState(0);
@@ -314,10 +339,12 @@ export default function CardDetailScreen() {
   // Per-cell resolution vs the declared side, once the card is complete.
   const [cellStatus, setCellStatus] = useState<Record<number, CellStatus>>({});
 
+  const selectedPoolId = useMemo(() => poolIdFromUrl(), []);
+
   // Pool config (multipliers, min card price). In receipt view the card can
   // belong to an OLD pool — fetch THAT pool (once the card tells us which),
-  // not the active one, so the header and bonus curve match the card.
-  const viewedPoolId = viewOnly ? card?.poolId : undefined;
+  // not the selected/active one, so the header and bonus curve match the card.
+  const viewedPoolId = viewOnly ? card?.poolId : selectedPoolId;
   useEffect(() => {
     if (viewOnly && !viewedPoolId) return; // wait for the card to load
     let stop = false;
@@ -333,6 +360,26 @@ export default function CardDetailScreen() {
     };
   }, [viewOnly, viewedPoolId]);
 
+  // The open pools a new card can be started in. Refetched on each action so
+  // a pool that just closed drops out of the "+ New" picker. View-only card
+  // permalinks have no new-card flow, so they skip this.
+  useEffect(() => {
+    if (viewOnly) return;
+    let stop = false;
+    fetchPools()
+      .then((r) => {
+        if (!stop) setOpenPools(r.pools);
+      })
+      .catch(() => {
+        // Picker is auxiliary — on an older backend without /api/pools it
+        // stays empty and "+ New" falls back to the active pool.
+        if (!stop) setOpenPools([]);
+      });
+    return () => {
+      stop = true;
+    };
+  }, [viewOnly, refreshKey]);
+
   // Default the price input to the pool minimum once known.
   useEffect(() => {
     if (!pool || priceTouched) return;
@@ -347,7 +394,7 @@ export default function CardDetailScreen() {
     let stop = false;
     const tick = async () => {
       try {
-        const s = await fetchCards(player);
+        const s = await fetchCards(player, selectedPoolId);
         if (stop) return;
         setCardsSummary(s);
         // Clamp to the active pool's valid range — a stale ?card=N link
@@ -374,7 +421,7 @@ export default function CardDetailScreen() {
       stop = true;
       window.clearInterval(interval);
     };
-  }, [player, viewOnly, refreshKey]);
+  }, [player, viewOnly, selectedPoolId, refreshKey]);
 
   // Reset per-card state when switching cards — lineIds repeat across cards.
   useEffect(() => {
@@ -394,7 +441,7 @@ export default function CardDetailScreen() {
     let stop = false;
     const tick = async () => {
       try {
-        const c = await fetchCard(player, cardIndex);
+        const c = await fetchCard(player, cardIndex, selectedPoolId);
         if (stop) return;
         setCard((prev) => mergeCardMonotonic(prev, c));
         setStatusMsg(null);
@@ -409,7 +456,7 @@ export default function CardDetailScreen() {
       stop = true;
       window.clearInterval(interval);
     };
-  }, [viewOnly, player, cardIndex, refreshKey]);
+  }, [viewOnly, player, cardIndex, selectedPoolId, refreshKey]);
 
   // View-only: poll the public receipt endpoint instead (slower cadence —
   // nothing on this page is mid-flight).
@@ -583,6 +630,7 @@ export default function CardDetailScreen() {
     try {
       const res = await submitCard({
         player,
+        poolId: card?.poolId ?? selectedPoolId,
         cardIndex,
         yesMask: pickedSides,
         cardPriceWei: effectivePriceWei.toString(),
@@ -620,6 +668,39 @@ export default function CardDetailScreen() {
     u.searchParams.set('card', String(i));
     window.history.replaceState(null, '', u.toString());
     setCardIndex(i);
+  };
+
+  // The "+ New" picker options: every open pool, active/world-cup first
+  // (highest ordinal), special pools after.
+  const newCardPools = useMemo(
+    () => [...openPools].sort((a, b) => b.poolNumber - a.poolNumber),
+    [openPools],
+  );
+
+  // Start a fresh card in the chosen pool. Same pool we're viewing → switch
+  // in place; a different pool → full navigation so the screen reloads under
+  // the new ?pool=. A previous card in THAT pool left unfilled blocks the new
+  // one (unfunded lines forfeit bonus eligibility).
+  const startNewCard = (poolId: string) => {
+    setNewMenuOpen(false);
+    if (viewOnly) return;
+    const inPool = (cardsSummary?.allCards ?? []).filter(
+      (c) => c.poolId === poolId,
+    );
+    if (inPool.some((c) => c.linesFunded < 10)) {
+      setFillPreviousOpen(true);
+      return;
+    }
+    const next = inPool.length;
+    const currentPoolId = selectedPoolId ?? cardsSummary?.poolId;
+    if (poolId === currentPoolId) {
+      selectCard(next);
+      return;
+    }
+    const params = new URLSearchParams();
+    params.set('pool', poolId);
+    params.set('card', String(next));
+    window.location.href = `/card?${params.toString()}`;
   };
 
   // Retry/resume: fund whichever lines aren't on-chain yet.
@@ -861,30 +942,36 @@ export default function CardDetailScreen() {
       .map(([poolNumber, g]) => ({ poolNumber, ...g }));
   }, [cardsSummary, activePoolNumber]);
 
+  // The get-ready wizard belongs to the new-card flow only. When the player
+  // already owns cards and is viewing an existing one (a card chip, not the
+  // "+ New" slot), onboarding must NOT appear — they're already set up enough
+  // to look at that card. It shows only while the fresh "+ New" slot is
+  // selected, or before any wallet/card exists at all (the connect step).
+  const viewingExistingCard =
+    !viewOnly &&
+    cardsSummary != null &&
+    cardIndex != null &&
+    cardIndex < cardsSummary.cardCount;
+
   return (
     <main>
       <Nav />
       {card && (
         <header className="receipt-head">
-          <img className="receipt-thumb" src={trophyUrl} alt="" aria-hidden />
+          <img
+            className="receipt-thumb"
+            src={(pool && POOL_IMAGE[pool.poolId]) ?? trophyUrl}
+            alt=""
+            aria-hidden
+          />
 
           <div className="receipt-titles">
             <span className="label">
               Combo Bingo · {cardComplete ? 'Live Bet' : 'Ready to Submit'}
             </span>
-            <h2 className="receipt-title">World Cup 2026</h2>
+            <h2 className="receipt-title">{pool?.title ?? DEFAULT_POOL_TITLE}</h2>
           </div>
         </header>
-      )}
-
-      {/* Not set up yet → the get-ready wizard (connect → fund → sign). Once
-          the session is active it falls away and the card below renders.
-          Funding lives inside the wizard, between connect and sign. Held back
-          while booting so a reconnecting wallet doesn't flash onboarding. */}
-      {!viewOnly && !isActive && !booting && (
-        <section className="screen admin-section">
-          <SetupWizard />
-        </section>
       )}
 
       {/* Card strip — every card the player holds, across all pools.
@@ -928,34 +1015,78 @@ export default function CardDetailScreen() {
                 );
               })}
             {cardsSummary.open && (
-              <a
-                href={`/card?card=${cardsSummary.cardCount}`}
-                className={`card-chip card-chip-new ${
-                  !viewOnly && cardIndex === cardsSummary.cardCount
-                    ? 'current'
-                    : ''
-                }`}
-                onClick={(e) => {
-                  // A card with unfunded lines forfeits bonus eligibility —
-                  // block the next card until every line of the ACTIVE pool's
-                  // cards is funded (old pools are closed; they can't be
-                  // filled, so they don't gate).
-                  const unfilled = cardsSummary.cards.some(
-                    (c) => c.linesFunded < 10,
-                  );
-                  if (unfilled) {
-                    e.preventDefault();
-                    setFillPreviousOpen(true);
-                  } else if (!viewOnly) {
-                    e.preventDefault();
-                    selectCard(cardsSummary.cardCount);
-                  }
-                }}
-              >
-                + New
-              </a>
+              <div className="card-chip-new-wrap">
+                <button
+                  type="button"
+                  className={`card-chip card-chip-new ${
+                    !viewOnly && cardIndex === cardsSummary.cardCount
+                      ? 'current'
+                      : ''
+                  }`}
+                  aria-haspopup="menu"
+                  aria-expanded={newMenuOpen}
+                  onClick={() => {
+                    // More than one pool open → let the player pick which one
+                    // the new card belongs to. Otherwise go straight into the
+                    // sole open pool (or the active pool on an old backend).
+                    if (newCardPools.length > 1) {
+                      setNewMenuOpen((o) => !o);
+                    } else {
+                      startNewCard(
+                        newCardPools[0]?.poolId ?? cardsSummary.poolId,
+                      );
+                    }
+                  }}
+                >
+                  + New
+                </button>
+                {newMenuOpen && newCardPools.length > 1 && (
+                  <>
+                    {/* Click-away catcher closes the popover. */}
+                    <button
+                      type="button"
+                      className="new-card-menu-backdrop"
+                      aria-label="Close pool picker"
+                      onClick={() => setNewMenuOpen(false)}
+                    />
+                    <div className="new-card-menu" role="menu">
+                      {newCardPools.map((p) => (
+                        <button
+                          key={p.poolId}
+                          type="button"
+                          role="menuitem"
+                          className="new-card-menu-item"
+                          onClick={() => startNewCard(p.poolId)}
+                        >
+                          <img
+                            className="new-card-menu-thumb"
+                            src={POOL_IMAGE[p.poolId] ?? trophyUrl}
+                            alt=""
+                            aria-hidden
+                          />
+                          <span className="new-card-menu-label">
+                            {p.title ?? DEFAULT_POOL_TITLE}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             )}
           </div>
+        </section>
+      )}
+
+      {/* Not set up yet → the get-ready wizard (connect → fund → sign), shown
+          directly under the card strip. Onboarding only belongs to the
+          new-card flow, so it's suppressed while viewing an existing card —
+          it appears only when the "+ New" slot is selected (or before any
+          wallet/card exists). Held back while booting so a reconnecting
+          wallet doesn't flash onboarding. */}
+      {!viewOnly && !isActive && !booting && !viewingExistingCard && (
+        <section className="screen admin-section">
+          <SetupWizard poolId={selectedPoolId} />
         </section>
       )}
 

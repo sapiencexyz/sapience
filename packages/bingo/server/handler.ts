@@ -189,6 +189,7 @@ export async function handleApi(
     const pool = resolvePool(network, url.searchParams.get('poolId'));
     json(res, 200, {
       poolId: pool.poolId,
+      title: pool.title,
       /** Echo of the network this response describes — lets the frontend
        *  cross-check it's talking about the chain it thinks it is. */
       network,
@@ -203,6 +204,25 @@ export async function handleApi(
       minCardPriceWei: pool.minCardPriceWei,
       fairnessCommitment: fairnessCommitment(secretFor(pool.poolId)),
       receiptContract: NETWORK_CONFIG[network].receiptContract,
+    });
+    return true;
+  }
+
+  // The pools a player can start a new card in RIGHT NOW — every open pool,
+  // not just the active one. Drives the "+ New" pool picker; a pool drops off
+  // this list automatically once its cutoff passes (poolIsOpen → false), so
+  // special pools (e.g. fed-day) disappear as options the moment they close.
+  if (route === 'GET /api/pools') {
+    json(res, 200, {
+      pools: poolsFor[network]
+        .map((pool, i) => ({
+          poolId: pool.poolId,
+          title: pool.title ?? null,
+          poolNumber: i + 1,
+          cutoff: pool.cutoff,
+          open: poolIsOpen(pool),
+        }))
+        .filter((p) => p.open),
     });
     return true;
   }
@@ -425,10 +445,11 @@ export async function handleApi(
       ref?: string;
       sponsored?: boolean;
       session?: SerializedSession;
+      poolId?: string;
     }>(req);
     const { player, cardIndex, yesMask, cardPriceWei, ref } = body;
     const sponsored = body.sponsored === true && isSponsorshipEnabled(network);
-    const pool = activePool(network);
+    const pool = resolvePool(network, body.poolId ?? null);
     if (!player || !isAddress(player)) {
       json(res, 400, { error: 'player required' });
       return true;

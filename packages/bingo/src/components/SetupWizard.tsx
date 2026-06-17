@@ -20,7 +20,7 @@ type StepStatus = 'pending' | 'current' | 'done';
  * until the session is active, at which point the hub swaps to the card — so
  * there is no final "view your card" step here.
  */
-export default function SetupWizard() {
+export default function SetupWizard({ poolId }: { poolId?: string | null }) {
   const { address: eoa, isConnected } = useAccount();
   const {
     connectors,
@@ -41,7 +41,7 @@ export default function SetupWizard() {
   const [poolError, setPoolError] = useState<string | null>(null);
   useEffect(() => {
     let stop = false;
-    fetchPool()
+    fetchPool(poolId)
       .then((p) => {
         if (stop) return;
         // Each backend serves one network; catch a frontend pointed at the
@@ -61,7 +61,7 @@ export default function SetupWizard() {
     return () => {
       stop = true;
     };
-  }, []);
+  }, [poolId]);
   const minCardPriceWei = pool ? BigInt(pool.minCardPriceWei) : null;
 
   // ---------- smart-account balance (drives the Fund step) ----------
