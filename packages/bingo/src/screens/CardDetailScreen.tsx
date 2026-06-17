@@ -984,6 +984,14 @@ export default function CardDetailScreen() {
                       }
                       onMouseLeave={() => setTip(null)}
                     >
+                      {cell.imageUrl && (
+                        <img
+                          className="cell-thumb"
+                          src={cell.imageUrl}
+                          alt=""
+                          aria-hidden
+                        />
+                      )}
                       <div className="bingo-cell-title">
                         {cell.shortName ?? cell.question ?? cell.conditionId}
                       </div>
@@ -1132,6 +1140,14 @@ export default function CardDetailScreen() {
                       }
                       onMouseLeave={() => setTip(null)}
                     >
+                      {cell.imageUrl && (
+                        <img
+                          className="cell-thumb"
+                          src={cell.imageUrl}
+                          alt=""
+                          aria-hidden
+                        />
+                      )}
                       <div className="cell-text">
                         {cell.shortName ?? cell.question ?? cell.conditionId}
                       </div>
