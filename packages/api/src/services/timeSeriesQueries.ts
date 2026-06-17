@@ -313,17 +313,47 @@ export async function queryAccountPnl(
         AND lp."settledAt" IS NOT NULL
         AND lp."settledAt" <= ${toEpoch}
       UNION ALL
-      -- Secondary-market trades: realized as pure cash flow — sale proceeds
-      -- when this account is the seller, purchase cost when it's the buyer.
-      -- Matches the vault's cumulativePnl convention (secondarySold −
-      -- secondaryBought, per services/protocolStats/vaultAggregator). buyer and
-      -- seller are distinct per trade, so the two CASE legs never both fire.
+      -- Secondary-market trades: sale proceeds when this account is the seller,
+      -- purchase cost when it's the buyer (buyer and seller are distinct per
+      -- trade, so those two legs never both fire).
+      --
+      -- When the seller SOLD tokens it originally minted, also book the mint
+      -- cost basis allocated to the sold tokens — stake × tokenAmount / minted,
+      -- the same proportional rule the Claim branch uses. Without this a seller
+      -- who never redeems never books their stake and overstates by it (their
+      -- mint cost only gets deducted in the Claim branch, which never fires for
+      -- a sold-off position). cs is NULL → basis 0 for buyers and for tokens
+      -- the seller didn't mint; the token → Picks side → claim_stake join is the
+      -- same identity mapping the Claim branch uses on positionToken.
+      --
+      -- FOLLOW-UP (PnL rework): this per-branch cost-basis patching is why the
+      -- model is hard to reason about. The durable fix is a single cash-flow +
+      -- token-ledger per address (mint −stake/+tokens, buy −price/+tokens, sell
+      -- +price/−tokens, redeem +payout/−tokens; PnL = Σcash + held×rate), which
+      -- dissolves these cases and makes holder attribution fall out for free.
       SELECT
         st."executedAt" AS event_ts,
         CASE WHEN st.seller = ${addr} THEN CAST(st.price AS DECIMAL) ELSE 0 END
           - CASE WHEN st.buyer = ${addr} THEN CAST(st.price AS DECIMAL) ELSE 0 END
-          AS pnl
+          - CASE
+              WHEN st.seller = ${addr}
+              THEN COALESCE(
+                     cs.stake
+                       * CAST(st."tokenAmount" AS DECIMAL)
+                       / NULLIF(cs.minted, 0),
+                     0
+                   )
+              ELSE 0
+            END AS pnl
       FROM secondary_trade st
+      LEFT JOIN "Picks" pk
+        ON st.token = pk."predictorToken" OR st.token = pk."counterpartyToken"
+      LEFT JOIN claim_stake cs
+        ON cs.pc = pk.id
+       AND cs.side = CASE
+             WHEN st.token = pk."predictorToken" THEN 'predictor'
+             WHEN st.token = pk."counterpartyToken" THEN 'counterparty'
+           END
       WHERE (st.buyer = ${addr} OR st.seller = ${addr})
         AND st."executedAt" <= ${toEpoch}
     ),

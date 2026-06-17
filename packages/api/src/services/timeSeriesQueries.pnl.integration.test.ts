@@ -36,7 +36,7 @@ const DDL = `
   CREATE TABLE "Claim" (holder text, "redeemedAt" integer, "collateralPaid" text, "tokensBurned" text, "pickConfigId" text, "positionToken" text);
   CREATE TABLE "Close" ("burnedAt" integer, "predictorHolder" text, "predictorPayout" text, "predictorTokensBurned" text, "counterpartyHolder" text, "counterpartyPayout" text, "counterpartyTokensBurned" text);
   CREATE TABLE "position" (predictor text, "predictorWon" boolean, "totalCollateral" text, "predictorCollateral" text, counterparty text, "counterpartyCollateral" text, "settledAt" integer);
-  CREATE TABLE "secondary_trade" (buyer text, seller text, price text, "executedAt" integer);
+  CREATE TABLE "secondary_trade" (buyer text, seller text, price text, token text, "tokenAmount" text, "executedAt" integer);
 `;
 
 const day = (d: number) => Math.floor(Date.UTC(2026, 0, d, 12, 0, 0) / 1000);
@@ -46,6 +46,9 @@ const preWindow = Math.floor(Date.UTC(2025, 11, 20, 12, 0, 0) / 1000);
 
 const HOLDER_SECONDARY = '0xdddd000000000000000000000000000000000004';
 const HOLDER_BASELINE = '0xeeee000000000000000000000000000000000005';
+// A mints a winning side then sells it to B before B redeems.
+const HOLDER_SELLER = '0xffff000000000000000000000000000000000006';
+const HOLDER_BUYER = '0x1111000000000000000000000000000000000007';
 
 // ── Setup runs at top-level await so `dbAvailable` is known before `describe`
 //    is evaluated (vitest resolves describe.skipIf at collection time). ──
@@ -149,6 +152,29 @@ let dbAvailable = false;
       `INSERT INTO "secondary_trade" (buyer, seller, price, "executedAt") VALUES
          ('0xother', '${HOLDER_BASELINE}', '30', ${preWindow}),
          ('0xother', '${HOLDER_BASELINE}', '20', ${day(3)})`
+    );
+
+    // Scenario F — mint basis on a secondary SALE. A mints the predictor side
+    // (stake 20, minted 100 tokens) of pcF, then sells all 100 tokens to B for
+    // 60 on day(2), before B redeems for 100 on day(3). A never claims, so the
+    // only place A's 20 stake can be booked is the sale: basis = 20 * 100/100.
+    //   A: +60 sale − 20 basis              = +40
+    //   B: −60 buy + 100 redeem (no basis)  = +40   (B isn't the minter)
+    // Combined +80 (conserves); without the basis term A would read +60.
+    await client.$executeRawUnsafe(
+      `INSERT INTO "Picks" (id, "predictorToken", "counterpartyToken") VALUES ('pcF', 'ptokF', 'ctokF')`
+    );
+    await client.$executeRawUnsafe(
+      `INSERT INTO "Prediction" ("pickConfigId", predictor, "predictorCollateral", counterparty, "counterpartyCollateral")
+       VALUES ('pcF', '${HOLDER_SELLER}', '20', '0xother', '80')`
+    );
+    await client.$executeRawUnsafe(
+      `INSERT INTO "secondary_trade" (buyer, seller, price, token, "tokenAmount", "executedAt")
+       VALUES ('${HOLDER_BUYER}', '${HOLDER_SELLER}', '60', 'ptokF', '100', ${day(2)})`
+    );
+    await client.$executeRawUnsafe(
+      `INSERT INTO "Claim" (holder, "redeemedAt", "collateralPaid", "tokensBurned", "pickConfigId", "positionToken")
+       VALUES ('${HOLDER_BUYER}', ${day(3)}, '100', '100', 'pcF', 'ptokF')`
     );
   }
 }
@@ -258,5 +284,33 @@ describe.skipIf(!dbAvailable)('queryAccountPnl (integration: real SQL)', () => {
     // the final value — reflects 30 + 20 = 50.
     expect(Number(points[0].cumulativePnl)).toBe(30);
     expect(Number(points[points.length - 1].cumulativePnl)).toBe(50);
+  });
+
+  it('books mint basis on a secondary sale, so a seller who never redeems is not overstated', async () => {
+    const seller = await queryAccountPnl(
+      HOLDER_SELLER,
+      TimeInterval.DAY,
+      from,
+      to,
+      client
+    );
+    const buyer = await queryAccountPnl(
+      HOLDER_BUYER,
+      TimeInterval.DAY,
+      from,
+      to,
+      client
+    );
+
+    // Seller: +60 sale − 20 mint basis (20 * 100/100) = 40. Without the basis
+    // term this would read 60 (the pre-fix overstatement).
+    expect(Number(seller[seller.length - 1].cumulativePnl)).toBe(40);
+    // Buyer: −60 purchase + 100 redemption (no mint basis — not the minter) = 40.
+    expect(Number(buyer[buyer.length - 1].cumulativePnl)).toBe(40);
+    // Combined PnL conserves at +80 (true economic total).
+    expect(
+      Number(seller[seller.length - 1].cumulativePnl) +
+        Number(buyer[buyer.length - 1].cumulativePnl)
+    ).toBe(80);
   });
 });

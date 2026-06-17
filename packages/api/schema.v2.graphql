@@ -220,7 +220,17 @@ type AccountStatPoint {
   cosmetic: a resolved-but-unredeemed win contributes nothing until it is
   claimed (the line steps up at redemption rather than at resolution).
 
+  Secondary sales also book the seller's allocated mint cost basis
+  (`stake × tokensSold / minted`), so a seller who never redeems still has
+  their stake deducted and combined PnL across buyer + seller conserves.
+
   Matches `VaultStat.cumulativePnl`, which realizes the same way.
+
+  Known approximations (tracked for a planned PnL rework to a single cash-flow +
+  token-ledger model): (1) basis allocation assumes sold tokens were minted ones
+  when an address both mints and buys the same token; (2) a loss is recognized
+  at its settlement/redemption event, so a position that simply expires
+  worthless without an on-chain burn may book its loss late.
   """
   cumulativePnl: BigInt!
 
