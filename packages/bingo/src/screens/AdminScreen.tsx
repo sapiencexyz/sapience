@@ -14,11 +14,14 @@ import {
   fetchAdminNonce,
   fetchEntitlements,
   fetchPool,
+  fetchSponsorships,
   postAdminLogin,
   type EntitlementsResponse,
   type PoolResponse,
+  type SponsorshipsResponse,
 } from '../lib/backendApi';
 import Nav from '../components/Nav';
+import AdminSponsorshipSection from '../components/AdminSponsorshipSection';
 
 const RECEIPT_ABI = parseAbi([
   'function payBonus(uint256 tokenId, uint8 wins, uint256 amount)',
@@ -60,6 +63,9 @@ export default function AdminScreen() {
   const [entitlements, setEntitlements] = useState<EntitlementsResponse | null>(
     null
   );
+  const [sponsorships, setSponsorships] =
+    useState<SponsorshipsResponse | null>(null);
+  const [sponsorError, setSponsorError] = useState<string | null>(null);
 
   // SIWE: prove control of the treasury wallet (the receipt contract owner)
   // and receive a short-lived bearer token for the admin endpoints.
@@ -82,7 +88,7 @@ export default function AdminScreen() {
       const session = await postAdminLogin(message, signature);
       setToken(session.token);
       window.localStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, session.token);
-      setEntitlements(await fetchEntitlements(session.token));
+      await loadAdminData(session.token);
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -104,19 +110,29 @@ export default function AdminScreen() {
     };
   }, []);
 
-  const loadEntitlements = async () => {
-    const t = token.trim();
+  const loadAdminData = async (adminToken?: string) => {
+    const t = (adminToken ?? token).trim();
     if (!t) return;
     window.localStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, t);
     setLoading(true);
     setLoadError(null);
+    setSponsorError(null);
     try {
-      setEntitlements(await fetchEntitlements(t));
+      const [ent, sponsors] = await Promise.all([
+        fetchEntitlements(t),
+        fetchSponsorships(t),
+      ]);
+      setEntitlements(ent);
+      setSponsorships(sponsors);
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadEntitlements = async () => {
+    await loadAdminData();
   };
 
   // ---- treasury payouts (on-chain, signed by the connected wallet) ----
@@ -214,8 +230,8 @@ export default function AdminScreen() {
       <section className="screen admin-section">
         <h2>Entitlements & payouts</h2>
         <p className="muted small">
-          Sign in with the treasury wallet (the receipt contract owner) to view
-          what's owed and pay it on-chain through the receipt NFT.
+          Sign in with an authorized admin wallet to view entitlements and
+          sponsorships; pay bonuses with the treasury wallet.
         </p>
         <div className="admin-row">
           {!isConnected && (
@@ -464,6 +480,18 @@ export default function AdminScreen() {
           </>
         )}
       </section>
+
+      <AdminSponsorshipSection
+        sponsorships={sponsorships}
+        loading={loading}
+        loadError={sponsorError}
+        onReload={() => void loadAdminData()}
+        isConnected={isConnected}
+        connectedAddress={eoa}
+        writePending={writePending}
+        writeContractAsync={writeContractAsync}
+        onGrantError={setSponsorError}
+      />
     </main>
   );
 }

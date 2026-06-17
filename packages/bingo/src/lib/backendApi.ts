@@ -227,6 +227,20 @@ export interface SponsorStatusResponse {
   sponsoredCardPriceWei: string;
 }
 
+export interface SponsorshipHistoryRow {
+  smartAccount: Address;
+  allocatedWei: string;
+  usedWei: string;
+  remainingWei: string;
+  played: boolean;
+}
+
+export interface SponsorshipsResponse {
+  sponsorAddress: Address | null;
+  bankrollWei: string;
+  rows: SponsorshipHistoryRow[];
+}
+
 // ---------------------------------------------------------------------------
 // Fetch plumbing
 // ---------------------------------------------------------------------------
@@ -381,6 +395,14 @@ export function fetchEntitlements(
   adminToken: string,
 ): Promise<EntitlementsResponse> {
   return request<EntitlementsResponse>('/api/admin/entitlements', {
+    headers: { authorization: `Bearer ${adminToken}` },
+  });
+}
+
+export function fetchSponsorships(
+  adminToken: string,
+): Promise<SponsorshipsResponse> {
+  return request<SponsorshipsResponse>('/api/admin/sponsorships', {
     headers: { authorization: `Bearer ${adminToken}` },
   });
 }
