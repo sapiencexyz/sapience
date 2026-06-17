@@ -10,6 +10,7 @@ import {
   etherealChain,
   etherealTestnetChain,
 } from '@sapience/sdk/constants';
+import { onboardingSponsor as sponsorAddresses } from '@sapience/sdk/contracts';
 
 export type Network = 'staging' | 'main';
 
@@ -30,6 +31,8 @@ export interface NetworkConfig {
   receiptContract: Address;
   /** Lower bound for on-chain log scans = the receipt's deploy block. */
   logFromBlock: number;
+  /** Lower bound for OnboardingSponsor BudgetSet log scans (SDK blockCreated). */
+  sponsorLogFromBlock: number;
 }
 
 export const NETWORK_CONFIG: Record<Network, NetworkConfig> = {
@@ -38,12 +41,16 @@ export const NETWORK_CONFIG: Record<Network, NetworkConfig> = {
     relayerWsUrl: 'wss://relayer.staging.sapience.xyz/auction',
     receiptContract: '0x67fB8B733Fe4E523d7d491785A86748a4ee9112c',
     logFromBlock: 4828264,
+    sponsorLogFromBlock:
+      sponsorAddresses[etherealTestnetChain.id]?.blockCreated ?? 2857000,
   },
   main: {
     chain: etherealChain,
     relayerWsUrl: 'wss://relayer.sapience.xyz/auction',
     receiptContract: '0xdb89F60983C7f943FD683Da0c3F6418d38e3732d',
     logFromBlock: 5041801,
+    sponsorLogFromBlock:
+      sponsorAddresses[etherealChain.id]?.blockCreated ?? 4100000,
   },
 };
 

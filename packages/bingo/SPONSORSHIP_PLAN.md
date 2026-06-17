@@ -1,5 +1,10 @@
 # Bingo Sponsorship — Plan & Edge-Case Ledger
 
+> **Superseded for the grant flow.** This doc describes the _automatic_ "first
+> card free" model. The grant flow is being replaced by admin-managed grants —
+> see [`SPONSORSHIP_ADMIN_PLAN.md`](./SPONSORSHIP_ADMIN_PLAN.md). The on-chain
+> rail and edge-case ledger below remain useful reference.
+
 Goal: a new bingo user can play **without depositing** — the house sponsors their
 first card's stake. Reuses the existing `/app` sponsorship rail end-to-end.
 

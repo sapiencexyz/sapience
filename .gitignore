@@ -37,3 +37,6 @@ storybook-static
 # Cloudflare Wrangler
 .wrangler
 .claude/scheduled_tasks.lock
+
+# pnpm local content-addressable store
+.pnpm-store/

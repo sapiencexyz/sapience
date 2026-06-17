@@ -1,29 +1,22 @@
-// Sponsorship service: lets a new player mint a card without depositing.
+// Sponsorship service: lets a granted player mint a card without depositing.
 // Ported from /app's packages/api/src/services/sponsorship.ts and adapted for
 // bingo — per-network (one deployment serves staging + main), and `player` is
 // ALREADY the smart account (bingo's predictor), so budgets are keyed by it
 // directly. Reuses the SAME deployed OnboardingSponsor /app uses (resolved from
 // the SDK contract registry) — no new contract. The escrow funds the predictor
 // stake via the sponsor's fundMint hook; the sponsor enforces vault-counterparty
-// + entry-price cap + per-user budget on-chain. See SPONSORSHIP_PLAN.md.
+// + entry-price cap + per-user budget on-chain. See SPONSORSHIP_ADMIN_PLAN.md.
 //
 // All policy DECISIONS live in sponsorshipPolicy.ts (pure); this file is the IO
 // boundary. The two orchestration entry points — ensureSponsoredBudget (submit)
 // and getSponsoredLineContext (line) — take an injectable `deps` so they can be
 // tested without a chain, and both FAIL CLOSED: a sponsored card is never locked
 // in, and a line is never sponsored, unless the full context is confirmed.
+// Grants are admin-managed (wallet-signed setBudget); the server never grants.
 
-import {
-  createWalletClient,
-  erc20Abi,
-  http,
-  type Address,
-  type WalletClient,
-} from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
-import { env } from './config.js';
+import { erc20Abi, type Address } from 'viem';
 import { collateralAddress, sponsorAddress } from './chain.js';
-import { chainFor, getPublicClient } from './session.js';
+import { getPublicClient } from './session.js';
 import type { Network } from './network.js';
 import {
   isLineSponsored,
@@ -36,16 +29,6 @@ export { SPONSORED_CARD_PRICE_WEI, sponsorEligibility };
 
 // Only the OnboardingSponsor functions we touch.
 const SPONSOR_ABI = [
-  {
-    type: 'function',
-    name: 'setBudget',
-    inputs: [
-      { name: 'beneficiary', type: 'address' },
-      { name: 'allocated', type: 'uint256' },
-    ],
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
   {
     // public mapping getter — allocated/used drive every sponsorship decision.
     type: 'function',
@@ -66,13 +49,12 @@ const SPONSOR_ABI = [
   },
 ] as const;
 
-/** Sponsorship is on only when a budget-manager key is set AND the network has
- *  a deployed OnboardingSponsor. Otherwise bingo runs deposit-only. */
+/** Sponsorship is on when the network has a deployed OnboardingSponsor. */
 export function isSponsorshipEnabled(network: Network): boolean {
-  return !!env.BUDGET_MANAGER_PRIVATE_KEY && sponsorAddress(network) !== null;
+  return sponsorAddress(network) !== null;
 }
 
-// ─── Low-level on-chain reads/writes (the real `deps`) ───────────────────────
+// ─── Low-level on-chain reads (the real `deps`) ──────────────────────────────
 
 /** A player's on-chain budget: allocated grant + amount used so far. */
 async function readBudget(
@@ -122,51 +104,6 @@ export async function requiredCounterparty(
   }
 }
 
-// One budget-manager wallet client per network (the key is shared with /app).
-const walletClients = new Map<Network, WalletClient>();
-
-function budgetManagerClient(network: Network): WalletClient {
-  let client = walletClients.get(network);
-  if (!client) {
-    const chain = chainFor(network);
-    client = createWalletClient({
-      account: privateKeyToAccount(
-        env.BUDGET_MANAGER_PRIVATE_KEY as `0x${string}`,
-      ),
-      chain,
-      transport: http(chain.rpcUrls.default.http[0]),
-    });
-    walletClients.set(network, client);
-  }
-  return client;
-}
-
-/** Grant a full sponsored-card budget and AWAIT confirmation. Throws if the tx
- *  reverts or the receipt isn't successful — callers must fail closed. */
-async function setBudgetConfirmed(
-  network: Network,
-  player: Address,
-): Promise<void> {
-  const sponsor = sponsorAddress(network);
-  if (!sponsor) throw new Error('Sponsor not configured');
-  const client = budgetManagerClient(network);
-  const hash = await client.writeContract({
-    address: sponsor,
-    abi: SPONSOR_ABI,
-    functionName: 'setBudget',
-    args: [player, SPONSORED_CARD_PRICE_WEI],
-    account: client.account!,
-    chain: chainFor(network),
-  });
-  const receipt = await getPublicClient(network).waitForTransactionReceipt({
-    hash,
-  });
-  if (receipt.status !== 'success') {
-    throw new Error(`setBudget tx ${hash} reverted`);
-  }
-  console.log(`[sponsorship] granted ${player} on ${network}: ${hash}`);
-}
-
 /** Injectable IO boundary — real implementations by default; tests pass fakes. */
 export interface SponsorshipDeps {
   getBudget: (
@@ -175,14 +112,12 @@ export interface SponsorshipDeps {
   ) => Promise<{ allocated: bigint; used: bigint }>;
   getBankroll: (network: Network) => Promise<bigint>;
   getRequiredCounterparty: (network: Network) => Promise<Address | null>;
-  setBudget: (network: Network, player: Address) => Promise<void>;
 }
 
 const realDeps: SponsorshipDeps = {
   getBudget: readBudget,
   getBankroll: readBankroll,
   getRequiredCounterparty: requiredCounterparty,
-  setBudget: setBudgetConfirmed,
 };
 
 const remainingOf = (b: { allocated: bigint; used: bigint }): bigint =>
@@ -245,14 +180,13 @@ export async function getSponsorStatus(
   }
 }
 
-// ─── Orchestration: submit (fail closed) ─────────────────────────────────────
+// ─── Orchestration: submit (fail closed, verify-only) ────────────────────────
 
 /**
- * Ensure the player has a usable full sponsored-card budget BEFORE the receipt
- * is minted. FAILS CLOSED — throws on disabled config, dry bankroll, an
- * ineligible wallet, or a grant tx that doesn't confirm. Returns normally only
- * when the budget is on-chain (already held, or freshly granted + confirmed),
- * so a no-deposit card is never locked in without funding behind it.
+ * Verify the player has a usable full sponsored-card budget BEFORE the receipt
+ * is minted. FAILS CLOSED — throws on disabled config, dry bankroll, or
+ * insufficient remaining budget. The server never grants; admin must setBudget
+ * first.
  */
 export async function ensureSponsoredBudget(
   network: Network,
@@ -272,8 +206,6 @@ export async function ensureSponsoredBudget(
     remaining: remainingOf(budget),
   });
   if (action.kind === 'reject') throw new Error(action.reason);
-  if (action.kind === 'grant') await deps.setBudget(network, player); // throws on failure
-  // 'ok' → already holds a usable budget; nothing to do.
 }
 
 // ─── Orchestration: line funding (complete context or fail) ──────────────────

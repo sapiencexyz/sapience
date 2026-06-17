@@ -7,4 +7,3 @@ const DUMMY_HEX32 = `0x${'00'.repeat(31)}01`;
 process.env.SERVER_SECRET ||= DUMMY_HEX32;
 process.env.ADMIN_TOKEN ||= 'test-admin-token';
 process.env.MINTER_PRIVATE_KEY ||= DUMMY_HEX32;
-process.env.BUDGET_MANAGER_PRIVATE_KEY ||= DUMMY_HEX32;

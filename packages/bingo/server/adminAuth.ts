@@ -1,6 +1,6 @@
-// SIWE admin sign-in: the admin is whoever controls the treasury wallet —
-// resolved on-chain as the BingoCardReceipt owner() (the address that can
-// pay bonuses), with ADMIN_ADDRESS as an override/fallback.
+// SIWE admin sign-in: panel access for the treasury wallet, sponsor roles,
+// and optional view-only extras (ADMIN_ADDRESSES). Grants are signed on-chain
+// separately — only budgetManager / sponsor owner can call setBudget.
 //
 // Fully stateless: nonces and session tokens are HMAC-signed values the
 // server can verify without remembering them, so any instance (or a fresh
@@ -13,6 +13,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { Address, Hex } from 'viem';
 import { parseSiweMessage } from 'viem/siwe';
 import { env } from './config.js';
+import { sponsorAddress } from './chain.js';
 import { NETWORK_CONFIG, type Network } from './network.js';
 import { getPublicClient } from './session.js';
 
@@ -29,21 +30,83 @@ const OWNER_ABI = [
   },
 ] as const;
 
+const SPONSOR_ROLES_ABI = [
+  ...OWNER_ABI,
+  {
+    type: 'function',
+    name: 'budgetManager',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'address' }],
+  },
+] as const;
+
 function hmac(payload: string): string {
   return createHmac('sha256', `admin:${env.SERVER_SECRET}`)
     .update(payload)
     .digest('hex');
 }
 
-/** The wallet allowed to sign in: ADMIN_ADDRESS env if set, else the
- *  receipt contract's owner() (the treasury that pays bonuses). */
-export async function resolveAdminAddress(network: Network): Promise<Address> {
+function parseAdminAddresses(raw: string): Address[] {
+  if (!raw.trim()) return [];
+  return raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean) as Address[];
+}
+
+/** Treasury wallet for admin panel: ADMIN_ADDRESS env if set, else receipt owner(). */
+async function resolveTreasuryAddress(network: Network): Promise<Address> {
   if (env.ADMIN_ADDRESS) return env.ADMIN_ADDRESS as Address;
   return (await getPublicClient(network).readContract({
     address: NETWORK_CONFIG[network].receiptContract,
     abi: OWNER_ABI,
     functionName: 'owner',
   })) as Address;
+}
+
+/** Wallets allowed to SIWE-login: treasury + sponsor roles + view-only env extras. */
+export async function resolveAdminAddresses(
+  network: Network,
+): Promise<Address[]> {
+  const seen = new Set<string>();
+  const out: Address[] = [];
+  const add = (a: Address) => {
+    const k = a.toLowerCase();
+    if (seen.has(k)) return;
+    seen.add(k);
+    out.push(a);
+  };
+
+  add(await resolveTreasuryAddress(network));
+
+  const sponsor = sponsorAddress(network);
+  if (sponsor) {
+    try {
+      const [budgetManager, sponsorOwner] = await Promise.all([
+        getPublicClient(network).readContract({
+          address: sponsor,
+          abi: SPONSOR_ROLES_ABI,
+          functionName: 'budgetManager',
+        }) as Promise<Address>,
+        getPublicClient(network).readContract({
+          address: sponsor,
+          abi: SPONSOR_ROLES_ABI,
+          functionName: 'owner',
+        }) as Promise<Address>,
+      ]);
+      add(budgetManager);
+      add(sponsorOwner);
+    } catch (e) {
+      console.warn(`[adminAuth] sponsor role read failed on ${network}:`, e);
+    }
+  }
+
+  for (const a of parseAdminAddresses(env.ADMIN_ADDRESSES)) {
+    add(a);
+  }
+
+  return out;
 }
 
 /** SIWE nonce: `<expiry-hex><hmac>` — alphanumeric (per the SIWE grammar),
@@ -66,7 +129,7 @@ function verifyNonce(nonce: string): boolean {
   return safeEqual(nonce.slice(12), hmac(`nonce:${exp}`).slice(0, 32));
 }
 
-/** Verifies a SIWE message + signature from the admin wallet and returns a
+/** Verifies a SIWE message + signature from an allowlisted wallet and returns a
  *  bearer token. Throws Error with a user-facing message on any failure. */
 export async function siweLogin(
   network: Network,
@@ -79,9 +142,10 @@ export async function siweLogin(
   }
   if (!parsed.address) throw new Error('SIWE message missing address');
 
-  const admin = await resolveAdminAddress(network);
-  if (parsed.address.toLowerCase() !== admin.toLowerCase()) {
-    throw new Error('Not the treasury/admin wallet');
+  const allowed = await resolveAdminAddresses(network);
+  const signer = parsed.address.toLowerCase();
+  if (!allowed.some((a) => a.toLowerCase() === signer)) {
+    throw new Error('Not an authorized admin wallet');
   }
 
   // verifySiweMessage checks signature (EOA + ERC-1271/6492), expiry,
@@ -93,7 +157,7 @@ export async function siweLogin(
   if (!valid) throw new Error('Invalid SIWE signature');
 
   const expiresAt = Date.now() + SESSION_TTL_MS;
-  const payload = `${parsed.address.toLowerCase()}:${expiresAt}`;
+  const payload = `${signer}:${expiresAt}`;
   const token = `${Buffer.from(payload).toString('base64url')}.${hmac(`token:${payload}`)}`;
   return { token, address: parsed.address, expiresAt };
 }
