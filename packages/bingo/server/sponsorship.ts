@@ -14,11 +14,12 @@
 // in, and a line is never sponsored, unless the full context is confirmed.
 // Grants are admin-managed (wallet-signed setBudget); the server never grants.
 
-import { erc20Abi, type Address } from 'viem';
+import { erc20Abi, parseAbiItem, type Address } from 'viem';
 import { collateralAddress, sponsorAddress } from './chain.js';
 import { getPublicClient } from './session.js';
-import type { Network } from './network.js';
+import { NETWORK_CONFIG, type Network } from './network.js';
 import {
+  beneficiariesFromBudgetSetLogs,
   isLineSponsored,
   SPONSORED_CARD_PRICE_WEI,
   sponsorEligibility,
@@ -48,6 +49,16 @@ const SPONSOR_ABI = [
     stateMutability: 'view',
   },
 ] as const;
+
+const BUDGET_SET_EVENT = parseAbiItem(
+  'event BudgetSet(address indexed beneficiary, uint256 allocated)',
+);
+
+export interface BudgetSetLog {
+  beneficiary: Address;
+  blockNumber: bigint;
+  logIndex: number;
+}
 
 /** Sponsorship is on when the network has a deployed OnboardingSponsor. */
 export function isSponsorshipEnabled(network: Network): boolean {
@@ -114,10 +125,41 @@ export interface SponsorshipDeps {
   getRequiredCounterparty: (network: Network) => Promise<Address | null>;
 }
 
+export interface SponsorshipHistoryDeps extends SponsorshipDeps {
+  getBudgetSetLogs: (network: Network) => Promise<readonly BudgetSetLog[]>;
+}
+
 const realDeps: SponsorshipDeps = {
   getBudget: readBudget,
   getBankroll: readBankroll,
   getRequiredCounterparty: requiredCounterparty,
+};
+
+async function readBudgetSetLogs(network: Network): Promise<BudgetSetLog[]> {
+  const sponsor = sponsorAddress(network);
+  if (!sponsor) return [];
+  const logs = await getPublicClient(network).getLogs({
+    address: sponsor,
+    event: BUDGET_SET_EVENT,
+    fromBlock: BigInt(NETWORK_CONFIG[network].sponsorLogFromBlock),
+    toBlock: 'latest',
+  });
+  return logs.flatMap((log, i) => {
+    const beneficiary = log.args.beneficiary;
+    if (!beneficiary) return [];
+    return [
+      {
+        beneficiary,
+        blockNumber: log.blockNumber,
+        logIndex: log.logIndex ?? i,
+      },
+    ];
+  });
+}
+
+const realHistoryDeps: SponsorshipHistoryDeps = {
+  ...realDeps,
+  getBudgetSetLogs: readBudgetSetLogs,
 };
 
 const remainingOf = (b: { allocated: bigint; used: bigint }): bigint =>
@@ -257,4 +299,69 @@ export async function getSponsoredLineContext(
     );
   }
   return { sponsor, requiredCounterparty: rc };
+}
+
+// ─── Admin: grant history (pure RPC, no DB) ──────────────────────────────────
+
+export interface SponsorshipHistoryRow {
+  smartAccount: Address;
+  allocatedWei: string;
+  usedWei: string;
+  remainingWei: string;
+  played: boolean;
+}
+
+export interface SponsorshipHistory {
+  sponsorAddress: Address | null;
+  bankrollWei: string;
+  rows: SponsorshipHistoryRow[];
+}
+
+/** BudgetSet log scan + live budget reads for the admin sponsorship panel. */
+export async function listSponsorships(
+  network: Network,
+  deps: SponsorshipHistoryDeps = realHistoryDeps,
+): Promise<SponsorshipHistory> {
+  const sponsor = sponsorAddress(network);
+  if (!sponsor) {
+    return { sponsorAddress: null, bankrollWei: '0', rows: [] };
+  }
+
+  const [logs, bankroll] = await Promise.all([
+    deps.getBudgetSetLogs(network),
+    deps.getBankroll(network),
+  ]);
+  const beneficiaries = beneficiariesFromBudgetSetLogs(logs);
+
+  const budgets = await Promise.all(
+    beneficiaries.map((smartAccount) =>
+      deps.getBudget(network, smartAccount).then((budget) => ({
+        smartAccount,
+        budget,
+      })),
+    ),
+  );
+
+  const rows: SponsorshipHistoryRow[] = [];
+  for (const { smartAccount, budget } of budgets) {
+    if (budget.allocated < SPONSORED_CARD_PRICE_WEI) continue;
+    const remaining = remainingOf(budget);
+    rows.push({
+      smartAccount,
+      allocatedWei: budget.allocated.toString(),
+      usedWei: budget.used.toString(),
+      remainingWei: remaining.toString(),
+      played: budget.used > 0n,
+    });
+  }
+
+  rows.sort((a, b) =>
+    a.smartAccount.toLowerCase().localeCompare(b.smartAccount.toLowerCase()),
+  );
+
+  return {
+    sponsorAddress: sponsor,
+    bankrollWei: bankroll.toString(),
+    rows,
+  };
 }

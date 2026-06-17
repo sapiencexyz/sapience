@@ -10,7 +10,6 @@ import {
   etherealChain,
   etherealTestnetChain,
 } from '@sapience/sdk/constants';
-import { onboardingSponsor as sponsorAddresses } from '@sapience/sdk/contracts';
 
 export type Network = 'staging' | 'main';
 
@@ -31,26 +30,30 @@ export interface NetworkConfig {
   receiptContract: Address;
   /** Lower bound for on-chain log scans = the receipt's deploy block. */
   logFromBlock: number;
-  /** Lower bound for OnboardingSponsor BudgetSet log scans (SDK blockCreated). */
+  /** Lower bound for OnboardingSponsor BudgetSet scans. Matches logFromBlock
+   *  at ship — admin bingo grants start here; no wide scan from contract
+   *  creation (RPC providers cap getLogs block range). Tighten at go-live if
+   *  receipt deployed before admin sponsorship. */
   sponsorLogFromBlock: number;
 }
+
+const STAGING_LOG_FROM = 4828264;
+const MAIN_LOG_FROM = 5041801;
 
 export const NETWORK_CONFIG: Record<Network, NetworkConfig> = {
   staging: {
     chain: etherealTestnetChain,
     relayerWsUrl: 'wss://relayer.staging.sapience.xyz/auction',
     receiptContract: '0x67fB8B733Fe4E523d7d491785A86748a4ee9112c',
-    logFromBlock: 4828264,
-    sponsorLogFromBlock:
-      sponsorAddresses[etherealTestnetChain.id]?.blockCreated ?? 2857000,
+    logFromBlock: STAGING_LOG_FROM,
+    sponsorLogFromBlock: STAGING_LOG_FROM,
   },
   main: {
     chain: etherealChain,
     relayerWsUrl: 'wss://relayer.sapience.xyz/auction',
     receiptContract: '0xdb89F60983C7f943FD683Da0c3F6418d38e3732d',
-    logFromBlock: 5041801,
-    sponsorLogFromBlock:
-      sponsorAddresses[etherealChain.id]?.blockCreated ?? 4100000,
+    logFromBlock: MAIN_LOG_FROM,
+    sponsorLogFromBlock: MAIN_LOG_FROM,
   },
 };
 

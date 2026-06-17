@@ -2,6 +2,8 @@
 // sponsorship.ts (which imports config + viem) so the decision logic unit-tests
 // in isolation, the way draw/lines/pool policy already do.
 
+import type { Address } from 'viem';
+
 /** Sponsored card price === the budget granted per wallet (one free card). The
  *  single bingo-side knob; see SPONSORSHIP_PLAN.md "Knobs". 10 USDe (18 dec). */
 export const SPONSORED_CARD_PRICE_WEI = 10n * 10n ** 18n;
@@ -74,4 +76,19 @@ export function sponsoredBudgetAction(s: {
     return { kind: 'ok' };
   }
   return { kind: 'reject', reason: 'Wallet not eligible for a sponsored card' };
+}
+
+/** Unique beneficiaries seen in BudgetSet logs (order preserved, first seen). */
+export function beneficiariesFromBudgetSetLogs(
+  logs: ReadonlyArray<{ beneficiary: Address }>,
+): Address[] {
+  const seen = new Set<string>();
+  const out: Address[] = [];
+  for (const { beneficiary } of logs) {
+    const key = beneficiary.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(beneficiary);
+  }
+  return out;
 }

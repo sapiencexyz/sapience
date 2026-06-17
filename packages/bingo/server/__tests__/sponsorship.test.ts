@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Address } from 'viem';
 import {
+  beneficiariesFromBudgetSetLogs,
   isLineSponsored,
   isSponsoredCard,
   sponsorEligibility,
@@ -9,8 +10,10 @@ import {
 import {
   ensureSponsoredBudget,
   getSponsoredLineContext,
+  listSponsorships,
   SPONSORED_CARD_PRICE_WEI,
   type SponsorshipDeps,
+  type SponsorshipHistoryDeps,
 } from '../sponsorship.js';
 
 const ONE = 10n ** 18n;
@@ -18,6 +21,7 @@ const CARD = SPONSORED_CARD_PRICE_WEI; // 10 USDe
 const THREE_CARDS = CARD * 3n;
 const STAKE = CARD / 10n; // per-line stake = 1 USDe
 const PLAYER = '0x0000000000000000000000000000000000000001' as Address;
+const PLAYER2 = '0x0000000000000000000000000000000000000002' as Address;
 const VAULT = '0x00000000000000000000000000000000000000aa' as Address;
 
 // ─── Pure policy ─────────────────────────────────────────────────────────────
@@ -191,6 +195,18 @@ describe('sponsoredBudgetAction', () => {
   });
 });
 
+describe('beneficiariesFromBudgetSetLogs', () => {
+  it('dedupes to one entry per beneficiary', () => {
+    expect(
+      beneficiariesFromBudgetSetLogs([
+        { beneficiary: PLAYER },
+        { beneficiary: PLAYER2 },
+        { beneficiary: PLAYER },
+      ]),
+    ).toEqual([PLAYER, PLAYER2]);
+  });
+});
+
 // ─── Orchestration (injected deps — no chain) ────────────────────────────────
 
 function deps(over: Partial<SponsorshipDeps> = {}): SponsorshipDeps {
@@ -266,6 +282,86 @@ describe('ensureSponsoredBudget', () => {
         deps({ getBudget: async () => ({ allocated: ONE, used: 0n }) }),
       ),
     ).rejects.toThrow();
+  });
+});
+
+function historyDeps(
+  over: Partial<SponsorshipHistoryDeps> = {},
+): SponsorshipHistoryDeps {
+  return {
+    getBudget: async () => ({ allocated: 0n, used: 0n }),
+    getBankroll: async () => CARD * 5n,
+    getRequiredCounterparty: async () => VAULT,
+    getBudgetSetLogs: async () => [],
+    ...over,
+  };
+}
+
+describe('listSponsorships', () => {
+  it('returns bankroll and live budget rows for bingo-sized grants', async () => {
+    const result = await listSponsorships(
+      'main',
+      historyDeps({
+        getBudgetSetLogs: async () => [
+          { beneficiary: PLAYER, blockNumber: 100n, logIndex: 0 },
+          { beneficiary: PLAYER2, blockNumber: 101n, logIndex: 0 },
+        ],
+        getBudget: async (_network, player) => {
+          if (player === PLAYER) return { allocated: CARD, used: CARD };
+          if (player === PLAYER2) return { allocated: THREE_CARDS, used: 0n };
+          return { allocated: 0n, used: 0n };
+        },
+        getBankroll: async () => CARD * 10n,
+      }),
+    );
+    expect(result.bankrollWei).toBe((CARD * 10n).toString());
+    expect(result.sponsorAddress).toBeTruthy();
+    expect(result.rows).toHaveLength(2);
+    const played = result.rows.find((r) => r.smartAccount === PLAYER)!;
+    expect(played.allocatedWei).toBe(CARD.toString());
+    expect(played.usedWei).toBe(CARD.toString());
+    expect(played.remainingWei).toBe('0');
+    expect(played.played).toBe(true);
+    const fresh = result.rows.find((r) => r.smartAccount === PLAYER2)!;
+    expect(fresh.remainingWei).toBe(THREE_CARDS.toString());
+    expect(fresh.played).toBe(false);
+  });
+
+  it('drops /app-sized 1 USDe grants from history', async () => {
+    const result = await listSponsorships(
+      'main',
+      historyDeps({
+        getBudgetSetLogs: async () => [
+          { beneficiary: PLAYER, blockNumber: 100n, logIndex: 0 },
+          { beneficiary: PLAYER2, blockNumber: 101n, logIndex: 0 },
+        ],
+        getBudget: async (_network, player) => {
+          if (player === PLAYER) return { allocated: ONE, used: 0n };
+          if (player === PLAYER2) return { allocated: CARD, used: 0n };
+          return { allocated: 0n, used: 0n };
+        },
+      }),
+    );
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0].smartAccount).toBe(PLAYER2);
+  });
+
+  it('dedupes log beneficiaries before live reads', async () => {
+    const getBudget = vi.fn(async (_network, player: Address) => {
+      if (player === PLAYER) return { allocated: CARD, used: 0n };
+      return { allocated: 0n, used: 0n };
+    });
+    await listSponsorships(
+      'main',
+      historyDeps({
+        getBudgetSetLogs: async () => [
+          { beneficiary: PLAYER, blockNumber: 100n, logIndex: 0 },
+          { beneficiary: PLAYER, blockNumber: 200n, logIndex: 0 },
+        ],
+        getBudget,
+      }),
+    );
+    expect(getBudget).toHaveBeenCalledOnce();
   });
 });
 

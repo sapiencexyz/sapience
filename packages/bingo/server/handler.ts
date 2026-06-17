@@ -28,6 +28,7 @@ import {
   getSponsoredLineContext,
   getSponsorStatus,
   isSponsorshipEnabled,
+  listSponsorships,
   SPONSORED_CARD_PRICE_WEI,
 } from './sponsorship.js';
 import { buildLines, LINES_PER_CARD } from './lines.js';
@@ -781,6 +782,15 @@ export async function handleApi(
       totalBonusOwedWei: totalBonus.toString(),
       totalReferralOwedWei: totalReferral.toString(),
     });
+    return true;
+  }
+
+  if (route === 'GET /api/admin/sponsorships') {
+    if (!isAdmin(req)) {
+      json(res, 401, { error: 'Unauthorized' });
+      return true;
+    }
+    json(res, 200, await listSponsorships(network));
     return true;
   }
 

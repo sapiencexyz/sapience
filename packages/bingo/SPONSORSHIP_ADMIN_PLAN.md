@@ -59,7 +59,7 @@ whether each address has used its funds.
 | —   | Player copy                  | "Sponsored — no deposit needed" (+ show remaining balance where useful)                                                                                                                                                                               |
 | —   | History scope                | All addresses ever granted (`BudgetSet` log); include "played?" (`used > 0`); no pagination                                                                                                                                                           |
 | —   | Grant button                 | Preflight: disabled unless connected wallet is `budgetManager` or sponsor `owner`                                                                                                                                                                     |
-| —   | Log scan floor               | Per-network `sponsorLogFromBlock` in `network.ts`; init from SDK `blockCreated`; ship block is optional perf tuning                                                                                                                                   |
+| —   | Log scan floor               | Per-network `sponsorLogFromBlock`; defaults to `logFromBlock` (not sponsor `blockCreated`)                                                                                                                                                            |
 
 ## Admin auth model
 
@@ -135,11 +135,10 @@ No hard block on re-grants — the preview is the guard.
 1. Call `setBudgetManager(grantWallet)` on `OnboardingSponsor` (staging + main).
    Owner role can also sign `setBudget` until this is done.
 2. Fund sponsor contract with wUSDe as needed.
-3. Record deploy block → `sponsorLogFromBlock` in `network.ts`. **Placeholder =
-   the sponsor contract's `blockCreated` from the SDK registry** (`4100000` main
-   / `2857000` testnet) — never `0` (a `getLogs` from genesis range-errors /
-   times out on most RPCs). Setting the real ship block later is a scan-size
-   optimization, not a correctness requirement (see the history filter below).
+3. Set `sponsorLogFromBlock` when admin grants go live if receipt deployed
+   earlier — **defaults to `logFromBlock`** (same tight window as other scans;
+   never the sponsor's `blockCreated`, which spans ~1M blocks on main and trips
+   RPC getLogs range caps). The `allocated >= 10` filter drops /app noise.
 
 ### Phase 1 — Server policy + tests
 
@@ -171,9 +170,9 @@ No hard block on re-grants — the preview is the guard.
 
 **`server/network.ts`**
 
-- Add `sponsorLogFromBlock` per network — initial value from the sponsor
-  contract's `blockCreated` in the SDK registry (`4100000` main / `2857000`
-  testnet); ops may tighten to the ship block later (scan-size only)
+- Add `sponsorLogFromBlock` per network — **defaults to `logFromBlock`** (tight
+  scan window; never sponsor `blockCreated` — ~940k+ blocks on main trips RPC
+  range caps). Ops may tighten further at go-live if receipt predates grants.
 
 **Tests — `server/__tests__/sponsorship.test.ts`**
 
