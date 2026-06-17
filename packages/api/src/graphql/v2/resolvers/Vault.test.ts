@@ -140,9 +140,12 @@ describe('Vault (v2)', () => {
     expect(stat.undeployedCollateral).toBe(1500n);
     expect(stat.balance).toBe(1000n);
     expect(stat.realizedPnl).toBe(42n);
-    // cumulativePnl = realized + unredeemed + secondarySold − secondaryBought
-    expect(stat.cumulativePnl).toBe(54n);
-    // claimableCollateral is surfaced directly from vaultUnredeemedClaim.
+    // cumulativePnl = realized + secondarySold − secondaryBought (42 + 5 − 3).
+    // The unredeemed-claim term (10) is intentionally NOT included — PnL
+    // realizes at redemption, so claimable never marks the line.
+    expect(stat.cumulativePnl).toBe(44n);
+    // claimableCollateral is still surfaced directly from vaultUnredeemedClaim
+    // (for the TVL line), just not folded into cumulativePnl.
     expect(stat.claimableCollateral).toBe(10n);
     expect(stat.positionsWon).toBe(7);
   });

@@ -109,21 +109,20 @@ export const getAccountStatsHistory = async ({
     return row;
   };
 
-  // cumulativePnl is the sum of two aligned series — the realized running total
-  // from the PnL query and the net-unredeemed mark from the balance query — so
-  // both legs accumulate into it (emptyRow seeds 0n; order-independent). This
-  // mirrors VaultStat.cumulativePnl, where the unredeemed win is folded into
-  // the line at resolution rather than waiting for redemption.
   for (const point of balance) {
     const row = ensure(point.timestamp);
     row.deployedCollateral = decimalTextToWei(point.deployedCollateral);
     row.claimableCollateral = decimalTextToWei(point.claimableCollateral);
-    row.cumulativePnl += decimalTextToWei(point.unredeemedNetGain);
   }
+  // PnL is realized only when a win is actually redeemed (a Claim/Close) — never
+  // marked from still-unredeemed `claimableCollateral`. That keeps the line
+  // correct through secondary sales: a Claim records the true redeemer, so the
+  // prize is credited to whoever actually collects it, not to whoever first
+  // minted the position. See AccountStatPoint.cumulativePnl in the SDL.
   for (const point of pnl) {
     const row = ensure(point.timestamp);
     row.realizedPnl = decimalTextToWei(point.pnl);
-    row.cumulativePnl += decimalTextToWei(point.cumulativePnl);
+    row.cumulativePnl = decimalTextToWei(point.cumulativePnl);
   }
   for (const point of volume) {
     ensure(point.timestamp).volume = decimalTextToWei(point.volume);

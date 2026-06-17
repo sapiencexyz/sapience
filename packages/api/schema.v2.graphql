@@ -180,6 +180,12 @@ type AccountStatPoint {
   """
   Settled-and-won but not-yet-redeemed collateral owed to the account as of
   the bucket — the account analog of `VaultStat.claimableCollateral`.
+
+  This is a *pending-balance* figure, deliberately NOT part of `cumulativePnl`
+  (see there). It is attributed to the original position side and does not
+  follow secondary-market transfers, so after a winning position token is sold
+  pre-redemption it still reads against the seller until redeemed. Safe for the
+  "pending claims" view; not used to realize PnL precisely for that reason.
   """
   claimableCollateral: BigInt!
 
@@ -190,21 +196,31 @@ type AccountStatPoint {
   volume: BigInt!
 
   """
-  PnL realized within the bucket: settlement gains − losses on positions that
-  settled in-window, plus secondary-market sale proceeds net of purchase cost
-  (`sold − bought`) on trades executed in-window. Same trading-PnL definition
-  the vault plots in `VaultStat.cumulativePnl`, measured per-bucket.
+  PnL realized within the bucket — the per-bucket increment of `cumulativePnl`
+  (see there for exactly when PnL realizes): redemption gains on wins claimed
+  in-window, losses/non-decisive at settlement, and secondary-market proceeds
+  net of cost (`sold − bought`) on trades executed in-window. Same trading-PnL
+  definition the vault plots, measured per-bucket.
   """
   realizedPnl: BigInt!
 
   """
   Running trading PnL through the end of the bucket: the cumulative sum of
-  `realizedPnl` (seeded by all PnL realized *before* the window, so the line
-  never resets at the window start), plus the net winnings on positions that
-  have settled in the account's favour but are not yet redeemed
-  (`claimableCollateral` minus the stake on those wins). That unredeemed mark
-  makes a resolved win show up at resolution rather than waiting for redemption
-  — the account analog of `VaultStat.cumulativePnl`.
+  `realizedPnl`, seeded by all PnL realized *before* the window so the line
+  never resets at the window start.
+
+  PnL is realized only when a position is actually settled — a win at the
+  moment it is *redeemed* (a claim), a loss/non-decisive at settlement, plus
+  secondary-market proceeds and cost as they trade. It is NOT marked from
+  still-unredeemed `claimableCollateral`. This is deliberate: a redemption
+  records the true holder, so a win is credited to whoever actually collects
+  it. If a winning position token is sold before redemption, the seller simply
+  keeps their sale proceeds and the buyer realizes the win on redeeming — no
+  prize is ever credited to someone who no longer holds the token. The cost is
+  cosmetic: a resolved-but-unredeemed win contributes nothing until it is
+  claimed (the line steps up at redemption rather than at resolution).
+
+  Matches `VaultStat.cumulativePnl`, which realizes the same way.
   """
   cumulativePnl: BigInt!
 
@@ -365,14 +381,17 @@ type VaultStat {
   realizedPnl: BigInt!
 
   """
-  Cumulative trading PnL the vault dashboard plots: settlement PnL, plus
-  wUSDe earmarked from resolved-but-unredeemed wins, plus net secondary-
-  market flow (`realizedPnl + claimableCollateral + secondarySold −
-  secondaryBought`). This is the *same* numerator the account behind the
-  vault carries; the vault presents it as a return on total assets
-  (`balance + deployedCollateral`), where the account measures it against
-  deployed capital. The unredeemed term cancels the transient phantom loss
-  between a position resolving and its redeem being indexed.
+  Cumulative trading PnL the vault dashboard plots: settlement PnL plus net
+  secondary-market flow (`realizedPnl + secondarySold − secondaryBought`).
+
+  PnL realizes only when a position is actually redeemed/settled — it is NOT
+  marked from still-unredeemed `claimableCollateral` (that term used to be
+  added here and has been removed). This keeps the line correct when a winning
+  token is sold before redemption: the redeemer collects the prize, so it is
+  never credited to whoever merely minted the position. Realizes the same way
+  as `AccountStatPoint.cumulativePnl`. Trade-off: a resolved-but-unredeemed win
+  is not marked until it is claimed — the line steps up at redemption rather
+  than at resolution, which can read as a brief paper dip in between.
   """
   cumulativePnl: BigInt!
   deposits: BigInt!
@@ -386,8 +405,10 @@ type VaultStat {
   wUSDe owed to the vault on resolved-but-not-yet-redeemed winning sides,
   net of what it has already claimed. The dashboard's TVL line adds this to
   `balance + deployedCollateral` so funds that have settled in the vault's
-  favor but await an indexed redeem are not transiently dropped. Named to
-  match `AccountStatPoint.claimableCollateral`, the account-level analog.
+  favor but await an indexed redeem are not transiently dropped. A
+  pending-balance figure for TVL only — deliberately NOT part of
+  `cumulativePnl` (PnL realizes at redemption). Named to match
+  `AccountStatPoint.claimableCollateral`, the account-level analog.
   """
   claimableCollateral: BigInt!
 }

@@ -46,14 +46,6 @@ export interface BalanceDataPoint {
   timestamp: number;
   deployedCollateral: string;
   claimableCollateral: string;
-  /**
-   * Net unredeemed winnings as of the bucket: gross `claimableCollateral`
-   * minus the holder's own stake on those settled-but-unredeemed wins. This is
-   * the account analog of the vault's `(−primaryCollateral + claimableCollateral)`
-   * — folded into `AccountStatPoint.cumulativePnl` so a resolved win marks into
-   * the PnL line at resolution, not redemption. Not surfaced as its own field.
-   */
-  unredeemedNetGain: string;
 }
 
 export interface PredictionCountDataPoint {

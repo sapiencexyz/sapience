@@ -104,16 +104,12 @@ describe('getAccountStatsHistory', () => {
     expect(rows[1].predictionsLost).toBe(1);
   });
 
-  it('folds net unredeemed winnings into cumulativePnl, leaving claimable gross', async () => {
-    // Resolved-but-unredeemed win: realized PnL is still 0 (no claim event),
-    // but the line should mark the net win (claimable 100 − stake 20 = 80).
+  it('realizes cumulativePnl from claims only — never marks unredeemed claimable', async () => {
+    // A resolved-but-unredeemed win shows claimable, but PnL stays flat until
+    // it is actually redeemed (a Claim feeds the pnl series, not the balance
+    // series). So a big claimable with no realized PnL must NOT move the line.
     mocks.queryAccountBalance.mockResolvedValue([
-      {
-        timestamp: 100,
-        deployedCollateral: '0',
-        claimableCollateral: '100',
-        unredeemedNetGain: '80',
-      },
+      { timestamp: 100, deployedCollateral: '0', claimableCollateral: '100' },
     ]);
     mocks.queryAccountPnl.mockResolvedValue([
       { timestamp: 100, pnl: '0', cumulativePnl: '0' },
@@ -124,9 +120,8 @@ describe('getAccountStatsHistory', () => {
       interval: 'DAY',
     });
 
-    expect(rows[0].cumulativePnl).toBe(80n); // 0 realized + 80 net unredeemed
-    expect(rows[0].realizedPnl).toBe(0n); // per-bucket realized unaffected
-    expect(rows[0].claimableCollateral).toBe(100n); // gross field unchanged
+    expect(rows[0].cumulativePnl).toBe(0n); // unredeemed claimable does not mark PnL
+    expect(rows[0].claimableCollateral).toBe(100n); // still surfaced for pending view
   });
 
   it('returns rows sorted ascending by timestamp even if a leg is out of order', async () => {

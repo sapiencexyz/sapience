@@ -33,9 +33,6 @@ const SCHEMA = `bal_it_${process.pid}_${Date.now()}`;
 const HOLDER_REDEEMS = '0xaaaa000000000000000000000000000000000001';
 // Predictor whose only claim is on the OTHER side — claimable must persist.
 const HOLDER_OTHER_SIDE = '0xbbbb000000000000000000000000000000000002';
-// Predictor with a real net win (stake 20, claimable 100) for the
-// unredeemed-net-gain (PnL mark) assertions.
-const HOLDER_WIN = '0xcccc000000000000000000000000000000000003';
 
 // Minimal slices of the tables queryAccountBalance touches. `position` (the V1
 // legacy table) exists only so the all_deployed UNION branch resolves; it stays
@@ -93,8 +90,7 @@ let dbAvailable = false;
     await client.$executeRawUnsafe(
       `INSERT INTO "Picks" (id, "predictorToken", "counterpartyToken") VALUES
          ('pcA', 'ptokA', 'ctokA'),
-         ('pcB', 'ptokB', 'ctokB'),
-         ('pcC', 'ptokC', 'ctokC')`
+         ('pcB', 'ptokB', 'ctokB')`
     );
 
     // Scenario A — predictor with 100 claimable on a position settled day(2),
@@ -131,24 +127,6 @@ let dbAvailable = false;
     await client.$executeRawUnsafe(
       `INSERT INTO "Claim" (holder, "pickConfigId", "positionToken", "redeemedAt")
        VALUES ('${HOLDER_OTHER_SIDE}', 'pcB', 'ctokB', ${day(4)})`
-    );
-
-    // Scenario C — a real net win. Stake 20, wins the 100 pot (claimable 100),
-    // settled day(1), redeemed day(4). Net unredeemed gain = 100 − 20 = 80
-    // while unredeemed, then 0 once redeemed; gross claimable stays 100 → 0.
-    await client.$executeRawUnsafe(
-      `INSERT INTO "Prediction"
-         ("predictionId", "pickConfigId", predictor, counterparty,
-          "predictorCollateral", "counterpartyCollateral",
-          "predictorClaimable", "counterpartyClaimable",
-          "onChainCreatedAt", "settledAt")
-       VALUES
-         ('pred-C', 'pcC', '${HOLDER_WIN}', '0xother',
-          '20', '80', '100', '0', ${day(1)}, ${day(1)})`
-    );
-    await client.$executeRawUnsafe(
-      `INSERT INTO "Claim" (holder, "pickConfigId", "positionToken", "redeemedAt")
-       VALUES ('${HOLDER_WIN}', 'pcC', 'ptokC', ${day(4)})`
     );
   }
 }
@@ -200,38 +178,6 @@ describe.skipIf(!dbAvailable)(
       expect(byDay.get(2)).toBe(50);
       expect(byDay.get(5)).toBe(50);
       expect(byDay.get(7)).toBe(50);
-    });
-
-    const netGainByDay = async (holder: string) => {
-      const points = await queryAccountBalance(
-        holder,
-        TimeInterval.DAY,
-        from,
-        to,
-        client
-      );
-      return new Map(
-        points.map((p) => [
-          new Date(p.timestamp * 1000).getUTCDate(),
-          Number(p.unredeemedNetGain),
-        ])
-      );
-    };
-
-    it('marks net unredeemed winnings (claimable − stake), and clears them on redeem', async () => {
-      const net = await netGainByDay(HOLDER_WIN);
-      // Settled day(1): net win = claimable 100 − stake 20 = 80, counted from
-      // the next bucket while unredeemed.
-      expect(net.get(2)).toBe(80);
-      expect(net.get(3)).toBe(80);
-      // Redeemed day(4): the realized claim takes over, so the mark clears.
-      expect(net.get(5)).toBe(0);
-      expect(net.get(7)).toBe(0);
-
-      // Gross claimable still tracks the full pot (100 → 0), unchanged.
-      const gross = await claimableByDay(HOLDER_WIN);
-      expect(gross.get(2)).toBe(100);
-      expect(gross.get(5)).toBe(0);
     });
   }
 );
