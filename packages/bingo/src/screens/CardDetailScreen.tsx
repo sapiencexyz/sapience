@@ -318,6 +318,9 @@ export default function CardDetailScreen() {
   const [actionBusy, setActionBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [fillPreviousOpen, setFillPreviousOpen] = useState(false);
+  // The pool a blocked "+ New" was targeting, so the warning's "Proceed
+  // anyway" can start that card regardless of unfilled previous cards.
+  const [pendingNewPoolId, setPendingNewPoolId] = useState<string | null>(null);
   const [tip, setTip] = useState<{
     question: string;
     meta: { label: string; value: string }[];
@@ -677,21 +680,16 @@ export default function CardDetailScreen() {
     [openPools],
   );
 
-  // Start a fresh card in the chosen pool. Same pool we're viewing → switch
-  // in place; a different pool → full navigation so the screen reloads under
-  // the new ?pool=. A previous card in THAT pool left unfilled blocks the new
-  // one (unfunded lines forfeit bonus eligibility).
-  const startNewCard = (poolId: string) => {
+  // Navigate to a fresh card in the chosen pool. Same pool we're viewing →
+  // switch in place; a different pool → full navigation so the screen reloads
+  // under the new ?pool=.
+  const goToNewCard = (poolId: string) => {
     setNewMenuOpen(false);
+    setFillPreviousOpen(false);
     if (viewOnly) return;
-    const inPool = (cardsSummary?.allCards ?? []).filter(
+    const next = (cardsSummary?.allCards ?? []).filter(
       (c) => c.poolId === poolId,
-    );
-    if (inPool.some((c) => c.linesFunded < 10)) {
-      setFillPreviousOpen(true);
-      return;
-    }
-    const next = inPool.length;
+    ).length;
     const currentPoolId = selectedPoolId ?? cardsSummary?.poolId;
     if (poolId === currentPoolId) {
       selectCard(next);
@@ -701,6 +699,23 @@ export default function CardDetailScreen() {
     params.set('pool', poolId);
     params.set('card', String(next));
     window.location.href = `/card?${params.toString()}`;
+  };
+
+  // Start a fresh card in the chosen pool. A previous card in THAT pool left
+  // unfilled warns first (unfunded lines forfeit bonus eligibility) — the
+  // warning's "Proceed anyway" calls goToNewCard with the remembered pool.
+  const startNewCard = (poolId: string) => {
+    setNewMenuOpen(false);
+    if (viewOnly) return;
+    const inPool = (cardsSummary?.allCards ?? []).filter(
+      (c) => c.poolId === poolId,
+    );
+    if (inPool.some((c) => c.linesFunded < 10)) {
+      setPendingNewPoolId(poolId);
+      setFillPreviousOpen(true);
+      return;
+    }
+    goToNewCard(poolId);
   };
 
   // Retry/resume: fund whichever lines aren't on-chain yet.
@@ -1633,9 +1648,32 @@ export default function CardDetailScreen() {
               </button>
             </div>
             <p>
-              You must fill your previous card to remain eligible for bonus
+              You should fill your previous card to remain eligible for bonus
               multipliers.
             </p>
+            <div className="bingo-modal-actions">
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => setFillPreviousOpen(false)}
+              >
+                Go back
+              </button>
+              <button
+                type="button"
+                className="primary"
+                onClick={() =>
+                  goToNewCard(
+                    pendingNewPoolId ??
+                      selectedPoolId ??
+                      cardsSummary?.poolId ??
+                      '',
+                  )
+                }
+              >
+                Proceed anyway
+              </button>
+            </div>
           </div>
         </div>
       )}
