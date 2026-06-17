@@ -1338,6 +1338,145 @@
     ]
   },
   {
+    "poolId": "special",
+    "cutoff": 1782014400,
+    "minCardPriceWei": "1000000000000000000",
+    "referralBps": 200,
+    "multiplierBps": [
+      0, 0, 20000, 30000, 40000, 50000, 100000, 250000, 500000, 750000, 1000000
+    ],
+    "conditions": [
+      {
+        "conditionId": "0x0000000000000000000000000000000000000000000000000000000000000001",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Special placeholder 1",
+        "question": "Special pool placeholder condition 1",
+        "estimatedPrice": 0.5,
+        "endTime": 1782014400
+      },
+      {
+        "conditionId": "0x0000000000000000000000000000000000000000000000000000000000000002",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Special placeholder 2",
+        "question": "Special pool placeholder condition 2",
+        "estimatedPrice": 0.5,
+        "endTime": 1782014400
+      },
+      {
+        "conditionId": "0x0000000000000000000000000000000000000000000000000000000000000003",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Special placeholder 3",
+        "question": "Special pool placeholder condition 3",
+        "estimatedPrice": 0.5,
+        "endTime": 1782014400
+      },
+      {
+        "conditionId": "0x0000000000000000000000000000000000000000000000000000000000000004",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Special placeholder 4",
+        "question": "Special pool placeholder condition 4",
+        "estimatedPrice": 0.5,
+        "endTime": 1782014400
+      },
+      {
+        "conditionId": "0x0000000000000000000000000000000000000000000000000000000000000005",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Special placeholder 5",
+        "question": "Special pool placeholder condition 5",
+        "estimatedPrice": 0.5,
+        "endTime": 1782014400
+      },
+      {
+        "conditionId": "0x0000000000000000000000000000000000000000000000000000000000000006",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Special placeholder 6",
+        "question": "Special pool placeholder condition 6",
+        "estimatedPrice": 0.5,
+        "endTime": 1782014400
+      },
+      {
+        "conditionId": "0x0000000000000000000000000000000000000000000000000000000000000007",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Special placeholder 7",
+        "question": "Special pool placeholder condition 7",
+        "estimatedPrice": 0.5,
+        "endTime": 1782014400
+      },
+      {
+        "conditionId": "0x0000000000000000000000000000000000000000000000000000000000000008",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Special placeholder 8",
+        "question": "Special pool placeholder condition 8",
+        "estimatedPrice": 0.5,
+        "endTime": 1782014400
+      },
+      {
+        "conditionId": "0x0000000000000000000000000000000000000000000000000000000000000009",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Special placeholder 9",
+        "question": "Special pool placeholder condition 9",
+        "estimatedPrice": 0.5,
+        "endTime": 1782014400
+      },
+      {
+        "conditionId": "0x000000000000000000000000000000000000000000000000000000000000000a",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Special placeholder 10",
+        "question": "Special pool placeholder condition 10",
+        "estimatedPrice": 0.5,
+        "endTime": 1782014400
+      },
+      {
+        "conditionId": "0x000000000000000000000000000000000000000000000000000000000000000b",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Special placeholder 11",
+        "question": "Special pool placeholder condition 11",
+        "estimatedPrice": 0.5,
+        "endTime": 1782014400
+      },
+      {
+        "conditionId": "0x000000000000000000000000000000000000000000000000000000000000000c",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Special placeholder 12",
+        "question": "Special pool placeholder condition 12",
+        "estimatedPrice": 0.5,
+        "endTime": 1782014400
+      },
+      {
+        "conditionId": "0x000000000000000000000000000000000000000000000000000000000000000d",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Special placeholder 13",
+        "question": "Special pool placeholder condition 13",
+        "estimatedPrice": 0.5,
+        "endTime": 1782014400
+      },
+      {
+        "conditionId": "0x000000000000000000000000000000000000000000000000000000000000000e",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Special placeholder 14",
+        "question": "Special pool placeholder condition 14",
+        "estimatedPrice": 0.5,
+        "endTime": 1782014400
+      },
+      {
+        "conditionId": "0x000000000000000000000000000000000000000000000000000000000000000f",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Special placeholder 15",
+        "question": "Special pool placeholder condition 15",
+        "estimatedPrice": 0.5,
+        "endTime": 1782014400
+      },
+      {
+        "conditionId": "0x0000000000000000000000000000000000000000000000000000000000000010",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Special placeholder 16",
+        "question": "Special pool placeholder condition 16",
+        "estimatedPrice": 0.5,
+        "endTime": 1782014400
+      }
+    ]
+  },
+  {
     "poolId": "world-cup-2026-jun12",
     "cutoff": 1781229600,
     "minCardPriceWei": "1000000000000000000",

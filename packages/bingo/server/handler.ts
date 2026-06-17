@@ -405,9 +405,10 @@ export async function handleApi(
       cardPriceWei?: string;
       ref?: string;
       session?: SerializedSession;
+      poolId?: string;
     }>(req);
     const { player, cardIndex, yesMask, cardPriceWei, ref } = body;
-    const pool = activePool(network);
+    const pool = resolvePool(network, body.poolId ?? null);
     if (!player || !isAddress(player)) {
       json(res, 400, { error: 'player required' });
       return true;
