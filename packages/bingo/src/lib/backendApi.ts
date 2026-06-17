@@ -83,6 +83,9 @@ export interface PoolResponse {
   /** Unix seconds; submissions refused at/after this time. */
   cutoff: number;
   open: boolean;
+  /** False when too few markets cleared the odds filter to deal a card; the
+   *  pool is "currently unavailable". Optional for older backends. */
+  available?: boolean;
   conditions: BackendCell[];
   /** Bonus multiplier in bps by winning-line count; length 11 (0..10). */
   multiplierBps: number[];
