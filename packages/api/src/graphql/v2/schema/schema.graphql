@@ -155,18 +155,24 @@ type Account implements Node & AddressEntity {
   """
   stats: AccountStat!
 
-  # DEFERRED — not built yet: the rest of the account stats surface beyond
-  # `stats.totalVolume` (which ships, G6): PnL/accuracy fields on
-  # `AccountStat`, and
-  #   statsHistory(first, after, filter): AccountStatConnection!
-  # That series is the "return on deployed" (trading-performance) home — the
-  # same cumulative-PnL numerator a vault plots against total assets, but
-  # measured against the account's deployed capital (collateral in open
-  # positions). Big lift: no per-account time-series source exists today
-  # (accountStats.ts produces only a windowed leaderboard aggregate, not a
-  # bucketed series), and per-account deployed-collateral-over-time isn't
-  # tracked at all — it would need a new per-account snapshot writer + table.
-  # No consumer yet.
+  """
+  Time-bucketed series of this account's prediction activity — deployed /
+  claimable collateral, trade volume, settlement PnL (per-bucket and
+  running), and prediction win / loss / pending / non-decisive counts.
+  Computed live from escrow predictions, legacy positions, claims, closes,
+  and secondary trades (no snapshot table), so — unlike the chain-scoped
+  identity fields — the series spans the address across chains. `interval`
+  sets the bucket size; `filter.timestamp` (epoch seconds, inclusive) bounds
+  the window and defaults to the last 90 days. The window is bounded per
+  interval (≤365 daily buckets), so the default page returns the whole
+  series in one shot while still honouring `first` / `after`.
+  """
+  statsHistory(
+    interval: TimeInterval!
+    first: Int = 366
+    after: String
+    filter: AccountStatFilter
+  ): AccountStatPointConnection!
 }
 
 """
@@ -179,6 +185,91 @@ type AccountStat {
   Cumulative trade volume across all of this account's activity, wei.
   """
   totalVolume: BigInt!
+}
+
+"""
+Bucketing granularity for `Account.statsHistory`. Unlike `Vault.statsHistory`
+(a fixed daily snapshot cadence written by the stats worker), the account
+series is computed live per request, so the caller picks the bucket size.
+"""
+enum TimeInterval {
+  HOUR
+  DAY
+  WEEK
+  MONTH
+}
+
+"""
+One time bucket of an account's prediction activity. Amounts are wUSDe wei
+and `timestamp` is the bucket's start (epoch seconds). The field vocabulary
+deliberately mirrors `VaultStat` — `deployedCollateral`, `realizedPnl`,
+`cumulativePnl` carry the same meaning at the account level. PnL is truncated
+toward zero to integer wei (the proportional cost-basis math can produce
+sub-wei fractions).
+"""
+type AccountStatPoint {
+  timestamp: UnixSeconds!
+
+  """
+  Collateral staked in positions still open as of the bucket — created on or
+  before the boundary and not yet settled. The deployed leg of the account's
+  escrow balance; mirrors `VaultStat.deployedCollateral`.
+  """
+  deployedCollateral: BigInt!
+
+  """
+  Settled-and-won but not-yet-redeemed collateral owed to the account as of
+  the bucket — the account analog of `VaultStat.unredeemedClaim`.
+  """
+  claimableCollateral: BigInt!
+
+  """
+  Trade volume attributed to the bucket: predictor + counterparty stake on
+  predictions created in-window, plus secondary-market trades.
+  """
+  volume: BigInt!
+
+  """
+  Settlement PnL realized within the bucket (gains − losses on positions that
+  settled in-window). Mirrors `VaultStat.realizedPnl`.
+  """
+  realizedPnl: BigInt!
+
+  """
+  Running settlement PnL through the end of the bucket. Mirrors
+  `VaultStat.cumulativePnl`.
+  """
+  cumulativePnl: BigInt!
+
+  """
+  Predictions created in the bucket, across every outcome.
+  """
+  predictionsTotal: Int!
+  predictionsWon: Int!
+  predictionsLost: Int!
+  predictionsPending: Int!
+  predictionsNonDecisive: Int!
+}
+
+type AccountStatPointEdge {
+  cursor: String!
+  node: AccountStatPoint!
+}
+
+type AccountStatPointConnection {
+  edges: [AccountStatPointEdge!]!
+  nodes: [AccountStatPoint!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+"""
+Filter for `Account.statsHistory`. Mirrors `VaultStatFilter`: a `timestamp`
+window in epoch seconds (inclusive on both bounds), defaulting to the last
+90 days when omitted.
+"""
+input AccountStatFilter {
+  timestamp: IntRangeFilter
 }
 
 type AccountEdge {
@@ -284,11 +375,17 @@ type VaultStat {
   funds.
   """
   balance: BigInt!
-  """Collateral deployed into escrow (backing open positions)."""
+  """
+  Collateral deployed into escrow (backing open positions).
+  """
   deployedCollateral: BigInt!
-  """Liquid collateral not yet deployed to escrow. `balance + deployed` is AUM."""
+  """
+  Liquid collateral not yet deployed to escrow. `balance + deployed` is AUM.
+  """
   undeployedCollateral: BigInt!
-  """Settlement PnL: gross payouts to the vault minus its primary-creation collateral."""
+  """
+  Settlement PnL: gross payouts to the vault minus its primary-creation collateral.
+  """
   realizedPnl: BigInt!
   """
   Cumulative trading PnL the vault dashboard plots: settlement PnL, plus
@@ -329,7 +426,9 @@ type VaultStatConnection {
 }
 
 input VaultStatFilter {
-  """Snapshot timestamp window in epoch seconds (inclusive)."""
+  """
+  Snapshot timestamp window in epoch seconds (inclusive).
+  """
   timestamp: IntRangeFilter
 }
 
@@ -677,21 +776,37 @@ type Condition implements Node {
   value type. `0` when no similar-market signal is present.
   """
   similarMarketVolume: Float!
-  """Flat mirror of `similarMarket.volume1h`. `0` when no signal is present."""
+  """
+  Flat mirror of `similarMarket.volume1h`. `0` when no signal is present.
+  """
   similarMarketVolume1h: Float!
-  """Flat mirror of `similarMarket.volume4h`. `0` when no signal is present."""
+  """
+  Flat mirror of `similarMarket.volume4h`. `0` when no signal is present.
+  """
   similarMarketVolume4h: Float!
-  """Flat mirror of `similarMarket.volume24h`. `0` when no signal is present."""
+  """
+  Flat mirror of `similarMarket.volume24h`. `0` when no signal is present.
+  """
   similarMarketVolume24h: Float!
-  """Flat mirror of `similarMarket.volume7d`. `0` when no signal is present."""
+  """
+  Flat mirror of `similarMarket.volume7d`. `0` when no signal is present.
+  """
   similarMarketVolume7d: Float!
-  """Flat mirror of `similarMarket.volumeFiltered1h`. `0` when no signal is present."""
+  """
+  Flat mirror of `similarMarket.volumeFiltered1h`. `0` when no signal is present.
+  """
   similarMarketVolumeFiltered1h: Float!
-  """Flat mirror of `similarMarket.volumeFiltered4h`. `0` when no signal is present."""
+  """
+  Flat mirror of `similarMarket.volumeFiltered4h`. `0` when no signal is present.
+  """
   similarMarketVolumeFiltered4h: Float!
-  """Flat mirror of `similarMarket.volumeFiltered24h`. `0` when no signal is present."""
+  """
+  Flat mirror of `similarMarket.volumeFiltered24h`. `0` when no signal is present.
+  """
   similarMarketVolumeFiltered24h: Float!
-  """Flat mirror of `similarMarket.volumeFiltered7d`. `0` when no signal is present."""
+  """
+  Flat mirror of `similarMarket.volumeFiltered7d`. `0` when no signal is present.
+  """
   similarMarketVolumeFiltered7d: Float!
 }
 
@@ -886,6 +1001,12 @@ input ConditionGroupFilter {
   Substring search against `name`, case-insensitive.
   """
   search: String
+  """
+  Restrict to condition groups whose numeric `groupId` is in this set — the
+  batch-by-id lookup the markets-by-id hydration path uses. OR within the
+  set, AND with the other filters.
+  """
+  groupIds: [Int!]
 }
 
 enum ConditionGroupOrderField {
@@ -1593,7 +1714,9 @@ type Ranking {
   fails loudly if the server ever rescales.
   """
   accuracy: Float
-  """Net profit/loss in wUSDe wei (signed). Populated for `PNL`."""
+  """
+  Net profit/loss in wUSDe wei (signed). Populated for `PNL`.
+  """
   pnl: BigInt
   """
   `pnl` pre-scaled to a v1-shaped decimal string via `formatUnits(pnl, 18)`
@@ -1601,9 +1724,13 @@ type Ranking {
   themselves. `"0"` when `pnl` is null (non-`PNL` rankings).
   """
   pnlFormatted: String!
-  """Total trade volume in wUSDe wei. Populated for `VOLUME`."""
+  """
+  Total trade volume in wUSDe wei. Populated for `VOLUME`.
+  """
   volume: BigInt
-  """PnL / volume ratio. Populated for `ROI`."""
+  """
+  PnL / volume ratio. Populated for `ROI`.
+  """
   roi: Float
 }
 
@@ -2091,11 +2218,7 @@ type Query {
   with `first: 20` — the canonical "popular tags" feed. Sort by `NAME`
   for an alphabetical browse.
   """
-  tags(
-    first: Int = 20
-    after: String
-    orderBy: TagOrder
-  ): TagConnection!
+  tags(first: Int = 20, after: String, orderBy: TagOrder): TagConnection!
 
   """
   Interleaved Prediction + Trade activity feed, sorted by timestamp DESC.
