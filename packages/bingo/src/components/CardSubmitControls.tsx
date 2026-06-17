@@ -3,7 +3,7 @@ import type { PoolResponse } from '../lib/backendApi';
 
 /**
  * Pre-submit price + sponsorship controls for an unsubmitted card: the card
- * price field (or the sponsored "first card on us" note) plus the Quick Pick /
+ * price field (or the sponsored balance note) plus the Quick Pick / Submit
  * Submit actions. Presentational — all state/derivation stays in the screen and
  * is passed in, so CardDetailScreen owns composition, not display rules.
  */
@@ -12,6 +12,8 @@ export default function CardSubmitControls(props: {
   /** House-funds this card — hides the price input, shows the sponsored note. */
   sponsored: boolean;
   sponsoredPriceWei: bigint | null;
+  /** Live sponsorship budget remaining (wei), when sponsored. */
+  sponsoredRemainingWei?: bigint | null;
   priceInput: string;
   onPriceInput: (value: string) => void;
   /** Validated entered price (null = invalid/empty). */
@@ -30,6 +32,7 @@ export default function CardSubmitControls(props: {
     pool,
     sponsored,
     sponsoredPriceWei,
+    sponsoredRemainingWei,
     priceInput,
     onPriceInput,
     enteredPriceWei,
@@ -52,8 +55,12 @@ export default function CardSubmitControls(props: {
             <span className="label muted">Sponsored 🎟️</span>
           </div>
           <p className="muted small">
-            Your first card is on us — {fmtUnits(sponsoredPriceWei ?? 0n)} USDe
-            sponsored. No deposit needed.
+            Sponsored — no deposit needed. {fmtUnits(sponsoredPriceWei ?? 0n)}{' '}
+            USDe per card
+            {sponsoredRemainingWei != null &&
+              sponsoredRemainingWei > 0n &&
+              ` · ${fmtUnits(sponsoredRemainingWei)} USDe remaining`}
+            .
           </p>
         </div>
       ) : (

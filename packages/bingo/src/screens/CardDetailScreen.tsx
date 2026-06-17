@@ -490,16 +490,18 @@ export default function CardDetailScreen() {
   const cardPriceWei =
     card?.cardPriceWei != null ? BigInt(card.cardPriceWei) : null;
 
-  // Sponsorship: a new player mints their first card on the house. Only
-  // relevant before submit — an already-submitted card funds its lines from
-  // the on-chain budget, decided server-side. The price is locked to the
-  // sponsored amount.
+  // Sponsorship: admin-granted budget funds the card. Only relevant before
+  // submit — an already-submitted card funds its lines from the on-chain
+  // budget, decided server-side. The price is locked to the sponsored amount.
   const { status: sponsorStatus, eligible: sponsorEligible } = useSponsorStatus(
     viewOnly ? undefined : player,
   );
   const sponsored = sponsorEligible && !submitted;
   const sponsoredPriceWei = sponsorStatus
     ? BigInt(sponsorStatus.sponsoredCardPriceWei)
+    : null;
+  const sponsoredRemainingWei = sponsorStatus
+    ? BigInt(sponsorStatus.remainingWei)
     : null;
 
   // Validate the entered price: wei, ≥ pool minimum, divisible by 10 lines.
@@ -1222,6 +1224,7 @@ export default function CardDetailScreen() {
                 pool={pool}
                 sponsored={sponsored}
                 sponsoredPriceWei={sponsoredPriceWei}
+                sponsoredRemainingWei={sponsoredRemainingWei}
                 priceInput={priceInput}
                 onPriceInput={(v) => {
                   setPriceTouched(true);

@@ -94,8 +94,9 @@ export default function SetupWizard({ poolId }: { poolId?: string | null }) {
   const injected = connectors.find((c) => c.id === 'injected');
   const coinbase = connectors.find((c) => c.id === 'coinbaseWalletSDK');
 
-  // Sponsored new users skip the deposit entirely — the house funds the card.
-  const { eligible: sponsorEligible } = useSponsorStatus(sa);
+  // Sponsored players skip the deposit — the house funds the card from budget.
+  const { eligible: sponsorEligible, status: sponsorStatus } =
+    useSponsorStatus(sa);
   // Either funded OR sponsored unblocks Sign (the deposit is optional).
   const readyToSign = funded || sponsorEligible;
 
@@ -201,7 +202,11 @@ export default function SetupWizard({ poolId }: { poolId?: string | null }) {
               </p>
             ) : sponsorEligible ? (
               <p className="muted small">
-                Sponsored — no deposit needed. Your first card is on us 🎟️
+                Sponsored — no deposit needed
+                {sponsorStatus &&
+                  BigInt(sponsorStatus.remainingWei) > 0n &&
+                  ` · ${fmtUnits(BigInt(sponsorStatus.remainingWei))} USDe remaining`}
+                .
               </p>
             ) : (
               <>
