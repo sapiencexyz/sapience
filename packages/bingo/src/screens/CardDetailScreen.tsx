@@ -31,7 +31,17 @@ import { buildLines } from '../parlay';
 import Nav from '../components/Nav';
 import SetupWizard from '../components/SetupWizard';
 import trophyUrl from '../assets/world-cup-trophy.png';
+import fedUrl from '../assets/fed.webp';
 import comboQrUrl from '../assets/combo-bingo-qr.svg';
+
+/** Default card-header branding, overridden per-pool below. */
+const DEFAULT_POOL_TITLE = 'World Cup 2026';
+/** Per-pool header art. Title comes from the pool config (pool.title); the
+ *  image must be bundled, so it's keyed by poolId here. Falls back to the
+ *  World Cup trophy for any pool without a dedicated image. */
+const POOL_IMAGE: Record<string, string> = {
+  'fed-day': fedUrl,
+};
 
 const LINES = buildLines();
 
@@ -209,6 +219,14 @@ function loadRef(): Address | undefined {
   return v && isAddress(v) ? (v as Address) : undefined;
 }
 
+/** The ?pool=<poolId> (or legacy ?poolId=<poolId>) query param, or null when absent. */
+function poolIdFromUrl(): string | null {
+  if (typeof window === 'undefined') return null;
+  const params = new URLSearchParams(window.location.search);
+  const v = params.get('pool') ?? params.get('poolId');
+  return v && /^[a-zA-Z0-9._:-]{1,128}$/.test(v) ? v : null;
+}
+
 /** The ?card=N query param, or null when absent/invalid. */
 function cardIndexFromUrl(): number | null {
   if (typeof window === 'undefined') return null;
@@ -312,10 +330,12 @@ export default function CardDetailScreen() {
   // Per-cell resolution vs the declared side, once the card is complete.
   const [cellStatus, setCellStatus] = useState<Record<number, CellStatus>>({});
 
+  const selectedPoolId = useMemo(() => poolIdFromUrl(), []);
+
   // Pool config (multipliers, min card price). In receipt view the card can
   // belong to an OLD pool — fetch THAT pool (once the card tells us which),
-  // not the active one, so the header and bonus curve match the card.
-  const viewedPoolId = viewOnly ? card?.poolId : undefined;
+  // not the selected/active one, so the header and bonus curve match the card.
+  const viewedPoolId = viewOnly ? card?.poolId : selectedPoolId;
   useEffect(() => {
     if (viewOnly && !viewedPoolId) return; // wait for the card to load
     let stop = false;
@@ -345,7 +365,7 @@ export default function CardDetailScreen() {
     let stop = false;
     const tick = async () => {
       try {
-        const s = await fetchCards(player);
+        const s = await fetchCards(player, selectedPoolId);
         if (stop) return;
         setCardsSummary(s);
         // Clamp to the active pool's valid range — a stale ?card=N link
@@ -372,7 +392,7 @@ export default function CardDetailScreen() {
       stop = true;
       window.clearInterval(interval);
     };
-  }, [player, viewOnly, refreshKey]);
+  }, [player, viewOnly, selectedPoolId, refreshKey]);
 
   // Reset per-card state when switching cards — lineIds repeat across cards.
   useEffect(() => {
@@ -392,7 +412,7 @@ export default function CardDetailScreen() {
     let stop = false;
     const tick = async () => {
       try {
-        const c = await fetchCard(player, cardIndex);
+        const c = await fetchCard(player, cardIndex, selectedPoolId);
         if (stop) return;
         setCard((prev) => mergeCardMonotonic(prev, c));
         setStatusMsg(null);
@@ -407,7 +427,7 @@ export default function CardDetailScreen() {
       stop = true;
       window.clearInterval(interval);
     };
-  }, [viewOnly, player, cardIndex, refreshKey]);
+  }, [viewOnly, player, cardIndex, selectedPoolId, refreshKey]);
 
   // View-only: poll the public receipt endpoint instead (slower cadence —
   // nothing on this page is mid-flight).
@@ -564,6 +584,7 @@ export default function CardDetailScreen() {
     try {
       const res = await submitCard({
         player,
+        poolId: card?.poolId ?? selectedPoolId,
         cardIndex,
         yesMask: pickedSides,
         cardPriceWei: enteredPriceWei.toString(),
@@ -601,6 +622,13 @@ export default function CardDetailScreen() {
     window.history.replaceState(null, '', u.toString());
     setCardIndex(i);
   };
+
+  const newCardHref = useMemo(() => {
+    const params = new URLSearchParams();
+    if (selectedPoolId) params.set('pool', selectedPoolId);
+    params.set('card', String(cardsSummary?.cardCount ?? 0));
+    return `/card?${params.toString()}`;
+  }, [cardsSummary?.cardCount, selectedPoolId]);
 
   // Retry/resume: fund whichever lines aren't on-chain yet.
   const retryLines = async () => {
@@ -846,13 +874,18 @@ export default function CardDetailScreen() {
       <Nav />
       {card && (
         <header className="receipt-head">
-          <img className="receipt-thumb" src={trophyUrl} alt="" aria-hidden />
+          <img
+            className="receipt-thumb"
+            src={(pool && POOL_IMAGE[pool.poolId]) ?? trophyUrl}
+            alt=""
+            aria-hidden
+          />
 
           <div className="receipt-titles">
             <span className="label">
               Combo Bingo · {cardComplete ? 'Live Bet' : 'Ready to Submit'}
             </span>
-            <h2 className="receipt-title">World Cup 2026</h2>
+            <h2 className="receipt-title">{pool?.title ?? DEFAULT_POOL_TITLE}</h2>
           </div>
         </header>
       )}
@@ -863,7 +896,7 @@ export default function CardDetailScreen() {
           while booting so a reconnecting wallet doesn't flash onboarding. */}
       {!viewOnly && !isActive && !booting && (
         <section className="screen admin-section">
-          <SetupWizard />
+          <SetupWizard poolId={selectedPoolId} />
         </section>
       )}
 
@@ -909,7 +942,7 @@ export default function CardDetailScreen() {
               })}
             {cardsSummary.open && (
               <a
-                href={`/card?card=${cardsSummary.cardCount}`}
+                href={newCardHref}
                 className={`card-chip card-chip-new ${
                   !viewOnly && cardIndex === cardsSummary.cardCount
                     ? 'current'

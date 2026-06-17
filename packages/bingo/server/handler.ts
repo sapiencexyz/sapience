@@ -182,6 +182,7 @@ export async function handleApi(
     const pool = resolvePool(network, url.searchParams.get('poolId'));
     json(res, 200, {
       poolId: pool.poolId,
+      title: pool.title,
       /** Echo of the network this response describes — lets the frontend
        *  cross-check it's talking about the chain it thinks it is. */
       network,
@@ -405,9 +406,10 @@ export async function handleApi(
       cardPriceWei?: string;
       ref?: string;
       session?: SerializedSession;
+      poolId?: string;
     }>(req);
     const { player, cardIndex, yesMask, cardPriceWei, ref } = body;
-    const pool = activePool(network);
+    const pool = resolvePool(network, body.poolId ?? null);
     if (!player || !isAddress(player)) {
       json(res, 400, { error: 'player required' });
       return true;

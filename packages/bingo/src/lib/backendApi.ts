@@ -70,6 +70,9 @@ export interface BackendCell {
 
 export interface PoolResponse {
   poolId: string;
+  /** Display name for the pool's card header. Falls back to the default
+   *  ("World Cup 2026") when absent. */
+  title?: string;
   /** Which network the backend serves — compare against the app's NETWORK
    *  to catch a frontend pointed at the wrong backend. Optional so the app
    *  still works against backends that predate the network switch. */
@@ -238,7 +241,11 @@ async function request<T>(
 // API
 // ---------------------------------------------------------------------------
 
-export function fetchPool(poolId?: string): Promise<PoolResponse> {
+function poolParam(poolId?: string | null): string {
+  return poolId ? `&poolId=${encodeURIComponent(poolId)}` : '';
+}
+
+export function fetchPool(poolId?: string | null): Promise<PoolResponse> {
   return request<PoolResponse>(
     poolId ? `/api/pool?poolId=${encodeURIComponent(poolId)}` : '/api/pool',
   );
@@ -247,16 +254,20 @@ export function fetchPool(poolId?: string): Promise<PoolResponse> {
 export function fetchCard(
   player: Address,
   cardIndex = 0,
+  poolId?: string | null,
 ): Promise<CardResponse> {
   return request<CardResponse>(
-    `/api/card?player=${encodeURIComponent(player)}&cardIndex=${cardIndex}`,
+    `/api/card?player=${encodeURIComponent(player)}&cardIndex=${cardIndex}${poolParam(poolId)}`,
   );
 }
 
-/** All the player's cards in the active pool (drives the card selector). */
-export function fetchCards(player: Address): Promise<CardsResponse> {
+/** All the player's cards in the selected pool (drives the card selector). */
+export function fetchCards(
+  player: Address,
+  poolId?: string | null,
+): Promise<CardsResponse> {
   return request<CardsResponse>(
-    `/api/cards?player=${encodeURIComponent(player)}`,
+    `/api/cards?player=${encodeURIComponent(player)}${poolParam(poolId)}`,
   );
 }
 
@@ -271,6 +282,7 @@ export function fetchReceiptCard(tokenId: string): Promise<CardResponse> {
  *  sides/price/referrer on-chain. Fund lines afterwards with submitLine. */
 export function submitCard(params: {
   player: Address;
+  poolId?: string | null;
   cardIndex: number;
   yesMask: number;
   cardPriceWei: string;
@@ -284,6 +296,7 @@ export function submitCard(params: {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         player: params.player,
+        ...(params.poolId ? { poolId: params.poolId } : {}),
         cardIndex: params.cardIndex,
         yesMask: params.yesMask,
         cardPriceWei: params.cardPriceWei,

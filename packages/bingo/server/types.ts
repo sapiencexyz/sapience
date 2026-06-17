@@ -15,6 +15,9 @@ export interface PoolCondition {
 
 export interface PoolConfig {
   poolId: string;
+  /** Display name for the pool, shown as the card header title. Falls back
+   *  to the default ("World Cup 2026") on the frontend when absent. */
+  title?: string;
   /** Unix seconds. Submissions are refused at/after this time. Must be
    *  before the earliest condition can start resolving. */
   cutoff: number;
