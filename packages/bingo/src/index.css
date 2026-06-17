@@ -2002,6 +2002,14 @@ button.card-chip {
   margin-top: 0.75rem;
 }
 
+/* Footer actions for confirm-style modals (e.g. the fill-card warning). */
+.bingo-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 1.25rem;
+}
+
 /* Rainbow frame: conic-gradient padding border around the grid. */
 .card-frame {
   padding: 1.5px;
