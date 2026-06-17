@@ -234,7 +234,7 @@ body {
 }
 
 main {
-  max-width: 560px;
+  max-width: 700px;
   margin: 0 auto;
   padding: 3rem 1.25rem 5rem;
   position: relative;
@@ -938,6 +938,10 @@ button.quick-pick:hover {
 }
 
 .pick {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.32rem;
   background: transparent;
   border: 1px solid var(--hairline-strong);
   color: var(--text-muted);
@@ -953,9 +957,42 @@ button.quick-pick:hover {
     background 0.1s;
 }
 
+/* The estimated price shown on the toggle (e.g. "YES 18%") — bolder and
+   tabular so it reads as the live number, no hover needed. */
+.pick-cents {
+  font-weight: 700;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.6;
+}
+
 .pick:hover {
   color: var(--text);
   border-color: rgba(255, 255, 255, 0.22);
+}
+
+/* Soft pastel tint by default so the YES/NO sides read at a glance, before
+   any pick. Selecting a side deepens it (.on below). */
+.pick.yes {
+  color: #a7e8c8;
+  border-color: rgba(62, 207, 142, 0.32);
+  background: rgba(62, 207, 142, 0.07);
+}
+
+.pick.no {
+  color: #f4adb6;
+  border-color: rgba(240, 88, 109, 0.32);
+  background: rgba(240, 88, 109, 0.07);
+}
+
+.pick.yes:hover {
+  color: #c2f1da;
+  border-color: rgba(62, 207, 142, 0.5);
+}
+
+.pick.no:hover {
+  color: #f8c6cd;
+  border-color: rgba(240, 88, 109, 0.5);
 }
 
 .pick.yes.on {
@@ -1167,6 +1204,11 @@ button.quick-pick:hover {
   font-family: var(--font-sans);
   font-size: 0.92rem;
   line-height: 1.3;
+  /* Full questions can be long — clamp so they never push the pick badge. */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 /* Pick badge (left) and the resolution icon (right) share the bottom row. */
@@ -1898,6 +1940,8 @@ button.quick-pick:hover {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  /* Square cells: height tracks the (now wider) column width. */
+  aspect-ratio: 1;
   min-height: 8.5rem;
   justify-content: space-between;
 }

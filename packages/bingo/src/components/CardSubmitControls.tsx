@@ -1,4 +1,4 @@
-import { fmtUnits } from '../lib/format/balance';
+import { fmtUnits, formatDollarLikeBalance } from '../lib/format/balance';
 import type { PoolResponse } from '../lib/backendApi';
 
 /**
@@ -64,7 +64,7 @@ export default function CardSubmitControls(props: {
             </label>
             {availableWei != null && (
               <span className="label muted">
-                Available: {fmtUnits(availableWei)} USDe
+                Available: {formatDollarLikeBalance(fmtUnits(availableWei))} USDe
               </span>
             )}
           </div>

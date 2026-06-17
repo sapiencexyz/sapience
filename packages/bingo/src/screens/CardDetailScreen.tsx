@@ -108,6 +108,18 @@ function fmtOdds(price?: number | null): string | null {
   return `${Math.round(price * 100)}%`;
 }
 
+/** The cell's background image, or null when there's nothing worth showing —
+ *  Polymarket hands back a generic "soccer ball" placeholder for markets with
+ *  no real artwork, which we skip so cells stay clean instead of all wearing
+ *  the same stock ball. */
+function cellBgImage(cell: { imageUrl?: string | null }): string | null {
+  const url = cell.imageUrl;
+  if (!url) return null;
+  // Match the placeholder whether the space is literal or %20-encoded.
+  if (/soccer[\s%20]+ball/i.test(url)) return null;
+  return url;
+}
+
 /** Hover popover for a cell: the full question, plus labelled meta rows
  *  (estimated price / end time) when known. */
 function cellTipData(cell: {
@@ -119,7 +131,7 @@ function cellTipData(cell: {
 }): { question: string; meta: { label: string; value: string }[] } {
   const meta: { label: string; value: string }[] = [];
   const price = fmtOdds(cell.estimatedPrice);
-  if (price) meta.push({ label: 'Estimated Price', value: price });
+  if (price) meta.push({ label: 'Estimated Odds', value: price });
   if (cell.endTime)
     meta.push({ label: 'Estimated End', value: fmtEndTime(cell.endTime) });
   return {
@@ -986,34 +998,34 @@ export default function CardDetailScreen() {
                   const isPicked = (pickedMask & (1 << i)) !== 0;
                   const yes = isPicked && (pickedSides & (1 << i)) !== 0;
                   const no = isPicked && (pickedSides & (1 << i)) === 0;
+                  const bgImage = cellBgImage(cell);
                   return (
-                    <div
-                      key={i}
-                      className="bingo-cell"
-                      onMouseEnter={(e) =>
-                        setTip({
-                          ...cellTipData(cell),
-                          x: e.clientX,
-                          y: e.clientY,
-                        })
-                      }
-                      onMouseMove={(e) =>
-                        setTip((t) =>
-                          t ? { ...t, x: e.clientX, y: e.clientY } : t,
-                        )
-                      }
-                      onMouseLeave={() => setTip(null)}
-                    >
-                      {cell.imageUrl && (
+                    <div key={i} className="bingo-cell">
+                      {bgImage && (
                         <img
                           className="cell-thumb"
-                          src={cell.imageUrl}
+                          src={bgImage}
                           alt=""
                           aria-hidden
                         />
                       )}
-                      <div className="bingo-cell-title">
-                        {cell.shortName ?? cell.question ?? cell.conditionId}
+                      <div
+                        className="bingo-cell-title"
+                        onMouseEnter={(e) =>
+                          setTip({
+                            ...cellTipData(cell),
+                            x: e.clientX,
+                            y: e.clientY,
+                          })
+                        }
+                        onMouseMove={(e) =>
+                          setTip((t) =>
+                            t ? { ...t, x: e.clientX, y: e.clientY } : t,
+                          )
+                        }
+                        onMouseLeave={() => setTip(null)}
+                      >
+                        {cell.question ?? cell.shortName ?? cell.conditionId}
                       </div>
                       <div className="bingo-side-toggle">
                         <button
@@ -1024,7 +1036,12 @@ export default function CardDetailScreen() {
                             setPickedMask((m) => m | (1 << i));
                           }}
                         >
-                          YES
+                          <span className="pick-label">YES</span>
+                          {fmtOdds(cell.estimatedPrice) && (
+                            <span className="pick-cents">
+                              {fmtOdds(cell.estimatedPrice)}
+                            </span>
+                          )}
                         </button>
                         <button
                           type="button"
@@ -1034,7 +1051,20 @@ export default function CardDetailScreen() {
                             setPickedMask((m) => m | (1 << i));
                           }}
                         >
-                          NO
+                          <span className="pick-label">NO</span>
+                          {fmtOdds(
+                            cell.estimatedPrice != null
+                              ? 1 - cell.estimatedPrice
+                              : null,
+                          ) && (
+                            <span className="pick-cents">
+                              {fmtOdds(
+                                cell.estimatedPrice != null
+                                  ? 1 - cell.estimatedPrice
+                                  : null,
+                              )}
+                            </span>
+                          )}
                         </button>
                       </div>
                     </div>
@@ -1081,6 +1111,7 @@ export default function CardDetailScreen() {
               <div className="locked-grid">
                 {card.cells.map((cell, idx) => {
                   const yes = (yesMask & (1 << idx)) !== 0;
+                  const bgImage = cellBgImage(cell);
                   const row = Math.floor(idx / 4);
                   const col = idx % 4;
                   const highlighted =
@@ -1096,30 +1127,32 @@ export default function CardDetailScreen() {
                         highlighted ? 'cell-highlight' : ''
                       }`}
                       style={{ gridColumn: col + 3, gridRow: row + 1 }}
-                      onMouseEnter={(e) =>
-                        setTip({
-                          ...cellTipData(cell),
-                          x: e.clientX,
-                          y: e.clientY,
-                        })
-                      }
-                      onMouseMove={(e) =>
-                        setTip((t) =>
-                          t ? { ...t, x: e.clientX, y: e.clientY } : t,
-                        )
-                      }
-                      onMouseLeave={() => setTip(null)}
                     >
-                      {cell.imageUrl && (
+                      {bgImage && (
                         <img
                           className="cell-thumb"
-                          src={cell.imageUrl}
+                          src={bgImage}
                           alt=""
                           aria-hidden
                         />
                       )}
-                      <div className="cell-text">
-                        {cell.shortName ?? cell.question ?? cell.conditionId}
+                      <div
+                        className="cell-text"
+                        onMouseEnter={(e) =>
+                          setTip({
+                            ...cellTipData(cell),
+                            x: e.clientX,
+                            y: e.clientY,
+                          })
+                        }
+                        onMouseMove={(e) =>
+                          setTip((t) =>
+                            t ? { ...t, x: e.clientX, y: e.clientY } : t,
+                          )
+                        }
+                        onMouseLeave={() => setTip(null)}
+                      >
+                        {cell.question ?? cell.shortName ?? cell.conditionId}
                       </div>
                       <div className="locked-foot">
                         <span className="locked-pick">{yes ? 'YES' : 'NO'}</span>
