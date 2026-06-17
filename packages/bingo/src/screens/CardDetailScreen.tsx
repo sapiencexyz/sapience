@@ -869,6 +869,17 @@ export default function CardDetailScreen() {
       .map(([poolNumber, g]) => ({ poolNumber, ...g }));
   }, [cardsSummary, activePoolNumber]);
 
+  // The get-ready wizard belongs to the new-card flow only. When the player
+  // already owns cards and is viewing an existing one (a card chip, not the
+  // "+ New" slot), onboarding must NOT appear — they're already set up enough
+  // to look at that card. It shows only while the fresh "+ New" slot is
+  // selected, or before any wallet/card exists at all (the connect step).
+  const viewingExistingCard =
+    !viewOnly &&
+    cardsSummary != null &&
+    cardIndex != null &&
+    cardIndex < cardsSummary.cardCount;
+
   return (
     <main>
       <Nav />
@@ -888,16 +899,6 @@ export default function CardDetailScreen() {
             <h2 className="receipt-title">{pool?.title ?? DEFAULT_POOL_TITLE}</h2>
           </div>
         </header>
-      )}
-
-      {/* Not set up yet → the get-ready wizard (connect → fund → sign). Once
-          the session is active it falls away and the card below renders.
-          Funding lives inside the wizard, between connect and sign. Held back
-          while booting so a reconnecting wallet doesn't flash onboarding. */}
-      {!viewOnly && !isActive && !booting && (
-        <section className="screen admin-section">
-          <SetupWizard poolId={selectedPoolId} />
-        </section>
       )}
 
       {/* Card strip — every card the player holds, across all pools.
@@ -969,6 +970,18 @@ export default function CardDetailScreen() {
               </a>
             )}
           </div>
+        </section>
+      )}
+
+      {/* Not set up yet → the get-ready wizard (connect → fund → sign), shown
+          directly under the card strip. Onboarding only belongs to the
+          new-card flow, so it's suppressed while viewing an existing card —
+          it appears only when the "+ New" slot is selected (or before any
+          wallet/card exists). Held back while booting so a reconnecting
+          wallet doesn't flash onboarding. */}
+      {!viewOnly && !isActive && !booting && !viewingExistingCard && (
+        <section className="screen admin-section">
+          <SetupWizard poolId={selectedPoolId} />
         </section>
       )}
 
