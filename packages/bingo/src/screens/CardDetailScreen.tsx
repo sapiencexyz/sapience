@@ -31,7 +31,17 @@ import { buildLines } from '../parlay';
 import Nav from '../components/Nav';
 import SetupWizard from '../components/SetupWizard';
 import trophyUrl from '../assets/world-cup-trophy.png';
+import fedUrl from '../assets/fed.webp';
 import comboQrUrl from '../assets/combo-bingo-qr.svg';
+
+/** Default card-header branding, overridden per-pool below. */
+const DEFAULT_POOL_TITLE = 'World Cup 2026';
+/** Per-pool header art. Title comes from the pool config (pool.title); the
+ *  image must be bundled, so it's keyed by poolId here. Falls back to the
+ *  World Cup trophy for any pool without a dedicated image. */
+const POOL_IMAGE: Record<string, string> = {
+  'fed-day': fedUrl,
+};
 
 const LINES = buildLines();
 
@@ -864,13 +874,18 @@ export default function CardDetailScreen() {
       <Nav />
       {card && (
         <header className="receipt-head">
-          <img className="receipt-thumb" src={trophyUrl} alt="" aria-hidden />
+          <img
+            className="receipt-thumb"
+            src={(pool && POOL_IMAGE[pool.poolId]) ?? trophyUrl}
+            alt=""
+            aria-hidden
+          />
 
           <div className="receipt-titles">
             <span className="label">
               Combo Bingo · {cardComplete ? 'Live Bet' : 'Ready to Submit'}
             </span>
-            <h2 className="receipt-title">World Cup 2026</h2>
+            <h2 className="receipt-title">{pool?.title ?? DEFAULT_POOL_TITLE}</h2>
           </div>
         </header>
       )}

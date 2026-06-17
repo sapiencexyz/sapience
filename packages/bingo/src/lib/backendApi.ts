@@ -70,6 +70,9 @@ export interface BackendCell {
 
 export interface PoolResponse {
   poolId: string;
+  /** Display name for the pool's card header. Falls back to the default
+   *  ("World Cup 2026") when absent. */
+  title?: string;
   /** Which network the backend serves — compare against the app's NETWORK
    *  to catch a frontend pointed at the wrong backend. Optional so the app
    *  still works against backends that predate the network switch. */

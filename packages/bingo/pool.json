@@ -1338,7 +1338,8 @@
     ]
   },
   {
-    "poolId": "special",
+    "poolId": "fed-day",
+    "title": "Fed Day Bingo",
     "cutoff": 1782014400,
     "minCardPriceWei": "1000000000000000000",
     "referralBps": 200,
@@ -1347,132 +1348,252 @@
     ],
     "conditions": [
       {
-        "conditionId": "0x0000000000000000000000000000000000000000000000000000000000000001",
+        "conditionId": "0xbcfca890ea4d38459e54fc580f432700728b6b0ddd89e121e538c64c1ba55446",
         "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
-        "shortName": "Special placeholder 1",
-        "question": "Special pool placeholder condition 1",
-        "estimatedPrice": 0.5,
-        "endTime": 1782014400
+        "shortName": "Rate / Cut",
+        "question": "Will Warsh say \"Rate\" or \"Cut\" during June Press Conference?",
+        "estimatedPrice": 0.945,
+        "endTime": 1781755140
       },
       {
-        "conditionId": "0x0000000000000000000000000000000000000000000000000000000000000002",
+        "conditionId": "0x8c490f7a043b9238907e7a1d9fb6235f789ade7ece68b4089e24ee361721c7ea",
         "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
-        "shortName": "Special placeholder 2",
-        "question": "Special pool placeholder condition 2",
-        "estimatedPrice": 0.5,
-        "endTime": 1782014400
+        "shortName": "All-Time High / All-Time Low",
+        "question": "Will Warsh say \"All-Time High\" or \"All-Time Low\" during June Press Conference?",
+        "estimatedPrice": 0.325,
+        "endTime": 1781755140
       },
       {
-        "conditionId": "0x0000000000000000000000000000000000000000000000000000000000000003",
+        "conditionId": "0x022f7ca8721bfb430c8862757acf7acabc3c418545dcef10e76a9058c57cca3c",
         "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
-        "shortName": "Special placeholder 3",
-        "question": "Special pool placeholder condition 3",
-        "estimatedPrice": 0.5,
-        "endTime": 1782014400
+        "shortName": "Job 15+ times",
+        "question": "Will Warsh say \"Job\" 15+ times during June Press Conference?",
+        "estimatedPrice": 0.425,
+        "endTime": 1781755140
       },
       {
-        "conditionId": "0x0000000000000000000000000000000000000000000000000000000000000004",
+        "conditionId": "0xad6595fbcc8d0bfc9e1a305ee8ec1434a8f0c03d0aaf9124947a72bbbd33edd2",
         "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
-        "shortName": "Special placeholder 4",
-        "question": "Special pool placeholder condition 4",
-        "estimatedPrice": 0.5,
-        "endTime": 1782014400
+        "shortName": "Trump",
+        "question": "Will Warsh say \"Trump\" during June Press Conference?",
+        "estimatedPrice": 0.225,
+        "endTime": 1781755140
       },
       {
-        "conditionId": "0x0000000000000000000000000000000000000000000000000000000000000005",
+        "conditionId": "0x7b1c9dbcb1f00f6f3668604ab07462903607499db97edc0dad76c09dc0242bab",
         "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
-        "shortName": "Special placeholder 5",
-        "question": "Special pool placeholder condition 5",
-        "estimatedPrice": 0.5,
-        "endTime": 1782014400
+        "shortName": "Chair",
+        "question": "Will Warsh say \"Chair\" during June Press Conference?",
+        "estimatedPrice": 0.765,
+        "endTime": 1781755140
       },
       {
-        "conditionId": "0x0000000000000000000000000000000000000000000000000000000000000006",
+        "conditionId": "0x7a24de8f76e0f39744104e99b2ba81f3671e35c34bb44d6ed066b7aebedd618a",
         "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
-        "shortName": "Special placeholder 6",
-        "question": "Special pool placeholder condition 6",
-        "estimatedPrice": 0.5,
-        "endTime": 1782014400
+        "shortName": "Downside",
+        "question": "Will Warsh say \"Downside\" during June Press Conference?",
+        "estimatedPrice": 0.4,
+        "endTime": 1781755140
       },
       {
-        "conditionId": "0x0000000000000000000000000000000000000000000000000000000000000007",
+        "conditionId": "0xf779b388bc736e7d93884bdc0632ca288d0d3607b4d6c9ab279c486d2274c9ea",
         "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
-        "shortName": "Special placeholder 7",
-        "question": "Special pool placeholder condition 7",
-        "estimatedPrice": 0.5,
-        "endTime": 1782014400
+        "shortName": "Asymmetric",
+        "question": "Will Warsh say \"Asymmetric\" during June Press Conference?",
+        "estimatedPrice": 0.265,
+        "endTime": 1781755140
       },
       {
-        "conditionId": "0x0000000000000000000000000000000000000000000000000000000000000008",
+        "conditionId": "0xbc45d8f9d6da0afb9aa5c241b517d272d44f0956f98339f0cf59e0187ceb3000",
         "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
-        "shortName": "Special placeholder 8",
-        "question": "Special pool placeholder condition 8",
-        "estimatedPrice": 0.5,
-        "endTime": 1782014400
+        "shortName": "Inflation 60+ times",
+        "question": "Will Warsh say \"Inflation\" 60+ times during June Press Conference?",
+        "estimatedPrice": 0.065,
+        "endTime": 1781755140
       },
       {
-        "conditionId": "0x0000000000000000000000000000000000000000000000000000000000000009",
+        "conditionId": "0xd8b5f068b9867939f2672a0c080f81b01c87f8b91f80071d3cf75c58e452f2dd",
         "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
-        "shortName": "Special placeholder 9",
-        "question": "Special pool placeholder condition 9",
-        "estimatedPrice": 0.5,
-        "endTime": 1782014400
+        "shortName": "Good Afternoon",
+        "question": "Will Warsh say \"Good Afternoon\" during June Press Conference?",
+        "estimatedPrice": 0.76,
+        "endTime": 1781755140
       },
       {
-        "conditionId": "0x000000000000000000000000000000000000000000000000000000000000000a",
+        "conditionId": "0xdd327feb2bf37c5c4b4fcf246dbbae58b344830a89a8d703333e9cd07a6e5038",
         "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
-        "shortName": "Special placeholder 10",
-        "question": "Special pool placeholder condition 10",
-        "estimatedPrice": 0.5,
-        "endTime": 1782014400
+        "shortName": "Money",
+        "question": "Will Warsh say \"Money\" during June Press Conference?",
+        "estimatedPrice": 0.505,
+        "endTime": 1781755140
       },
       {
-        "conditionId": "0x000000000000000000000000000000000000000000000000000000000000000b",
+        "conditionId": "0xab5fa187d0c723302b0ad88632e54b08f59f95edd6ae4cc09cf1327c74ebe8fa",
         "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
-        "shortName": "Special placeholder 11",
-        "question": "Special pool placeholder condition 11",
-        "estimatedPrice": 0.5,
-        "endTime": 1782014400
+        "shortName": "Balance Sheet",
+        "question": "Will Warsh say \"Balance Sheet\" during June Press Conference?",
+        "estimatedPrice": 0.755,
+        "endTime": 1781755140
       },
       {
-        "conditionId": "0x000000000000000000000000000000000000000000000000000000000000000c",
+        "conditionId": "0x2644d20105152c09057c9f7b1a75da6ccbe2601b47c7a0f8b92cf62e51d4d9f7",
         "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
-        "shortName": "Special placeholder 12",
-        "question": "Special pool placeholder condition 12",
-        "estimatedPrice": 0.5,
-        "endTime": 1782014400
+        "shortName": "Jerome / Powell",
+        "question": "Will Warsh say \"Jerome\" or \"Powell\" during June Press Conference?",
+        "estimatedPrice": 0.68,
+        "endTime": 1781755140
       },
       {
-        "conditionId": "0x000000000000000000000000000000000000000000000000000000000000000d",
+        "conditionId": "0x37e9f07f3c6f352e067732261e54499c64020e9e26cbc1f658211a86bf0e5e57",
         "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
-        "shortName": "Special placeholder 13",
-        "question": "Special pool placeholder condition 13",
-        "estimatedPrice": 0.5,
-        "endTime": 1782014400
+        "shortName": "Depression / Recession",
+        "question": "Will Warsh say \"Depression\" or \"Recession\" during June Press Conference?",
+        "estimatedPrice": 0.31,
+        "endTime": 1781755140
       },
       {
-        "conditionId": "0x000000000000000000000000000000000000000000000000000000000000000e",
+        "conditionId": "0xbe37c20860372e8b33b9e4610107ea80d08f58a1da9148caaa5ae6b391b2b089",
         "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
-        "shortName": "Special placeholder 14",
-        "question": "Special pool placeholder condition 14",
-        "estimatedPrice": 0.5,
-        "endTime": 1782014400
+        "shortName": "Artificial Intelligence / AI",
+        "question": "Will Warsh say \"Artificial Intelligence\" or \"AI\" during June Press Conference?",
+        "estimatedPrice": 0.715,
+        "endTime": 1781755140
       },
       {
-        "conditionId": "0x000000000000000000000000000000000000000000000000000000000000000f",
+        "conditionId": "0x2b6e261bdaf6384185987d2e4beef391d70dbb97e554bc2bbc32c5598cb70376",
         "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
-        "shortName": "Special placeholder 15",
-        "question": "Special pool placeholder condition 15",
-        "estimatedPrice": 0.5,
-        "endTime": 1782014400
+        "shortName": "Goods Inflation",
+        "question": "Will Warsh say \"Goods Inflation\" during June Press Conference?",
+        "estimatedPrice": 0.385,
+        "endTime": 1781755140
       },
       {
-        "conditionId": "0x0000000000000000000000000000000000000000000000000000000000000010",
+        "conditionId": "0x9000efd4cdf8f9f011378cc49816ebf9f684a19cf2f794cd03254c74c7037fb3",
         "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
-        "shortName": "Special placeholder 16",
-        "question": "Special pool placeholder condition 16",
-        "estimatedPrice": 0.5,
-        "endTime": 1782014400
+        "shortName": "I Don't Know",
+        "question": "Will Warsh say \"I Don't Know\" during June Press Conference?",
+        "estimatedPrice": 0.32,
+        "endTime": 1781755140
+      },
+      {
+        "conditionId": "0xe80cd45e7afc243ce2419ebbc0236b8d14fc1c07f7f188ae8e93714e3cb06069",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Job Market",
+        "question": "Will Warsh say \"Job Market\" during June Press Conference?",
+        "estimatedPrice": 0.645,
+        "endTime": 1781755140
+      },
+      {
+        "conditionId": "0x13c466c5e7496d7b1c6d6117f83bf066d56ac28c4db7223b34c5bfe17c2db1b5",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "FED",
+        "question": "Will Warsh say \"FED\" during June Press Conference?",
+        "estimatedPrice": 0.9,
+        "endTime": 1781755140
+      },
+      {
+        "conditionId": "0x4487c7f05a648d6b123f978b7dbdbddb65fadc22ee3781ddc021d48bc15628c7",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Crypto / Bitcoin",
+        "question": "Will Warsh say \"Crypto\" or \"Bitcoin\" during June Press Conference?",
+        "estimatedPrice": 0.14,
+        "endTime": 1781755140
+      },
+      {
+        "conditionId": "0xae8ae415d9d1ab448650d3338793e39c0a9b95b3120610c52a1d274bcdfd02f3",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Trend",
+        "question": "Will Warsh say \"Trend\" during June Press Conference?",
+        "estimatedPrice": 0.425,
+        "endTime": 1781755140
+      },
+      {
+        "conditionId": "0xf33eacca1ee45c8f9d9bedcbd8c1ba80d06d76d8d0bbabd2cd28986ffa5abda2",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Stable / Stability",
+        "question": "Will Warsh say \"Stable\" or \"Stability\" during June Press Conference?",
+        "estimatedPrice": 0.93,
+        "endTime": 1781755140
+      },
+      {
+        "conditionId": "0x0aba2987a61f88b7a9526e0c92c5e0c6bd19986c6bb4ff115d2f47bf72bf247e",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Maximum Employment",
+        "question": "Will Warsh say \"Maximum Employment\" during June Press Conference?",
+        "estimatedPrice": 0.795,
+        "endTime": 1781755140
+      },
+      {
+        "conditionId": "0xb7f124fda25475b9ddedc4211b52c53d54a04eeb26893c004da48187fc9f3c19",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Dual Mandate",
+        "question": "Will Warsh say \"Dual Mandate\" during June Press Conference?",
+        "estimatedPrice": 0.88,
+        "endTime": 1781755140
+      },
+      {
+        "conditionId": "0xffe68d21c22802b3da53803feef60588caf6aa015007545c390b034a7d0c8254",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Stock",
+        "question": "Will Warsh say \"Stock\" during June Press Conference?",
+        "estimatedPrice": 0.365,
+        "endTime": 1781755140
+      },
+      {
+        "conditionId": "0x4d0ba9ba65bc7cc00f7aef25689858d733c334cd60eee612efc4fd1611a60da7",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Groupthink / Group Think",
+        "question": "Will Warsh say \"Groupthink\" or \"Group Think\" during June Press Conference?",
+        "estimatedPrice": 0.29,
+        "endTime": 1781755140
+      },
+      {
+        "conditionId": "0x3e66cd3aa75288acb1affa40710095e8206797328461aefc7d03b75312544b8f",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Inflation 40+ times",
+        "question": "Will Warsh say \"Inflation\" 40+ times during June Press Conference?",
+        "estimatedPrice": 0.41,
+        "endTime": 1781755140
+      },
+      {
+        "conditionId": "0xd93987a5916a12fbbf92e102ac4263e0c9c696df5b061fa0cc792743eb4169c0",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Inflation 50+ times",
+        "question": "Will Warsh say \"Inflation\" 50+ times during June Press Conference?",
+        "estimatedPrice": 0.235,
+        "endTime": 1781755140
+      },
+      {
+        "conditionId": "0x2b84aa79465816a3067c49409b99f8cb508b862a90ad2116ff2f17ab369949b1",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Open-Minded",
+        "question": "Will Warsh say \"Open-Minded\" during June Press Conference?",
+        "estimatedPrice": 0.165,
+        "endTime": 1781755140
+      },
+      {
+        "conditionId": "0x8bfa62154387cf1b1bc88897f49e17b454ae7e59040cbaaaef230a543f485ed3",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Pandemic",
+        "question": "Will Warsh say \"Pandemic\" during June Press Conference?",
+        "estimatedPrice": 0.375,
+        "endTime": 1781755140
+      },
+      {
+        "conditionId": "0x917d77590f1241d7f9369ad03cd4b98b885d844fd606b0fa28b6c010e56cff93",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Predecessor",
+        "question": "Will Warsh say \"Predecessor\" during June Press Conference?",
+        "estimatedPrice": 0.155,
+        "endTime": 1781755140
+      },
+      {
+        "conditionId": "0xfce3e3eb01a28894b48a4dd59dae7c6338a61b33e893ba72c27a378a48b062de",
+        "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+        "shortName": "Independence",
+        "question": "Will Warsh say \"Independence\" during June Press Conference?",
+        "estimatedPrice": 0.59,
+        "endTime": 1781755140
       }
     ]
   },
