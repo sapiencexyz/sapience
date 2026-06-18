@@ -37,6 +37,7 @@ import {
   usePositionBalances,
   usePositionBalancesByConditionId,
   type PositionBalance,
+  type PositionOrderInput,
 } from '~/hooks/graphql/usePositions';
 import PicksSummary from '~/components/shared/PicksSummary';
 import LegacyBadge from '~/components/shared/LegacyBadge';
@@ -510,6 +511,18 @@ export default function PositionsTable({
   const [filters, setFilters] = React.useState<PositionsFilterState>(
     getDefaultPositionsFilterState
   );
+  const [sort, setSort] = React.useState<SortState | null>(null);
+
+  // RESOLVED_AT sorts server-side so it orders across the whole resolved set
+  // (not just the fetched page); the other columns sort client-side within
+  // what's loaded. Declared here so it can feed the data hooks below.
+  const serverOrderBy = React.useMemo<PositionOrderInput | undefined>(() => {
+    if (sort?.key !== 'resolvedAt') return undefined;
+    return {
+      field: 'RESOLVED_AT',
+      direction: sort.dir === 'asc' ? 'ASC' : 'DESC',
+    };
+  }, [sort]);
 
   // Derive server-side `settled` filter from status selection.
   // Only 'active' → settled=false; only 'won'/'lost' → settled=true; mixed → undefined
@@ -536,6 +549,7 @@ export default function PositionsTable({
     holder: account,
     chainId,
     settled: serverSettled,
+    orderBy: serverOrderBy,
   });
 
   // Fetch position balances for a condition (all holders)
@@ -550,6 +564,7 @@ export default function PositionsTable({
   } = usePositionBalancesByConditionId({
     conditionId: !account ? conditionId : undefined,
     settled: serverSettled,
+    orderBy: serverOrderBy,
   });
 
   const positions = account ? accountPositions : conditionPositions;
@@ -648,8 +663,8 @@ export default function PositionsTable({
     return result;
   }, [positions, filters, conditionsMap]);
 
-  // Sorting
-  const [sort, setSort] = React.useState<SortState | null>(null);
+  // Sorting (sort state lifted above the data hooks so RESOLVED_AT can drive
+  // server-side ordering).
   const handleSort = React.useCallback((key: SortKey) => {
     setSort((prev) => {
       if (prev?.key === key) {
@@ -661,6 +676,10 @@ export default function PositionsTable({
 
   const sortedPositions = React.useMemo(() => {
     if (!sort) return filteredPositions;
+    // resolvedAt is ordered server-side (and paged across the whole resolved
+    // set), so preserve the order the API returned rather than re-sorting the
+    // current page in memory.
+    if (sort.key === 'resolvedAt') return filteredPositions;
     const { key, dir } = sort;
     const multiplier = dir === 'asc' ? 1 : -1;
     const getValue = (p: PositionBalance): number => {
@@ -699,10 +718,8 @@ export default function PositionsTable({
           // Missing end time sinks to the bottom regardless of direction
           return endsAt === 0 ? Number.POSITIVE_INFINITY : endsAt;
         }
-        case 'resolvedAt':
-          // When Sapience recorded the resolution. Still-pending positions
-          // (null) sort to 0 → bottom of the default DESC (recent-first) view.
-          return p.pickConfig?.resolvedAt ?? 0;
+        // 'resolvedAt' is handled server-side (early return above), so it
+        // never reaches this client-side switch.
       }
     };
     return [...filteredPositions].sort(

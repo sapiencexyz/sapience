@@ -506,6 +506,68 @@ describe('positions (v2) — ordering', () => {
   });
 });
 
+describe('positions (v2) — RESOLVED_AT ordering (across pages)', () => {
+  it('orders by pickConfiguration.resolvedAt and restricts to resolved positions', async () => {
+    await callPositions({
+      orderBy: { field: 'RESOLVED_AT', direction: 'DESC' },
+    });
+
+    const callArgs = mockPrisma.position.findMany.mock.calls[0][0];
+    expect(callArgs.orderBy).toEqual([
+      { pickConfiguration: { resolvedAt: 'desc' } },
+      { id: 'desc' },
+    ]);
+    // resolved-only filter merged into the pickConfiguration where so the
+    // keyset never straddles a NULL boundary.
+    expect(callArgs.where.pickConfiguration).toMatchObject({
+      resolvedAt: { not: null },
+    });
+  });
+
+  it('emits a resolvedAt-based cursor (k = resolvedAt seconds, not a date)', async () => {
+    mockPrisma.position.findMany.mockResolvedValue([
+      makePosition({
+        balance: '200',
+        pickConfiguration: makePickConfig({
+          resolved: true,
+          result: 'PREDICTOR_WINS',
+          resolvedAt: 1_700_000_000,
+          predictions: [makePrediction()],
+        }),
+      }),
+    ]);
+
+    const result = await callPositions({
+      orderBy: { field: 'RESOLVED_AT', direction: 'DESC' },
+    });
+
+    expect(decodeCursor(result.pageInfo.endCursor ?? '')).toEqual({
+      k: '1700000000',
+      id: '1',
+    });
+  });
+
+  it('applies a relation keyset on resolvedAt when `after` is provided', async () => {
+    const after = encodeCursor({ k: '1700000000', id: '5' });
+
+    await callPositions({
+      orderBy: { field: 'RESOLVED_AT', direction: 'DESC' },
+      after,
+    });
+
+    const callArgs = mockPrisma.position.findMany.mock.calls[0][0];
+    expect(callArgs.where.AND).toHaveLength(2);
+    const keyset = callArgs.where.AND[1];
+    expect(keyset.OR[0]).toEqual({
+      pickConfiguration: { resolvedAt: { lt: 1700000000 } },
+    });
+    expect(keyset.OR[1].AND).toEqual([
+      { pickConfiguration: { resolvedAt: 1700000000 } },
+      { id: { lt: 5 } },
+    ]);
+  });
+});
+
 describe('positions (v2) — query shape', () => {
   it('pushes the holder filter into the predictions include', async () => {
     // Without this, every prediction on the pickConfiguration is loaded —

@@ -1208,7 +1208,16 @@ export type PositionOrder = {
   field: PositionOrderField;
 };
 
-export type PositionOrderField = 'CREATED_AT' | 'UPDATED_AT';
+export type PositionOrderField =
+  | 'CREATED_AT'
+  /**
+   * When the position's pickConfiguration resolved on Sapience
+   * (`PickConfiguration.resolvedAt`). Ordering by this field restricts the
+   * connection to resolved positions (`resolvedAt` non-null) so it pages
+   * cleanly across the whole resolved set, newest-resolved first by default.
+   */
+  | 'RESOLVED_AT'
+  | 'UPDATED_AT';
 
 /**
  * Lifecycle discriminator for a synthesized position row. v1's row stream

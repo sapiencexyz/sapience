@@ -1358,6 +1358,14 @@ input PositionFilter {
 enum PositionOrderField {
   CREATED_AT
   UPDATED_AT
+
+  """
+  When the position's pickConfiguration resolved on Sapience
+  (`PickConfiguration.resolvedAt`). Ordering by this field restricts the
+  connection to resolved positions (`resolvedAt` non-null) so it pages
+  cleanly across the whole resolved set, newest-resolved first by default.
+  """
+  RESOLVED_AT
 }
 
 input PositionOrder {
