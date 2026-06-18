@@ -370,8 +370,13 @@ export const PREDICTION_QUERY = `
 // away still reports `true` while more underlying rows exist, so always page
 // on `pageInfo` (which `useCursorPagination` does), never on node count.
 export const POSITIONS_V2_QUERY = `
-  query Positions($filter: PositionFilter, $first: Int!, $after: String) {
-    positions(filter: $filter, first: $first, after: $after) {
+  query Positions(
+    $filter: PositionFilter
+    $first: Int!
+    $after: String
+    $orderBy: PositionOrder
+  ) {
+    positions(filter: $filter, first: $first, after: $after, orderBy: $orderBy) {
       edges {
         node {
           ${POSITION_V2_FIELDS}
@@ -457,6 +462,17 @@ export function usePredictions(params: {
 const DEFAULT_POSITIONS_PAGE_SIZE = 15;
 
 /**
+ * Server-side ordering for the positions connection. RESOLVED_AT orders by
+ * `pickConfiguration.resolvedAt` across the whole resolved set (so the
+ * client can sort by resolution time across pages, not just the fetched
+ * page); the server restricts to resolved positions for that field.
+ */
+export type PositionOrderInput = {
+  field: 'CREATED_AT' | 'UPDATED_AT' | 'RESOLVED_AT';
+  direction: 'ASC' | 'DESC';
+};
+
+/**
  * Hook to get position balances (ERC20 tokens) for a user, paginated.
  */
 export function usePositionBalances(params: {
@@ -464,12 +480,14 @@ export function usePositionBalances(params: {
   chainId?: number;
   settled?: boolean;
   pageSize?: number;
+  orderBy?: PositionOrderInput;
 }) {
   const {
     holder,
     chainId,
     settled,
     pageSize = DEFAULT_POSITIONS_PAGE_SIZE,
+    orderBy,
   } = params;
 
   const filter = useMemo(() => {
@@ -489,11 +507,19 @@ export function usePositionBalances(params: {
     error,
     refetch,
   } = useCursorPagination<PositionV2Node>({
-    queryKey: ['positionBalances', holder, chainId, settled],
+    // orderBy in the key so switching/toggling sort resets pagination.
+    queryKey: [
+      'positionBalances',
+      holder,
+      chainId,
+      settled,
+      orderBy?.field ?? null,
+      orderBy?.direction ?? null,
+    ],
     query: POSITIONS_V2_QUERY,
     connectionKey: 'positions',
     pageSize,
-    variables: { filter },
+    variables: { filter, orderBy },
     enabled: Boolean(holder),
   });
 
@@ -518,11 +544,13 @@ export function usePositionBalancesByConditionId(params: {
   conditionId?: string;
   pageSize?: number;
   settled?: boolean;
+  orderBy?: PositionOrderInput;
 }) {
   const {
     conditionId,
     pageSize = DEFAULT_POSITIONS_PAGE_SIZE,
     settled,
+    orderBy,
   } = params;
 
   const filter = useMemo(() => {
@@ -541,11 +569,17 @@ export function usePositionBalancesByConditionId(params: {
     error,
     refetch,
   } = useCursorPagination<PositionV2Node>({
-    queryKey: ['positionBalancesByCondition', conditionId, settled],
+    queryKey: [
+      'positionBalancesByCondition',
+      conditionId,
+      settled,
+      orderBy?.field ?? null,
+      orderBy?.direction ?? null,
+    ],
     query: POSITIONS_V2_QUERY,
     connectionKey: 'positions',
     pageSize,
-    variables: { filter },
+    variables: { filter, orderBy },
     enabled: Boolean(conditionId),
   });
 
