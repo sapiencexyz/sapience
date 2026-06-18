@@ -507,24 +507,22 @@ describe('positions (v2) — ordering', () => {
 });
 
 describe('positions (v2) — RESOLVED_AT ordering (across pages)', () => {
-  it('orders by pickConfiguration.resolvedAt and restricts to resolved positions', async () => {
+  it('orders by pickConfiguration.resolvedAt NULLS LAST without filtering out pending', async () => {
     await callPositions({
       orderBy: { field: 'RESOLVED_AT', direction: 'DESC' },
     });
 
     const callArgs = mockPrisma.position.findMany.mock.calls[0][0];
     expect(callArgs.orderBy).toEqual([
-      { pickConfiguration: { resolvedAt: 'desc' } },
+      { pickConfiguration: { resolvedAt: { sort: 'desc', nulls: 'last' } } },
       { id: 'desc' },
     ]);
-    // resolved-only filter merged into the pickConfiguration where so the
-    // keyset never straddles a NULL boundary.
-    expect(callArgs.where.pickConfiguration).toMatchObject({
-      resolvedAt: { not: null },
-    });
+    // Sorting must NOT become filtering: unresolved positions are kept
+    // (ordered to the tail), so no resolvedAt restriction is added.
+    expect(callArgs.where.pickConfiguration?.resolvedAt).toBeUndefined();
   });
 
-  it('emits a resolvedAt-based cursor (k = resolvedAt seconds, not a date)', async () => {
+  it('emits a resolvedAt-based cursor for a resolved row (k = seconds)', async () => {
     mockPrisma.position.findMany.mockResolvedValue([
       makePosition({
         balance: '200',
@@ -547,7 +545,32 @@ describe('positions (v2) — RESOLVED_AT ordering (across pages)', () => {
     });
   });
 
-  it('applies a relation keyset on resolvedAt when `after` is provided', async () => {
+  it('emits an empty-k cursor for a pending (null resolvedAt) row', async () => {
+    // A still-open position sorts into the NULLS LAST tail; its cursor must
+    // carry the null-phase sentinel (k = '') so the next page continues
+    // through the remaining pending rows by id.
+    mockPrisma.position.findMany.mockResolvedValue([
+      makePosition({
+        balance: '200',
+        pickConfiguration: makePickConfig({
+          resolved: false,
+          resolvedAt: null,
+          predictions: [makePrediction()],
+        }),
+      }),
+    ]);
+
+    const result = await callPositions({
+      orderBy: { field: 'RESOLVED_AT', direction: 'DESC' },
+    });
+
+    expect(decodeCursor(result.pageInfo.endCursor ?? '')).toEqual({
+      k: '',
+      id: '1',
+    });
+  });
+
+  it('keyset (non-null cursor): later non-nulls, the id tie-break, and ALL nulls', async () => {
     const after = encodeCursor({ k: '1700000000', id: '5' });
 
     await callPositions({
@@ -563,6 +586,27 @@ describe('positions (v2) — RESOLVED_AT ordering (across pages)', () => {
     });
     expect(keyset.OR[1].AND).toEqual([
       { pickConfiguration: { resolvedAt: 1700000000 } },
+      { id: { lt: 5 } },
+    ]);
+    // All null-resolvedAt rows sort after any non-null in NULLS LAST.
+    expect(keyset.OR[2]).toEqual({
+      pickConfiguration: { resolvedAt: null },
+    });
+  });
+
+  it('keyset (null-phase cursor, k=""): only further null rows by id', async () => {
+    const after = encodeCursor({ k: '', id: '5' });
+
+    await callPositions({
+      orderBy: { field: 'RESOLVED_AT', direction: 'DESC' },
+      after,
+    });
+
+    const callArgs = mockPrisma.position.findMany.mock.calls[0][0];
+    const keyset = callArgs.where.AND[1];
+    expect(keyset.OR).toBeUndefined();
+    expect(keyset.AND).toEqual([
+      { pickConfiguration: { resolvedAt: null } },
       { id: { lt: 5 } },
     ]);
   });

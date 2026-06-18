@@ -325,18 +325,36 @@ const synthesizeWacRows = async (
 };
 
 /**
- * Keyset predicate for RESOLVED_AT ordering — the canonical
- * `(orderField, id)` keyset, but `orderField` lives on the to-one
- * `pickConfiguration` relation rather than the Position row, so it can't go
- * through the flat `buildKeysetWhere`. The base where already pins
- * `resolvedAt` non-null, so the cursor value is always a real number.
+ * Keyset predicate for RESOLVED_AT ordering. `resolvedAt` lives on the
+ * to-one `pickConfiguration` relation (not the Position row), and is
+ * nullable — unresolved positions are kept and ordered NULLS LAST so
+ * sorting never silently drops them (sorting must not become filtering).
+ *
+ * The cursor `k` is the resolvedAt seconds, or '' for a null-resolvedAt row
+ * (the "null phase" at the tail of the ordering):
+ *
+ *   - cursor in the non-null phase → later non-null rows, the id tie-break,
+ *     PLUS every null row (all nulls sort after any non-null in NULLS LAST).
+ *   - cursor in the null phase → only further null rows by id.
  */
 const buildResolvedAtKeyset = (
-  value: number,
+  cursorK: string,
   idValue: number,
   direction: OrderDirection
 ): Prisma.PositionWhereInput => {
   const op = direction === 'desc' ? 'lt' : 'gt';
+
+  if (cursorK === '') {
+    // Null phase: continue through the remaining null-resolvedAt rows by id.
+    return {
+      AND: [
+        { pickConfiguration: { resolvedAt: null } },
+        { id: { [op]: idValue } },
+      ],
+    };
+  }
+
+  const value = Number(cursorK);
   return {
     OR: [
       { pickConfiguration: { resolvedAt: { [op]: value } } },
@@ -346,6 +364,7 @@ const buildResolvedAtKeyset = (
           { id: { [op]: idValue } },
         ],
       },
+      { pickConfiguration: { resolvedAt: null } },
     ],
   };
 };
@@ -400,19 +419,15 @@ export const positions: NonNullable<QueryResolvers['positions']> = async (
     pickConfigFilter.endsAt = r;
     hasPickConfigFilter = true;
   }
-  // RESOLVED_AT ordering only makes sense for resolved positions; pinning
-  // resolvedAt non-null also keeps the keyset clean (no NULL boundary).
-  if (byResolvedAt) {
-    pickConfigFilter.resolvedAt = { not: null };
-    hasPickConfigFilter = true;
-  }
+  // RESOLVED_AT keeps unresolved positions (ordered NULLS LAST) — it must
+  // not filter them out, so no resolvedAt-non-null restriction here.
   if (hasPickConfigFilter) where.pickConfiguration = pickConfigFilter;
 
   const cursor = args.after ? decodeCursor(args.after) : null;
   let cursorWhere: Prisma.PositionWhereInput | null = null;
   if (cursor) {
     cursorWhere = byResolvedAt
-      ? buildResolvedAtKeyset(Number(cursor.k), Number(cursor.id), direction)
+      ? buildResolvedAtKeyset(cursor.k, Number(cursor.id), direction)
       : buildKeysetWhere<Prisma.PositionWhereInput>({
           orderField: dateField as string,
           orderValue: new Date(cursor.k),
@@ -436,7 +451,14 @@ export const positions: NonNullable<QueryResolvers['positions']> = async (
     : true;
 
   const orderBy: Prisma.PositionOrderByWithRelationInput[] = byResolvedAt
-    ? [{ pickConfiguration: { resolvedAt: direction } }, { id: direction }]
+    ? [
+        // NULLS LAST so unresolved positions sink to the tail instead of
+        // being filtered out.
+        {
+          pickConfiguration: { resolvedAt: { sort: direction, nulls: 'last' } },
+        },
+        { id: direction },
+      ]
     : [
         {
           [dateField as string]: direction,
@@ -466,22 +488,27 @@ export const positions: NonNullable<QueryResolvers['positions']> = async (
 
   const items = await synthesizeWacRows(pageRows);
 
-  // escrow.ts L625-633: re-sort by the requested field. Synthetic SOLD
-  // rows carry the trade's executedAt as their updatedAt, so without this
-  // they'd appear grouped under their parent rather than interleaved by
-  // recency. (RESOLVED_AT is resolved-only, so it emits no SOLD rows; we
-  // sort those by the raw row's resolvedAt.)
-  const sortValue = (row: SynthesizedPositionRow): number =>
-    dateField ? row[dateField].getTime() : (row.cursorRow.resolvedAt ?? 0);
-  items.sort((a, b) => {
-    const diff = sortValue(b) - sortValue(a);
-    return direction === 'asc' ? -diff : diff;
-  });
+  // escrow.ts L625-633: for the Date orderings, re-sort by the requested
+  // field — synthetic SOLD rows carry the trade's executedAt as their
+  // updatedAt, so without this they'd group under their parent rather than
+  // interleave by recency. RESOLVED_AT is left in DB order: all synthesized
+  // rows from one raw row share that row's resolvedAt, so the page is
+  // already correctly ordered (NULLS LAST) and re-sorting would only risk
+  // disturbing the null tie-break.
+  if (dateField) {
+    items.sort((a, b) => {
+      const diff = b[dateField].getTime() - a[dateField].getTime();
+      return direction === 'asc' ? -diff : diff;
+    });
+  }
 
   // Cursors always point at the underlying RAW row (SOLD rows share their
   // parent's cursor): resuming `after:` a synthesized row resumes after
   // the raw row that produced it — the same granularity v1's skip-based
   // paging had.
+  // For RESOLVED_AT, `k` is the resolvedAt seconds, or '' for a
+  // null-resolvedAt row — the sentinel that puts the cursor in the keyset's
+  // null phase (see buildResolvedAtKeyset).
   const rowCursor = (row: {
     id: number;
     createdAt: Date;
@@ -489,7 +516,11 @@ export const positions: NonNullable<QueryResolvers['positions']> = async (
     resolvedAt: number | null;
   }) =>
     encodeCursor({
-      k: dateField ? row[dateField].toISOString() : String(row.resolvedAt ?? 0),
+      k: dateField
+        ? row[dateField].toISOString()
+        : row.resolvedAt == null
+          ? ''
+          : String(row.resolvedAt),
       id: String(row.id),
     });
   const edges = items.map((node) => ({
