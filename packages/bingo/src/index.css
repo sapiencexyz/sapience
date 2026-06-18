@@ -1753,6 +1753,37 @@ button.card-chip {
   margin-bottom: 0;
 }
 
+.admin-grant-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.admin-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.admin-sponsor-address {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.admin-copy-btn {
+  flex: 0 0 auto;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+.admin-grant-preview {
+  margin-top: 0.25rem;
+}
+
 .admin-action {
   border-top: 1px solid var(--hairline);
   padding-top: 1rem;

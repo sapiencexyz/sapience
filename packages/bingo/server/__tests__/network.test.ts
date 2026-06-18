@@ -48,6 +48,7 @@ describe('NETWORK_CONFIG', () => {
       '0x67fB8B733Fe4E523d7d491785A86748a4ee9112c',
     );
     expect(cfg.logFromBlock).toBe(4828264);
+    expect(cfg.sponsorLogFromBlock).toBe(cfg.logFromBlock);
   });
 
   it('main points at Ethereal mainnet with the production deployment', () => {
@@ -59,5 +60,6 @@ describe('NETWORK_CONFIG', () => {
       '0xdb89F60983C7f943FD683Da0c3F6418d38e3732d',
     );
     expect(cfg.logFromBlock).toBe(5041801);
+    expect(cfg.sponsorLogFromBlock).toBe(cfg.logFromBlock);
   });
 });

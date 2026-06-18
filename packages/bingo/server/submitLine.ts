@@ -98,6 +98,11 @@ export interface SubmitLineParams {
   cardIndex: number;
   /** Pool the card belongs to (for the per-card refCode tag). */
   poolId: string;
+  /** Set when the house funds this stake: the escrow pulls the predictor
+   *  collateral from `sponsor`, and the bid MUST settle against
+   *  `requiredCounterparty`. Resolved upstream (getSponsoredLineContext) —
+   *  submitLine doesn't discover sponsorship, it just executes it. */
+  sponsorContext?: { sponsor: Address; requiredCounterparty: Address };
 }
 
 interface BidShape {
@@ -250,6 +255,7 @@ export async function submitLine(
     lineIndex,
     cardIndex,
     poolId,
+    sponsorContext,
   } = params;
   const chain = chainFor(network);
   const chainId = chain.id;
@@ -268,13 +274,20 @@ export async function submitLine(
   // concurrent line requests, including across two cards funding at once);
   // usually a no-op because submit prepped the whole card. Started here and
   // awaited below so the relayer WebSocket connects while it runs.
-  const collateralReady = prepareCollateral(
-    network,
-    sessionClient,
-    smartAccountAddress,
-    stakePerLineWei,
-    BigInt((cardIndex + 1) * 1000 + 101 + lineIndex)
-  );
+  //
+  // Sponsored: the escrow funds the stake via the sponsor's fundMint hook, so
+  // the predictor wraps/approves NOTHING — skip prep (the session-enable op
+  // already ran at submit). The sponsor + required counterparty are supplied in
+  // sponsorContext; bids are filtered to that counterparty below.
+  const collateralReady = sponsorContext
+    ? Promise.resolve()
+    : prepareCollateral(
+        network,
+        sessionClient,
+        smartAccountAddress,
+        stakePerLineWei,
+        BigInt((cardIndex + 1) * 1000 + 101 + lineIndex)
+      );
   collateralReady.catch(() => {}); // awaited below; don't also reject unhandled
   const HINT_LARGE = (1n << 255n) - 1n;
 
@@ -357,6 +370,15 @@ export async function submitLine(
         options: {
           deadlineSeconds: 60,
           skipSelfValidation: true,
+          // Threaded into the RFQ so the relayer broadcasts it and the vault MM
+          // signs its bid over the SAME sponsor-inclusive prediction hash the
+          // escrow verifies — otherwise the counterparty signature fails on mint.
+          ...(sponsorContext
+            ? {
+                predictorSponsor: sponsorContext.sponsor,
+                predictorSponsorData: '0x' as Hex,
+              }
+            : {}),
         },
       });
 
@@ -427,6 +449,15 @@ export async function submitLine(
             // Only our own funded market makers may fill a line.
             if (!ALLOWED_COUNTERPARTIES.has(b.counterparty.toLowerCase()))
               return false;
+            // Sponsored mints narrow further: only the sponsor's required
+            // counterparty (the vault) can fill, or fundMint reverts on-chain.
+            if (
+              sponsorContext &&
+              b.counterparty.toLowerCase() !==
+                sponsorContext.requiredCounterparty.toLowerCase()
+            ) {
+              return false;
+            }
             if (seenSigs.has(b.counterpartySignature)) return false;
             seenSigs.add(b.counterpartySignature);
             return true;
@@ -525,6 +556,8 @@ export async function submitLine(
         counterparty: resolved.counterparty,
         predictorNonce: BigInt(predictorNonce),
         predictorDeadline: BigInt(payload.predictorDeadline),
+        predictorSponsor: sponsorContext?.sponsor,
+        predictorSponsorData: '0x' as Hex,
         verifyingContract: escrow,
         chainId,
       });
@@ -562,6 +595,10 @@ export async function submitLine(
           // Attributes this mint to one specific card — see chain.ts
           // lineIsFunded. Replaces the old constant 'bingo' tag.
           refCode: cardTag(poolId, smartAccountAddress, cardIndex),
+          // House-funded stake: escrow calls sponsor.fundMint instead of pulling
+          // from the predictor. Must match what was signed above + by the vault.
+          predictorSponsor: sponsorContext?.sponsor,
+          predictorSponsorData: '0x' as Hex,
         },
         predictionMarketAddress: escrow,
         collateralTokenAddress: collateral,

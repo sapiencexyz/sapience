@@ -9,6 +9,7 @@ import {
 } from '../lib/format/balance';
 import { fetchPool, type PoolResponse } from '../lib/backendApi';
 import { useSession } from '../hooks/useSession';
+import { useSponsorStatus } from '../hooks/useSponsorStatus';
 import { useCollateralBalance } from '../hooks/blockchain/useCollateralBalance';
 import BungeeBridge from './BungeeBridge';
 
@@ -93,14 +94,20 @@ export default function SetupWizard({ poolId }: { poolId?: string | null }) {
   const injected = connectors.find((c) => c.id === 'injected');
   const coinbase = connectors.find((c) => c.id === 'coinbaseWalletSDK');
 
+  // Sponsored players skip the deposit — the house funds the card from budget.
+  const { eligible: sponsorEligible, status: sponsorStatus } =
+    useSponsorStatus(sa);
+  // Either funded OR sponsored unblocks Sign (the deposit is optional).
+  const readyToSign = funded || sponsorEligible;
+
   // ---------- step states ----------
   const connectStatus: StepStatus = isConnected ? 'done' : 'current';
   const fundStatus: StepStatus = !isConnected
     ? 'pending'
-    : funded
+    : funded || sponsorEligible
       ? 'done'
       : 'current';
-  const signStatus: StepStatus = !funded
+  const signStatus: StepStatus = !readyToSign
     ? 'pending'
     : isActive
       ? 'done'
@@ -193,6 +200,14 @@ export default function SetupWizard({ poolId }: { poolId?: string | null }) {
               <p className="muted small">
                 {formatDollarLikeBalance(balance)} USDe available
               </p>
+            ) : sponsorEligible ? (
+              <p className="muted small">
+                Sponsored — no deposit needed
+                {sponsorStatus &&
+                  BigInt(sponsorStatus.remainingWei) > 0n &&
+                  ` · ${fmtUnits(BigInt(sponsorStatus.remainingWei))} USDe remaining`}
+                .
+              </p>
             ) : (
               <>
                 <p className="muted small">
@@ -230,7 +245,7 @@ export default function SetupWizard({ poolId }: { poolId?: string | null }) {
           </div>
           <div className="wizard-step-body">
             <div className="wizard-step-title">Sign</div>
-            {!funded ? (
+            {!readyToSign ? (
               <p className="muted small">
                 Fund your account to enable signing.
               </p>
@@ -262,7 +277,7 @@ export default function SetupWizard({ poolId }: { poolId?: string | null }) {
                 </button>
               </>
             )}
-            {funded && sessionError && (
+            {readyToSign && sessionError && (
               <p className="error small">{sessionError.message}</p>
             )}
           </div>

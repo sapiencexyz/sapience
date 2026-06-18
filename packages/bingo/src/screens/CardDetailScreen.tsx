@@ -8,7 +8,7 @@ import { OutcomeSide, type Pick } from '@sapience/sdk/types/escrow';
 import { predictionMarketEscrow as escrowAddresses } from '@sapience/sdk/contracts';
 import { useAccount, usePublicClient } from 'wagmi';
 import { CHAIN_ID } from '../lib/chain';
-import { fmtUnits, formatDollarLikeBalance } from '../lib/format/balance';
+import { fmtUnits } from '../lib/format/balance';
 import {
   fetchCard,
   fetchCards,
@@ -28,9 +28,11 @@ import {
   redeemViaSession,
 } from '../lib/session/sessionKeyManager';
 import { useSession } from '../hooks/useSession';
+import { useSponsorStatus } from '../hooks/useSponsorStatus';
 import { useCollateralBalance } from '../hooks/blockchain/useCollateralBalance';
 import { buildLines } from '../parlay';
 import Nav from '../components/Nav';
+import CardSubmitControls from '../components/CardSubmitControls';
 import SetupWizard from '../components/SetupWizard';
 import trophyUrl from '../assets/world-cup-trophy.png';
 import fedUrl from '../assets/fed.webp';
@@ -488,6 +490,22 @@ export default function CardDetailScreen() {
   const cardPriceWei =
     card?.cardPriceWei != null ? BigInt(card.cardPriceWei) : null;
 
+  // Sponsorship: admin-granted budget funds the card. Only relevant before
+  // submit — an already-submitted card funds its lines from the on-chain
+  // budget, decided server-side. The price is locked to the sponsored amount.
+  const {
+    status: sponsorStatus,
+    eligible: sponsorEligible,
+    refetch: refetchSponsorStatus,
+  } = useSponsorStatus(viewOnly ? undefined : player);
+  const sponsored = sponsorEligible && !submitted;
+  const sponsoredPriceWei = sponsorStatus
+    ? BigInt(sponsorStatus.sponsoredCardPriceWei)
+    : null;
+  const sponsoredRemainingWei = sponsorStatus
+    ? BigInt(sponsorStatus.remainingWei)
+    : null;
+
   // Validate the entered price: wei, ≥ pool minimum, divisible by 10 lines.
   const enteredPriceWei: bigint | null = useMemo(() => {
     const v = priceInput.trim();
@@ -503,6 +521,10 @@ export default function CardDetailScreen() {
     }
   }, [priceInput, pool]);
 
+  // The price actually submitted: locked to the sponsored amount for a
+  // sponsored card, otherwise the validated input.
+  const effectivePriceWei = sponsored ? sponsoredPriceWei : enteredPriceWei;
+
   // Spendable collateral = native USDe + wrapped (the backend wraps any
   // native shortfall). Drives the balance display + the pre-submit check —
   // without it, a too-high price only fails server-side AFTER the receipt
@@ -513,6 +535,7 @@ export default function CardDetailScreen() {
     enabled: !!player && !submitted,
   });
   const insufficientBalance =
+    !sponsored &&
     enteredPriceWei != null &&
     availableWei != null &&
     enteredPriceWei > availableWei;
@@ -601,13 +624,16 @@ export default function CardDetailScreen() {
       }),
     );
     setRefreshKey((k) => k + 1);
+    // Funding sponsored lines spends budget — re-read so the next card's
+    // "remaining" and eligibility reflect what's actually left.
+    refetchSponsorStatus();
   };
 
   // Submit the picks: the backend mints the receipt NFT (locking sides and
   // price on-chain), then this client drives the 10 line mints.
   const submitPicks = async () => {
     const session = loadSession();
-    if (!player || enteredPriceWei == null || !session || cardIndex == null)
+    if (!player || effectivePriceWei == null || !session || cardIndex == null)
       return;
     setActionError(null);
     setActionBusy(true);
@@ -617,8 +643,9 @@ export default function CardDetailScreen() {
         poolId: card?.poolId ?? selectedPoolId,
         cardIndex,
         yesMask: pickedSides,
-        cardPriceWei: enteredPriceWei.toString(),
+        cardPriceWei: effectivePriceWei.toString(),
         ref: loadRef(),
+        sponsored,
         session,
       });
       // Optimistic flip to the submitted view — without this the pick form
@@ -629,7 +656,7 @@ export default function CardDetailScreen() {
           ? {
               ...prev,
               yesMask: pickedSides,
-              cardPriceWei: enteredPriceWei.toString(),
+              cardPriceWei: effectivePriceWei.toString(),
               submittedAt: Date.now(),
               receiptTokenId: res.receiptTokenId,
             }
@@ -1198,76 +1225,26 @@ export default function CardDetailScreen() {
                 })}
                 </div>
               </div>
-              <div className="field price-field">
-                <div className="price-field-labels">
-                  <label className="label" htmlFor="card-price">
-                    Card price (USDe)
-                  </label>
-                  {availableWei != null && (
-                    <span className="label muted">
-                      Available: {formatDollarLikeBalance(fmtUnits(availableWei))}{' '}
-                      USDe
-                    </span>
-                  )}
-                </div>
-                <input
-                  id="card-price"
-                  className="admin-input"
-                  inputMode="decimal"
-                  placeholder={
-                    pool ? fmtUnits(BigInt(pool.minCardPriceWei)) : '10'
-                  }
-                  value={priceInput}
-                  onChange={(e) => {
-                    setPriceTouched(true);
-                    setPriceInput(e.target.value);
-                  }}
-                  disabled={actionBusy}
-                />
-                {priceInput.trim() && enteredPriceWei == null && (
-                  <p className="muted small">
-                    Must be a multiple of 10 wei
-                    {pool
-                      ? ` and at least ${fmtUnits(BigInt(pool.minCardPriceWei))}`
-                      : ''}
-                    .
-                  </p>
-                )}
-                {insufficientBalance && (
-                  <p className="error small">
-                    Not enough USDe — you have {fmtUnits(availableWei)}{' '}
-                    available.
-                  </p>
-                )}
-              </div>
-              <div className="pick-actions">
-                <button
-                  type="button"
-                  className="quick-pick block"
-                  disabled={actionBusy}
-                  onClick={quickPick}
-                >
-                  Quick Pick
-                </button>
-                <button
-                  type="button"
-                  className="primary block"
-                  disabled={
-                    actionBusy ||
-                    !isActive ||
-                    !allCellsPicked ||
-                    enteredPriceWei == null ||
-                    insufficientBalance
-                  }
-                  onClick={submitPicks}
-                >
-                  {actionBusy
-                    ? 'Submitting…'
-                    : allCellsPicked
-                      ? 'Submit Picks'
-                      : 'Make All Picks'}
-                </button>
-              </div>
+              <CardSubmitControls
+                pool={pool}
+                sponsored={sponsored}
+                sponsoredPriceWei={sponsoredPriceWei}
+                sponsoredRemainingWei={sponsoredRemainingWei}
+                priceInput={priceInput}
+                onPriceInput={(v) => {
+                  setPriceTouched(true);
+                  setPriceInput(v);
+                }}
+                enteredPriceWei={enteredPriceWei}
+                effectivePriceWei={effectivePriceWei}
+                availableWei={availableWei}
+                insufficientBalance={insufficientBalance}
+                actionBusy={actionBusy}
+                isActive={isActive}
+                allCellsPicked={allCellsPicked}
+                onQuickPick={quickPick}
+                onSubmit={submitPicks}
+              />
             </div>
           )}
 

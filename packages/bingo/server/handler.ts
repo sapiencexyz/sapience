@@ -23,6 +23,14 @@ import {
   lineIsFunded,
   linePicks,
 } from './chain.js';
+import {
+  ensureSponsoredBudget,
+  getSponsoredLineContext,
+  getSponsorStatus,
+  isSponsorshipEnabled,
+  listSponsorships,
+  SPONSORED_CARD_PRICE_WEI,
+} from './sponsorship.js';
 import { buildLines, LINES_PER_CARD } from './lines.js';
 import { NETWORK_CONFIG, resolveNetwork, type Network } from './network.js';
 import { activePoolOf, loadPools, parsePools, poolIsOpen } from './pool.js';
@@ -102,12 +110,13 @@ async function readJson<T>(req: IncomingMessage): Promise<T> {
   }
 }
 
-function isAdmin(req: IncomingMessage): boolean {
+function isAdmin(req: IncomingMessage, network: Network): boolean {
   const auth = req.headers.authorization ?? '';
-  // SIWE-issued, HMAC-signed session token (the admin UI path).
+  // SIWE-issued, HMAC-signed session token (the admin UI path). Network-scoped:
+  // a token only authorizes the network it was issued for.
   const bearer = auth.startsWith('Bearer ') ? auth.slice(7) : '';
-  if (bearer && isValidAdminSession(bearer)) return true;
-  // Static token fallback (scripts/curl).
+  if (bearer && isValidAdminSession(bearer, network)) return true;
+  // Static token fallback (scripts/curl) — network-agnostic god-token by design.
   const got = Buffer.from(auth);
   const want = Buffer.from(`Bearer ${env.ADMIN_TOKEN}`);
   return got.length === want.length && timingSafeEqual(got, want);
@@ -256,6 +265,18 @@ export async function handleApi(
           : {}),
       })),
     });
+    return true;
+  }
+
+  // Stateless on-chain read of a player's sponsorship: drives "skip Fund" +
+  // the "Mint with sponsorship balance" button. player = smart account.
+  if (route === 'GET /api/sponsor/status') {
+    const player = url.searchParams.get('player');
+    if (!player || !isAddress(player)) {
+      json(res, 400, { error: 'player query param required' });
+      return true;
+    }
+    json(res, 200, await getSponsorStatus(network, player));
     return true;
   }
 
@@ -450,10 +471,12 @@ export async function handleApi(
       yesMask?: number;
       cardPriceWei?: string;
       ref?: string;
+      sponsored?: boolean;
       session?: SerializedSession;
       poolId?: string;
     }>(req);
     const { player, cardIndex, yesMask, cardPriceWei, ref } = body;
+    const sponsored = body.sponsored === true && isSponsorshipEnabled(network);
     const pool = resolvePool(network, body.poolId ?? null);
     if (!player || !isAddress(player)) {
       json(res, 400, { error: 'player required' });
@@ -493,6 +516,14 @@ export async function handleApi(
       json(res, 400, { error: 'cardPriceWei must be divisible by 10' });
       return true;
     }
+    // A sponsored card is funded by the per-wallet budget, which equals the
+    // fixed sponsored amount — any other price would over/under-run the budget.
+    if (sponsored && price !== SPONSORED_CARD_PRICE_WEI) {
+      json(res, 400, {
+        error: `sponsored cardPriceWei must equal ${SPONSORED_CARD_PRICE_WEI}`,
+      });
+      return true;
+    }
     if (ref !== undefined && ref !== null && !isAddress(ref)) {
       json(res, 400, { error: 'ref must be an address' });
       return true;
@@ -525,13 +556,26 @@ export async function handleApi(
     }
 
     const seed = cardSeed(secretFor(pool.poolId), pool.poolId, player, cardIndex);
+    // Sponsored: ensure a usable on-chain budget BEFORE minting the receipt, and
+    // FAIL CLOSED — if the grant can't be confirmed (dry bankroll, ineligible
+    // wallet, tx failure) we error out and never lock in an unfundable card.
+    if (sponsored) {
+      try {
+        await ensureSponsoredBudget(network, player);
+      } catch (e) {
+        json(res, 409, {
+          error: e instanceof Error ? e.message : 'Sponsorship unavailable',
+        });
+        return true;
+      }
+    }
     // Two independent UserOps from two different signers — run together:
-    // the MINTER mints the receipt while the PLAYER's session wraps +
-    // approves for the whole card (one op, so the 10 concurrent line
-    // requests that follow don't each race their own prep). ensureSessionOp:
-    // even when collateral is already prepared, send one op so a fresh
-    // session key gets ENABLED here, serially — not by 10 concurrent line
-    // mints racing the kernel's enable nonce.
+    // the MINTER mints the receipt while the PLAYER's session wraps + approves
+    // for the whole card (one op, so the 10 concurrent line requests that follow
+    // don't each race their own prep). ensureSessionOp: even when collateral is
+    // already prepared (or there's none to wrap — sponsored), send one op so a
+    // fresh session key gets ENABLED here, serially. Sponsored wraps 0 (the
+    // house funds the stake); the deposit path wraps the whole card up front.
     const [submission] = await Promise.all([
       mintReceipt({
         network,
@@ -543,7 +587,14 @@ export async function handleApi(
         cardPriceWei: price.toString(),
         ref: (ref as Address | undefined) ?? null,
       }),
-      prepareCollateral(network, sessionClient, player, price, undefined, true),
+      prepareCollateral(
+        network,
+        sessionClient,
+        player,
+        sponsored ? 0n : price,
+        undefined,
+        true,
+      ),
     ]);
     // Idempotent retry: the chain locked sides/price at first submit.
     if (
@@ -636,6 +687,27 @@ export async function handleApi(
       json(res, 200, { lineIndex, funded: true, alreadyFunded: true });
       return true;
     }
+    // Card-level sponsor context (or undefined = pay normally), derived from the
+    // card's price + on-chain budget — never from leftover budget alone, and it
+    // survives reloads. Throws if the card is sponsored but the required
+    // counterparty can't be read, so we never start an unfillable auction.
+    let sponsorContext;
+    try {
+      sponsorContext =
+        (await getSponsoredLineContext(
+          network,
+          player,
+          BigInt(submission.cardPriceWei),
+          stakePerLineWei,
+        )) ?? undefined;
+    } catch (e) {
+      json(res, 502, {
+        error: e instanceof Error ? e.message : 'Sponsorship error',
+        lineIndex,
+        funded: false,
+      });
+      return true;
+    }
     const runLine = async (client: Awaited<typeof sessionClientPromise>) =>
       submitLine({
         network,
@@ -647,6 +719,7 @@ export async function handleApi(
         lineIndex,
         cardIndex,
         poolId: pool.poolId,
+        sponsorContext,
       });
     try {
       let result;
@@ -691,7 +764,12 @@ export async function handleApi(
       return true;
     }
     try {
-      const session = await siweLogin(network, body.message, body.signature as Hex);
+      const session = await siweLogin(
+        network,
+        body.message,
+        body.signature as Hex,
+        req.headers.host,
+      );
       json(res, 200, session);
     } catch (e) {
       json(res, 401, {
@@ -702,7 +780,7 @@ export async function handleApi(
   }
 
   if (route === 'GET /api/admin/entitlements') {
-    if (!isAdmin(req)) {
+    if (!isAdmin(req, network)) {
       json(res, 401, { error: 'Unauthorized' });
       return true;
     }
@@ -721,6 +799,15 @@ export async function handleApi(
       totalBonusOwedWei: totalBonus.toString(),
       totalReferralOwedWei: totalReferral.toString(),
     });
+    return true;
+  }
+
+  if (route === 'GET /api/admin/sponsorships') {
+    if (!isAdmin(req, network)) {
+      json(res, 401, { error: 'Unauthorized' });
+      return true;
+    }
+    json(res, 200, await listSponsorships(network));
     return true;
   }
 

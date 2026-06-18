@@ -211,6 +211,36 @@ export interface SubmitLineResponse {
   alreadyFunded?: boolean;
 }
 
+/** On-chain sponsorship state for a player (smart account). Mirrors
+ *  bingo-server/sponsorship.ts SponsorStatus. */
+export interface SponsorStatusResponse {
+  /** Sponsorship is configured on this backend/network. */
+  enabled: boolean;
+  /** This player can mint a sponsored (no-deposit) card right now. */
+  eligible: boolean;
+  sponsorAddress: Address | null;
+  allocatedWei: string;
+  remainingWei: string;
+  /** wUSDe the sponsor contract holds — the promo bankroll. */
+  bankrollWei: string;
+  /** Fixed price/budget of a sponsored card (wei). */
+  sponsoredCardPriceWei: string;
+}
+
+export interface SponsorshipHistoryRow {
+  smartAccount: Address;
+  allocatedWei: string;
+  usedWei: string;
+  remainingWei: string;
+  played: boolean;
+}
+
+export interface SponsorshipsResponse {
+  sponsorAddress: Address | null;
+  bankrollWei: string;
+  rows: SponsorshipHistoryRow[];
+}
+
 // ---------------------------------------------------------------------------
 // Fetch plumbing
 // ---------------------------------------------------------------------------
@@ -307,6 +337,8 @@ export function submitCard(params: {
   yesMask: number;
   cardPriceWei: string;
   ref?: Address | null;
+  /** House-funds this card from the player's sponsorship budget (no deposit). */
+  sponsored?: boolean;
   session: SerializedSession;
 }): Promise<SubmitCardResponse> {
   return request<SubmitCardResponse>(
@@ -322,6 +354,7 @@ export function submitCard(params: {
         cardPriceWei: params.cardPriceWei,
         session: params.session,
         ...(params.ref ? { ref: params.ref } : {}),
+        ...(params.sponsored ? { sponsored: true } : {}),
       }),
     },
     SUBMIT_TIMEOUT_MS,
@@ -349,10 +382,27 @@ export function submitLine(params: {
   );
 }
 
+/** Stateless on-chain read of the player's sponsorship state. */
+export function fetchSponsorStatus(
+  player: Address,
+): Promise<SponsorStatusResponse> {
+  return request<SponsorStatusResponse>(
+    `/api/sponsor/status?player=${encodeURIComponent(player)}`,
+  );
+}
+
 export function fetchEntitlements(
   adminToken: string,
 ): Promise<EntitlementsResponse> {
   return request<EntitlementsResponse>('/api/admin/entitlements', {
+    headers: { authorization: `Bearer ${adminToken}` },
+  });
+}
+
+export function fetchSponsorships(
+  adminToken: string,
+): Promise<SponsorshipsResponse> {
+  return request<SponsorshipsResponse>('/api/admin/sponsorships', {
     headers: { authorization: `Bearer ${adminToken}` },
   });
 }
