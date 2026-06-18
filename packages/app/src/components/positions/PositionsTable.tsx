@@ -37,6 +37,7 @@ import {
   usePositionBalances,
   usePositionBalancesByConditionId,
   type PositionBalance,
+  type PositionOrderInput,
 } from '~/hooks/graphql/usePositions';
 import PicksSummary from '~/components/shared/PicksSummary';
 import LegacyBadge from '~/components/shared/LegacyBadge';
@@ -398,6 +399,25 @@ function PositionRow({
           );
         })()}
       </TableCell>
+      {/* Resolved — when Sapience recorded the resolution. Gated on
+          resolution status, not just resolvedAt: a position resolved before
+          resolvedAt was recorded (no backfill) is still resolved, not
+          PENDING. */}
+      <TableCell className="whitespace-nowrap">
+        {pickConfig?.resolvedAt ? (
+          <span className="text-brand-white text-sm">
+            {formatDistanceToNow(new Date(pickConfig.resolvedAt * 1000), {
+              addSuffix: true,
+            })}
+          </span>
+        ) : isResolved ? (
+          <span className="text-muted-foreground text-sm">Resolved</span>
+        ) : (
+          <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
+            PENDING
+          </span>
+        )}
+      </TableCell>
       {/* Actions */}
       <TableCell className="text-right">
         <div className="flex items-center justify-end gap-2">
@@ -414,7 +434,13 @@ function PositionRow({
   );
 }
 
-type SortKey = 'updatedAt' | 'positionSize' | 'payout' | 'pnl' | 'ends';
+type SortKey =
+  | 'updatedAt'
+  | 'positionSize'
+  | 'payout'
+  | 'pnl'
+  | 'ends'
+  | 'resolvedAt';
 type SortDir = 'asc' | 'desc';
 type SortState = { key: SortKey; dir: SortDir };
 
@@ -424,6 +450,9 @@ const DEFAULT_SORT_DIRS: Record<SortKey, SortDir> = {
   payout: 'desc',
   pnl: 'desc',
   ends: 'asc',
+  // Most recently resolved first; still-pending positions (no resolvedAt)
+  // sink to the bottom in this default view.
+  resolvedAt: 'desc',
 };
 
 function SortableHeader({
@@ -482,6 +511,18 @@ export default function PositionsTable({
   const [filters, setFilters] = React.useState<PositionsFilterState>(
     getDefaultPositionsFilterState
   );
+  const [sort, setSort] = React.useState<SortState | null>(null);
+
+  // RESOLVED_AT sorts server-side so it orders across the whole resolved set
+  // (not just the fetched page); the other columns sort client-side within
+  // what's loaded. Declared here so it can feed the data hooks below.
+  const serverOrderBy = React.useMemo<PositionOrderInput | undefined>(() => {
+    if (sort?.key !== 'resolvedAt') return undefined;
+    return {
+      field: 'RESOLVED_AT',
+      direction: sort.dir === 'asc' ? 'ASC' : 'DESC',
+    };
+  }, [sort]);
 
   // Derive server-side `settled` filter from status selection.
   // Only 'active' → settled=false; only 'won'/'lost' → settled=true; mixed → undefined
@@ -508,6 +549,7 @@ export default function PositionsTable({
     holder: account,
     chainId,
     settled: serverSettled,
+    orderBy: serverOrderBy,
   });
 
   // Fetch position balances for a condition (all holders)
@@ -522,6 +564,7 @@ export default function PositionsTable({
   } = usePositionBalancesByConditionId({
     conditionId: !account ? conditionId : undefined,
     settled: serverSettled,
+    orderBy: serverOrderBy,
   });
 
   const positions = account ? accountPositions : conditionPositions;
@@ -620,8 +663,8 @@ export default function PositionsTable({
     return result;
   }, [positions, filters, conditionsMap]);
 
-  // Sorting
-  const [sort, setSort] = React.useState<SortState | null>(null);
+  // Sorting (sort state lifted above the data hooks so RESOLVED_AT can drive
+  // server-side ordering).
   const handleSort = React.useCallback((key: SortKey) => {
     setSort((prev) => {
       if (prev?.key === key) {
@@ -633,6 +676,10 @@ export default function PositionsTable({
 
   const sortedPositions = React.useMemo(() => {
     if (!sort) return filteredPositions;
+    // resolvedAt is ordered server-side (and paged across the whole resolved
+    // set), so preserve the order the API returned rather than re-sorting the
+    // current page in memory.
+    if (sort.key === 'resolvedAt') return filteredPositions;
     const { key, dir } = sort;
     const multiplier = dir === 'asc' ? 1 : -1;
     const getValue = (p: PositionBalance): number => {
@@ -671,6 +718,8 @@ export default function PositionsTable({
           // Missing end time sinks to the bottom regardless of direction
           return endsAt === 0 ? Number.POSITIVE_INFINITY : endsAt;
         }
+        // 'resolvedAt' is handled server-side (early return above), so it
+        // never reaches this client-side switch.
       }
     };
     return [...filteredPositions].sort(
@@ -844,6 +893,14 @@ export default function PositionsTable({
                     </span>
                   }
                   sortKey="ends"
+                  sort={sort}
+                  onSort={handleSort}
+                />
+              </TableHead>
+              <TableHead className="h-auto py-3">
+                <SortableHeader
+                  label="Resolved"
+                  sortKey="resolvedAt"
                   sort={sort}
                   onSort={handleSort}
                 />
