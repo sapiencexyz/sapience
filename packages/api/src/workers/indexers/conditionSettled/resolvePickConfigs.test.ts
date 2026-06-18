@@ -2,6 +2,8 @@ import { describe, it, expect, vi } from 'vitest';
 import { OutcomeSide } from '@sapience/sdk/types';
 import {
   computeSettlementResult,
+  determineResolvedAt,
+  resolvePickConfig,
   resolvePickConfigsForCondition,
 } from './resolvePickConfigs';
 
@@ -194,12 +196,75 @@ describe('computeSettlementResult', () => {
   });
 });
 
+// --- determineResolvedAt tests ---
+
+describe('determineResolvedAt', () => {
+  const settled = (
+    resolvedToYes: boolean,
+    settledAt: number | null,
+    nonDecisive = false
+  ) => ({ id: 'x', settled: true, resolvedToYes, nonDecisive, settledAt });
+
+  it('PREDICTOR_WINS → latest settledAt across all legs (last leg decides a win)', () => {
+    const picks = [
+      { conditionId: 'c1', predictedOutcome: OutcomeSide.YES },
+      { conditionId: 'c2', predictedOutcome: OutcomeSide.NO },
+    ];
+    const map = new Map([
+      ['c1', { ...settled(true, 100), id: 'c1' }],
+      ['c2', { ...settled(false, 250), id: 'c2' }],
+    ]);
+    expect(determineResolvedAt(picks, map, 'PREDICTOR_WINS')).toBe(250);
+  });
+
+  it('COUNTERPARTY_WINS → earliest settledAt among adverse legs (first loss decides)', () => {
+    // c1 is adverse (predicted YES, resolved NO) and settled at 100;
+    // c2 is adverse too but settled later at 300 — first loss is 100.
+    const picks = [
+      { conditionId: 'c1', predictedOutcome: OutcomeSide.YES },
+      { conditionId: 'c2', predictedOutcome: OutcomeSide.YES },
+    ];
+    const map = new Map([
+      ['c1', { ...settled(false, 100), id: 'c1' }],
+      ['c2', { ...settled(false, 300), id: 'c2' }],
+    ]);
+    expect(determineResolvedAt(picks, map, 'COUNTERPARTY_WINS')).toBe(100);
+  });
+
+  it('COUNTERPARTY_WINS ignores a winning leg even if it settled earlier', () => {
+    // c1 is correct (winning leg) settled at 50; c2 is the losing leg at 200.
+    // The determining moment is the loss (200), not the earlier win (50).
+    const picks = [
+      { conditionId: 'c1', predictedOutcome: OutcomeSide.YES },
+      { conditionId: 'c2', predictedOutcome: OutcomeSide.YES },
+    ];
+    const map = new Map([
+      ['c1', { ...settled(true, 50), id: 'c1' }],
+      ['c2', { ...settled(false, 200), id: 'c2' }],
+    ]);
+    expect(determineResolvedAt(picks, map, 'COUNTERPARTY_WINS')).toBe(200);
+  });
+
+  it('COUNTERPARTY_WINS treats a non-decisive leg as adverse', () => {
+    const picks = [{ conditionId: 'c1', predictedOutcome: OutcomeSide.YES }];
+    const map = new Map([['c1', { ...settled(true, 175, true), id: 'c1' }]]);
+    expect(determineResolvedAt(picks, map, 'COUNTERPARTY_WINS')).toBe(175);
+  });
+
+  it('falls back to the trigger timestamp when leg settledAt is missing', () => {
+    const picks = [{ conditionId: 'c1', predictedOutcome: OutcomeSide.NO }];
+    const map = new Map([['c1', { ...settled(true, null), id: 'c1' }]]);
+    expect(determineResolvedAt(picks, map, 'COUNTERPARTY_WINS', 999)).toBe(999);
+  });
+});
+
 // --- resolvePickConfigsForCondition tests ---
 
 function createMockTx(overrides: Record<string, unknown> = {}) {
   return {
     picks: {
       findMany: vi.fn().mockResolvedValue([]),
+      findUnique: vi.fn().mockResolvedValue(null),
       update: vi.fn().mockResolvedValue({}),
     },
     condition: {
@@ -368,6 +433,155 @@ describe('resolvePickConfigsForCondition', () => {
     });
 
     await resolvePickConfigsForCondition(tx, 'c1', 1000);
+    expect(tx.picks.update).not.toHaveBeenCalled();
+  });
+
+  it('writes a leg-derived resolvedAt, not the triggering timestamp', async () => {
+    // A late condition (c2) settles at 5000 and triggers this pass, but the
+    // combo was already doomed by c1's adverse settlement at 1200. resolvedAt
+    // must reflect the first loss (1200), not the trigger (5000).
+    const tx = createMockTx({
+      picks: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: 'pc1',
+            picks: [
+              { conditionId: 'c1', predictedOutcome: OutcomeSide.YES }, // adverse
+              { conditionId: 'c2', predictedOutcome: OutcomeSide.YES },
+            ],
+          },
+        ]),
+        findUnique: vi.fn(),
+        update: vi.fn().mockResolvedValue({}),
+      },
+      condition: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: 'c1',
+            settled: true,
+            resolvedToYes: false,
+            nonDecisive: false,
+            settledAt: 1200,
+          },
+          {
+            id: 'c2',
+            settled: true,
+            resolvedToYes: true,
+            nonDecisive: false,
+            settledAt: 5000,
+          },
+        ]),
+      },
+    });
+
+    await resolvePickConfigsForCondition(tx, 'c2', 5000);
+    expect(tx.picks.update).toHaveBeenCalledWith({
+      where: { id: 'pc1' },
+      data: { resolved: true, result: 'COUNTERPARTY_WINS', resolvedAt: 1200 },
+    });
+  });
+});
+
+describe('resolvePickConfig (resolve-at-mint)', () => {
+  it('resolves a config whose conditions already settled before it was minted', async () => {
+    // Both legs already settled (one adverse) before the config existed.
+    // Without this path the config would never resolve — no future
+    // settlement event fires for already-settled conditions.
+    const tx = createMockTx({
+      picks: {
+        findMany: vi.fn(),
+        findUnique: vi.fn().mockResolvedValue({
+          id: 'pc1',
+          resolved: false,
+          picks: [
+            { conditionId: 'c1', predictedOutcome: OutcomeSide.YES }, // adverse
+            { conditionId: 'c2', predictedOutcome: OutcomeSide.NO },
+          ],
+        }),
+        update: vi.fn().mockResolvedValue({}),
+      },
+      condition: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: 'c1',
+            settled: true,
+            resolvedToYes: false,
+            nonDecisive: false,
+            settledAt: 800,
+          },
+          {
+            id: 'c2',
+            settled: true,
+            resolvedToYes: false,
+            nonDecisive: false,
+            settledAt: 900,
+          },
+        ]),
+      },
+    });
+
+    await resolvePickConfig(tx, 'pc1');
+    expect(tx.picks.update).toHaveBeenCalledWith({
+      where: { id: 'pc1' },
+      data: { resolved: true, result: 'COUNTERPARTY_WINS', resolvedAt: 800 },
+    });
+  });
+
+  it('does nothing when conditions have not settled yet at mint time', async () => {
+    const tx = createMockTx({
+      picks: {
+        findMany: vi.fn(),
+        findUnique: vi.fn().mockResolvedValue({
+          id: 'pc1',
+          resolved: false,
+          picks: [{ conditionId: 'c1', predictedOutcome: OutcomeSide.YES }],
+        }),
+        update: vi.fn(),
+      },
+      condition: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: 'c1',
+            settled: false,
+            resolvedToYes: false,
+            nonDecisive: false,
+            settledAt: null,
+          },
+        ]),
+      },
+    });
+
+    await resolvePickConfig(tx, 'pc1');
+    expect(tx.picks.update).not.toHaveBeenCalled();
+  });
+
+  it('does nothing when the config is already resolved', async () => {
+    const tx = createMockTx({
+      picks: {
+        findMany: vi.fn(),
+        findUnique: vi.fn().mockResolvedValue({
+          id: 'pc1',
+          resolved: true,
+          picks: [{ conditionId: 'c1', predictedOutcome: OutcomeSide.YES }],
+        }),
+        update: vi.fn(),
+      },
+    });
+
+    await resolvePickConfig(tx, 'pc1');
+    expect(tx.picks.update).not.toHaveBeenCalled();
+  });
+
+  it('does nothing when the config does not exist', async () => {
+    const tx = createMockTx({
+      picks: {
+        findMany: vi.fn(),
+        findUnique: vi.fn().mockResolvedValue(null),
+        update: vi.fn(),
+      },
+    });
+
+    await resolvePickConfig(tx, 'missing');
     expect(tx.picks.update).not.toHaveBeenCalled();
   });
 });

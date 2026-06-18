@@ -18,6 +18,7 @@ import { isPredictedYes, normalizeOutcomeSide } from '@sapience/sdk/types';
 import { sendPositionAlert } from '../../services/discordAlert';
 
 import { createLogger } from '../../core/logger';
+import { resolvePickConfig } from './conditionSettled/resolvePickConfigs';
 
 const logger = createLogger('predictionMarketEscrowIndexer');
 
@@ -948,6 +949,11 @@ class PredictionMarketEscrowIndexer implements IIndexer {
       logger.info(
         `[PredictionMarketEscrowIndexer:${this.chainId}] Created Picks config ${pickConfigId}`
       );
+
+      // Resolve-at-mint fallback: if this config's conditions already settled
+      // before it was created, no future settlement event will fire to
+      // resolve it — settle it now from current condition state.
+      await resolvePickConfig(tx, pickConfigId);
     } else {
       // Picks already exist — accumulate collateral totals
       await tx.$executeRaw`

@@ -398,6 +398,20 @@ function PositionRow({
           );
         })()}
       </TableCell>
+      {/* Resolved — when Sapience recorded the on-chain resolution */}
+      <TableCell className="whitespace-nowrap">
+        {pickConfig?.resolvedAt ? (
+          <span className="text-brand-white text-sm">
+            {formatDistanceToNow(new Date(pickConfig.resolvedAt * 1000), {
+              addSuffix: true,
+            })}
+          </span>
+        ) : (
+          <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
+            PENDING
+          </span>
+        )}
+      </TableCell>
       {/* Actions */}
       <TableCell className="text-right">
         <div className="flex items-center justify-end gap-2">
@@ -414,7 +428,13 @@ function PositionRow({
   );
 }
 
-type SortKey = 'updatedAt' | 'positionSize' | 'payout' | 'pnl' | 'ends';
+type SortKey =
+  | 'updatedAt'
+  | 'positionSize'
+  | 'payout'
+  | 'pnl'
+  | 'ends'
+  | 'resolvedAt';
 type SortDir = 'asc' | 'desc';
 type SortState = { key: SortKey; dir: SortDir };
 
@@ -424,6 +444,9 @@ const DEFAULT_SORT_DIRS: Record<SortKey, SortDir> = {
   payout: 'desc',
   pnl: 'desc',
   ends: 'asc',
+  // Most recently resolved first; still-pending positions (no resolvedAt)
+  // sink to the bottom in this default view.
+  resolvedAt: 'desc',
 };
 
 function SortableHeader({
@@ -671,6 +694,10 @@ export default function PositionsTable({
           // Missing end time sinks to the bottom regardless of direction
           return endsAt === 0 ? Number.POSITIVE_INFINITY : endsAt;
         }
+        case 'resolvedAt':
+          // When Sapience recorded the resolution. Still-pending positions
+          // (null) sort to 0 → bottom of the default DESC (recent-first) view.
+          return p.pickConfig?.resolvedAt ?? 0;
       }
     };
     return [...filteredPositions].sort(
@@ -844,6 +871,14 @@ export default function PositionsTable({
                     </span>
                   }
                   sortKey="ends"
+                  sort={sort}
+                  onSort={handleSort}
+                />
+              </TableHead>
+              <TableHead className="h-auto py-3">
+                <SortableHeader
+                  label="Resolved"
+                  sortKey="resolvedAt"
                   sort={sort}
                   onSort={handleSort}
                 />
