@@ -157,17 +157,22 @@ export async function siweLogin(
   if (!valid) throw new Error('Invalid SIWE signature');
 
   const expiresAt = Date.now() + SESSION_TTL_MS;
-  const payload = `${signer}:${expiresAt}`;
+  // network is bound into the payload: one backend serves both staging and
+  // main, so a token must only authorize the network it was issued for —
+  // otherwise a wallet allowlisted on one network could replay against the
+  // other's admin endpoints.
+  const payload = `${signer}:${network}:${expiresAt}`;
   const token = `${Buffer.from(payload).toString('base64url')}.${hmac(`token:${payload}`)}`;
   return { token, address: parsed.address, expiresAt };
 }
 
-/** Stateless bearer-token check: payload integrity + expiry. */
-export function isValidAdminSession(token: string): boolean {
+/** Stateless bearer-token check: payload integrity + expiry + network match. */
+export function isValidAdminSession(token: string, network: Network): boolean {
   const dot = token.indexOf('.');
   if (dot < 0) return false;
   const payload = Buffer.from(token.slice(0, dot), 'base64url').toString();
-  const [, exp] = payload.split(':');
+  const [, tokenNetwork, exp] = payload.split(':');
+  if (tokenNetwork !== network) return false;
   if (!exp || Number(exp) < Date.now()) return false;
   return safeEqual(token.slice(dot + 1), hmac(`token:${payload}`));
 }

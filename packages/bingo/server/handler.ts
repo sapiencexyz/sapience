@@ -110,12 +110,13 @@ async function readJson<T>(req: IncomingMessage): Promise<T> {
   }
 }
 
-function isAdmin(req: IncomingMessage): boolean {
+function isAdmin(req: IncomingMessage, network: Network): boolean {
   const auth = req.headers.authorization ?? '';
-  // SIWE-issued, HMAC-signed session token (the admin UI path).
+  // SIWE-issued, HMAC-signed session token (the admin UI path). Network-scoped:
+  // a token only authorizes the network it was issued for.
   const bearer = auth.startsWith('Bearer ') ? auth.slice(7) : '';
-  if (bearer && isValidAdminSession(bearer)) return true;
-  // Static token fallback (scripts/curl).
+  if (bearer && isValidAdminSession(bearer, network)) return true;
+  // Static token fallback (scripts/curl) — network-agnostic god-token by design.
   const got = Buffer.from(auth);
   const want = Buffer.from(`Bearer ${env.ADMIN_TOKEN}`);
   return got.length === want.length && timingSafeEqual(got, want);
@@ -774,7 +775,7 @@ export async function handleApi(
   }
 
   if (route === 'GET /api/admin/entitlements') {
-    if (!isAdmin(req)) {
+    if (!isAdmin(req, network)) {
       json(res, 401, { error: 'Unauthorized' });
       return true;
     }
@@ -797,7 +798,7 @@ export async function handleApi(
   }
 
   if (route === 'GET /api/admin/sponsorships') {
-    if (!isAdmin(req)) {
+    if (!isAdmin(req, network)) {
       json(res, 401, { error: 'Unauthorized' });
       return true;
     }

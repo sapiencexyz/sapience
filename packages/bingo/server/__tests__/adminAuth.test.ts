@@ -32,12 +32,15 @@ const {
 });
 
 vi.mock('../session.js', () => ({
-  getPublicClient: () => ({ readContract }),
+  getPublicClient: () => ({ readContract, verifySiweMessage: async () => true }),
 }));
 
 vi.mock('../chain.js', () => ({
   sponsorAddress: () => SPONSOR,
 }));
+
+vi.mock('viem/siwe', () => ({ parseSiweMessage: vi.fn() }));
+import { parseSiweMessage } from 'viem/siwe';
 
 vi.mock('../config.js', () => ({
   env: {
@@ -47,7 +50,12 @@ vi.mock('../config.js', () => ({
   },
 }));
 
-import { resolveAdminAddresses } from '../adminAuth.js';
+import {
+  issueNonce,
+  isValidAdminSession,
+  resolveAdminAddresses,
+  siweLogin,
+} from '../adminAuth.js';
 
 describe('resolveAdminAddresses', () => {
   beforeEach(() => {
@@ -96,5 +104,46 @@ describe('resolveAdminAddresses', () => {
         functionName: 'owner',
       }),
     );
+  });
+});
+
+describe('admin session tokens are network-scoped', () => {
+  beforeEach(() => {
+    readContract.mockReset();
+    // Treasury owner() for either receipt; allowlist resolves on both networks.
+    readContract.mockImplementation(
+      async (args: { address: Address; functionName: string }) => {
+        if (args.functionName === 'owner' && args.address !== SPONSOR) {
+          return TREASURY;
+        }
+        if (args.address === SPONSOR && args.functionName === 'budgetManager') {
+          return BUDGET_MANAGER;
+        }
+        if (args.address === SPONSOR && args.functionName === 'owner') {
+          return SPONSOR_OWNER;
+        }
+        throw new Error(`unexpected readContract: ${args.functionName}`);
+      },
+    );
+  });
+
+  async function tokenFor(network: 'staging' | 'main'): Promise<string> {
+    vi.mocked(parseSiweMessage).mockReturnValue({
+      nonce: issueNonce(),
+      address: TREASURY,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
+    const { token } = await siweLogin(network, 'siwe-message', '0xsig');
+    return token;
+  }
+
+  it('accepts a token on the network that issued it', async () => {
+    const token = await tokenFor('staging');
+    expect(isValidAdminSession(token, 'staging')).toBe(true);
+  });
+
+  it('rejects a token replayed against the other network', async () => {
+    const token = await tokenFor('staging');
+    expect(isValidAdminSession(token, 'main')).toBe(false);
   });
 });
