@@ -398,7 +398,10 @@ function PositionRow({
           );
         })()}
       </TableCell>
-      {/* Resolved — when Sapience recorded the on-chain resolution */}
+      {/* Resolved — when Sapience recorded the resolution. Gated on
+          resolution status, not just resolvedAt: a position resolved before
+          resolvedAt was recorded (no backfill) is still resolved, not
+          PENDING. */}
       <TableCell className="whitespace-nowrap">
         {pickConfig?.resolvedAt ? (
           <span className="text-brand-white text-sm">
@@ -406,6 +409,8 @@ function PositionRow({
               addSuffix: true,
             })}
           </span>
+        ) : isResolved ? (
+          <span className="text-muted-foreground text-sm">Resolved</span>
         ) : (
           <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
             PENDING
