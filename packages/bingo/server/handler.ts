@@ -768,7 +768,7 @@ export async function handleApi(
         network,
         body.message,
         body.signature as Hex,
-        req.headers.host,
+        env.ADMIN_DOMAIN || undefined,
       );
       json(res, 200, session);
     } catch (e) {

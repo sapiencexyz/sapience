@@ -55,6 +55,13 @@ export const env = cleanEnv(process.env, {
   /** Comma-separated wallets with view-only admin panel access (no grant
    * signing). Treasury + sponsor budgetManager/owner are always allowed. */
   ADMIN_ADDRESSES: addressListOrEmpty({ default: '' }),
+  /** Expected SIWE message `domain` for admin login — the public origin the
+   *  panel is served from (e.g. bingo.sapience.xyz). Binds the signed message
+   *  to this origin so a message phished on another site isn't replayable.
+   *  Empty (default) skips the check — fine for local dev where the Vite proxy
+   *  splits the browser origin from the API; SET IT IN PROD. chainId is always
+   *  enforced regardless. */
+  ADMIN_DOMAIN: str({ default: '' }),
   /** Optional STAGING pool file override: one pool object or an array of
    *  pools (last = active). Empty (default) = the committed pool.json. The
    *  main network always uses the committed pool.main.json. */

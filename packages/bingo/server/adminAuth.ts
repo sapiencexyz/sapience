@@ -135,9 +135,12 @@ export async function siweLogin(
   network: Network,
   message: string,
   signature: Hex,
-  /** Host this admin endpoint was served on (req.headers.host). The signed
-   *  message's `domain` must equal it — otherwise a message a wallet signs on
-   *  another origin (phishing) is replayable here within the nonce window. */
+  /** Configured public origin of the admin panel (env ADMIN_DOMAIN). The
+   *  signed message's `domain` must equal it — otherwise a message a wallet
+   *  signs on another origin (phishing) is replayable here within the nonce
+   *  window. Undefined (local dev) skips the check; chainId is still enforced.
+   *  NB: must be server-configured, not derived from a client-set Host header,
+   *  which an attacker replaying a phished message could spoof to match. */
   expectedDomain?: string,
 ): Promise<{ token: string; address: Address; expiresAt: number }> {
   const parsed = parseSiweMessage(message);
