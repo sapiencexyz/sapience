@@ -45,9 +45,7 @@ export const NETWORK_CONFIG: Record<Network, NetworkConfig> = {
     receiptContract: '0x67fB8B733Fe4E523d7d491785A86748a4ee9112c',
     logFromBlock: STAGING_LOG_FROM,
     sponsorLogFromBlock: STAGING_LOG_FROM,
-    logFromBlock: 4828264,
     graphqlUrl: 'https://api.staging.sapience.xyz/graphql',
-
   },
   main: {
     chain: etherealChain,
@@ -55,9 +53,7 @@ export const NETWORK_CONFIG: Record<Network, NetworkConfig> = {
     receiptContract: '0xdb89F60983C7f943FD683Da0c3F6418d38e3732d',
     logFromBlock: MAIN_LOG_FROM,
     sponsorLogFromBlock: MAIN_LOG_FROM,
-    logFromBlock: 5041801,
     graphqlUrl: 'https://api.sapience.xyz/graphql',
-
   },
 };
 
