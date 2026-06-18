@@ -493,9 +493,11 @@ export default function CardDetailScreen() {
   // Sponsorship: admin-granted budget funds the card. Only relevant before
   // submit — an already-submitted card funds its lines from the on-chain
   // budget, decided server-side. The price is locked to the sponsored amount.
-  const { status: sponsorStatus, eligible: sponsorEligible } = useSponsorStatus(
-    viewOnly ? undefined : player,
-  );
+  const {
+    status: sponsorStatus,
+    eligible: sponsorEligible,
+    refetch: refetchSponsorStatus,
+  } = useSponsorStatus(viewOnly ? undefined : player);
   const sponsored = sponsorEligible && !submitted;
   const sponsoredPriceWei = sponsorStatus
     ? BigInt(sponsorStatus.sponsoredCardPriceWei)
@@ -622,6 +624,9 @@ export default function CardDetailScreen() {
       }),
     );
     setRefreshKey((k) => k + 1);
+    // Funding sponsored lines spends budget — re-read so the next card's
+    // "remaining" and eligibility reflect what's actually left.
+    refetchSponsorStatus();
   };
 
   // Submit the picks: the backend mints the receipt NFT (locking sides and

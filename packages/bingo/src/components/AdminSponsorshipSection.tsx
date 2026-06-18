@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { onboardingSponsor as sponsorAddresses } from '@sapience/sdk/contracts';
 import { parseAbi, type Address, type Hex } from 'viem';
-import { useReadContract } from 'wagmi';
+import { useReadContract, usePublicClient } from 'wagmi';
 import {
   grantAfterPreview,
   remainingOf,
@@ -94,7 +94,13 @@ export default function AdminSponsorshipSection({
     query: { enabled: !!sponsor },
   });
 
-  const { data: liveBudget, refetch: refetchBudget } = useReadContract({
+  const publicClient = usePublicClient({ chainId: CHAIN_ID });
+
+  const {
+    data: liveBudget,
+    refetch: refetchBudget,
+    isFetching: budgetFetching,
+  } = useReadContract({
     address: sponsor,
     abi: SPONSOR_ABI,
     functionName: 'budgets',
@@ -102,6 +108,11 @@ export default function AdminSponsorshipSection({
     chainId: CHAIN_ID,
     query: { enabled: !!sponsor && !!grantTarget },
   });
+
+  // The budget read for THIS target has resolved — until then `liveBudget` is
+  // either stale (previous target) or undefined, and a {0,0} preview under
+  // absolute-overwrite semantics would invite an accidental clobber.
+  const budgetLoaded = !!grantTarget && liveBudget !== undefined && !budgetFetching;
 
   const currentBudget = useMemo(() => {
     if (!liveBudget) return { allocated: 0n, used: 0n };
@@ -128,9 +139,11 @@ export default function AdminSponsorshipSection({
         ? 'Connected wallet is not budgetManager or sponsor owner'
         : !grantTarget
           ? 'Enter a valid player wallet'
-          : amountParsed.ok === false
-            ? amountParsed.error
-            : null;
+          : !budgetLoaded
+            ? 'Reading current budget…'
+            : amountParsed.ok === false
+              ? amountParsed.error
+              : null;
 
   const submitGrant = async () => {
     if (!sponsor || !grantTarget || amountParsed.ok !== true || grantDisabledReason) {
@@ -139,13 +152,17 @@ export default function AdminSponsorshipSection({
     onGrantError(null);
     setGranting(true);
     try {
-      await writeContractAsync({
+      const hash = await writeContractAsync({
         address: sponsor,
         abi: SPONSOR_ABI,
         chainId: CHAIN_ID,
         functionName: 'setBudget',
         args: [grantTarget, amountParsed.wei],
       });
+      // writeContractAsync resolves when the tx is broadcast, not mined — wait
+      // for the receipt so the refreshed preview/history reflect the new budget
+      // (and a revert surfaces here instead of silently leaving stale data).
+      await publicClient?.waitForTransactionReceipt({ hash });
       await refetchBudget();
       onReload();
     } catch (e) {
@@ -254,7 +271,11 @@ export default function AdminSponsorshipSection({
               up, enter the new total (used stays unchanged).
             </p>
 
-            {grantTarget && (
+            {grantTarget && !budgetLoaded && (
+              <p className="muted small">Reading current budget…</p>
+            )}
+
+            {grantTarget && budgetLoaded && (
               <div className="admin-kv admin-grant-preview">
                 <div>Current</div>
                 <div className="mono small">
@@ -295,13 +316,19 @@ export default function AdminSponsorshipSection({
                 disabled={loading}
                 onClick={onReload}
               >
-                {loading ? 'Refreshing…' : 'Refresh history'}
+                {loading ? 'Refreshing…' : 'Refresh'}
               </button>
             </div>
             {grantDisabledReason && isConnected && (
               <p className="muted small">{grantDisabledReason}</p>
             )}
           </div>
+
+          <h3 className="admin-subhead">Current grants</h3>
+          <p className="muted small">
+            Live on-chain budget state for every granted wallet (not an event
+            log).
+          </p>
 
           {sponsorships.rows.length === 0 && (
             <p className="muted small">No bingo admin grants yet.</p>
