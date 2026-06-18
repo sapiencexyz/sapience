@@ -128,12 +128,8 @@ describe('admin session tokens are network-scoped', () => {
   });
 
   async function tokenFor(network: 'staging' | 'main'): Promise<string> {
-    vi.mocked(parseSiweMessage).mockReturnValue({
-      nonce: issueNonce(),
-      address: TREASURY,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any);
-    const { token } = await siweLogin(network, 'siwe-message', '0xsig');
+    mockParsed(network);
+    const { token } = await siweLogin(network, 'siwe-message', '0xsig', DOMAIN);
     return token;
   }
 
@@ -145,5 +141,65 @@ describe('admin session tokens are network-scoped', () => {
   it('rejects a token replayed against the other network', async () => {
     const token = await tokenFor('staging');
     expect(isValidAdminSession(token, 'main')).toBe(false);
+  });
+});
+
+// The signed SIWE message itself (not just the bearer token) must be bound to
+// this origin + chain, else a message phished on another site/chain is replayable.
+const DOMAIN = 'bingo.example';
+const CHAIN_ID_BY_NETWORK = { staging: 13374202, main: 5064014 } as const;
+
+function mockParsed(
+  network: 'staging' | 'main',
+  overrides: Record<string, unknown> = {},
+): void {
+  vi.mocked(parseSiweMessage).mockReturnValue({
+    nonce: issueNonce(),
+    address: TREASURY,
+    chainId: CHAIN_ID_BY_NETWORK[network],
+    domain: DOMAIN,
+    ...overrides,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any);
+}
+
+describe('SIWE login binds the signed message to origin + chain', () => {
+  beforeEach(() => {
+    readContract.mockReset();
+    readContract.mockImplementation(
+      async (args: { address: Address; functionName: string }) => {
+        if (args.functionName === 'owner' && args.address !== SPONSOR) {
+          return TREASURY;
+        }
+        if (args.address === SPONSOR && args.functionName === 'budgetManager') {
+          return BUDGET_MANAGER;
+        }
+        if (args.address === SPONSOR && args.functionName === 'owner') {
+          return SPONSOR_OWNER;
+        }
+        throw new Error(`unexpected readContract: ${args.functionName}`);
+      },
+    );
+  });
+
+  it('accepts a message matching the serving domain + network chain', async () => {
+    mockParsed('staging');
+    await expect(
+      siweLogin('staging', 'msg', '0xsig', DOMAIN),
+    ).resolves.toMatchObject({ address: TREASURY });
+  });
+
+  it('rejects a message signed for the wrong chainId', async () => {
+    mockParsed('staging', { chainId: CHAIN_ID_BY_NETWORK.main });
+    await expect(siweLogin('staging', 'msg', '0xsig', DOMAIN)).rejects.toThrow(
+      /chain/i,
+    );
+  });
+
+  it('rejects a message whose domain != the serving origin', async () => {
+    mockParsed('staging');
+    await expect(
+      siweLogin('staging', 'msg', '0xsig', 'evil.example'),
+    ).rejects.toThrow(/domain/i);
   });
 });

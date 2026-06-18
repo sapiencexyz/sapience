@@ -764,7 +764,12 @@ export async function handleApi(
       return true;
     }
     try {
-      const session = await siweLogin(network, body.message, body.signature as Hex);
+      const session = await siweLogin(
+        network,
+        body.message,
+        body.signature as Hex,
+        req.headers.host,
+      );
       json(res, 200, session);
     } catch (e) {
       json(res, 401, {

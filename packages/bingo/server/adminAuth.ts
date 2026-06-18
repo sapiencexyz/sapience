@@ -135,12 +135,29 @@ export async function siweLogin(
   network: Network,
   message: string,
   signature: Hex,
+  /** Host this admin endpoint was served on (req.headers.host). The signed
+   *  message's `domain` must equal it — otherwise a message a wallet signs on
+   *  another origin (phishing) is replayable here within the nonce window. */
+  expectedDomain?: string,
 ): Promise<{ token: string; address: Address; expiresAt: number }> {
   const parsed = parseSiweMessage(message);
   if (!parsed.nonce || !verifyNonce(parsed.nonce)) {
     throw new Error('Unknown or expired nonce — fetch /api/admin/nonce first');
   }
   if (!parsed.address) throw new Error('SIWE message missing address');
+
+  // Bind the signed message to THIS chain and origin, not just the bearer
+  // token issued afterwards: the signature itself must not be reusable on
+  // another chain or from another site.
+  const expectedChainId = NETWORK_CONFIG[network].chain.id;
+  if (parsed.chainId !== expectedChainId) {
+    throw new Error(
+      `SIWE chainId mismatch — expected ${expectedChainId} for ${network}`,
+    );
+  }
+  if (expectedDomain && parsed.domain !== expectedDomain) {
+    throw new Error('SIWE domain mismatch — message not signed for this origin');
+  }
 
   const allowed = await resolveAdminAddresses(network);
   const signer = parsed.address.toLowerCase();
@@ -149,10 +166,13 @@ export async function siweLogin(
   }
 
   // verifySiweMessage checks signature (EOA + ERC-1271/6492), expiry,
-  // not-before, and that the embedded fields match the raw message.
+  // not-before, and that the embedded fields match the raw message. Pass
+  // domain + nonce so it also asserts those against the expected values.
   const valid = await getPublicClient(network).verifySiweMessage({
     message,
     signature,
+    nonce: parsed.nonce,
+    ...(expectedDomain ? { domain: expectedDomain } : {}),
   });
   if (!valid) throw new Error('Invalid SIWE signature');
 
