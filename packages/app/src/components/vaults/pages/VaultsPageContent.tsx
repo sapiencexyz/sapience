@@ -201,9 +201,13 @@ const VaultsPageContent = () => {
   });
 
   const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
-  const { data: vaultStats } = useVaultStats(VAULT_ADDRESS);
-  const { data: vaultAccountValue, isLoading: isAnalyticsLoading } =
-    useVaultAccountValue(VAULT_ADDRESS);
+  // `isAnalyticsLoading` tracks the vault-stats query that feeds the PnL chart
+  // and the yield/rewards block — keep it on that source so their loaders match
+  // the data they render. The balance display gates on `vaultAccountValue`
+  // separately via `isBalanceReady` below.
+  const { data: vaultStats, isLoading: isAnalyticsLoading } =
+    useVaultStats(VAULT_ADDRESS);
+  const { data: vaultAccountValue } = useVaultAccountValue(VAULT_ADDRESS);
 
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');

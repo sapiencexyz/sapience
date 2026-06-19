@@ -14,6 +14,7 @@ const {
   mockUseProtocolAnalytics,
   mockRouterReplace,
   mockSearchParamsToString,
+  mockVaultPnlChart,
 } = vi.hoisted(() => ({
   mockUseRestrictedJurisdiction: vi.fn(),
   mockUsePassiveLiquidityVault: vi.fn(),
@@ -23,6 +24,7 @@ const {
   mockUseProtocolAnalytics: vi.fn(),
   mockRouterReplace: vi.fn(),
   mockSearchParamsToString: vi.fn(() => ''),
+  mockVaultPnlChart: vi.fn(),
 }));
 
 // ---------------------------------------------------------------------------
@@ -232,7 +234,10 @@ vi.mock('~/components/shared/Loader', () => {
 });
 
 vi.mock('~/components/vaults/VaultPnlChart', () => {
-  const VaultPnlChart = () => <div />;
+  const VaultPnlChart = (props: { isLoading?: boolean }) => {
+    mockVaultPnlChart(props);
+    return <div />;
+  };
   VaultPnlChart.displayName = 'VaultPnlChart';
   return { __esModule: true, default: VaultPnlChart };
 });
@@ -532,5 +537,28 @@ describe('VaultsPageContent vault balance display', () => {
     expect(screen.queryByText('1,625.00 USDe')).toBeNull();
     expect(screen.queryByTestId('vault-balance-bar')).toBeNull();
     expect(screen.queryByText(/deployed/)).toBeNull();
+  });
+
+  it('drives the PnL chart loader from the vault-stats query, not the account value', () => {
+    // The chart renders `vaultStats`, so its loader must track that query.
+    // The account-value query (which backs the balance number) being settled
+    // must not make the chart claim it has finished loading its own series.
+    mockUseVaultStats.mockReturnValue({ data: undefined, isLoading: true });
+    mockUseVaultAccountValue.mockReturnValue({
+      data: {
+        collateralBalance: '0',
+        deployedCollateral: '0',
+        claimableCollateral: '0',
+        totalValue: '0',
+        timestamp: 1,
+      },
+      isLoading: false,
+    });
+
+    render(<VaultsPageContent />);
+
+    expect(mockVaultPnlChart).toHaveBeenCalledWith(
+      expect.objectContaining({ isLoading: true })
+    );
   });
 });
