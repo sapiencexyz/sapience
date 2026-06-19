@@ -26,9 +26,13 @@ describe('buildGroupEmbed', () => {
         summaries: [{ step: 'relist', metrics: { new: 2 } }],
       },
     ];
-    const embed = buildGroupEmbed('discovery', runs) as Record<string, unknown>;
+    const embed = buildGroupEmbed('discovery', runs, 'production') as Record<
+      string,
+      unknown
+    >;
     expect(embed.title).toBe('✅ Keeper · discovery');
     expect(embed.color).toBe(0x22c55e);
+    expect((embed.footer as { text: string }).text).toBe('env: production');
     const desc = embed.description as string;
     expect(desc).toContain('✅ **generate**');
     expect(desc).toContain('created=4');
@@ -54,11 +58,12 @@ describe('buildGroupEmbed', () => {
       },
       { label: 'settle-pyth', status: 'skipped', durationMs: 0, summaries: [] },
     ];
-    const embed = buildGroupEmbed('settlement', runs) as Record<
+    const embed = buildGroupEmbed('settlement', runs, 'staging') as Record<
       string,
       unknown
     >;
     expect(embed.title).toBe('❌ Keeper · settlement');
+    expect((embed.footer as { text: string }).text).toBe('env: staging');
     expect(embed.color).toBe(0xef4444);
     const desc = embed.description as string;
     expect(desc).toContain('❌ **settle**');
@@ -75,8 +80,11 @@ describe('buildGroupEmbed', () => {
         summaries: [{ step: 'relist', metrics: { new: 0 }, dryRun: true }],
       },
     ];
-    const desc = (buildGroupEmbed('discovery', runs) as { description: string })
-      .description;
+    const desc = (
+      buildGroupEmbed('discovery', runs, 'production') as {
+        description: string;
+      }
+    ).description;
     expect(desc).toContain('_[dry-run]_');
   });
 });
@@ -98,9 +106,13 @@ describe('buildHeartbeatEmbed', () => {
       },
       pol: { address: '0xADMIN', pol: 12.345 },
     };
-    const embed = buildHeartbeatEmbed(report, ok) as Record<string, unknown>;
+    const embed = buildHeartbeatEmbed(report, ok, 'production') as Record<
+      string,
+      unknown
+    >;
     expect(embed.title).toBe('💓 Keeper heartbeat');
     expect(embed.color).toBe(0x3b82f6);
+    expect((embed.footer as { text: string }).text).toBe('env: production');
     const fields = embed.fields as Array<{ name: string; value: string }>;
     expect(fields[0].value).toContain('$50.00 remaining');
     expect(fields[0].value).toContain('~$7.11/day');
@@ -118,7 +130,10 @@ describe('buildHeartbeatEmbed', () => {
       polLow: true,
       anyLow: true,
     };
-    const embed = buildHeartbeatEmbed(report, cls) as Record<string, unknown>;
+    const embed = buildHeartbeatEmbed(report, cls, 'production') as Record<
+      string,
+      unknown
+    >;
     expect(embed.title).toBe('⚠️ Keeper balances LOW');
     expect(embed.color).toBe(0xf59e0b);
     const fields = embed.fields as Array<{ name: string; value: string }>;
@@ -131,7 +146,10 @@ describe('buildHeartbeatEmbed', () => {
       openrouterError: 'HTTP 401',
       polError: 'rpc down',
     };
-    const embed = buildHeartbeatEmbed(report, ok) as Record<string, unknown>;
+    const embed = buildHeartbeatEmbed(report, ok, 'production') as Record<
+      string,
+      unknown
+    >;
     expect(embed.color).toBe(0xef4444);
     const fields = embed.fields as Array<{ value: string }>;
     expect(fields[0].value).toContain('HTTP 401');

@@ -9,7 +9,7 @@
  */
 import { readStepSummaries } from './summary';
 import { buildGroupEmbed } from './embeds';
-import { postKeeperEmbeds } from './discord';
+import { postKeeperEmbeds, keeperEnv } from './discord';
 import type { StepRun } from './types';
 
 export { readStepSummaries };
@@ -26,6 +26,6 @@ export async function postGroupReport(input: {
 }): Promise<void> {
   const failed = input.runs.some((r) => r.status === 'failed');
   if (!failed && process.env.KEEPER_SUMMARY_ON_FAILURE_ONLY === '1') return;
-  const embed = buildGroupEmbed(input.group, input.runs);
+  const embed = buildGroupEmbed(input.group, input.runs, keeperEnv());
   await postKeeperEmbeds([embed]);
 }

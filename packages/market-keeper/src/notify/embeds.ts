@@ -46,7 +46,11 @@ function formatMetrics(summaries: StepSummary[]): string {
 }
 
 /** Build a single embed summarizing one cron group's run. */
-export function buildGroupEmbed(group: string, runs: StepRun[]): object {
+export function buildGroupEmbed(
+  group: string,
+  runs: StepRun[],
+  env: string
+): object {
   const failed = runs.some((r) => r.status === 'failed');
 
   const lines = runs.map((r) => {
@@ -64,6 +68,7 @@ export function buildGroupEmbed(group: string, runs: StepRun[]): object {
     title: `${failed ? '❌' : '✅'} Keeper · ${group}`,
     color: failed ? COLOR_FAIL : COLOR_OK,
     description: lines.join('\n') || '_no steps_',
+    footer: { text: `env: ${env}` },
     timestamp: new Date().toISOString(),
   };
 }
@@ -71,7 +76,8 @@ export function buildGroupEmbed(group: string, runs: StepRun[]): object {
 /** Build the balance heartbeat embed (also serves as the low-balance alert). */
 export function buildHeartbeatEmbed(
   report: BalanceReport,
-  cls: BalanceClassification
+  cls: BalanceClassification,
+  env: string
 ): object {
   const fields: Array<{ name: string; value: string; inline: boolean }> = [];
 
@@ -112,6 +118,7 @@ export function buildHeartbeatEmbed(
     title: cls.anyLow ? '⚠️ Keeper balances LOW' : '💓 Keeper heartbeat',
     color: cls.anyLow ? COLOR_WARN : anyError ? COLOR_FAIL : COLOR_INFO,
     fields,
+    footer: { text: `env: ${env}` },
     timestamp: new Date().toISOString(),
   };
 }
