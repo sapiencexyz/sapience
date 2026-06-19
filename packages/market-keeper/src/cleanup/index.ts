@@ -20,6 +20,7 @@ import {
 } from '../polygon/client';
 import { batchCheckGammaResolution } from '../polymarket-api';
 import { validatePrivateKey, confirmProductionAccess, log } from '../utils';
+import { emitStepSummary } from '../notify/summary';
 import {
   fetchNoEngagementConditions,
   privateConditions,
@@ -284,4 +285,16 @@ export async function main(): Promise<void> {
   log(`Skipped (active on Gamma):   ${results.skippedActive}`);
   log(`Skipped (not resolved):      ${results.skippedUnresolved}`);
   log(`Errors:                      ${results.errors}`);
+
+  emitStepSummary({
+    step: 'cleanup-polymarket',
+    dryRun: options.dryRun,
+    metrics: {
+      total: results.total,
+      resolved: results.resolved,
+      privated: results.privated,
+      skipped: results.skippedActive + results.skippedUnresolved,
+      errors: results.errors,
+    },
+  });
 }

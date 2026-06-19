@@ -21,6 +21,7 @@ import {
 import { parseYesPrice } from '../utils/price';
 import { submitPriceUpdates, submitVolumeUpdates } from '../generate/api';
 import { fetchActiveConditionIds } from '../sapience/active-conditions';
+import { emitStepSummary } from '../notify/summary';
 
 // ============ CLI Arguments ============
 
@@ -219,6 +220,15 @@ export async function main() {
         }
       }
       log('\n========== END DRY RUN ==========\n');
+      emitStepSummary({
+        step: 'prices-and-1d-7d-volume',
+        dryRun: true,
+        metrics: {
+          scanned: conditionIds.length,
+          priceUpdates: priceUpdates.length,
+          volumeUpdates: volumeUpdates.length,
+        },
+      });
       return;
     }
 
@@ -230,6 +240,15 @@ export async function main() {
         await submitVolumeUpdates(apiUrl, privateKey, volumeUpdates);
       }
     }
+
+    emitStepSummary({
+      step: 'prices-and-1d-7d-volume',
+      metrics: {
+        scanned: conditionIds.length,
+        priceUpdates: priceUpdates.length,
+        volumeUpdates: volumeUpdates.length,
+      },
+    });
   } catch (error) {
     logError('Error:', error);
     process.exit(1);
