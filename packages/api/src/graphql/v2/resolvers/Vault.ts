@@ -181,10 +181,6 @@ export const Vault: VaultResolvers = {
 
   statsHistory: async (parent, args) => {
     const row = parent as unknown as VaultRow;
-    const first = clampTake(args.first ?? 30, {
-      defaultTake: 30,
-      maxTake: 365,
-    });
     const after = args.after ? decodeCursor(args.after) : null;
     const skip = after && /^\d+$/.test(after.k) ? Number(after.k) + 1 : 0;
 
@@ -249,6 +245,14 @@ export const Vault: VaultResolvers = {
       (a, b) => a.timestamp - b.timestamp
     );
     const totalCount = deduped.length;
+    // No `first` => return the whole bounded daily series in one page (mirrors
+    // Account.statsHistory), so the SDK loads the chart in a single request
+    // instead of a chain of sequential paginated round-trips. An explicit
+    // `first` still pages and is capped (also by the global list-size limit).
+    const first =
+      args.first == null
+        ? totalCount
+        : clampTake(args.first, { defaultTake: 30, maxTake: 365 });
     const pageRows = deduped.slice(skip, skip + first + 1);
 
     return buildConnection({

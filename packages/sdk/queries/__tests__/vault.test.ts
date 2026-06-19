@@ -25,14 +25,8 @@ const node = (timestamp: number, overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
-const responseWith = (
-  nodes: ReturnType<typeof node>[],
-  pageInfo: { hasNextPage: boolean; endCursor: string | null } = {
-    hasNextPage: false,
-    endCursor: null,
-  }
-) => ({
-  vault: { statsHistory: { nodes, pageInfo } },
+const responseWith = (nodes: ReturnType<typeof node>[]) => ({
+  vault: { statsHistory: { nodes } },
 });
 
 describe('GET_VAULT_STATS document', () => {
@@ -40,11 +34,12 @@ describe('GET_VAULT_STATS document', () => {
     expect(GET_VAULT_STATS).toContain(
       'vault(address: $address, chainId: $chainId)'
     );
-    expect(GET_VAULT_STATS).toContain(
-      'statsHistory(first: $first, after: $after)'
-    );
-    expect(GET_VAULT_STATS).toContain('hasNextPage');
-    expect(GET_VAULT_STATS).toContain('endCursor');
+    // No explicit `first`: a literal above GRAPHQL_MAX_LIST_SIZE (100) is
+    // rejected pre-execution with PAGINATION_LIMIT_EXCEEDED, so we rely on the
+    // resolver returning the full bounded series in one page (mirrors
+    // GET_VAULT_ACCOUNT_VALUE). The series fits one request, so we don't page.
+    expect(GET_VAULT_STATS).toContain('statsHistory {');
+    expect(GET_VAULT_STATS).not.toContain('first:');
     expect(GET_VAULT_STATS).toContain('timestamp');
     expect(GET_VAULT_STATS).toContain('balance');
     expect(GET_VAULT_STATS).toContain('deployedCollateral');
@@ -59,40 +54,26 @@ describe('GET_VAULT_STATS document', () => {
 });
 
 describe('fetchVaultStats', () => {
-  test('passes the address (lowercased), chainId and first page args', async () => {
+  test('fetches the whole series in a single request (address lowercased)', async () => {
     mockGraphqlRequestV2.mockResolvedValue(responseWith([node(1700000100)]));
     await fetchVaultStats('0xABCDEF', 42161);
+    expect(mockGraphqlRequestV2).toHaveBeenCalledTimes(1);
     expect(mockGraphqlRequestV2).toHaveBeenCalledWith(GET_VAULT_STATS, {
       address: '0xabcdef',
       chainId: 42161,
-      first: 100,
-      after: null,
     });
   });
 
-  test('pages through statsHistory until the connection is exhausted', async () => {
-    mockGraphqlRequestV2
-      .mockResolvedValueOnce(
-        responseWith([node(1700000300), node(1700000200)], {
-          hasNextPage: true,
-          endCursor: 'cursor-1',
-        })
-      )
-      .mockResolvedValueOnce(
-        responseWith([node(1700000100)], {
-          hasNextPage: false,
-          endCursor: null,
-        })
-      );
+  test('does not paginate — one request returns the full bounded series', async () => {
+    mockGraphqlRequestV2.mockResolvedValue(
+      responseWith([node(1700000300), node(1700000200), node(1700000100)])
+    );
 
     const result = await fetchVaultStats('0xabc', 42161);
 
-    expect(mockGraphqlRequestV2).toHaveBeenCalledTimes(2);
-    // Second page threads the first page's endCursor as `after`.
-    expect(mockGraphqlRequestV2.mock.calls[1][1]).toMatchObject({
-      after: 'cursor-1',
-    });
-    // All three snapshots accumulated, sorted oldest-first.
+    // Single round-trip: the resolver hands back the entire daily series.
+    expect(mockGraphqlRequestV2).toHaveBeenCalledTimes(1);
+    // All snapshots accumulated, sorted oldest-first.
     expect(result.map((s) => s.timestamp)).toEqual([
       1700000100, 1700000200, 1700000300,
     ]);

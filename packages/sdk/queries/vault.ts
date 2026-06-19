@@ -24,22 +24,17 @@ export interface VaultStat {
 }
 
 // `statsHistory` returns ascending (oldest-first) timestamps; the final
-// `.sort()` below is a defensive no-op that also keeps the merged multi-page
-// result ordered.
+// `.sort()` below is a defensive no-op that keeps the result ordered.
 //
-// The resolver caps `first` per page (daily snapshots, bounded series), so we
-// page on `pageInfo` until exhausted rather than over-fetching a single page —
-// otherwise a vault older than the cap would silently lose the earliest chart
-// history.
+// No explicit `first`: a literal above GRAPHQL_MAX_LIST_SIZE (100) is rejected
+// pre-execution with PAGINATION_LIMIT_EXCEEDED, so we omit it and rely on the
+// resolver returning the full bounded daily series in a single page (mirrors
+// GET_VAULT_ACCOUNT_VALUE). The series fits one request, so we never page —
+// avoiding a per-vault chain of sequential round-trips on chart load.
 export const GET_VAULT_STATS = /* GraphQL */ `
-  query VaultStats(
-    $address: Address!
-    $chainId: Int
-    $first: Int!
-    $after: String
-  ) {
+  query VaultStats($address: Address!, $chainId: Int) {
     vault(address: $address, chainId: $chainId) {
-      statsHistory(first: $first, after: $after) {
+      statsHistory {
         nodes {
           timestamp
           balance
@@ -47,10 +42,6 @@ export const GET_VAULT_STATS = /* GraphQL */ `
           undeployedCollateral
           cumulativePnl
           claimableCollateral
-        }
-        pageInfo {
-          hasNextPage
-          endCursor
         }
       }
     }
@@ -70,7 +61,6 @@ type VaultStatsResponse = {
   vault: {
     statsHistory: {
       nodes: WireVaultStat[];
-      pageInfo: { hasNextPage: boolean; endCursor: string | null };
     };
   } | null;
 };
@@ -91,40 +81,26 @@ function toVaultStat(node: WireVaultStat): VaultStat {
 }
 
 /**
- * Fetch a vault's full snapshot series, oldest-first. Pages through
- * `statsHistory` until the connection is exhausted (the resolver caps page
- * size), so the chart gets the complete history regardless of vault age.
+ * Fetch a vault's full snapshot series, oldest-first, in a single request.
+ * The resolver returns the complete bounded daily series when `first` is
+ * omitted (mirrors `fetchVaultAccountValue`), so the chart loads without the
+ * per-vault chain of sequential paginated round-trips it used to make.
  * Returns an empty array when the address is not a configured vault (the v2
  * `vault` field resolves null).
  */
 export async function fetchVaultStats(
   address: string,
-  chainId?: number,
-  // Must stay <= the API's GRAPHQL_MAX_LIST_SIZE (100); a larger `first` is
-  // rejected pre-execution with PAGINATION_LIMIT_EXCEEDED. The loop below pages
-  // on `pageInfo`, so a 100-row page still yields the full series.
-  pageSize = 100
+  chainId?: number
 ): Promise<VaultStat[]> {
-  const nodes: WireVaultStat[] = [];
-  let after: string | null = null;
-  // Bound the loop defensively against a non-progressing cursor; a daily
-  // series can't realistically exceed a few thousand snapshots.
-  for (let page = 0; page < 50; page += 1) {
-    const data: VaultStatsResponse = await graphqlRequestV2<VaultStatsResponse>(
-      GET_VAULT_STATS,
-      {
-        address: address.toLowerCase(),
-        chainId,
-        first: pageSize,
-        after,
-      }
-    );
-    const history = data?.vault?.statsHistory;
-    if (!history || !Array.isArray(history.nodes)) break;
-    nodes.push(...history.nodes);
-    if (!history.pageInfo?.hasNextPage || !history.pageInfo.endCursor) break;
-    after = history.pageInfo.endCursor;
-  }
+  const data: VaultStatsResponse = await graphqlRequestV2<VaultStatsResponse>(
+    GET_VAULT_STATS,
+    {
+      address: address.toLowerCase(),
+      chainId,
+    }
+  );
+  const nodes = data?.vault?.statsHistory?.nodes;
+  if (!Array.isArray(nodes)) return [];
   return nodes.map(toVaultStat).sort((a, b) => a.timestamp - b.timestamp);
 }
 
