@@ -79,18 +79,25 @@ const PROTOCOL_STAT_FIELDS = /* GraphQL */ `
 // `Protocol.statsHistory` exposes no orderBy argument — the connection is
 // defined oldest-first in the SDL; the mapper still sorts defensively.
 //
-// `statsHistory` pages on `pageInfo`: `first` must stay <= the API's
-// GRAPHQL_MAX_LIST_SIZE (100) or the request is rejected pre-execution with
-// PAGINATION_LIMIT_EXCEEDED. The first page is fetched alongside the singular
-// stats/open-interest fields; `GET_PROTOCOL_STATS_HISTORY_PAGE` fetches the
-// remaining history pages on their own.
+// We request `interval: DAY` so the server downsamples the (sub-daily, ~4-hourly
+// in prod) snapshot series to one node per day — exactly what the charts render
+// — instead of returning thousands of raw rows. `first` is left null so the
+// server returns the whole bucketed series in one page (it ignores the
+// GRAPHQL_MAX_LIST_SIZE 100 cap only because no explicit `first` value is sent);
+// the daily series fits comfortably under the resolver's internal page cap.
+// `GET_PROTOCOL_STATS_HISTORY_PAGE` remains as a forward-pagination safety net
+// for the rare case the series ever exceeds one page.
 export const GET_PROTOCOL_ANALYTICS = /* GraphQL */ `
-  query ProtocolAnalytics($first: Int!, $after: String) {
+  query ProtocolAnalytics(
+    $interval: TimeInterval
+    $first: Int
+    $after: String
+  ) {
     protocol {
       stats {
         ...ProtocolStatFields
       }
-      statsHistory(first: $first, after: $after) {
+      statsHistory(interval: $interval, first: $first, after: $after) {
         nodes {
           ...ProtocolStatFields
         }
@@ -119,9 +126,13 @@ export const GET_PROTOCOL_ANALYTICS = /* GraphQL */ `
 `;
 
 export const GET_PROTOCOL_STATS_HISTORY_PAGE = /* GraphQL */ `
-  query ProtocolStatsHistoryPage($first: Int!, $after: String) {
+  query ProtocolStatsHistoryPage(
+    $interval: TimeInterval
+    $first: Int
+    $after: String
+  ) {
     protocol {
-      statsHistory(first: $first, after: $after) {
+      statsHistory(interval: $interval, first: $first, after: $after) {
         nodes {
           ...ProtocolStatFields
         }
@@ -228,16 +239,20 @@ function toProtocolAnalytics(
   };
 }
 
-// Snapshot pages are capped at the API's GRAPHQL_MAX_LIST_SIZE (100). The
-// daily series is bounded, so a handful of pages covers all history; MAX_PAGES
-// guards against a non-progressing cursor.
-const HISTORY_PAGE_SIZE = 100;
+// Daily bucketing keeps the series to ~one node per day, so the whole history
+// comes back in the first page. `first: null` lets the server return the full
+// bucketed series without tripping the GRAPHQL_MAX_LIST_SIZE (100) pre-execution
+// cap (which only inspects explicit `first` values). The pagination loop below
+// is a safety net — normally it never iterates — with MAX_PAGES guarding against
+// a non-progressing cursor.
+const HISTORY_INTERVAL = 'DAY';
+const HISTORY_PAGE_SIZE = null;
 const MAX_HISTORY_PAGES = 50;
 
 export async function fetchProtocolAnalytics(): Promise<ProtocolAnalytics> {
   const data = await graphqlRequestV2<ProtocolAnalyticsV2Response>(
     GET_PROTOCOL_ANALYTICS,
-    { first: HISTORY_PAGE_SIZE, after: null }
+    { interval: HISTORY_INTERVAL, first: HISTORY_PAGE_SIZE, after: null }
   );
 
   const historyNodes: WireStat[] = [
@@ -250,6 +265,7 @@ export async function fetchProtocolAnalytics(): Promise<ProtocolAnalytics> {
     const next = await graphqlRequestV2<{
       protocol: { statsHistory: StatsHistoryPage } | null;
     }>(GET_PROTOCOL_STATS_HISTORY_PAGE, {
+      interval: HISTORY_INTERVAL,
       first: HISTORY_PAGE_SIZE,
       after: pageInfo.endCursor,
     });
