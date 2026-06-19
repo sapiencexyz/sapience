@@ -20,7 +20,7 @@ import {
   classifyBalances,
 } from '../src/notify/balances.js';
 import { buildHeartbeatEmbed } from '../src/notify/embeds.js';
-import { postKeeperEmbeds } from '../src/notify/discord.js';
+import { postKeeperEmbeds, keeperEnv } from '../src/notify/discord.js';
 import { log, logError, logSeparator } from '../src/utils/log.js';
 import type { BalanceReport } from '../src/notify/types.js';
 
@@ -96,7 +96,7 @@ async function main(): Promise<void> {
     );
   }
 
-  await postKeeperEmbeds([buildHeartbeatEmbed(report, cls)]);
+  await postKeeperEmbeds([buildHeartbeatEmbed(report, cls, keeperEnv())]);
 }
 
 logSeparator('keeper-status', 'START');

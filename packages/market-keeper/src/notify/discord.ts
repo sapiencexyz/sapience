@@ -11,6 +11,15 @@ import { log, logError } from '../utils/log';
 const WEBHOOK_PREFIX = 'https://discord.com/api/webhooks/';
 const TIMEOUT_MS = 5_000;
 
+/**
+ * Environment label stamped on every alert so prod/staging/dev alerts are
+ * distinguishable in a shared channel. Defaults to 'development' (Node's
+ * convention for an unset NODE_ENV).
+ */
+export function keeperEnv(): string {
+  return process.env.NODE_ENV || 'development';
+}
+
 /** Resolve + validate the configured webhook URL, or null when unusable. */
 export function getKeeperWebhook(): string | null {
   const url = (process.env.DISCORD_KEEPER_WEBHOOK || '').trim();
