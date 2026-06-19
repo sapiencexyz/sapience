@@ -141,13 +141,19 @@ export interface VaultAccountValue {
   timestamp: number | null;
 }
 
+// `statsHistory` is intentionally called without `first`: the API's
+// pre-execution validation rejects any literal `first` above
+// GRAPHQL_MAX_LIST_SIZE (100) with PAGINATION_LIMIT_EXCEEDED, and the daily
+// series needs the full rolling-year window. With no `first` the resolver
+// defaults to its MAX_STATS_POINTS (366) cap — the whole [now-365d, now] grid,
+// oldest-first — so `.at(-1)` is always the latest (today's) bucket.
 export const GET_VAULT_ACCOUNT_VALUE = /* GraphQL */ `
   query VaultAccountValue($address: Address!, $chainId: Int) {
     account(address: $address, chainId: $chainId) {
       collateralBalance {
         amount
       }
-      statsHistory(interval: DAY, first: 366) {
+      statsHistory(interval: DAY) {
         nodes {
           timestamp
           deployedCollateral

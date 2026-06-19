@@ -130,10 +130,10 @@ export const activity: NonNullable<QueryResolvers['activity']> = async (
     });
   }
 
-  if (args.filter?.pickConfigId)
-    predictionClauses.push({
-      pickConfigId: args.filter.pickConfigId.toLowerCase(),
-    });
+  // A single pickConfigId constraint. When `conditionIds` resolved a set of
+  // pick configs, that set already narrows to (and intersects with) any
+  // explicit `pickConfigId`, so emit only the intersection — pushing the
+  // standalone clause too would just duplicate it inside the AND.
   if (conditionPickConfigIds) {
     const ids = args.filter?.pickConfigId
       ? conditionPickConfigIds.filter(
@@ -142,6 +142,10 @@ export const activity: NonNullable<QueryResolvers['activity']> = async (
       : conditionPickConfigIds;
     predictionClauses.push({
       pickConfigId: ids.length === 1 ? ids[0] : { in: ids },
+    });
+  } else if (args.filter?.pickConfigId) {
+    predictionClauses.push({
+      pickConfigId: args.filter.pickConfigId.toLowerCase(),
     });
   }
   if (args.filter?.timestamp) {

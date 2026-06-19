@@ -166,9 +166,11 @@ describe('GET_VAULT_ACCOUNT_VALUE document', () => {
     );
     expect(GET_VAULT_ACCOUNT_VALUE).toContain('collateralBalance');
     expect(GET_VAULT_ACCOUNT_VALUE).toContain('amount');
-    expect(GET_VAULT_ACCOUNT_VALUE).toContain(
-      'statsHistory(interval: DAY, first: 366)'
-    );
+    expect(GET_VAULT_ACCOUNT_VALUE).toContain('statsHistory(interval: DAY)');
+    // No explicit `first`: a literal above GRAPHQL_MAX_LIST_SIZE (100) is
+    // rejected pre-execution with PAGINATION_LIMIT_EXCEEDED, so we rely on the
+    // resolver's MAX_STATS_POINTS default for the full rolling-year window.
+    expect(GET_VAULT_ACCOUNT_VALUE).not.toContain('first:');
     expect(GET_VAULT_ACCOUNT_VALUE).toContain('deployedCollateral');
     expect(GET_VAULT_ACCOUNT_VALUE).toContain('claimableCollateral');
   });

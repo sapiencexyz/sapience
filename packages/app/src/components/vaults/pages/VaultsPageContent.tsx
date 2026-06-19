@@ -406,7 +406,11 @@ const VaultsPageContent = () => {
               !!(pendingRequest && !pendingRequest.processed) ||
               isPermitLoading ||
               isRestricted ||
-              (!!depositAmount && exceedsVaultCapacity) ||
+              // Block deposits until the indexed AUM has loaded: while it is
+              // still loading `tvlWei` reads 0, so `exceedsVaultCapacity`
+              // understates the true total and a near-cap vault could let an
+              // over-cap deposit through the client check.
+              (!!depositAmount && (!isBalanceReady || exceedsVaultCapacity)) ||
               (isConnected && !isWhitelisted)
             }
             onClick={async () => {
