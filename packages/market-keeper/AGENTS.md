@@ -64,6 +64,7 @@ All notification logic lives in `src/notify/` (compiled to dist); the source-JS 
 - `OPENROUTER_MIN_CREDITS` - LOW-alert threshold for OpenRouter USD credits (default 10)
 - `ADMIN_MIN_POL` - LOW-alert threshold for admin wallet POL (default 5)
 - `KEEPER_SUMMARY_ON_FAILURE_ONLY` - set to `1` to only post run summaries on failure
+- `KEEPER_ENV` - optional alert environment label; falls back to `RAILWAY_ENVIRONMENT_NAME`, then `NODE_ENV`, then `development` (NODE_ENV is `production` on both staging and prod, so it can't distinguish them)
 
 ## Production Safety
 
