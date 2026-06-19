@@ -127,3 +127,79 @@ export async function fetchVaultStats(
   }
   return nodes.map(toVaultStat).sort((a, b) => a.timestamp - b.timestamp);
 }
+
+export interface VaultAccountValue {
+  /** Current indexed wUSDe balance held by the vault wallet, wei. */
+  collateralBalance: string;
+  /** Collateral deployed into open positions by the vault account, wei. */
+  deployedCollateral: string;
+  /** Settled/won collateral owed to the vault account but not redeemed, wei. */
+  claimableCollateral: string;
+  /** Sum of collateralBalance + deployedCollateral + claimableCollateral, wei. */
+  totalValue: string;
+  /** Latest account stats bucket timestamp, epoch seconds. */
+  timestamp: number | null;
+}
+
+export const GET_VAULT_ACCOUNT_VALUE = /* GraphQL */ `
+  query VaultAccountValue($address: Address!, $chainId: Int) {
+    account(address: $address, chainId: $chainId) {
+      collateralBalance {
+        amount
+      }
+      statsHistory(interval: DAY, first: 366) {
+        nodes {
+          timestamp
+          deployedCollateral
+          claimableCollateral
+        }
+      }
+    }
+  }
+`;
+
+type WireVaultAccountStat = {
+  timestamp: number;
+  deployedCollateral: string | number;
+  claimableCollateral: string | number;
+};
+
+type VaultAccountValueResponse = {
+  account: {
+    collateralBalance: { amount: string | number };
+    statsHistory: { nodes: WireVaultAccountStat[] };
+  };
+};
+
+export async function fetchVaultAccountValue(
+  address: string,
+  chainId?: number
+): Promise<VaultAccountValue> {
+  const data = await graphqlRequestV2<VaultAccountValueResponse>(
+    GET_VAULT_ACCOUNT_VALUE,
+    {
+      address: address.toLowerCase(),
+      chainId,
+    }
+  );
+  const latestStat = data.account.statsHistory.nodes.at(-1);
+  const collateralBalance = BigInt(wei(data.account.collateralBalance.amount));
+  const deployedCollateral = latestStat?.deployedCollateral
+    ? BigInt(wei(latestStat.deployedCollateral))
+    : 0n;
+  const claimableCollateral = latestStat?.claimableCollateral
+    ? BigInt(wei(latestStat.claimableCollateral))
+    : 0n;
+
+  return {
+    collateralBalance: collateralBalance.toString(),
+    deployedCollateral: deployedCollateral.toString(),
+    claimableCollateral: claimableCollateral.toString(),
+    totalValue: (
+      collateralBalance +
+      deployedCollateral +
+      claimableCollateral
+    ).toString(),
+    timestamp: latestStat?.timestamp ?? null,
+  };
+}

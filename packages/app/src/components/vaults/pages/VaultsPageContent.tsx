@@ -34,6 +34,7 @@ import RestrictedJurisdictionBanner from '~/components/shared/RestrictedJurisdic
 import {
   useVaultStats,
   useProtocolAnalytics,
+  useVaultAccountValue,
 } from '~/hooks/graphql/useAnalytics';
 import RiskDisclaimer from '~/components/markets/forms/shared/RiskDisclaimer';
 import Loader from '~/components/shared/Loader';
@@ -200,8 +201,9 @@ const VaultsPageContent = () => {
   });
 
   const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
-  const { data: vaultStats, isLoading: isAnalyticsLoading } =
-    useVaultStats(VAULT_ADDRESS);
+  const { data: vaultStats } = useVaultStats(VAULT_ADDRESS);
+  const { data: vaultAccountValue, isLoading: isAnalyticsLoading } =
+    useVaultAccountValue(VAULT_ADDRESS);
 
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
@@ -575,23 +577,19 @@ const VaultsPageContent = () => {
     </Tabs>
   );
 
-  const liquidWei = vaultData?.totalLiquidValue ?? 0n;
+  const deployedWei = vaultAccountValue?.deployedCollateral
+    ? BigInt(vaultAccountValue.deployedCollateral)
+    : 0n;
 
-  const deployedWei = useMemo(() => {
-    const lastStat = vaultStats?.[vaultStats.length - 1];
-    return lastStat?.deployedCollateral
-      ? BigInt(lastStat.deployedCollateral)
-      : 0n;
-  }, [vaultStats]);
+  // Vault AUM is computed from one indexed account view: current wallet
+  // collateral balance + collateral deployed in open positions + settled/won
+  // collateral owed but not yet claimed. Keeping all three terms on the same
+  // freshness boundary avoids the old live-contract + cached-snapshot drift.
+  const tvlWei = vaultAccountValue?.totalValue
+    ? BigInt(vaultAccountValue.totalValue)
+    : 0n;
 
-  // Vault AUM = liquid USDe in the vault + collateral deployed in open positions.
-  // getTotalLiquidValue() on the contract intentionally excludes position tokens,
-  // so we add the deployed cost basis back here to show true total.
-  const tvlWei = liquidWei + deployedWei;
-
-  // The two terms come from different sources (on-chain read vs GraphQL);
-  // until both have loaded, the sum is a misleading partial figure.
-  const isBalanceReady = !!vaultData && !!vaultStats;
+  const isBalanceReady = !!vaultAccountValue;
 
   const utilizationPercent = useMemo(() => {
     if (tvlWei <= 0n) return 0;

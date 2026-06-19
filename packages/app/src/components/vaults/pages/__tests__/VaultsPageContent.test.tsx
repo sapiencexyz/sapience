@@ -10,6 +10,7 @@ const {
   mockUsePassiveLiquidityVault,
   mockUseCurrentAddress,
   mockUseVaultStats,
+  mockUseVaultAccountValue,
   mockUseProtocolAnalytics,
   mockRouterReplace,
   mockSearchParamsToString,
@@ -18,6 +19,7 @@ const {
   mockUsePassiveLiquidityVault: vi.fn(),
   mockUseCurrentAddress: vi.fn(),
   mockUseVaultStats: vi.fn(),
+  mockUseVaultAccountValue: vi.fn(),
   mockUseProtocolAnalytics: vi.fn(),
   mockRouterReplace: vi.fn(),
   mockSearchParamsToString: vi.fn(() => ''),
@@ -44,6 +46,8 @@ vi.mock('~/hooks/graphql/useAnalytics', () => ({
   useVaultStats: (vaultAddress: string | undefined) =>
     mockUseVaultStats(vaultAddress),
   useProtocolAnalytics: () => mockUseProtocolAnalytics(),
+  useVaultAccountValue: (vaultAddress: string | undefined) =>
+    mockUseVaultAccountValue(vaultAddress),
 }));
 
 vi.mock('~/lib/context/ConnectDialogContext', () => ({
@@ -283,6 +287,17 @@ function setDefaults() {
     isLoading: false,
   });
 
+  mockUseVaultAccountValue.mockReturnValue({
+    data: {
+      collateralBalance: (1000n * 10n ** 18n).toString(),
+      deployedCollateral: '0',
+      claimableCollateral: '0',
+      totalValue: (1000n * 10n ** 18n).toString(),
+      timestamp: 1,
+    },
+    isLoading: false,
+  });
+
   mockUseProtocolAnalytics.mockReturnValue({
     data: { stats: { totalValueLocked: '0' } },
     isLoading: false,
@@ -458,7 +473,17 @@ describe('VaultsPageContent vault balance display', () => {
       permitData: { permitted: true },
       permitError: null,
     });
-    // Liquid (on-chain) = 1,000; deployed (GraphQL) = 500 -> balance 1,500.
+    // Indexed collateral balance = 1,000; deployed = 500; claimable = 125 -> balance 1,625.
+    mockUseVaultAccountValue.mockReturnValue({
+      data: {
+        collateralBalance: (1000n * 10n ** 18n).toString(),
+        deployedCollateral: (500n * 10n ** 18n).toString(),
+        claimableCollateral: (125n * 10n ** 18n).toString(),
+        totalValue: (1625n * 10n ** 18n).toString(),
+        timestamp: 1,
+      },
+      isLoading: false,
+    });
     mockUseVaultStats.mockReturnValue({
       data: [{ deployedCollateral: (500n * 10n ** 18n).toString() }],
       isLoading: false,
@@ -468,7 +493,7 @@ describe('VaultsPageContent vault balance display', () => {
   it('renders the balance and progress bar once both sources have loaded', () => {
     render(<VaultsPageContent />);
 
-    expect(screen.getByText('1,500.00 USDe')).toBeInTheDocument();
+    expect(screen.getByText('1,625.00 USDe')).toBeInTheDocument();
     expect(screen.getByTestId('vault-balance-bar')).toBeInTheDocument();
     expect(screen.getByText(/deployed/)).toBeInTheDocument();
   });
@@ -477,39 +502,34 @@ describe('VaultsPageContent vault balance display', () => {
     render(<VaultsPageContent />);
 
     const fadeIn = 'animate-in fade-in duration-200';
-    expect(screen.getByText('1,500.00 USDe').className).toContain(fadeIn);
+    expect(screen.getByText('1,625.00 USDe').className).toContain(fadeIn);
     expect(
       screen.getByTestId('vault-balance-bar').parentElement?.className
     ).toContain(fadeIn);
     expect(screen.getByText(/deployed/).className).toContain(fadeIn);
   });
 
-  it('hides the balance number and progress bar until the on-chain read has loaded', () => {
+  it('uses the indexed account value rather than the live on-chain liquid read', () => {
     mockUsePassiveLiquidityVault.mockReturnValue({
       ...passiveVaultDefaults(),
-      vaultData: null,
+      vaultData: { totalLiquidValue: 9999n * 10n ** 18n, paused: false },
     });
 
     render(<VaultsPageContent />);
 
-    // Without the liquid value, the sum would misleadingly show only the
-    // deployed portion (500.00) - it must not render at all.
-    expect(screen.queryByText('500.00 USDe')).toBeNull();
-    expect(screen.queryByTestId('vault-balance-bar')).toBeNull();
-    expect(screen.queryByText(/deployed/)).toBeNull();
+    expect(screen.getByText('1,625.00 USDe')).toBeInTheDocument();
+    expect(screen.queryByText('10,499.00 USDe')).toBeNull();
   });
 
-  it('hides the balance number and progress bar until protocol stats have loaded', () => {
-    mockUseVaultStats.mockReturnValue({
+  it('hides the balance number and progress bar until indexed account value has loaded', () => {
+    mockUseVaultAccountValue.mockReturnValue({
       data: undefined,
       isLoading: true,
     });
 
     render(<VaultsPageContent />);
 
-    // Without the deployed value, the sum would misleadingly show only the
-    // liquid portion (1,000.00) - it must not render at all.
-    expect(screen.queryByText('1,000.00 USDe')).toBeNull();
+    expect(screen.queryByText('1,625.00 USDe')).toBeNull();
     expect(screen.queryByTestId('vault-balance-bar')).toBeNull();
     expect(screen.queryByText(/deployed/)).toBeNull();
   });
