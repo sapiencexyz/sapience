@@ -24,17 +24,25 @@ export interface VaultStat {
 }
 
 // `statsHistory` returns ascending (oldest-first) timestamps; the final
-// `.sort()` below is a defensive no-op that keeps the result ordered.
+// `.sort()` below is a defensive no-op that also keeps a merged multi-page
+// result ordered.
 //
-// No explicit `first`: a literal above GRAPHQL_MAX_LIST_SIZE (100) is rejected
-// pre-execution with PAGINATION_LIMIT_EXCEEDED, so we omit it and rely on the
-// resolver returning the full bounded daily series in a single page (mirrors
-// GET_VAULT_ACCOUNT_VALUE). The series fits one request, so we never page —
-// avoiding a per-vault chain of sequential round-trips on chart load.
+// `first` is left to the variable (nullable): omitting it lets the resolver
+// return up to its MAX_STATS_POINTS cap in one page, so the common case is a
+// single request. The query still selects `pageInfo` and threads `after` so
+// fetchVaultStats can page forward if a vault ever exceeds that cap — the
+// series stays complete without re-introducing a fixed chain of round-trips.
+// A literal `first` above GRAPHQL_MAX_LIST_SIZE (100) is rejected
+// pre-execution, so an explicit `pageSize` must stay <= 100.
 export const GET_VAULT_STATS = /* GraphQL */ `
-  query VaultStats($address: Address!, $chainId: Int) {
+  query VaultStats(
+    $address: Address!
+    $chainId: Int
+    $first: Int
+    $after: String
+  ) {
     vault(address: $address, chainId: $chainId) {
-      statsHistory {
+      statsHistory(first: $first, after: $after) {
         nodes {
           timestamp
           balance
@@ -42,6 +50,10 @@ export const GET_VAULT_STATS = /* GraphQL */ `
           undeployedCollateral
           cumulativePnl
           claimableCollateral
+        }
+        pageInfo {
+          hasNextPage
+          endCursor
         }
       }
     }
@@ -61,6 +73,7 @@ type VaultStatsResponse = {
   vault: {
     statsHistory: {
       nodes: WireVaultStat[];
+      pageInfo: { hasNextPage: boolean; endCursor: string | null };
     };
   } | null;
 };
@@ -81,26 +94,43 @@ function toVaultStat(node: WireVaultStat): VaultStat {
 }
 
 /**
- * Fetch a vault's full snapshot series, oldest-first, in a single request.
- * The resolver returns the complete bounded daily series when `first` is
- * omitted (mirrors `fetchVaultAccountValue`), so the chart loads without the
- * per-vault chain of sequential paginated round-trips it used to make.
- * Returns an empty array when the address is not a configured vault (the v2
- * `vault` field resolves null).
+ * Fetch a vault's full snapshot series, oldest-first.
+ *
+ * The resolver returns up to its MAX_STATS_POINTS cap per page, so for a
+ * normal vault this completes in a single request. The loop pages on
+ * `pageInfo` only if a vault's series ever exceeds the cap, so the chart never
+ * silently loses history. Returns an empty array when the address is not a
+ * configured vault (the v2 `vault` field resolves null).
+ *
+ * `pageSize` (optional) forces an explicit per-page `first` — it must stay
+ * <= the API's GRAPHQL_MAX_LIST_SIZE (100), since a larger literal is rejected
+ * pre-execution. Omit it to use the resolver's single-page cap.
  */
 export async function fetchVaultStats(
   address: string,
-  chainId?: number
+  chainId?: number,
+  pageSize?: number
 ): Promise<VaultStat[]> {
-  const data: VaultStatsResponse = await graphqlRequestV2<VaultStatsResponse>(
-    GET_VAULT_STATS,
-    {
-      address: address.toLowerCase(),
-      chainId,
-    }
-  );
-  const nodes = data?.vault?.statsHistory?.nodes;
-  if (!Array.isArray(nodes)) return [];
+  const nodes: WireVaultStat[] = [];
+  let after: string | null = null;
+  // Bound the loop defensively against a non-progressing cursor; the daily
+  // series can't realistically exceed a few thousand snapshots.
+  for (let page = 0; page < 50; page += 1) {
+    const data: VaultStatsResponse = await graphqlRequestV2<VaultStatsResponse>(
+      GET_VAULT_STATS,
+      {
+        address: address.toLowerCase(),
+        chainId,
+        first: pageSize ?? null,
+        after,
+      }
+    );
+    const history = data?.vault?.statsHistory;
+    if (!history || !Array.isArray(history.nodes)) break;
+    nodes.push(...history.nodes);
+    if (!history.pageInfo?.hasNextPage || !history.pageInfo.endCursor) break;
+    after = history.pageInfo.endCursor;
+  }
   return nodes.map(toVaultStat).sort((a, b) => a.timestamp - b.timestamp);
 }
 

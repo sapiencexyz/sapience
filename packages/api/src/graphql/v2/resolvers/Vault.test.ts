@@ -44,7 +44,7 @@ vi.mock('../accountSynthesis', () => ({
 
 // Vault.ts registers `Vault` in the v2 Node registry at module import.
 import type { Mock } from 'vitest';
-import { findVaultByAddress, Vault } from './Vault';
+import { findVaultByAddress, MAX_STATS_POINTS, Vault } from './Vault';
 import { vault, vaults } from './queries/vault';
 import prisma from '../../../core/db';
 import { getConfiguredVaults } from '../../../services/protocolStats';
@@ -233,5 +233,35 @@ describe('Vault (v2)', () => {
     expect(conn.pageInfo.hasNextPage).toBe(false);
     expect(conn.nodes[0].timestamp).toBe(1000);
     expect(conn.nodes.at(-1)?.timestamp).toBe(1039);
+  });
+
+  it('caps an omitted `first` at MAX_STATS_POINTS and signals more via pageInfo', async () => {
+    const PRIMARY = '0x000000000000000000000000000000000000aaaa';
+    (getConfiguredVaults as Mock).mockReturnValueOnce([
+      { kind: 'protocol', address: PRIMARY, config: { legacy: [] } },
+    ]);
+    // A series longer than the cap must NOT dump every row in one response —
+    // it returns one capped page and flags `hasNextPage` so clients paginate.
+    const rows = Array.from({ length: MAX_STATS_POINTS + 5 }, (_, i) => ({
+      timestamp: 1000 + i,
+      vaultAddress: PRIMARY,
+      vaultBalance: String(i),
+    }));
+    (prisma.protocolStatsSnapshot.findMany as Mock).mockResolvedValueOnce(rows);
+
+    const conn = await callResolver<{
+      nodes: { timestamp: number }[];
+      totalCount: number;
+      pageInfo: { hasNextPage: boolean };
+    }>(Vault.statsHistory)(
+      { chainId: 13374202, address: PRIMARY },
+      {},
+      {},
+      null
+    );
+
+    expect(conn.totalCount).toBe(MAX_STATS_POINTS + 5);
+    expect(conn.nodes).toHaveLength(MAX_STATS_POINTS);
+    expect(conn.pageInfo.hasNextPage).toBe(true);
   });
 });
