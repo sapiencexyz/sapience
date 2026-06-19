@@ -80,6 +80,10 @@ const VaultsPageContent = () => {
           | undefined,
         'Edge Vault',
       ],
+      [
+        singleLegVault[VAULT_CHAIN_ID]?.address as `0x${string}` | undefined,
+        'Singles Vault',
+      ],
     ];
     return entries
       .filter((entry): entry is [`0x${string}`, string] => Boolean(entry[0]))
@@ -93,10 +97,6 @@ const VaultsPageContent = () => {
           | `0x${string}`
           | undefined,
         'Options Vault',
-      ],
-      [
-        singleLegVault[VAULT_CHAIN_ID]?.address as `0x${string}` | undefined,
-        'Singles Vault',
       ],
     ];
     const hiddenVaultOptions = hiddenEntries
@@ -138,13 +138,14 @@ const VaultsPageContent = () => {
   const selectedVaultValue = selectedVault?.address ?? '';
   const collateralSymbol = COLLATERAL_SYMBOLS[VAULT_CHAIN_ID] || 'testUSDe';
 
-  // Separate reads for each of the (up to) three vaults so the Vault Rewards
+  // Separate reads for each vault so the Vault Rewards
   // calc can sum across all vaults regardless of which tab is selected. Hooks
   // must be called unconditionally, so missing addresses are handled inside
   // the hook via the `enabled` flag.
   const coreAddr = predictionMarketVault[VAULT_CHAIN_ID]?.address;
   const optionsAddr = pythPredictionMarketVault[VAULT_CHAIN_ID]?.address;
   const edgeAddr = predictionMarketVaultStrategyB[VAULT_CHAIN_ID]?.address;
+  const singlesAddr = singleLegVault[VAULT_CHAIN_ID]?.address;
 
   const coreVault = usePassiveLiquidityVault({
     vaultAddress: coreAddr,
@@ -158,10 +159,15 @@ const VaultsPageContent = () => {
     vaultAddress: edgeAddr,
     chainId: VAULT_CHAIN_ID,
   });
+  const singlesVault = usePassiveLiquidityVault({
+    vaultAddress: singlesAddr,
+    chainId: VAULT_CHAIN_ID,
+  });
 
   const { data: coreStats } = useVaultStats(coreAddr);
   const { data: optionsStats } = useVaultStats(optionsAddr);
   const { data: edgeStats } = useVaultStats(edgeAddr);
+  const { data: singlesStats } = useVaultStats(singlesAddr);
 
   // Protocol-wide TVL (escrow collateral + undeployed assets across every
   // vault family), server-computed on v2. Replaces v1's client-side
@@ -658,6 +664,7 @@ const VaultsPageContent = () => {
       [coreVault.vaultData, coreStats] as const,
       [optionsVault.vaultData, optionsStats] as const,
       [edgeVault.vaultData, edgeStats] as const,
+      [singlesVault.vaultData, singlesStats] as const,
     ];
     const totalVaultTvlWei = vaultEntries.reduce((sum, [v, stats]) => {
       const liquid = v?.totalLiquidValue ?? 0n;
@@ -704,9 +711,11 @@ const VaultsPageContent = () => {
     coreVault.vaultData,
     optionsVault.vaultData,
     edgeVault.vaultData,
+    singlesVault.vaultData,
     coreStats,
     optionsStats,
     edgeStats,
+    singlesStats,
     protocolAnalytics,
     formatAssetAmount,
   ]);
