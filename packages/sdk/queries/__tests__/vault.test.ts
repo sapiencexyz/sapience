@@ -1,5 +1,10 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { fetchVaultStats, GET_VAULT_STATS } from '../vault';
+import {
+  fetchVaultAccountValue,
+  fetchVaultStats,
+  GET_VAULT_ACCOUNT_VALUE,
+  GET_VAULT_STATS,
+} from '../vault';
 
 const mockGraphqlRequestV2 = vi.fn();
 vi.mock('../client/graphqlClient', () => ({
@@ -151,5 +156,75 @@ describe('fetchVaultStats', () => {
     expect(await fetchVaultStats('0xabc', 42161)).toEqual([]);
     mockGraphqlRequestV2.mockResolvedValue(null);
     expect(await fetchVaultStats('0xabc', 42161)).toEqual([]);
+  });
+});
+
+describe('GET_VAULT_ACCOUNT_VALUE document', () => {
+  test('queries account collateralBalance and account statsHistory from one v2 surface', () => {
+    expect(GET_VAULT_ACCOUNT_VALUE).toContain(
+      'account(address: $address, chainId: $chainId)'
+    );
+    expect(GET_VAULT_ACCOUNT_VALUE).toContain('collateralBalance');
+    expect(GET_VAULT_ACCOUNT_VALUE).toContain('amount');
+    expect(GET_VAULT_ACCOUNT_VALUE).toContain(
+      'statsHistory(interval: DAY, first: 366)'
+    );
+    expect(GET_VAULT_ACCOUNT_VALUE).toContain('deployedCollateral');
+    expect(GET_VAULT_ACCOUNT_VALUE).toContain('claimableCollateral');
+  });
+});
+
+describe('fetchVaultAccountValue', () => {
+  test('lowercases the address and sums indexed wallet, deployed, and claimable collateral', async () => {
+    mockGraphqlRequestV2.mockResolvedValue({
+      account: {
+        collateralBalance: { amount: '1000' },
+        statsHistory: {
+          nodes: [
+            {
+              timestamp: 1700000000,
+              deployedCollateral: '250',
+              claimableCollateral: '25',
+            },
+            {
+              timestamp: 1700000100,
+              deployedCollateral: '500',
+              claimableCollateral: '125',
+            },
+          ],
+        },
+      },
+    });
+
+    const result = await fetchVaultAccountValue('0xABCDEF', 42161);
+
+    expect(mockGraphqlRequestV2).toHaveBeenCalledWith(GET_VAULT_ACCOUNT_VALUE, {
+      address: '0xabcdef',
+      chainId: 42161,
+    });
+    expect(result).toEqual({
+      collateralBalance: '1000',
+      deployedCollateral: '500',
+      claimableCollateral: '125',
+      totalValue: '1625',
+      timestamp: 1700000100,
+    });
+  });
+
+  test('defaults missing account stats to just the indexed wallet balance', async () => {
+    mockGraphqlRequestV2.mockResolvedValue({
+      account: {
+        collateralBalance: { amount: 1000 },
+        statsHistory: { nodes: [] },
+      },
+    });
+
+    await expect(fetchVaultAccountValue('0xabc', 42161)).resolves.toEqual({
+      collateralBalance: '1000',
+      deployedCollateral: '0',
+      claimableCollateral: '0',
+      totalValue: '1000',
+      timestamp: null,
+    });
   });
 });
