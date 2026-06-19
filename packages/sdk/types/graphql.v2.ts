@@ -331,6 +331,11 @@ export type ActivityFilter = {
   pickConfigId?: InputMaybe<Scalars['Bytes32']['input']>;
   /** Filter by activity timestamp in epoch seconds. */
   timestamp?: InputMaybe<IntRangeFilter>;
+  /**
+   * Restrict activity to a single position token. With `account`, predictions
+   * match only the side that minted this token; trades match exact token.
+   */
+  token?: InputMaybe<Scalars['Address']['input']>;
   /** Restrict to a subset of activity types. `[]` is a zero-result query. */
   types?: InputMaybe<Array<ActivityType>>;
 };

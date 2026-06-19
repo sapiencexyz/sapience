@@ -96,21 +96,53 @@ export const activity: NonNullable<QueryResolvers['activity']> = async (
     conditionTokens = tokens;
   }
 
-  // Prediction-side where
-  const predictionWhere: Prisma.PredictionWhereInput = {};
-  if (args.filter?.account) {
-    const addr = args.filter.account.toLowerCase();
-    predictionWhere.OR = [{ predictor: addr }, { counterparty: addr }];
+  const account = args.filter?.account?.toLowerCase();
+  const token = args.filter?.token?.toLowerCase();
+
+  // Prediction-side where. When account + token are both provided, match the
+  // exact side the account minted; `account AND (predictorToken OR
+  // counterpartyToken)` would incorrectly include the opposite-side token on
+  // the same prediction.
+  const predictionClauses: Prisma.PredictionWhereInput[] = [];
+  if (account && token) {
+    predictionClauses.push({
+      OR: [
+        {
+          predictor: account,
+          pickConfiguration: { predictorToken: token },
+        },
+        {
+          counterparty: account,
+          pickConfiguration: { counterpartyToken: token },
+        },
+      ],
+    });
+  } else if (account) {
+    predictionClauses.push({
+      OR: [{ predictor: account }, { counterparty: account }],
+    });
+  } else if (token) {
+    predictionClauses.push({
+      OR: [
+        { pickConfiguration: { predictorToken: token } },
+        { pickConfiguration: { counterpartyToken: token } },
+      ],
+    });
   }
+
   if (args.filter?.pickConfigId)
-    predictionWhere.pickConfigId = args.filter.pickConfigId.toLowerCase();
+    predictionClauses.push({
+      pickConfigId: args.filter.pickConfigId.toLowerCase(),
+    });
   if (conditionPickConfigIds) {
     const ids = args.filter?.pickConfigId
       ? conditionPickConfigIds.filter(
           (id) => id === args.filter!.pickConfigId!.toLowerCase()
         )
       : conditionPickConfigIds;
-    predictionWhere.pickConfigId = ids.length === 1 ? ids[0] : { in: ids };
+    predictionClauses.push({
+      pickConfigId: ids.length === 1 ? ids[0] : { in: ids },
+    });
   }
   if (args.filter?.timestamp) {
     const r: Prisma.DateTimeFilter = {};
@@ -118,24 +150,36 @@ export const activity: NonNullable<QueryResolvers['activity']> = async (
       r.gte = new Date(args.filter.timestamp.gte * 1000);
     if (args.filter.timestamp.lte != null)
       r.lte = new Date(args.filter.timestamp.lte * 1000);
-    predictionWhere.createdAt = r;
+    predictionClauses.push({ createdAt: r });
   }
+  const predictionWhere: Prisma.PredictionWhereInput = predictionClauses.length
+    ? { AND: predictionClauses }
+    : {};
 
-  // Trade-side where
-  const tradeWhere: Prisma.SecondaryTradeWhereInput = {};
-  if (args.filter?.account) {
-    const addr = args.filter.account.toLowerCase();
-    tradeWhere.OR = [{ buyer: addr }, { seller: addr }];
+  // Trade-side where. Token filtering is exact because SecondaryTrade.token is
+  // the ERC-20 position token that changed hands.
+  const tradeClauses: Prisma.SecondaryTradeWhereInput[] = [];
+  if (account) {
+    tradeClauses.push({ OR: [{ buyer: account }, { seller: account }] });
   }
-  if (conditionTokens != null) {
-    tradeWhere.token = { in: conditionTokens };
+  if (token && conditionTokens != null) {
+    tradeClauses.push(
+      conditionTokens.includes(token) ? { token } : { token: { in: [] } }
+    );
+  } else if (token) {
+    tradeClauses.push({ token });
+  } else if (conditionTokens != null) {
+    tradeClauses.push({ token: { in: conditionTokens } });
   }
   if (args.filter?.timestamp) {
     const r: Prisma.IntFilter = {};
     if (args.filter.timestamp.gte != null) r.gte = args.filter.timestamp.gte;
     if (args.filter.timestamp.lte != null) r.lte = args.filter.timestamp.lte;
-    tradeWhere.executedAt = r;
+    tradeClauses.push({ executedAt: r });
   }
+  const tradeWhere: Prisma.SecondaryTradeWhereInput = tradeClauses.length
+    ? { AND: tradeClauses }
+    : {};
 
   // Cursor — applied to both sides as `ts < cursor.ts OR (ts == cursor.ts AND ...)`
   const cursor = parseCursor(args.after);

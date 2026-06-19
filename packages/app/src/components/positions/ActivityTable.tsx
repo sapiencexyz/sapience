@@ -576,6 +576,7 @@ export default function ActivityTable({
   pageSize,
   hiddenColumns,
   filterPickConfigId,
+  filterToken,
   hideFilters,
   fill = false,
 }: {
@@ -595,6 +596,8 @@ export default function ActivityTable({
    * in the first page of the unscoped feed.
    */
   filterPickConfigId?: string;
+  /** Scope the feed to a single position token. */
+  filterToken?: Address;
   /** Hide the filter toolbar (search/status/value-range/date-range). */
   hideFilters?: boolean;
   /** Grow the empty/loading panel via `flex-1` to fill the parent.
@@ -629,6 +632,7 @@ export default function ActivityTable({
     pageSize: effectivePageSize,
     activityType: filters.activityType,
     pickConfigId: filterPickConfigId,
+    token: filterToken,
     conditionId: !account ? conditionId : undefined,
   });
 
