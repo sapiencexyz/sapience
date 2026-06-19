@@ -13,11 +13,24 @@ const TIMEOUT_MS = 5_000;
 
 /**
  * Environment label stamped on every alert so prod/staging/dev alerts are
- * distinguishable in a shared channel. Defaults to 'development' (Node's
- * convention for an unset NODE_ENV).
+ * distinguishable in a shared channel.
+ *
+ * NODE_ENV alone is insufficient: staging runs the production build, so it's
+ * `production` on both staging and prod. Resolution order:
+ *   1. KEEPER_ENV            — explicit override (set per deploy if you want a
+ *                              specific label)
+ *   2. RAILWAY_ENVIRONMENT_NAME — auto-injected by Railway per environment
+ *                              (e.g. 'production' vs 'staging'); no config
+ *   3. NODE_ENV              — local / non-Railway fallback
+ *   4. 'development'         — nothing set
  */
 export function keeperEnv(): string {
-  return process.env.NODE_ENV || 'development';
+  return (
+    process.env.KEEPER_ENV ||
+    process.env.RAILWAY_ENVIRONMENT_NAME ||
+    process.env.NODE_ENV ||
+    'development'
+  );
 }
 
 /** Resolve + validate the configured webhook URL, or null when unusable. */
