@@ -43,6 +43,16 @@ type V1StatRow = Record<string, unknown>;
 
 const DAY = 86400;
 
+// Fixed-width bucket sizes (seconds) for `statsHistory(interval:)`
+// downsampling. MONTH is a fixed 30-day window (not calendar) — the analytics
+// charts only request DAY, the rest are supported for completeness.
+const INTERVAL_SECONDS: Record<string, number> = {
+  HOUR: 3600,
+  DAY,
+  WEEK: 7 * DAY,
+  MONTH: 30 * DAY,
+};
+
 // Maps v1's magic `bucket` int to the v2 `(min, max]` seconds-from-now
 // window — left-exclusive, right-inclusive, matching the SQL `delta <= bound`
 // ladder in `sdl/resolvers/queries/analytics.ts` (a prediction at exactly a
@@ -149,6 +159,56 @@ const crossFamilyAvailableByRawTs = async (
   return byTs;
 };
 
+const PROTOCOL_V2_TTL_MS = 60_000;
+
+/**
+ * Minimal single-flight TTL memo keyed by chainId. Mirrors the
+ * `protocolStatsCache` pattern in the v1 analytics resolver: the cached value
+ * is the in-flight promise — so the dashboard's concurrent `stats` +
+ * `statsHistory` (and any history pagination) collapse onto one computation
+ * per window instead of each re-running the full snapshot-table read — and a
+ * rejection evicts the entry so a transient DB blip isn't pinned for the whole
+ * TTL.
+ */
+const singleFlightByChain = <T>(
+  fn: (chainId: number) => Promise<T>,
+  ttlMs: number
+) => {
+  const cache = new Map<number, { promise: Promise<T>; expiresAt: number }>();
+  const run = (chainId: number): Promise<T> => {
+    const now = Date.now();
+    const hit = cache.get(chainId);
+    if (hit && hit.expiresAt > now) return hit.promise;
+    const promise = fn(chainId).catch((err) => {
+      cache.delete(chainId);
+      throw err;
+    });
+    cache.set(chainId, { promise, expiresAt: now + ttlMs });
+    return promise;
+  };
+  run.clear = () => cache.clear();
+  return run;
+};
+
+// (B) statsHistory called `crossFamilyAvailableByRawTs` on every page — a full
+// `protocolStatsSnapshot` read each time. (C) stats called `computeProtocolTvl`
+// (a per-vault latest-snapshot fan-out) on every request. Both are memoized
+// per chainId so the dashboard pays each at most once per TTL window.
+const cachedCrossFamilyAvailableByRawTs = singleFlightByChain(
+  crossFamilyAvailableByRawTs,
+  PROTOCOL_V2_TTL_MS
+);
+const cachedComputeProtocolTvl = singleFlightByChain(
+  computeProtocolTvl,
+  PROTOCOL_V2_TTL_MS
+);
+
+/** Test hook — drop the memoized TVL / cross-family entries. */
+export const __clearProtocolCaches = (): void => {
+  cachedCrossFamilyAvailableByRawTs.clear();
+  cachedComputeProtocolTvl.clear();
+};
+
 export const protocol: NonNullable<QueryResolvers['protocol']> = () =>
   ({}) as never;
 
@@ -160,7 +220,7 @@ export const Protocol: ProtocolResolvers = {
       (v1ProtocolStats as unknown as V1Resolver)(null, {}, null) as Promise<
         V1StatRow[]
       >,
-      computeProtocolTvl(chainId),
+      cachedComputeProtocolTvl(chainId),
     ]);
     // v1 appends the in-progress (live) candle as the last row; fall back to
     // a zero-valued current snapshot when no snapshots exist at all.
@@ -179,7 +239,7 @@ export const Protocol: ProtocolResolvers = {
       (v1ProtocolStats as unknown as V1Resolver)(null, {}, null) as Promise<
         V1StatRow[]
       >,
-      crossFamilyAvailableByRawTs(chainId),
+      cachedCrossFamilyAvailableByRawTs(chainId),
     ]);
 
     // Keep only recorded snapshots within the requested window. A v1 row's
@@ -198,28 +258,77 @@ export const Protocol: ProtocolResolvers = {
       return true;
     });
 
-    const first = clampTake(args.first ?? historyRows.length, {
-      defaultTake: historyRows.length || 100,
+    // Each row already carries the TVL inputs; `rawTsOf(row)` maps its display
+    // ts back to the snapshot ts used to key the cross-family available-assets
+    // sum.
+    const tvlOf = (row: V1StatRow): bigint =>
+      BigInt((row.escrowBalance as string) ?? '0') +
+      (availableByRawTs.get(rawTsOf(row)) ?? 0n);
+
+    // Optional server-side downsampling. The snapshot series is sub-daily
+    // (~4-hourly in prod), so without bucketing the analytics dashboard pages
+    // through thousands of rows it only ever renders as daily points. With an
+    // `interval`, collapse each fixed-width window to one node: stock fields
+    // (cumulative*, OI, escrow, TVL) take the bucket's last (latest) row; flow
+    // fields (period*) sum across it; the label is the bucket start — matching
+    // the client's `floor(ts / interval) * interval` grid, so its own
+    // bucketing becomes an idempotent no-op.
+    const intervalSeconds =
+      args.interval != null ? INTERVAL_SECONDS[args.interval] : undefined;
+
+    type Node = ReturnType<typeof mapProtocolStat>;
+    let nodes: Node[];
+    if (intervalSeconds) {
+      const buckets = new Map<number, V1StatRow[]>();
+      for (const row of historyRows) {
+        const displayTs = Number(row.timestamp ?? 0);
+        const bucketStart =
+          Math.floor(displayTs / intervalSeconds) * intervalSeconds;
+        const group = buckets.get(bucketStart);
+        if (group) group.push(row);
+        else buckets.set(bucketStart, [row]);
+      }
+      // historyRows are oldest-first, so each group's last element is the
+      // latest snapshot in that bucket.
+      nodes = [...buckets.entries()]
+        .sort((a, b) => a[0] - b[0])
+        .map(([bucketStart, group]) => {
+          const last = group[group.length - 1];
+          const node = mapProtocolStat(last, tvlOf(last));
+          node.timestamp = bucketStart;
+          node.periodVolume = group
+            .reduce(
+              (sum, r) => sum + BigInt((r.periodVolume as string) ?? '0'),
+              0n
+            )
+            .toString();
+          node.periodTradeCount = group.reduce(
+            (sum, r) => sum + Number(r.periodTradeCount ?? 0),
+            0
+          );
+          return node;
+        });
+    } else {
+      nodes = historyRows.map((row) => mapProtocolStat(row, tvlOf(row)));
+    }
+
+    const first = clampTake(args.first ?? nodes.length, {
+      defaultTake: nodes.length || 100,
       maxTake: 1000,
     });
     const after = args.after ? decodeCursor(args.after) : null;
     const start = after && /^\d+$/.test(after.k) ? Number(after.k) + 1 : 0;
-    const slice = historyRows.slice(start, start + first + 1);
+    const slice = nodes.slice(start, start + first + 1);
 
     return buildConnection({
       rows: slice,
       first,
-      totalCount: historyRows.length,
-      getNode: (row) =>
-        mapProtocolStat(
-          row,
-          BigInt((row.escrowBalance as string) ?? '0') +
-            (availableByRawTs.get(rawTsOf(row)) ?? 0n)
-        ),
-      getCursor: (row, idx) =>
+      totalCount: nodes.length,
+      getNode: (node) => node,
+      getCursor: (node, idx) =>
         encodeCursor({
           k: String(start + idx),
-          id: String(row.timestamp ?? ''),
+          id: String(node.timestamp ?? ''),
         }),
     }) as never;
   },

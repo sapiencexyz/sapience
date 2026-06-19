@@ -65,8 +65,9 @@ describe('GET_PROTOCOL_ANALYTICS document', () => {
     expect(GET_PROTOCOL_ANALYTICS).toContain('protocol');
     expect(GET_PROTOCOL_ANALYTICS).toContain('stats');
     expect(GET_PROTOCOL_ANALYTICS).toContain(
-      'statsHistory(first: $first, after: $after)'
+      'statsHistory(interval: $interval, first: $first, after: $after)'
     );
+    expect(GET_PROTOCOL_ANALYTICS).toContain('$interval: TimeInterval');
     expect(GET_PROTOCOL_ANALYTICS).toContain('hasNextPage');
     expect(GET_PROTOCOL_ANALYTICS).toContain('openInterestByCategory');
     expect(GET_PROTOCOL_ANALYTICS).toContain('openInterestByTimeToResolution');
@@ -94,12 +95,13 @@ describe('GET_PROTOCOL_ANALYTICS document', () => {
 });
 
 describe('fetchProtocolAnalytics', () => {
-  test('requests the first history page within the list-size cap (100)', async () => {
+  test('requests the daily-bucketed series in one page (interval DAY, first null)', async () => {
     mockGraphqlRequestV2.mockResolvedValue(fullResponse());
     await fetchProtocolAnalytics();
     expect(mockGraphqlRequestV2).toHaveBeenCalledTimes(1);
     expect(mockGraphqlRequestV2).toHaveBeenCalledWith(GET_PROTOCOL_ANALYTICS, {
-      first: 100,
+      interval: 'DAY',
+      first: null,
       after: null,
     });
   });
@@ -122,17 +124,17 @@ describe('fetchProtocolAnalytics', () => {
     const result = await fetchProtocolAnalytics();
 
     expect(mockGraphqlRequestV2).toHaveBeenCalledTimes(2);
-    // First call: the combined analytics query, first page.
+    // First call: the combined analytics query, daily-bucketed first page.
     expect(mockGraphqlRequestV2).toHaveBeenNthCalledWith(
       1,
       GET_PROTOCOL_ANALYTICS,
-      { first: 100, after: null }
+      { interval: 'DAY', first: null, after: null }
     );
     // Second call: the lighter history-only page query, threading the cursor.
     expect(mockGraphqlRequestV2).toHaveBeenNthCalledWith(
       2,
       GET_PROTOCOL_STATS_HISTORY_PAGE,
-      { first: 100, after: 'cursor-1' }
+      { interval: 'DAY', first: null, after: 'cursor-1' }
     );
     expect(result.statsHistory.map((s) => s.timestamp)).toEqual([
       1700000100, 1700000200, 1700000300,
