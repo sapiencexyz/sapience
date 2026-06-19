@@ -346,7 +346,7 @@ describe('VaultsPageContent geofence', () => {
     expect(depositBtn).not.toBeDisabled();
   });
 
-  it('hides the options and singles vaults from tabs', () => {
+  it('shows the singles vault tab while keeping options hidden', () => {
     mockUseRestrictedJurisdiction.mockReturnValue({
       isRestricted: false,
       isPermitLoading: false,
@@ -366,11 +366,11 @@ describe('VaultsPageContent geofence', () => {
       screen.queryByRole('button', { name: 'Options Vault' })
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: 'Singles Vault' })
-    ).not.toBeInTheDocument();
+      screen.getByRole('button', { name: 'Singles Vault' })
+    ).toBeInTheDocument();
   });
 
-  it('accepts a hidden known/indexed vault address from the URL without rewriting it', () => {
+  it('accepts the singles vault address from the URL without rewriting it', () => {
     const singleLegVault = '0xSingleLegVault';
     mockSearchParamsToString.mockReturnValue(`address=${singleLegVault}`);
     mockUseRestrictedJurisdiction.mockReturnValue({
@@ -382,7 +382,9 @@ describe('VaultsPageContent geofence', () => {
 
     render(<VaultsPageContent />);
 
-    expect(screen.getByText('Singles Vault')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Singles Vault' })
+    ).toBeInTheDocument();
     expect(mockRouterReplace).not.toHaveBeenCalled();
     expect(
       mockUsePassiveLiquidityVault.mock.calls.some(
