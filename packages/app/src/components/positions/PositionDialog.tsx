@@ -136,6 +136,7 @@ export default function PositionDialog({
                 <ActivityTable
                   account={position.holder as Address}
                   filterPickConfigId={position.pickConfigId}
+                  filterToken={position.tokenAddress as Address}
                   hiddenColumns={['position', 'status', 'share']}
                   hideFilters
                 />

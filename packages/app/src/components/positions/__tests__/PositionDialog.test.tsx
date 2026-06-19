@@ -48,10 +48,11 @@ vi.mock('~/components/shared/AddressDisplay', () => ({
 // hood); exercise its data path in its own tests, not here.
 vi.mock('~/components/positions/ActivityTable', () => ({
   __esModule: true,
-  default: (props: { filterPickConfigId?: string }) => (
+  default: (props: { filterPickConfigId?: string; filterToken?: string }) => (
     <div
       data-testid="activity-table"
       data-pickconfigid={props.filterPickConfigId ?? ''}
+      data-token={props.filterToken ?? ''}
     />
   ),
 }));
@@ -217,12 +218,15 @@ describe('PositionDialog', () => {
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
     expect(screen.queryByTestId('activity-table')).not.toBeInTheDocument();
 
-    // Expand it; the embedded ActivityTable mounts, scoped to this pickConfig.
+    // Expand it; the embedded ActivityTable mounts, scoped to this token balance.
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
     const embedded = screen.getByTestId('activity-table');
     expect(embedded.getAttribute('data-pickconfigid')).toBe(
       counterpartyPosition.pickConfigId
+    );
+    expect(embedded.getAttribute('data-token')).toBe(
+      counterpartyPosition.tokenAddress
     );
   });
 
