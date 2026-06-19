@@ -5,4 +5,9 @@
  * sequential group — never run them as separate overlapping crons or a
  * stale-read tag write can clobber the other's.
  */
-require('./lib/groups').runGroup('metadata-tags');
+require('./lib/groups')
+  .runGroup('metadata-tags')
+  .catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });

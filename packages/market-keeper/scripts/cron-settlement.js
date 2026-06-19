@@ -4,4 +4,9 @@
  * Writes settlement state only; independent of the metadata/tag/market-data
  * crons, so a failure here can't block them.
  */
-require('./lib/groups').runGroup('settlement');
+require('./lib/groups')
+  .runGroup('settlement')
+  .catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });

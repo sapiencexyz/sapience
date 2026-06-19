@@ -20,6 +20,7 @@ import {
   logError,
 } from '../utils';
 import { submitMetadataUpdates } from '../generate/api';
+import { emitStepSummary } from '../notify/summary';
 import { fetchAllUnsettledConditions } from './fetch';
 import {
   conditionMentionsImminentDate,
@@ -205,6 +206,16 @@ export async function main(): Promise<void> {
     log(
       `[TodayTag] Total wall-clock: ${((Date.now() - runStart) / 1000).toFixed(1)}s`
     );
+    emitStepSummary({
+      step: 'refresh-imminent-tag',
+      dryRun: true,
+      metrics: {
+        scanned: conditions.length,
+        matched: matchedCount,
+        added: additions.length,
+        removed: removals.length,
+      },
+    });
     return;
   }
 
@@ -213,6 +224,15 @@ export async function main(): Promise<void> {
     log(
       `[TodayTag] Total wall-clock: ${((Date.now() - runStart) / 1000).toFixed(1)}s`
     );
+    emitStepSummary({
+      step: 'refresh-imminent-tag',
+      metrics: {
+        scanned: conditions.length,
+        matched: matchedCount,
+        added: 0,
+        removed: 0,
+      },
+    });
     return;
   }
 
@@ -232,4 +252,13 @@ export async function main(): Promise<void> {
   log(
     `[TodayTag] Total wall-clock: ${((Date.now() - runStart) / 1000).toFixed(1)}s`
   );
+  emitStepSummary({
+    step: 'refresh-imminent-tag',
+    metrics: {
+      scanned: conditions.length,
+      matched: matchedCount,
+      added: additions.length,
+      removed: removals.length,
+    },
+  });
 }

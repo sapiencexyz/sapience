@@ -46,6 +46,8 @@
     "start:metadata-tags": "node scripts/cron-metadata-tags.js",
     "start:market-data": "node scripts/cron-market-data.js",
     "start:settlement": "node scripts/cron-settlement.js",
+    "start:status": "node scripts/cron-status.js",
+    "keeper-status": "tsx scripts/keeper-status.ts",
     "lint": "eslint src --quiet",
     "lint:fix": "eslint src --fix --quiet && pnpm format",
     "format": "prettier --write src scripts",

@@ -18,6 +18,7 @@ import {
 import { fetchPastEndDateMarkets } from './market';
 import { groupMarkets, exportJSON } from '../generate/grouping';
 import { printDryRun, submitToAPI } from '../generate/api';
+import { emitStepSummary } from '../notify/summary';
 import { checkExistingConditions } from '../generate/pipeline';
 
 // ============ CLI Arguments ============
@@ -86,6 +87,11 @@ export async function main() {
 
     if (markets.length === 0) {
       log('[Relist] No past-endDate markets found that are still traded');
+      emitStepSummary({
+        step: 'relist',
+        note: 'no past-endDate markets',
+        metrics: { candidates: 0, new: 0 },
+      });
       return;
     }
 
@@ -115,6 +121,14 @@ export async function main() {
 
     if (newMarkets.length === 0) {
       log('[Relist] No new markets to create');
+      emitStepSummary({
+        step: 'relist',
+        metrics: {
+          candidates: markets.length,
+          alreadyListed: existingConditions.size,
+          new: 0,
+        },
+      });
       return;
     }
 
@@ -134,12 +148,41 @@ export async function main() {
 
     if (options.dryRun) {
       printDryRun(sapienceData);
+      emitStepSummary({
+        step: 'relist',
+        dryRun: true,
+        metrics: {
+          candidates: markets.length,
+          alreadyListed: existingConditions.size,
+          new: sapienceData.metadata.totalConditions,
+        },
+      });
       return;
     }
 
     // 6. Submit new conditions to API
     if (hasAPICredentials && apiUrl && privateKey) {
-      await submitToAPI(apiUrl, privateKey, sapienceData);
+      const result = await submitToAPI(apiUrl, privateKey, sapienceData);
+      emitStepSummary({
+        step: 'relist',
+        metrics: {
+          candidates: markets.length,
+          alreadyListed: existingConditions.size,
+          created: result.created,
+          skipped: result.skipped,
+          failed: result.failed,
+        },
+      });
+    } else {
+      emitStepSummary({
+        step: 'relist',
+        note: 'no API credentials',
+        metrics: {
+          candidates: markets.length,
+          alreadyListed: existingConditions.size,
+          new: sapienceData.metadata.totalConditions,
+        },
+      });
     }
   } catch (error) {
     logError('Error:', error);

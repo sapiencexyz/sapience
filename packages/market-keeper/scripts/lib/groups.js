@@ -20,8 +20,23 @@
  * non-zero, so Railway's on_failure restart policy retries it. Cross-concern
  * isolation comes from running each group as its OWN Railway cron, not from
  * swallowing errors here — a broken settle cron can't block the tag cron.
+ *
+ * Reporting: each step process appends a structured summary to the file named
+ * by KEEPER_SUMMARY_FILE (see src/notify/summary.ts). After the group runs we
+ * read those summaries back and POST one aggregated embed to the keeper Discord
+ * webhook (DISCORD_KEEPER_WEBHOOK). This is the only place the source-JS
+ * orchestration layer reaches into compiled code, via the single
+ * dist/src/notify/report entry point.
  */
+// Load .env so the runner itself (which posts the Discord summary) sees
+// DISCORD_KEEPER_WEBHOOK locally. dotenv does not override already-set vars, so
+// Railway-injected env still wins in production. The subservices load their own
+// dotenv when they run; this is only for the orchestrator's own env reads.
+require('dotenv/config');
 const { execSync } = require('child_process');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 
 // Chain-dependent settlement entrypoint, matching the original start.js branch.
 const settleCmd =
@@ -53,14 +68,100 @@ const GROUPS = {
 // metadata + tags → market data → settle.
 const ORDER = ['discovery', 'metadata-tags', 'market-data', 'settlement'];
 
-/** Run one group's steps sequentially, fail-fast (throws on first failure). */
-function runGroup(name) {
+// Lazily-required so a missing/stale dist build degrades to "no Discord report"
+// instead of crashing the runner. Returns null if dist isn't built yet.
+function loadReporter() {
+  try {
+    return require('../../dist/src/notify/report');
+  } catch (err) {
+    console.error(
+      '[keeper] Discord reporter unavailable (dist not built?):',
+      err && err.message ? err.message : err
+    );
+    return null;
+  }
+}
+
+/**
+ * Run one group's steps sequentially, fail-fast. Captures each step's
+ * pass/fail, duration, and emitted summary, posts an aggregated Discord
+ * report, then re-throws on failure to preserve the non-zero exit code.
+ */
+async function runGroup(name) {
   const steps = GROUPS[name];
   if (!steps) throw new Error(`Unknown keeper cron group: ${name}`);
+
+  const reporter = loadReporter();
+  const summaryFile = path.join(
+    os.tmpdir(),
+    `keeper-summary-${name}-${process.pid}-${Date.now()}.jsonl`
+  );
+  try {
+    fs.writeFileSync(summaryFile, '');
+  } catch {
+    // if we can't create the file, steps just won't emit; carry on
+  }
+
+  const runs = [];
+  let failure = null;
+  let consumed = 0;
+
   for (const [label, cmd] of steps) {
     console.log(`[keeper:${name}] ▶ ${label}`);
-    execSync(cmd, { stdio: 'inherit' });
+    const start = Date.now();
+    let status = 'ok';
+    let error;
+    try {
+      execSync(cmd, {
+        stdio: 'inherit',
+        env: { ...process.env, KEEPER_SUMMARY_FILE: summaryFile },
+      });
+    } catch (err) {
+      status = 'failed';
+      error = err && err.message ? err.message : String(err);
+      failure = err;
+    }
+    const durationMs = Date.now() - start;
+
+    let summaries = [];
+    if (reporter) {
+      const all = reporter.readStepSummaries(summaryFile);
+      summaries = all.slice(consumed);
+      consumed = all.length;
+    }
+    runs.push({ label, status, durationMs, summaries, error });
+
+    if (failure) break;
   }
+
+  // Mark steps that never ran (aborted by fail-fast) as skipped.
+  if (failure) {
+    const ranLabels = new Set(runs.map((r) => r.label));
+    for (const [label] of steps) {
+      if (!ranLabels.has(label)) {
+        runs.push({ label, status: 'skipped', durationMs: 0, summaries: [] });
+      }
+    }
+  }
+
+  if (reporter) {
+    try {
+      await reporter.postGroupReport({ group: name, runs });
+    } catch (err) {
+      console.error(
+        '[keeper] Failed to post Discord summary:',
+        err && err.message ? err.message : err
+      );
+    }
+  }
+
+  try {
+    fs.unlinkSync(summaryFile);
+  } catch {
+    // ignore cleanup failure
+  }
+
+  if (failure) throw failure; // preserve fail-fast / non-zero exit
 }
 
 module.exports = { GROUPS, ORDER, runGroup };

@@ -56,6 +56,7 @@ import { getChainConfig } from '@sapience/sdk/constants';
 import { fetchWithRetry } from '../src/utils/fetch.js';
 import { confirmProductionAccess } from '../src/utils/index.js';
 import { logSeparator } from '../src/utils/log.js';
+import { emitStepSummary } from '../src/notify/summary.js';
 import {
   decodeFeedIdFromPriceId,
   extractEvmBlobFromJson,
@@ -745,6 +746,12 @@ async function main() {
   console.log(`Submitted:   ${submitted}`);
   console.log(`Skipped:     ${skipped}`);
   console.log(`Errors:      ${errors}`);
+
+  emitStepSummary({
+    step: 'settle-pyth',
+    dryRun: options.dryRun,
+    metrics: { attempted, submitted, skipped, errors },
+  });
 }
 
 // Run

@@ -50,6 +50,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { polygon } from 'viem/chains';
 import { fetchWithRetry } from '../src/utils/fetch.js';
 import { logSeparator } from '../src/utils/log.js';
+import { emitStepSummary } from '../src/notify/summary.js';
 import {
   manualConditionResolver,
   conditionalTokensReader,
@@ -782,6 +783,18 @@ async function main() {
     console.log(`  Settled (tx sent):   ${totals.settled}`);
     console.log(`  Not resolved:        ${totals.notResolved}`);
     console.log(`  Errors:              ${totals.errors}`);
+
+    emitStepSummary({
+      step: 'settle-manual',
+      dryRun: options.dryRun,
+      metrics: {
+        total: totals.total,
+        alreadySettled: totals.alreadySettled,
+        settled: totals.settled,
+        notResolved: totals.notResolved,
+        errors: totals.errors,
+      },
+    });
   } catch (error) {
     console.error('Error:', error);
     process.exit(1);
