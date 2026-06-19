@@ -1824,7 +1824,7 @@ type Protocol {
   Live, current protocol-wide stats — a single `ProtocolStat` with
   `timestamp = now`. Volume / trade-count / open-interest reflect the
   in-progress period and `totalValueLocked` is read across every configured
-  vault at query time. Use `statsHistory` for the recorded daily series.
+  vault at query time. Use `statsHistory` for the recorded snapshot series.
   """
   stats: ProtocolStat!
 
@@ -1833,8 +1833,19 @@ type Protocol {
   volume / TVL / open-interest time-series charts. (Previously named
   `stats`; renamed to `statsHistory` so `stats` can be the live singular,
   matching the `Vault` access pattern.)
+
+  Snapshots are recorded at a sub-daily cadence (configurable; ~4-hourly in
+  production), so the raw series runs to thousands of rows. Pass `interval`
+  to downsample server-side into fixed-width buckets — stock fields
+  (`cumulative*`, `openInterest`, `escrowBalance`, `totalValueLocked`) take
+  the bucket's last (latest) snapshot; flow fields (`periodVolume`,
+  `periodTradeCount`) sum across the bucket; the node's `timestamp` is the
+  bucket start. With no `interval` the raw per-snapshot series is returned.
+  The default page (`first` omitted) fits the whole bucketed series in one
+  request, so the analytics dashboard no longer paginates.
   """
   statsHistory(
+    interval: TimeInterval
     first: Int = 100
     after: String
     filter: ProtocolStatFilter
