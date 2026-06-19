@@ -222,9 +222,9 @@ describe('PositionDialog', () => {
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
     const embedded = screen.getByTestId('activity-table');
-    expect(embedded.getAttribute('data-pickconfigid')).toBe(
-      counterpartyPosition.pickConfigId
-    );
+    // Scoped by token alone — the position token already pins the pick config
+    // and side, so `filterPickConfigId` is intentionally not passed.
+    expect(embedded.getAttribute('data-pickconfigid')).toBe('');
     expect(embedded.getAttribute('data-token')).toBe(
       counterpartyPosition.tokenAddress
     );

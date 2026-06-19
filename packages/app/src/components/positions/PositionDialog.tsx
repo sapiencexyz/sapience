@@ -135,7 +135,6 @@ export default function PositionDialog({
               <div className="border-t border-border/60 max-h-56 overflow-y-auto">
                 <ActivityTable
                   account={position.holder as Address}
-                  filterPickConfigId={position.pickConfigId}
                   filterToken={position.tokenAddress as Address}
                   hiddenColumns={['position', 'status', 'share']}
                   hideFilters
