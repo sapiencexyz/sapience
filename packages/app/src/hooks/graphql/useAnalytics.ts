@@ -2,9 +2,11 @@ import { useQuery } from '@tanstack/react-query';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import {
   fetchProtocolAnalytics,
+  fetchProtocolStats,
   fetchVaultStats,
   fetchVaultAccountValue,
   type ProtocolAnalytics,
+  type ProtocolAnalyticsStat,
   type VaultStat,
   type VaultAccountValue,
 } from '@sapience/sdk/queries';
@@ -51,6 +53,19 @@ export function useVaultAccountValue(vaultAddress?: string) {
             timestamp: null,
           }),
     enabled: !!vaultAddress,
+    staleTime: CACHE_TIME_MS,
+    refetchInterval: CACHE_TIME_MS,
+  });
+}
+
+/**
+ * Latest v2 protocol stats only. Use this when callers need the live aggregate
+ * numbers without the heavier history/open-interest analytics payload.
+ */
+export function useProtocolStats() {
+  return useQuery<ProtocolAnalyticsStat>({
+    queryKey: ['protocolStats'],
+    queryFn: () => fetchProtocolStats(),
     staleTime: CACHE_TIME_MS,
     refetchInterval: CACHE_TIME_MS,
   });

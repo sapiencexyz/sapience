@@ -11,7 +11,7 @@ const {
   mockUseCurrentAddress,
   mockUseVaultStats,
   mockUseVaultAccountValue,
-  mockUseProtocolAnalytics,
+  mockUseProtocolStats,
   mockRouterReplace,
   mockSearchParamsToString,
   mockVaultPnlChart,
@@ -21,7 +21,7 @@ const {
   mockUseCurrentAddress: vi.fn(),
   mockUseVaultStats: vi.fn(),
   mockUseVaultAccountValue: vi.fn(),
-  mockUseProtocolAnalytics: vi.fn(),
+  mockUseProtocolStats: vi.fn(),
   mockRouterReplace: vi.fn(),
   mockSearchParamsToString: vi.fn(() => ''),
   mockVaultPnlChart: vi.fn(),
@@ -47,7 +47,7 @@ vi.mock('~/hooks/blockchain/useCurrentAddress', () => ({
 vi.mock('~/hooks/graphql/useAnalytics', () => ({
   useVaultStats: (vaultAddress: string | undefined) =>
     mockUseVaultStats(vaultAddress),
-  useProtocolAnalytics: () => mockUseProtocolAnalytics(),
+  useProtocolStats: () => mockUseProtocolStats(),
   useVaultAccountValue: (vaultAddress: string | undefined) =>
     mockUseVaultAccountValue(vaultAddress),
 }));
@@ -303,8 +303,8 @@ function setDefaults() {
     isLoading: false,
   });
 
-  mockUseProtocolAnalytics.mockReturnValue({
-    data: { stats: { totalValueLocked: '0' } },
+  mockUseProtocolStats.mockReturnValue({
+    data: { totalValueLocked: '0' },
     isLoading: false,
   });
 }
@@ -413,6 +413,28 @@ describe('VaultsPageContent geofence', () => {
       )
     ).toBe(true);
     expect(mockUseVaultStats).toHaveBeenCalledWith(singleLegVault);
+  });
+
+  it('loads stats and contract data only for the selected vault plus protocol rewards stats', () => {
+    mockUseRestrictedJurisdiction.mockReturnValue({
+      isRestricted: false,
+      isPermitLoading: false,
+      permitData: { permitted: true },
+      permitError: null,
+    });
+
+    render(<VaultsPageContent />);
+
+    expect(mockUseVaultStats).toHaveBeenCalledTimes(1);
+    expect(mockUseVaultStats).toHaveBeenCalledWith('0xVault');
+    expect(mockUseVaultAccountValue).toHaveBeenCalledTimes(1);
+    expect(mockUseVaultAccountValue).toHaveBeenCalledWith('0xVault');
+    expect(mockUsePassiveLiquidityVault).toHaveBeenCalledTimes(1);
+    expect(mockUsePassiveLiquidityVault).toHaveBeenCalledWith({
+      vaultAddress: '0xVault',
+      chainId: 42161,
+    });
+    expect(mockUseProtocolStats).toHaveBeenCalledTimes(1);
   });
 
   it('accepts the hidden options vault address from the URL without showing its tab', () => {

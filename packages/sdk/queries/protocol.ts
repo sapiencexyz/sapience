@@ -125,6 +125,18 @@ export const GET_PROTOCOL_ANALYTICS = /* GraphQL */ `
   ${PROTOCOL_STAT_FIELDS}
 `;
 
+export const GET_PROTOCOL_STATS = /* GraphQL */ `
+  query ProtocolStats {
+    protocol {
+      stats {
+        ...ProtocolStatFields
+      }
+    }
+  }
+
+  ${PROTOCOL_STAT_FIELDS}
+`;
+
 export const GET_PROTOCOL_STATS_HISTORY_PAGE = /* GraphQL */ `
   query ProtocolStatsHistoryPage(
     $interval: TimeInterval
@@ -248,6 +260,19 @@ function toProtocolAnalytics(
 const HISTORY_INTERVAL = 'DAY';
 const HISTORY_PAGE_SIZE = null;
 const MAX_HISTORY_PAGES = 50;
+
+export async function fetchProtocolStats(): Promise<ProtocolAnalyticsStat> {
+  const data = await graphqlRequestV2<{
+    protocol: { stats: WireStat } | null;
+  }>(GET_PROTOCOL_STATS);
+  const stats = data?.protocol?.stats;
+  if (!stats) {
+    throw new Error(
+      'Failed to fetch protocol stats: Invalid response structure'
+    );
+  }
+  return toStat(stats);
+}
 
 export async function fetchProtocolAnalytics(): Promise<ProtocolAnalytics> {
   const data = await graphqlRequestV2<ProtocolAnalyticsV2Response>(
