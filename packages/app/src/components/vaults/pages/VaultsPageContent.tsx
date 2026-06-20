@@ -33,7 +33,7 @@ import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
 import RestrictedJurisdictionBanner from '~/components/shared/RestrictedJurisdictionBanner';
 import {
   useVaultStats,
-  useProtocolAnalytics,
+  useProtocolStats,
   useVaultAccountValue,
 } from '~/hooks/graphql/useAnalytics';
 import RiskDisclaimer from '~/components/markets/forms/shared/RiskDisclaimer';
@@ -139,41 +139,11 @@ const VaultsPageContent = () => {
   const selectedVaultValue = selectedVault?.address ?? '';
   const collateralSymbol = COLLATERAL_SYMBOLS[VAULT_CHAIN_ID] || 'testUSDe';
 
-  // Separate reads for each vault so the Vault Rewards
-  // calc can sum across all vaults regardless of which tab is selected. Hooks
-  // must be called unconditionally, so missing addresses are handled inside
-  // the hook via the `enabled` flag.
-  const coreAddr = predictionMarketVault[VAULT_CHAIN_ID]?.address;
-  const optionsAddr = pythPredictionMarketVault[VAULT_CHAIN_ID]?.address;
-  const edgeAddr = predictionMarketVaultStrategyB[VAULT_CHAIN_ID]?.address;
-  const singlesAddr = singleLegVault[VAULT_CHAIN_ID]?.address;
-
-  const coreVault = usePassiveLiquidityVault({
-    vaultAddress: coreAddr,
-    chainId: VAULT_CHAIN_ID,
-  });
-  const optionsVault = usePassiveLiquidityVault({
-    vaultAddress: optionsAddr,
-    chainId: VAULT_CHAIN_ID,
-  });
-  const edgeVault = usePassiveLiquidityVault({
-    vaultAddress: edgeAddr,
-    chainId: VAULT_CHAIN_ID,
-  });
-  const singlesVault = usePassiveLiquidityVault({
-    vaultAddress: singlesAddr,
-    chainId: VAULT_CHAIN_ID,
-  });
-
-  const { data: coreStats } = useVaultStats(coreAddr);
-  const { data: optionsStats } = useVaultStats(optionsAddr);
-  const { data: edgeStats } = useVaultStats(edgeAddr);
-  const { data: singlesStats } = useVaultStats(singlesAddr);
-
-  // Protocol-wide TVL (escrow collateral + undeployed assets across every
-  // vault family), server-computed on v2. Replaces v1's client-side
-  // reconstruction from per-vault `escrowBalance + vaultAvailableAssets`.
-  const { data: protocolAnalytics } = useProtocolAnalytics();
+  // Latest protocol-wide TVL for the rewards card. Keep this independent of
+  // the selected vault tab so switching tabs doesn't preload every vault's
+  // chart/account series just to calculate rewards.
+  const { data: protocolStats, isLoading: isProtocolStatsLoading } =
+    useProtocolStats();
 
   const {
     vaultData,
@@ -663,40 +633,15 @@ const VaultsPageContent = () => {
   const utilizationDisplay = `${utilizationPercent.toFixed(2)}%`;
 
   const yieldMetrics = useMemo(() => {
-    // Rewards are paid from the protocol-wide Ethena yield and are shared
-    // among every vault's LPs. Calc must be identical regardless of which
-    // tab is selected — sum TVL across all deployed vaults.
-    const vaultEntries = [
-      [coreVault.vaultData, coreStats] as const,
-      [optionsVault.vaultData, optionsStats] as const,
-      [edgeVault.vaultData, edgeStats] as const,
-      [singlesVault.vaultData, singlesStats] as const,
-    ];
-    const totalVaultTvlWei = vaultEntries.reduce((sum, [v, stats]) => {
-      const liquid = v?.totalLiquidValue ?? 0n;
-      const lastStat = stats?.[stats.length - 1];
-      const deployed = lastStat?.deployedCollateral
-        ? BigInt(lastStat.deployedCollateral)
-        : 0n;
-      return sum + liquid + deployed;
-    }, 0n);
-
-    // Protocol TVL = escrow collateral + undeployed assets across every vault
-    // family, server-computed on v2 (`protocol.stats.totalValueLocked`). v1
-    // reconstructed this client-side from per-vault `escrowBalance +
-    // vaultAvailableAssets`; the v2 figure is authoritative and avoids the
-    // selected-vault dependence that zeroed out when switching tabs.
-    const protocolTvlWei = protocolAnalytics?.stats?.totalValueLocked
-      ? BigInt(protocolAnalytics.stats.totalValueLocked)
+    // Rewards are paid from the protocol-wide Ethena yield and are shared among
+    // vault LPs. `protocol.stats.totalValueLocked` is already the latest
+    // server-computed total across configured vault families, so the rewards
+    // card no longer needs to fan out across every vault tab.
+    const totalTvlWei = protocolStats?.totalValueLocked
+      ? BigInt(protocolStats.totalValueLocked)
       : 0n;
-    const protocolTvlNum = Number(formatAssetAmount(protocolTvlWei));
-    const totalVaultTvlNum = Number(formatAssetAmount(totalVaultTvlWei));
-
-    const effectiveApy =
-      totalVaultTvlNum > 0
-        ? (protocolTvlNum / totalVaultTvlNum) * ETHENA_BASE_APY
-        : 0;
-    const annualYieldToVaults = totalVaultTvlNum * (effectiveApy / 100);
+    const totalTvlNum = Number(formatAssetAmount(totalTvlWei));
+    const annualYieldToVaults = totalTvlNum * (ETHENA_BASE_APY / 100);
     const weeklyYield = (annualYieldToVaults / 365) * 7;
 
     const fmt = (n: number) =>
@@ -708,23 +653,12 @@ const VaultsPageContent = () => {
         : '0.00';
 
     return {
-      protocolTvl: fmt(protocolTvlNum),
+      protocolTvl: fmt(totalTvlNum),
       annualYield: fmt(annualYieldToVaults),
       weeklyYield: fmt(weeklyYield),
-      effectiveApy: effectiveApy.toFixed(2),
+      effectiveApy: ETHENA_BASE_APY.toFixed(2),
     };
-  }, [
-    coreVault.vaultData,
-    optionsVault.vaultData,
-    edgeVault.vaultData,
-    singlesVault.vaultData,
-    coreStats,
-    optionsStats,
-    edgeStats,
-    singlesStats,
-    protocolAnalytics,
-    formatAssetAmount,
-  ]);
+  }, [protocolStats, formatAssetAmount]);
 
   return (
     <div className="relative">
@@ -983,7 +917,7 @@ const VaultsPageContent = () => {
                               the vault's participation in prediction markets.
                             </p>
                           </div>
-                          {isAnalyticsLoading || !vaultData ? (
+                          {isProtocolStatsLoading ? (
                             <div className="flex justify-center py-4">
                               <Loader className="w-6 h-6" />
                             </div>
