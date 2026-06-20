@@ -24,18 +24,21 @@ export interface VaultStat {
 }
 
 // `statsHistory` returns ascending (oldest-first) timestamps; the final
-// `.sort()` below is a defensive no-op that also keeps the merged multi-page
+// `.sort()` below is a defensive no-op that also keeps a merged multi-page
 // result ordered.
 //
-// The resolver caps `first` per page (daily snapshots, bounded series), so we
-// page on `pageInfo` until exhausted rather than over-fetching a single page —
-// otherwise a vault older than the cap would silently lose the earliest chart
-// history.
+// `first` is left to the variable (nullable): omitting it lets the resolver
+// return up to its MAX_STATS_POINTS cap in one page, so the common case is a
+// single request. The query still selects `pageInfo` and threads `after` so
+// fetchVaultStats can page forward if a vault ever exceeds that cap — the
+// series stays complete without re-introducing a fixed chain of round-trips.
+// A literal `first` above GRAPHQL_MAX_LIST_SIZE (100) is rejected
+// pre-execution, so an explicit `pageSize` must stay <= 100.
 export const GET_VAULT_STATS = /* GraphQL */ `
   query VaultStats(
     $address: Address!
     $chainId: Int
-    $first: Int!
+    $first: Int
     $after: String
   ) {
     vault(address: $address, chainId: $chainId) {
@@ -91,23 +94,26 @@ function toVaultStat(node: WireVaultStat): VaultStat {
 }
 
 /**
- * Fetch a vault's full snapshot series, oldest-first. Pages through
- * `statsHistory` until the connection is exhausted (the resolver caps page
- * size), so the chart gets the complete history regardless of vault age.
- * Returns an empty array when the address is not a configured vault (the v2
- * `vault` field resolves null).
+ * Fetch a vault's full snapshot series, oldest-first.
+ *
+ * The resolver returns up to its MAX_STATS_POINTS cap per page, so for a
+ * normal vault this completes in a single request. The loop pages on
+ * `pageInfo` only if a vault's series ever exceeds the cap, so the chart never
+ * silently loses history. Returns an empty array when the address is not a
+ * configured vault (the v2 `vault` field resolves null).
+ *
+ * `pageSize` (optional) forces an explicit per-page `first` — it must stay
+ * <= the API's GRAPHQL_MAX_LIST_SIZE (100), since a larger literal is rejected
+ * pre-execution. Omit it to use the resolver's single-page cap.
  */
 export async function fetchVaultStats(
   address: string,
   chainId?: number,
-  // Must stay <= the API's GRAPHQL_MAX_LIST_SIZE (100); a larger `first` is
-  // rejected pre-execution with PAGINATION_LIMIT_EXCEEDED. The loop below pages
-  // on `pageInfo`, so a 100-row page still yields the full series.
-  pageSize = 100
+  pageSize?: number
 ): Promise<VaultStat[]> {
   const nodes: WireVaultStat[] = [];
   let after: string | null = null;
-  // Bound the loop defensively against a non-progressing cursor; a daily
+  // Bound the loop defensively against a non-progressing cursor; the daily
   // series can't realistically exceed a few thousand snapshots.
   for (let page = 0; page < 50; page += 1) {
     const data: VaultStatsResponse = await graphqlRequestV2<VaultStatsResponse>(
@@ -115,7 +121,7 @@ export async function fetchVaultStats(
       {
         address: address.toLowerCase(),
         chainId,
-        first: pageSize,
+        first: pageSize ?? null,
         after,
       }
     );

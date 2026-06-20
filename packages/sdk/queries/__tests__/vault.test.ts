@@ -40,6 +40,9 @@ describe('GET_VAULT_STATS document', () => {
     expect(GET_VAULT_STATS).toContain(
       'vault(address: $address, chainId: $chainId)'
     );
+    // `first` is a nullable variable: omitting it lets the resolver return up
+    // to its MAX_STATS_POINTS cap in one page, while `pageInfo`/`after` keep a
+    // pagination fallback for any vault that exceeds the cap.
     expect(GET_VAULT_STATS).toContain(
       'statsHistory(first: $first, after: $after)'
     );
@@ -59,18 +62,34 @@ describe('GET_VAULT_STATS document', () => {
 });
 
 describe('fetchVaultStats', () => {
-  test('passes the address (lowercased), chainId and first page args', async () => {
+  test('single request (no pageSize) sends a null `first`, address lowercased', async () => {
     mockGraphqlRequestV2.mockResolvedValue(responseWith([node(1700000100)]));
     await fetchVaultStats('0xABCDEF', 42161);
+    expect(mockGraphqlRequestV2).toHaveBeenCalledTimes(1);
     expect(mockGraphqlRequestV2).toHaveBeenCalledWith(GET_VAULT_STATS, {
       address: '0xabcdef',
       chainId: 42161,
-      first: 100,
+      first: null,
       after: null,
     });
   });
 
-  test('pages through statsHistory until the connection is exhausted', async () => {
+  test('one request returns the bounded series when the server signals no next page', async () => {
+    mockGraphqlRequestV2.mockResolvedValue(
+      responseWith([node(1700000300), node(1700000200), node(1700000100)])
+    );
+
+    const result = await fetchVaultStats('0xabc', 42161);
+
+    // Single round-trip: the resolver's cap covers the whole series.
+    expect(mockGraphqlRequestV2).toHaveBeenCalledTimes(1);
+    // All snapshots accumulated, sorted oldest-first.
+    expect(result.map((s) => s.timestamp)).toEqual([
+      1700000100, 1700000200, 1700000300,
+    ]);
+  });
+
+  test('pages on `pageInfo` when a vault exceeds the server cap', async () => {
     mockGraphqlRequestV2
       .mockResolvedValueOnce(
         responseWith([node(1700000300), node(1700000200)], {
@@ -92,10 +111,20 @@ describe('fetchVaultStats', () => {
     expect(mockGraphqlRequestV2.mock.calls[1][1]).toMatchObject({
       after: 'cursor-1',
     });
-    // All three snapshots accumulated, sorted oldest-first.
     expect(result.map((s) => s.timestamp)).toEqual([
       1700000100, 1700000200, 1700000300,
     ]);
+  });
+
+  test('forwards an explicit pageSize as the per-page `first`', async () => {
+    mockGraphqlRequestV2.mockResolvedValue(responseWith([node(1700000100)]));
+    await fetchVaultStats('0xabc', 42161, 100);
+    expect(mockGraphqlRequestV2).toHaveBeenCalledWith(GET_VAULT_STATS, {
+      address: '0xabc',
+      chainId: 42161,
+      first: 100,
+      after: null,
+    });
   });
 
   test('maps wire nodes to the adapted vault stat shape', async () => {

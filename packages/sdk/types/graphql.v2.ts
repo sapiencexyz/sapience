@@ -2152,6 +2152,12 @@ export type Vault = Node & {
    * Time-series of this vault's economic snapshots, oldest-first (ascending
    * `timestamp`, matching `Account.statsHistory` — chart-ready, no consumer
    * re-sort). Backs the vault dashboard's TVL / PnL charts.
+   *
+   * Omitting `first` returns up to a server-side cap (MAX_STATS_POINTS) in one
+   * page, so the chart loads in a single request instead of a chain of paginated
+   * round-trips — while still bounding the response for an append-only series.
+   * Page forward with `after` if a vault ever exceeds the cap. (A literal `first`
+   * above GRAPHQL_MAX_LIST_SIZE is still rejected pre-execution.)
    */
   statsHistory: VaultStatConnection;
 };
