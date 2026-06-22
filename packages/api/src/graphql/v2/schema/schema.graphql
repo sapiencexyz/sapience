@@ -1852,8 +1852,9 @@ type Protocol {
   the bucket's last (latest) snapshot; flow fields (`periodVolume`,
   `periodTradeCount`) sum across the bucket; the node's `timestamp` is the
   bucket start. With no `interval` the raw per-snapshot series is returned.
-  The default page (`first` omitted) fits the whole bucketed series in one
-  request, so the analytics dashboard no longer paginates.
+  Pass `first: null` to fit the whole bucketed series in one request — an
+  explicit null bypasses the default page size, so the analytics dashboard
+  no longer paginates; omitting `first` falls back to a 100-row page.
   """
   statsHistory(
     interval: TimeInterval
