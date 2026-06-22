@@ -135,52 +135,54 @@ export async function fetchVaultStats(
 }
 
 export interface VaultAccountValue {
-  /** Current indexed wUSDe balance held by the vault wallet, wei. */
+  /** Raw wUSDe held by the vault contract (`balanceOf`), excludes deployed, wei. */
   collateralBalance: string;
-  /** Collateral deployed into open positions by the vault account, wei. */
+  /** Collateral deployed into escrow backing the vault's open positions, wei. */
   deployedCollateral: string;
-  /** Settled/won collateral owed to the vault account but not redeemed, wei. */
+  /** Settled/won collateral owed to the vault but not yet redeemed, wei. */
   claimableCollateral: string;
   /** Sum of collateralBalance + deployedCollateral + claimableCollateral, wei. */
   totalValue: string;
-  /** Latest account stats bucket timestamp, epoch seconds. */
+  /** Latest vault stats snapshot timestamp, epoch seconds. */
   timestamp: number | null;
 }
 
-// `statsHistory` is intentionally called without `first`: the API's
-// pre-execution validation rejects any literal `first` above
-// GRAPHQL_MAX_LIST_SIZE (100) with PAGINATION_LIMIT_EXCEEDED, and the daily
-// series needs the full rolling-year window. With no `first` the resolver
-// defaults to its MAX_STATS_POINTS (366) cap — the whole [now-365d, now] grid,
-// oldest-first — so `.at(-1)` is always the latest (today's) bucket.
+// Sourced from the vault entity's live `stats` snapshot — NOT the
+// `account(...)` surface. The two compute `deployedCollateral` differently:
+//
+//   - `Vault.stats.deployedCollateral` (this query) keys "still open" off
+//     Picks.resolved/resolvedAt, so resolved positions drop out immediately.
+//   - `Account.statsHistory.deployedCollateral` keys it off Prediction.settledAt.
+//     Losing predictions are frequently never settled on-chain, so their
+//     counterpartyCollateral stays counted as deployed forever.
+//
+// The account path therefore over-counts deployed (e.g. ~4x for a vault with a
+// backlog of unsettled losses), inflating the headline balance well above the
+// vault's true AUM. The vault entity matches the figure the PnL chart plots.
 export const GET_VAULT_ACCOUNT_VALUE = /* GraphQL */ `
   query VaultAccountValue($address: Address!, $chainId: Int) {
-    account(address: $address, chainId: $chainId) {
-      collateralBalance {
-        amount
-      }
-      statsHistory(interval: DAY) {
-        nodes {
-          timestamp
-          deployedCollateral
-          claimableCollateral
-        }
+    vault(address: $address, chainId: $chainId) {
+      stats {
+        timestamp
+        balance
+        deployedCollateral
+        claimableCollateral
       }
     }
   }
 `;
 
-type WireVaultAccountStat = {
+type WireVaultLiveStat = {
   timestamp: number;
+  balance: string | number;
   deployedCollateral: string | number;
   claimableCollateral: string | number;
 };
 
 type VaultAccountValueResponse = {
-  account: {
-    collateralBalance: { amount: string | number };
-    statsHistory: { nodes: WireVaultAccountStat[] };
-  };
+  vault: {
+    stats: WireVaultLiveStat | null;
+  } | null;
 };
 
 export async function fetchVaultAccountValue(
@@ -194,13 +196,15 @@ export async function fetchVaultAccountValue(
       chainId,
     }
   );
-  const latestStat = data.account.statsHistory.nodes.at(-1);
-  const collateralBalance = BigInt(wei(data.account.collateralBalance.amount));
-  const deployedCollateral = latestStat?.deployedCollateral
-    ? BigInt(wei(latestStat.deployedCollateral))
+  // `stats` is null until the stats writer has recorded a snapshot, and `vault`
+  // is null when the address is not a configured vault.
+  const stats = data.vault?.stats;
+  const collateralBalance = stats?.balance ? BigInt(wei(stats.balance)) : 0n;
+  const deployedCollateral = stats?.deployedCollateral
+    ? BigInt(wei(stats.deployedCollateral))
     : 0n;
-  const claimableCollateral = latestStat?.claimableCollateral
-    ? BigInt(wei(latestStat.claimableCollateral))
+  const claimableCollateral = stats?.claimableCollateral
+    ? BigInt(wei(stats.claimableCollateral))
     : 0n;
 
   return {
@@ -212,6 +216,6 @@ export async function fetchVaultAccountValue(
       deployedCollateral +
       claimableCollateral
     ).toString(),
-    timestamp: latestStat?.timestamp ?? null,
+    timestamp: stats?.timestamp ?? null,
   };
 }
