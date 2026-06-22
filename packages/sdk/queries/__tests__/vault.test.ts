@@ -189,40 +189,32 @@ describe('fetchVaultStats', () => {
 });
 
 describe('GET_VAULT_ACCOUNT_VALUE document', () => {
-  test('queries account collateralBalance and account statsHistory from one v2 surface', () => {
+  test('reads the live vault `stats` snapshot, not the account surface', () => {
+    // Must source from the vault entity: its `deployedCollateral` is keyed off
+    // Picks.resolved/resolvedAt, so resolved-but-unsettled (losing) positions
+    // drop out. The `account(...)` surface keys deployed off Prediction.settledAt
+    // — losing predictions are never settled on-chain, so they stay counted as
+    // deployed forever and inflate the balance. Regression guard for that.
     expect(GET_VAULT_ACCOUNT_VALUE).toContain(
-      'account(address: $address, chainId: $chainId)'
+      'vault(address: $address, chainId: $chainId)'
     );
-    expect(GET_VAULT_ACCOUNT_VALUE).toContain('collateralBalance');
-    expect(GET_VAULT_ACCOUNT_VALUE).toContain('amount');
-    expect(GET_VAULT_ACCOUNT_VALUE).toContain('statsHistory(interval: DAY)');
-    // No explicit `first`: a literal above GRAPHQL_MAX_LIST_SIZE (100) is
-    // rejected pre-execution with PAGINATION_LIMIT_EXCEEDED, so we rely on the
-    // resolver's MAX_STATS_POINTS default for the full rolling-year window.
-    expect(GET_VAULT_ACCOUNT_VALUE).not.toContain('first:');
+    expect(GET_VAULT_ACCOUNT_VALUE).not.toContain('account(');
+    expect(GET_VAULT_ACCOUNT_VALUE).toContain('stats {');
+    expect(GET_VAULT_ACCOUNT_VALUE).toContain('balance');
     expect(GET_VAULT_ACCOUNT_VALUE).toContain('deployedCollateral');
     expect(GET_VAULT_ACCOUNT_VALUE).toContain('claimableCollateral');
   });
 });
 
 describe('fetchVaultAccountValue', () => {
-  test('lowercases the address and sums indexed wallet, deployed, and claimable collateral', async () => {
+  test('lowercases the address and sums vault balance, deployed, and claimable collateral', async () => {
     mockGraphqlRequestV2.mockResolvedValue({
-      account: {
-        collateralBalance: { amount: '1000' },
-        statsHistory: {
-          nodes: [
-            {
-              timestamp: 1700000000,
-              deployedCollateral: '250',
-              claimableCollateral: '25',
-            },
-            {
-              timestamp: 1700000100,
-              deployedCollateral: '500',
-              claimableCollateral: '125',
-            },
-          ],
+      vault: {
+        stats: {
+          timestamp: 1700000100,
+          balance: '1000',
+          deployedCollateral: '500',
+          claimableCollateral: '125',
         },
       },
     });
@@ -242,19 +234,28 @@ describe('fetchVaultAccountValue', () => {
     });
   });
 
-  test('defaults missing account stats to just the indexed wallet balance', async () => {
+  test('defaults to zeros when the vault has no stats snapshot yet', async () => {
     mockGraphqlRequestV2.mockResolvedValue({
-      account: {
-        collateralBalance: { amount: 1000 },
-        statsHistory: { nodes: [] },
-      },
+      vault: { stats: null },
     });
 
     await expect(fetchVaultAccountValue('0xabc', 42161)).resolves.toEqual({
-      collateralBalance: '1000',
+      collateralBalance: '0',
       deployedCollateral: '0',
       claimableCollateral: '0',
-      totalValue: '1000',
+      totalValue: '0',
+      timestamp: null,
+    });
+  });
+
+  test('defaults to zeros when the address is not a configured vault', async () => {
+    mockGraphqlRequestV2.mockResolvedValue({ vault: null });
+
+    await expect(fetchVaultAccountValue('0xabc', 42161)).resolves.toEqual({
+      collateralBalance: '0',
+      deployedCollateral: '0',
+      claimableCollateral: '0',
+      totalValue: '0',
       timestamp: null,
     });
   });
