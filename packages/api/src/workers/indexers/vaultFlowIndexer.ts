@@ -58,6 +58,11 @@ interface FlowRow {
   shares: string;
 }
 
+interface VaultDeployment {
+  address: `0x${string}`;
+  startBlock: bigint;
+}
+
 /**
  * Live indexer for vault deposit/withdrawal flows (`vault_flow_event`). Watches
  * every configured vault deployment (current primaries + legacy redeploys) on a
@@ -72,8 +77,7 @@ class VaultFlowIndexer implements IIndexer {
   public client: PublicClient;
   private isWatching = false;
   private chainId: number;
-  private vaultAddresses: `0x${string}`[];
-  private startBlock: bigint;
+  private vaultDeployments: VaultDeployment[];
   private pollingInterval: NodeJS.Timeout | null = null;
   private sigintHandler: (() => void) | null = null;
 
@@ -81,26 +85,30 @@ class VaultFlowIndexer implements IIndexer {
     this.chainId = chainId;
     this.client = getProviderForChain(chainId);
 
-    const addresses = new Set<string>();
-    let earliest = Number.MAX_SAFE_INTEGER;
-    for (const vault of getConfiguredVaults(chainId)) {
-      addresses.add(vault.address.toLowerCase());
-      if (vault.config.blockCreated !== undefined) {
-        earliest = Math.min(earliest, vault.config.blockCreated);
+    const deployments = new Map<string, VaultDeployment>();
+    const addDeployment = (address: string, blockCreated?: number) => {
+      const normalizedAddress = address.toLowerCase() as `0x${string}`;
+      const startBlock = BigInt(blockCreated ?? 0);
+      const existing = deployments.get(normalizedAddress);
+      if (!existing || startBlock < existing.startBlock) {
+        deployments.set(normalizedAddress, {
+          address: normalizedAddress,
+          startBlock,
+        });
       }
+    };
+
+    for (const vault of getConfiguredVaults(chainId)) {
+      addDeployment(vault.address, vault.config.blockCreated);
       for (const legacy of vault.config.legacy ?? []) {
         const normalized = normalizeLegacyEntry(legacy);
-        addresses.add(normalized.address.toLowerCase());
-        earliest = Math.min(earliest, normalized.blockCreated);
+        addDeployment(normalized.address, normalized.blockCreated);
       }
     }
-    this.vaultAddresses = [...addresses] as `0x${string}`[];
-    this.startBlock = BigInt(
-      earliest === Number.MAX_SAFE_INTEGER ? 0 : earliest
-    );
+    this.vaultDeployments = [...deployments.values()];
 
     logger.info(
-      { chainId, vaultCount: this.vaultAddresses.length },
+      { chainId, vaultCount: this.vaultDeployments.length },
       '[VaultFlowIndexer] Initialized'
     );
   }
@@ -117,7 +125,7 @@ class VaultFlowIndexer implements IIndexer {
 
   async watchBlocksForResource(): Promise<void> {
     if (this.isWatching) return;
-    if (this.vaultAddresses.length === 0) {
+    if (this.vaultDeployments.length === 0) {
       logger.info(
         { chainId: this.chainId },
         '[VaultFlowIndexer] No vaults configured; not watching'
@@ -161,40 +169,55 @@ class VaultFlowIndexer implements IIndexer {
   // --- Core polling logic ---
 
   private async pollCycle(): Promise<void> {
-    const lastBlock = await this.getLastIndexedBlock();
     const currentBlock = await this.client.getBlockNumber();
-    if (currentBlock <= lastBlock) return;
 
-    const fromBlock = lastBlock + 1n;
+    for (const deployment of this.vaultDeployments) {
+      const lastBlock = await this.getLastIndexedBlock(deployment);
+      if (currentBlock <= lastBlock) continue;
 
-    for (
-      let start = fromBlock;
-      start <= currentBlock;
-      start += BigInt(BLOCK_BATCH_SIZE)
-    ) {
-      const end =
-        start + BigInt(BLOCK_BATCH_SIZE) - 1n > currentBlock
-          ? currentBlock
-          : start + BigInt(BLOCK_BATCH_SIZE) - 1n;
+      const fromBlock = lastBlock + 1n;
 
-      const [processedLogs, emergencyLogs] = await Promise.all([
-        this.getLogsWithRetry(PROCESSED_EVENT, start, end),
-        this.getLogsWithRetry(EMERGENCY_EVENT, start, end),
-      ]);
+      for (
+        let start = fromBlock;
+        start <= currentBlock;
+        start += BigInt(BLOCK_BATCH_SIZE)
+      ) {
+        const end =
+          start + BigInt(BLOCK_BATCH_SIZE) - 1n > currentBlock
+            ? currentBlock
+            : start + BigInt(BLOCK_BATCH_SIZE) - 1n;
 
-      if (processedLogs.length > 0 || emergencyLogs.length > 0) {
-        await this.processLogs(
-          processedLogs as unknown as ProcessedLog[],
-          emergencyLogs as unknown as EmergencyLog[]
-        );
+        const [processedLogs, emergencyLogs] = await Promise.all([
+          this.getLogsWithRetry(
+            deployment.address,
+            PROCESSED_EVENT,
+            start,
+            end
+          ),
+          this.getLogsWithRetry(
+            deployment.address,
+            EMERGENCY_EVENT,
+            start,
+            end
+          ),
+        ]);
+
+        if (processedLogs.length > 0 || emergencyLogs.length > 0) {
+          await this.processLogs(
+            processedLogs as unknown as ProcessedLog[],
+            emergencyLogs as unknown as EmergencyLog[]
+          );
+        }
+
+        // Persist a per-deployment cursor after each batch. A single chain-level
+        // cursor would skip historical events for vault addresses added later.
+        await this.setLastIndexedBlock(deployment.address, Number(end));
       }
-
-      // Persist cursor after each batch so a crash doesn't replay everything.
-      await this.setLastIndexedBlock(Number(end));
     }
   }
 
   private async getLogsWithRetry(
+    address: `0x${string}`,
     event: typeof PROCESSED_EVENT | typeof EMERGENCY_EVENT,
     fromBlock: bigint,
     toBlock: bigint
@@ -202,7 +225,7 @@ class VaultFlowIndexer implements IIndexer {
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
         return await this.client.getLogs({
-          address: this.vaultAddresses,
+          address,
           event,
           fromBlock,
           toBlock,
@@ -306,20 +329,50 @@ class VaultFlowIndexer implements IIndexer {
 
   // --- Block cursor persistence ---
 
-  private async getLastIndexedBlock(): Promise<bigint> {
-    const key = `${INDEXER_STATE_KEY}:${this.chainId}`;
+  private async getLastIndexedBlock(
+    deployment: VaultDeployment
+  ): Promise<bigint> {
+    const key = this.cursorKey(deployment.address);
     const row = await prisma.keyValueStore.findUnique({ where: { key } });
     if (row) return BigInt(row.value);
-    return this.startBlock;
+
+    // Preserve continuity for deployments already covered by the old chain-wide
+    // cursor, but do not apply that cursor to brand-new vault addresses: they
+    // need to replay from their own deployment block.
+    const existingFlow = await prisma.vaultFlowEvent.findFirst({
+      where: {
+        chainId: this.chainId,
+        vaultAddress: deployment.address.toLowerCase(),
+      },
+      select: { id: true },
+    });
+    if (existingFlow) {
+      const legacyKey = `${INDEXER_STATE_KEY}:${this.chainId}`;
+      const legacyRow = await prisma.keyValueStore.findUnique({
+        where: { key: legacyKey },
+      });
+      if (legacyRow) return BigInt(legacyRow.value);
+    }
+
+    // Store the last fully indexed block. With no cursor, start at
+    // blockCreated - 1 so the deployment block itself is included.
+    return deployment.startBlock > 0n ? deployment.startBlock - 1n : 0n;
   }
 
-  private async setLastIndexedBlock(block: number): Promise<void> {
-    const key = `${INDEXER_STATE_KEY}:${this.chainId}`;
+  private async setLastIndexedBlock(
+    address: `0x${string}`,
+    block: number
+  ): Promise<void> {
+    const key = this.cursorKey(address);
     await prisma.keyValueStore.upsert({
       where: { key },
       create: { key, value: block.toString() },
       update: { value: block.toString() },
     });
+  }
+
+  private cursorKey(address: `0x${string}`): string {
+    return `${INDEXER_STATE_KEY}:${this.chainId}:${address.toLowerCase()}`;
   }
 }
 

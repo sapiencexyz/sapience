@@ -54,17 +54,6 @@ export type Account = AddressEntity &
      * when the account was resolved without an explicit `chainId`.
      */
     chainId: Scalars['Int']['output'];
-    /**
-     * Current wUSDe wallet balance at an optional block (defaults to head).
-     * Scoped to the account's `chainId`.
-     */
-    collateralBalance: CollateralBalance;
-    /**
-     * Time-bucketed wUSDe wallet balance snapshots, scoped to the account's
-     * `chainId`. Step size is `intervalSeconds` (default 7d); returns
-     * `first + 1` boundaries back from now.
-     */
-    collateralBalanceHistory: CollateralBalanceConnection;
     /** When this account first appeared in the database. Synthesized accounts return the unix epoch. */
     createdAt: Scalars['DateTimeISO']['output'];
     id: Scalars['ID']['output'];
@@ -89,26 +78,6 @@ export type Account = AddressEntity &
      */
     statsHistory: AccountStatPointConnection;
   };
-
-/**
- * Address-keyed account record — wallet-level identity. Synthesized for
- * addresses that have no User row so every valid address resolves to an
- * Account; persistent rows additionally carry referral metadata.
- */
-export type AccountCollateralBalanceArgs = {
-  atBlock?: InputMaybe<Scalars['Int']['input']>;
-};
-
-/**
- * Address-keyed account record — wallet-level identity. Synthesized for
- * addresses that have no User row so every valid address resolves to an
- * Account; persistent rows additionally carry referral metadata.
- */
-export type AccountCollateralBalanceHistoryArgs = {
-  after?: InputMaybe<Scalars['String']['input']>;
-  first?: InputMaybe<Scalars['Int']['input']>;
-  intervalSeconds?: InputMaybe<Scalars['Int']['input']>;
-};
 
 /**
  * Address-keyed account record — wallet-level identity. Synthesized for
@@ -545,102 +514,6 @@ export type CloseOrder = {
 export type CloseOrderField = 'BURNED_AT';
 
 /**
- * Wallet wUSDe collateral balance at a point in time. Not a Node —
- * balances are derived rather than persistent entities.
- *
- * Carries two mutually-exclusive timing axes — exactly one is populated
- * depending on which resolver produced the value:
- *
- * - `blockNumber` is set by `Account.collateralBalance`, which is keyed
- *   by block (echoes the caller's `atBlock` arg, or `null` for the head
- *   balance).
- * - `timestamp` is set by `Account.collateralBalanceHistory`, which
- *   buckets balances by `intervalSeconds`-spaced time boundaries (no
- *   block is pinned per bucket).
- */
-export type CollateralBalance = {
-  __typename?: 'CollateralBalance';
-  address: Scalars['Address']['output'];
-  amount: Scalars['BigInt']['output'];
-  /**
-   * Block the balance was computed against. Set by `collateralBalance`
-   * point lookups; `null` for time-bucketed snapshots and for the head
-   * balance.
-   */
-  blockNumber?: Maybe<Scalars['Int']['output']>;
-  chainId: Scalars['Int']['output'];
-  /**
-   * Time the balance was computed at. Set by `collateralBalanceHistory`
-   * bucket boundaries; `null` for point lookups.
-   */
-  timestamp?: Maybe<Scalars['DateTimeISO']['output']>;
-};
-
-export type CollateralBalanceConnection = {
-  __typename?: 'CollateralBalanceConnection';
-  edges: Array<CollateralBalanceEdge>;
-  nodes: Array<CollateralBalance>;
-  pageInfo: PageInfo;
-  totalCount: Scalars['Int']['output'];
-};
-
-export type CollateralBalanceEdge = {
-  __typename?: 'CollateralBalanceEdge';
-  cursor: Scalars['String']['output'];
-  node: CollateralBalance;
-};
-
-/**
- * On-chain ERC-20 Transfer of the collateral token (wUSDe). The
- * `(chainId, transactionHash, logIndex)` tuple is the natural key.
- */
-export type CollateralTransfer = Node & {
-  __typename?: 'CollateralTransfer';
-  blockNumber: Scalars['Int']['output'];
-  chainId: Scalars['Int']['output'];
-  createdAt: Scalars['DateTimeISO']['output'];
-  from: Scalars['Address']['output'];
-  id: Scalars['ID']['output'];
-  logIndex: Scalars['Int']['output'];
-  timestamp: Scalars['DateTimeISO']['output'];
-  to: Scalars['Address']['output'];
-  transactionHash: Scalars['Bytes32']['output'];
-  /** Transfer amount in wei (18 decimals). */
-  value: Scalars['BigInt']['output'];
-};
-
-export type CollateralTransferConnection = {
-  __typename?: 'CollateralTransferConnection';
-  edges: Array<CollateralTransferEdge>;
-  nodes: Array<CollateralTransfer>;
-  pageInfo: PageInfo;
-  totalCount: Scalars['Int']['output'];
-};
-
-export type CollateralTransferEdge = {
-  __typename?: 'CollateralTransferEdge';
-  cursor: Scalars['String']['output'];
-  node: CollateralTransfer;
-};
-
-export type CollateralTransferFilter = {
-  /** OR across from/to (account is on either side of the transfer). */
-  account?: InputMaybe<Scalars['Address']['input']>;
-  chainId?: InputMaybe<Scalars['Int']['input']>;
-  /** Exclude transfers to/from configured protocol addresses (vault, escrow). */
-  excludeProtocol?: InputMaybe<Scalars['Boolean']['input']>;
-  timestamp?: InputMaybe<DateTimeRangeFilter>;
-  transactionHash?: InputMaybe<Scalars['Bytes32']['input']>;
-};
-
-export type CollateralTransferOrder = {
-  direction: OrderDirection;
-  field: CollateralTransferOrderField;
-};
-
-export type CollateralTransferOrderField = 'BLOCK_NUMBER' | 'TIMESTAMP';
-
-/**
  * On-chain prediction condition. v2 drops v1's legacy boolean flags
  * (`settled`, `resolvedToYes`, `nonDecisive`) in favour of the single
  * nullable `outcome` enum; clients should filter "settled" as
@@ -899,12 +772,6 @@ export type ConditionOrderField =
   | 'OPEN_INTEREST';
 
 export type ConditionOutcome = 'NO' | 'NON_DECISIVE' | 'YES';
-
-/** Date/time range filter; both bounds inclusive. */
-export type DateTimeRangeFilter = {
-  gte?: InputMaybe<Scalars['DateTimeISO']['input']>;
-  lte?: InputMaybe<Scalars['DateTimeISO']['input']>;
-};
 
 /**
  * Float range filter; all bounds optional. `gt` / `lt` are open-ended,
@@ -1363,8 +1230,9 @@ export type Protocol = {
    * the bucket's last (latest) snapshot; flow fields (`periodVolume`,
    * `periodTradeCount`) sum across the bucket; the node's `timestamp` is the
    * bucket start. With no `interval` the raw per-snapshot series is returned.
-   * The default page (`first` omitted) fits the whole bucketed series in one
-   * request, so the analytics dashboard no longer paginates.
+   * Pass `first: null` to fit the whole bucketed series in one request — an
+   * explicit null bypasses the default page size, so the analytics dashboard
+   * no longer paginates; omitting `first` falls back to a 100-row page.
    */
   statsHistory: ProtocolStatConnection;
 };
@@ -1463,13 +1331,6 @@ export type Query = {
    * to `BURNED_AT DESC`.
    */
   closes: CloseConnection;
-  /** Look up a single collateral transfer by its globalId-encoded row id. */
-  collateralTransfer?: Maybe<CollateralTransfer>;
-  /**
-   * Relay-shaped connection over collateral-token transfers. Defaults to
-   * `TIMESTAMP DESC`.
-   */
-  collateralTransfers: CollateralTransferConnection;
   /** Look up a single condition by its on-chain CTF condition id. */
   condition?: Maybe<Condition>;
   /** Look up a single condition group by its integer primary key. */
@@ -1620,17 +1481,6 @@ export type QueryClosesArgs = {
   filter?: InputMaybe<CloseFilter>;
   first?: InputMaybe<Scalars['Int']['input']>;
   orderBy?: InputMaybe<CloseOrder>;
-};
-
-export type QueryCollateralTransferArgs = {
-  id: Scalars['ID']['input'];
-};
-
-export type QueryCollateralTransfersArgs = {
-  after?: InputMaybe<Scalars['String']['input']>;
-  filter?: InputMaybe<CollateralTransferFilter>;
-  first?: InputMaybe<Scalars['Int']['input']>;
-  orderBy?: InputMaybe<CollateralTransferOrder>;
 };
 
 export type QueryConditionArgs = {
