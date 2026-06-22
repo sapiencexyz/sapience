@@ -102,19 +102,6 @@ type Account implements Node & AddressEntity {
   ranking(metric: LeaderboardMetric!, filter: RankingFilter): Ranking
 
   """
-  Current wUSDe wallet balance at an optional block (defaults to head).
-  Scoped to the account's `chainId`.
-  """
-  collateralBalance(atBlock: Int): CollateralBalance!
-
-  """
-  Time-bucketed wUSDe wallet balance snapshots, scoped to the account's
-  `chainId`. Step size is `intervalSeconds` (default 7d); returns
-  `first + 1` boundaries back from now.
-  """
-  collateralBalanceHistory(first: Int = 12, after: String, intervalSeconds: Int): CollateralBalanceConnection!
-
-  """
   Aggregate statistics for this account. Cheap to resolve; always present.
   """
   stats: AccountStat!
@@ -1499,66 +1486,6 @@ input CloseOrder {
 }
 
 """
-On-chain ERC-20 Transfer of the collateral token (wUSDe). The
-`(chainId, transactionHash, logIndex)` tuple is the natural key.
-"""
-type CollateralTransfer implements Node {
-  id: ID!
-  chainId: Int!
-  blockNumber: Int!
-  timestamp: DateTimeISO!
-  transactionHash: Bytes32!
-  logIndex: Int!
-  from: Address!
-  to: Address!
-
-  """Transfer amount in wei (18 decimals)."""
-  value: BigInt!
-  createdAt: DateTimeISO!
-}
-
-type CollateralTransferEdge {
-  cursor: String!
-  node: CollateralTransfer!
-}
-
-type CollateralTransferConnection {
-  edges: [CollateralTransferEdge!]!
-  nodes: [CollateralTransfer!]!
-  pageInfo: PageInfo!
-  totalCount: Int!
-}
-
-"""Date/time range filter; both bounds inclusive."""
-input DateTimeRangeFilter {
-  gte: DateTimeISO
-  lte: DateTimeISO
-}
-
-input CollateralTransferFilter {
-  """OR across from/to (account is on either side of the transfer)."""
-  account: Address
-  chainId: Int
-  timestamp: DateTimeRangeFilter
-  transactionHash: Bytes32
-
-  """
-  Exclude transfers to/from configured protocol addresses (vault, escrow).
-  """
-  excludeProtocol: Boolean
-}
-
-enum CollateralTransferOrderField {
-  BLOCK_NUMBER
-  TIMESTAMP
-}
-
-input CollateralTransferOrder {
-  field: CollateralTransferOrderField!
-  direction: OrderDirection!
-}
-
-"""
 A unified activity item — either an escrow `Prediction` or a
 secondary-market `Trade`. v2 returns the union directly; v1 wrapped
 each item in an `Activity` envelope, which forced clients to dereference
@@ -1808,51 +1735,6 @@ type TimeToResolutionBucket {
   maxSecondsFromNow: Int
   openInterest: BigInt!
   predictionCount: Int!
-}
-
-"""
-Wallet wUSDe collateral balance at a point in time. Not a Node —
-balances are derived rather than persistent entities.
-
-Carries two mutually-exclusive timing axes — exactly one is populated
-depending on which resolver produced the value:
-
-- `blockNumber` is set by `Account.collateralBalance`, which is keyed
-  by block (echoes the caller's `atBlock` arg, or `null` for the head
-  balance).
-- `timestamp` is set by `Account.collateralBalanceHistory`, which
-  buckets balances by `intervalSeconds`-spaced time boundaries (no
-  block is pinned per bucket).
-"""
-type CollateralBalance {
-  address: Address!
-  chainId: Int!
-  amount: BigInt!
-
-  """
-  Block the balance was computed against. Set by `collateralBalance`
-  point lookups; `null` for time-bucketed snapshots and for the head
-  balance.
-  """
-  blockNumber: Int
-
-  """
-  Time the balance was computed at. Set by `collateralBalanceHistory`
-  bucket boundaries; `null` for point lookups.
-  """
-  timestamp: DateTimeISO
-}
-
-type CollateralBalanceEdge {
-  cursor: String!
-  node: CollateralBalance!
-}
-
-type CollateralBalanceConnection {
-  edges: [CollateralBalanceEdge!]!
-  nodes: [CollateralBalance!]!
-  pageInfo: PageInfo!
-  totalCount: Int!
 }
 
 """
@@ -2158,15 +2040,6 @@ type Query {
   the window.
   """
   leaderboard(metric: LeaderboardMetric!, first: Int = 25, after: String, filter: RankingFilter): RankingConnection!
-
-  """Look up a single collateral transfer by its globalId-encoded row id."""
-  collateralTransfer(id: ID!): CollateralTransfer
-
-  """
-  Relay-shaped connection over collateral-token transfers. Defaults to
-  `TIMESTAMP DESC`.
-  """
-  collateralTransfers(first: Int = 100, after: String, filter: CollateralTransferFilter, orderBy: CollateralTransferOrder): CollateralTransferConnection!
 
   """Look up a single claim by its globalId-encoded row id."""
   claim(id: ID!): Claim

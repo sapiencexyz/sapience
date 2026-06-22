@@ -183,100 +183,43 @@ export async function calculateVaultSecondaryFlows(
 }
 
 /**
- * Calculate vault's airdrop gains: wUSDe transferred into the vault from
- * sources the protocol doesn't otherwise track.
+ * Vault airdrop gains: wUSDe sent DIRECTLY to the vault (not via a
+ * deposit/settlement/secondary path) that the ERC4626 vault auto-distributes
+ * pro-rata to LP-token holders by raising price-per-share.
  *
- *   airdrop = sum(CollateralTransfer.value where to = vault)
- *           − sum(VaultFlowEvent deposits)
- *           − sum(Close payouts to vault holder)
- *           − sum(SecondaryTrade.price where seller = vault)
+ * Rather than summing on-chain Transfer events (which double-counts the
+ * vault's recycled settlement collateral and depends on a chain-wide transfer
+ * index), we derive it as the residual of the reconciliation identity using
+ * the vault's true on-chain balance:
  *
- * In a fully-reconciled state this is zero unless real wUSDe arrives via
- * a path outside the protocol (sapience emissions, partner rewards, etc).
- * Clamped at zero — a negative residual indicates an indexer gap and is
- * surfaced via the snapshot console log rather than corrupting the chart.
+ *   airdrop = (balance + deployed)
+ *           − (deposits − withdrawals)         // LP capital in/out
+ *           − realizedPnL                      // settlement PnL
+ *           − secondarySold + secondaryBought  // net secondary cash
+ *
+ * Clamped at zero — a negative residual means AUM is over-explained (an
+ * indexer gap), surfaced as a non-zero reconciliation Δ rather than corrupting
+ * the chart. Correctness depends on deposits/withdrawals staying current,
+ * which the live `VaultFlowIndexer` guarantees.
  */
-export async function calculateVaultAirdrops(
-  chainId: number,
-  beforeTimestamp?: number,
-  vaultAddressArg?: string
-): Promise<bigint> {
-  const vaultAddress = resolveVaultAddress(chainId, vaultAddressArg);
-  if (!vaultAddress) return 0n;
-
-  const transferWhere: {
-    chainId: number;
-    to: string;
-    timestamp?: { lte: Date };
-  } = {
-    chainId,
-    to: vaultAddress,
-  };
-  if (beforeTimestamp) {
-    transferWhere.timestamp = { lte: new Date(beforeTimestamp * 1000) };
-  }
-
-  const transfers = await prisma.collateralTransfer.findMany({
-    where: transferWhere,
-    select: { value: true },
-  });
-  let transfersIn = 0n;
-  for (const t of transfers) transfersIn += BigInt(t.value);
-
-  const flows = await calculateVaultFlows(
-    chainId,
-    beforeTimestamp,
-    vaultAddressArg
-  );
-
-  // Settlement inflow: union of Claim (per-holder redeem) and Close
-  // (bilateral burn). Mirrors `calculateVaultPnL` — both transfer wUSDe to
-  // the vault when it holds a side, and they are disjoint event-streams.
-  const [claims, closes] = await Promise.all([
-    prisma.claim.findMany({
-      where: {
-        chainId,
-        holder: vaultAddress,
-        ...(beforeTimestamp ? { redeemedAt: { lte: beforeTimestamp } } : {}),
-      },
-      select: { collateralPaid: true },
-    }),
-    prisma.close.findMany({
-      where: {
-        chainId,
-        ...(beforeTimestamp ? { burnedAt: { lte: beforeTimestamp } } : {}),
-        OR: [
-          { predictorHolder: vaultAddress },
-          { counterpartyHolder: vaultAddress },
-        ],
-      },
-      select: {
-        predictorHolder: true,
-        counterpartyHolder: true,
-        predictorPayout: true,
-        counterpartyPayout: true,
-      },
-    }),
-  ]);
-  let settlementInflow = 0n;
-  for (const c of claims) settlementInflow += BigInt(c.collateralPaid);
-  for (const c of closes) {
-    if (c.predictorHolder.toLowerCase() === vaultAddress) {
-      settlementInflow += BigInt(c.predictorPayout);
-    }
-    if (c.counterpartyHolder.toLowerCase() === vaultAddress) {
-      settlementInflow += BigInt(c.counterpartyPayout);
-    }
-  }
-
-  const secondary = await calculateVaultSecondaryFlows(
-    chainId,
-    beforeTimestamp,
-    vaultAddressArg
-  );
-
-  const explained = flows.totalDeposits + settlementInflow + secondary.sold;
-  return transfersIn > explained ? transfersIn - explained : 0n;
+export function computeAirdropResidual(args: {
+  vaultBalance: bigint;
+  vaultDeployed: bigint;
+  totalDeposits: bigint;
+  totalWithdrawals: bigint;
+  realizedPnL: bigint;
+  secondarySold: bigint;
+  secondaryBought: bigint;
+}): bigint {
+  const actualTotalAssets = args.vaultBalance + args.vaultDeployed;
+  const explainedWithoutAirdrop =
+    args.totalDeposits -
+    args.totalWithdrawals +
+    args.realizedPnL +
+    args.secondarySold -
+    args.secondaryBought;
+  const residual = actualTotalAssets - explainedWithoutAirdrop;
+  return residual > 0n ? residual : 0n;
 }
 
 /**

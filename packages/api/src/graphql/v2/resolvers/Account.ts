@@ -17,10 +17,6 @@ import type { AccountResolvers } from '../__generated__/resolvers';
 import { synthesizeAccount } from './accountSynthesis';
 import { accountRank } from './queries/leaderboard';
 import { getAccountTotalVolume } from './queries/account';
-import {
-  collateralBalanceField,
-  collateralBalanceHistoryField,
-} from './CollateralBalance';
 import { statsHistoryField } from './AccountStatsHistory';
 
 // Account global ids are keyed `(chainId, address)` — an account is a
@@ -78,9 +74,6 @@ export const Account: AccountResolvers = {
    * resolver type wraps the parent in a strict ResolverTypeWrapper.
    */
   ranking: accountRank as AccountResolvers['ranking'],
-
-  collateralBalance: collateralBalanceField,
-  collateralBalanceHistory: collateralBalanceHistoryField,
 
   /**
    * Aggregate statistics. `totalVolume` is the v1 `accountTotalVolume`

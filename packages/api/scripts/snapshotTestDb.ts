@@ -84,7 +84,6 @@ const TABLES: TableSpec[] = [
   { name: 'Claim', limit: 500, orderBy: 'id DESC' },
   { name: 'Close', limit: 500, orderBy: 'id DESC' },
   { name: 'secondary_trade', limit: 200, orderBy: 'id DESC' },
-  { name: 'collateral_transfer', limit: 200, orderBy: 'id DESC' },
   { name: 'protocol_stats_snapshot', limit: 200, orderBy: 'id DESC' },
   { name: 'chat_message', limit: 100, orderBy: 'id DESC' },
   { name: 'vault_flow_event', limit: 100, orderBy: 'id DESC' },

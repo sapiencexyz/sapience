@@ -9,7 +9,6 @@ const { mockPrisma, mockReadContract } = vi.hoisted(() => {
     vaultFlowEvent: { findMany: vi.fn() },
     close: { findMany: vi.fn() },
     secondaryTrade: { findMany: vi.fn() },
-    collateralTransfer: { findMany: vi.fn() },
     claim: { findMany: vi.fn() },
     protocolStatsSnapshot: {
       upsert: vi.fn(),
@@ -83,7 +82,6 @@ function resetEmptyState() {
   mockPrisma.vaultFlowEvent.findMany.mockResolvedValue([]);
   mockPrisma.close.findMany.mockResolvedValue([]);
   mockPrisma.secondaryTrade.findMany.mockResolvedValue([]);
-  mockPrisma.collateralTransfer.findMany.mockResolvedValue([]);
   mockPrisma.claim.findMany.mockResolvedValue([]);
   mockPrisma.protocolStatsSnapshot.upsert.mockResolvedValue({});
   mockReadContract.mockResolvedValue(1000000000000000000n);
@@ -97,13 +95,10 @@ describe('computeAndStoreProtocolStats', () => {
     resetEmptyState();
   });
 
-  it('computes airdrop gains from the direct CollateralTransfer query, not a residual', async () => {
-    // 1.5e18 arrived in the vault, 0.5e18 was a deposit → airdrop = 1e18.
-    // Note: residual would be 1e18 (vaultBalance) − 0.5e18 (deposit) = 0.5e18.
-    // The new direct calc reports the actual external inflow regardless.
-    mockPrisma.collateralTransfer.findMany.mockResolvedValue([
-      { value: '1500000000000000000' },
-    ]);
+  it('derives airdrop gains as the unexplained residual of on-chain AUM', async () => {
+    // On-chain vault balance is 1e18 (mockReadContract balanceOf). 0.5e18 of
+    // it is an indexed deposit; the remaining 0.5e18 is unexplained AUM — a
+    // direct donation auto-distributed to LPs.
     mockPrisma.vaultFlowEvent.findMany.mockResolvedValue([
       {
         assets: '500000000000000000',
@@ -115,7 +110,22 @@ describe('computeAndStoreProtocolStats', () => {
     await computeAndStoreProtocolStats(42161);
 
     const upsertCall = mockPrisma.protocolStatsSnapshot.upsert.mock.calls[0][0];
-    expect(upsertCall.create.vaultAirdropGains).toBe('1000000000000000000');
+    expect(upsertCall.create.vaultAirdropGains).toBe('500000000000000000');
+  });
+
+  it('reports zero airdrop when deposits fully explain the on-chain balance', async () => {
+    mockPrisma.vaultFlowEvent.findMany.mockResolvedValue([
+      {
+        assets: '1000000000000000000',
+        eventType: 'deposit',
+        vaultAddress: '0xvault',
+      },
+    ]);
+
+    await computeAndStoreProtocolStats(42161);
+
+    const upsertCall = mockPrisma.protocolStatsSnapshot.upsert.mock.calls[0][0];
+    expect(upsertCall.create.vaultAirdropGains).toBe('0');
   });
 
   it('persists secondary-market trade flow on the snapshot', async () => {

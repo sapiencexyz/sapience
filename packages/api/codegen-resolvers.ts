@@ -94,8 +94,6 @@ const v2Output = {
         Pick: '../../../../generated/prisma#Pick as PrismaPickRow',
         Claim: '../../../../generated/prisma#Claim as PrismaClaimRow',
         Close: '../../../../generated/prisma#Close as PrismaCloseRow',
-        CollateralTransfer:
-          '../../../../generated/prisma#CollateralTransfer as PrismaCollateralTransferRow',
         ReferralCode:
           '../../../../generated/prisma#ReferralCode as PrismaReferralCodeRow',
       },

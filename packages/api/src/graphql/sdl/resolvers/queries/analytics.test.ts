@@ -7,7 +7,7 @@ vi.mock('../../../../services/protocolStats', () => ({
   getConfiguredVaults: mockGetConfiguredVaults,
   getProtocolStatsTimeSeries: mockGetProtocolStatsTimeSeries,
   resolveSnapshotIntervalSeconds: vi.fn(() => 86400),
-  calculateVaultAirdrops: vi.fn(),
+  computeAirdropResidual: vi.fn(() => 0n),
   calculateVaultFlows: vi.fn(),
   calculateVaultPnL: vi.fn(),
   calculateVaultSecondaryFlows: vi.fn(),
@@ -124,7 +124,6 @@ describe('Query.protocolStats', () => {
       bought: 5n,
       sold: 7n,
     });
-    vi.mocked(svc.calculateVaultAirdrops).mockResolvedValue(0n);
     vi.mocked(svc.calculateVaultUnredeemedClaim).mockResolvedValue(988n);
 
     const result = (await protocolStatsFn(
@@ -193,7 +192,6 @@ describe('Query.protocolStats TTL cache', () => {
       bought: 0n,
       sold: 0n,
     });
-    vi.mocked(svc.calculateVaultAirdrops).mockResolvedValue(0n);
     vi.mocked(svc.calculateVaultUnredeemedClaim).mockResolvedValue(0n);
   };
 

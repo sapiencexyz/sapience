@@ -25,7 +25,7 @@ export {
 export {
   calculateVaultPnL,
   calculateVaultSecondaryFlows,
-  calculateVaultAirdrops,
+  computeAirdropResidual,
   calculateVaultFlows,
 } from './vaultPnL';
 

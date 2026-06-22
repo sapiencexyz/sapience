@@ -9,7 +9,6 @@ const { mockPrisma, mockReadContract } = vi.hoisted(() => {
     vaultFlowEvent: { findMany: vi.fn() },
     close: { findMany: vi.fn() },
     secondaryTrade: { findMany: vi.fn() },
-    collateralTransfer: { findMany: vi.fn() },
     claim: { findMany: vi.fn() },
     protocolStatsSnapshot: {
       upsert: vi.fn(),
@@ -233,7 +232,6 @@ describe('buildVaultAggregator', () => {
     ]);
     mockPrisma.close.findMany.mockResolvedValue([]);
     mockPrisma.secondaryTrade.findMany.mockResolvedValue([]);
-    mockPrisma.collateralTransfer.findMany.mockResolvedValue([]);
 
     const agg = await buildVaultAggregator(42161);
     const result = agg.pnlAt(T, '0xvault');

@@ -19,7 +19,7 @@ import type {
 } from '../../__generated__/resolvers';
 import prisma from '../../../../core/db';
 import {
-  calculateVaultAirdrops,
+  computeAirdropResidual,
   calculateVaultFlows,
   calculateVaultPnL,
   calculateVaultSecondaryFlows,
@@ -401,7 +401,6 @@ const computeProtocolStats = async (
       livePnlResult,
       liveFlowsResult,
       liveSecondaryFlows,
-      liveAirdropGains,
       liveUnredeemedClaim,
     ] = await Promise.all([
       fetchVaultTVL(chainId, liveVaultAddress),
@@ -411,9 +410,20 @@ const computeProtocolStats = async (
       calculateVaultPnL(chainId, undefined, liveVaultAddress),
       calculateVaultFlows(chainId, undefined, liveVaultAddress),
       calculateVaultSecondaryFlows(chainId, undefined, liveVaultAddress),
-      calculateVaultAirdrops(chainId, undefined, liveVaultAddress),
       calculateVaultUnredeemedClaim(chainId, undefined, liveVaultAddress),
     ]);
+
+    // Airdrops = unexplained part of the vault's true on-chain AUM, derived
+    // as the reconciliation-identity residual (see computeAirdropResidual).
+    const liveAirdropGains = computeAirdropResidual({
+      vaultBalance: liveVaultBalance,
+      vaultDeployed: liveVaultDeployed,
+      totalDeposits: liveFlowsResult.totalDeposits,
+      totalWithdrawals: liveFlowsResult.totalWithdrawals,
+      realizedPnL: livePnlResult.realizedPnL,
+      secondarySold: liveSecondaryFlows.sold,
+      secondaryBought: liveSecondaryFlows.bought,
+    });
 
     const liveCumulativePnL =
       livePnlResult.realizedPnL +

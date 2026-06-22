@@ -33,11 +33,6 @@ import { Position } from './Position';
 import { position, positions } from './queries/position';
 import { Claim, Close } from './ClaimClose';
 import { claim, claims, close, closes } from './queries/claimClose';
-import { CollateralTransfer } from './CollateralTransfer';
-import {
-  collateralTransfer,
-  collateralTransfers,
-} from './queries/collateralTransfer';
 import { ActivityItem } from './Activity';
 import { activity } from './queries/activity';
 import { leaderboard } from './queries/leaderboard';
@@ -61,7 +56,6 @@ export const resolvers = {
   Position,
   Claim,
   Close,
-  CollateralTransfer,
   ActivityItem,
   QuestionItem,
   Ranking,
@@ -93,8 +87,6 @@ export const resolvers = {
     claims,
     close,
     closes,
-    collateralTransfer,
-    collateralTransfers,
     activity,
     leaderboard,
     protocol,

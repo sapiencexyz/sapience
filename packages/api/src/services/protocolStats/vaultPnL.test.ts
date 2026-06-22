@@ -9,7 +9,6 @@ const { mockPrisma, mockReadContract } = vi.hoisted(() => {
     vaultFlowEvent: { findMany: vi.fn() },
     close: { findMany: vi.fn() },
     secondaryTrade: { findMany: vi.fn() },
-    collateralTransfer: { findMany: vi.fn() },
     claim: { findMany: vi.fn() },
     protocolStatsSnapshot: {
       upsert: vi.fn(),
@@ -69,7 +68,7 @@ vi.mock('@sapience/sdk/constants', () => ({
 
 import {
   calculateVaultSecondaryFlows,
-  calculateVaultAirdrops,
+  computeAirdropResidual,
 } from './vaultPnL';
 
 // Helper for the default "no settlement, no flow, no trades, no transfers" baseline.
@@ -78,7 +77,6 @@ function resetEmptyState() {
   mockPrisma.vaultFlowEvent.findMany.mockResolvedValue([]);
   mockPrisma.close.findMany.mockResolvedValue([]);
   mockPrisma.secondaryTrade.findMany.mockResolvedValue([]);
-  mockPrisma.collateralTransfer.findMany.mockResolvedValue([]);
   mockPrisma.claim.findMany.mockResolvedValue([]);
   mockPrisma.protocolStatsSnapshot.upsert.mockResolvedValue({});
   mockReadContract.mockResolvedValue(1000000000000000000n);
@@ -119,60 +117,67 @@ describe('calculateVaultSecondaryFlows', () => {
   });
 });
 
-// ─── calculateVaultAirdrops ─────────────────────────────────────────────────
+// ─── computeAirdropResidual ─────────────────────────────────────────────────
 
-describe('calculateVaultAirdrops', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    resetEmptyState();
+describe('computeAirdropResidual', () => {
+  // airdrop = (balance + deployed) − (deposits − withdrawals)
+  //           − realizedPnL − secondarySold + secondaryBought
+  const base = {
+    vaultBalance: 0n,
+    vaultDeployed: 0n,
+    totalDeposits: 0n,
+    totalWithdrawals: 0n,
+    realizedPnL: 0n,
+    secondarySold: 0n,
+    secondaryBought: 0n,
+  };
+
+  it('is the unexplained portion of AUM (a real direct donation)', () => {
+    // AUM 35, deposits 30, pnl 4 → 1 of AUM is unexplained (donated in).
+    expect(
+      computeAirdropResidual({
+        ...base,
+        vaultBalance: 33n,
+        vaultDeployed: 2n,
+        totalDeposits: 30n,
+        realizedPnL: 4n,
+      })
+    ).toBe(1n);
   });
 
-  it('subtracts deposits, settlement payouts, and secondary sale proceeds from gross transfers in', async () => {
-    // 5 wUSDe arrived in the vault. 1 was a deposit, 2 was a settlement
-    // redemption (Claim row), 1 was secondary sale proceeds. The remaining
-    // 1 is airdrop.
-    mockPrisma.collateralTransfer.findMany.mockResolvedValue([
-      { value: '5000000000000000000' },
-    ]);
-    mockPrisma.vaultFlowEvent.findMany.mockResolvedValue([
-      {
-        assets: '1000000000000000000',
-        eventType: 'deposit',
-        vaultAddress: '0xvault',
-      },
-    ]);
-    mockPrisma.claim.findMany.mockResolvedValue([
-      {
-        holder: '0xvault',
-        collateralPaid: '2000000000000000000',
-        redeemedAt: 1700000000,
-      },
-    ]);
-    mockPrisma.secondaryTrade.findMany.mockResolvedValue([
-      { buyer: '0xother', seller: '0xvault', price: '1000000000000000000' },
-    ]);
-
-    const result = await calculateVaultAirdrops(42161);
-    expect(result).toBe(1000000000000000000n);
+  it('is ~zero when deposits + PnL fully explain AUM (the prod single-LP vault)', () => {
+    // The real Ethereal vault: AUM = deposits + pnl, nothing donated.
+    expect(
+      computeAirdropResidual({
+        ...base,
+        vaultBalance: 35365n,
+        totalDeposits: 33493n,
+        realizedPnL: 1872n,
+      })
+    ).toBe(0n);
   });
 
-  it('clamps to zero when the explained inflows exceed gross transfers in (indexer drift)', async () => {
-    mockPrisma.collateralTransfer.findMany.mockResolvedValue([
-      { value: '500000000000000000' },
-    ]);
-    mockPrisma.vaultFlowEvent.findMany.mockResolvedValue([
-      {
-        assets: '2000000000000000000',
-        eventType: 'deposit',
-        vaultAddress: '0xvault',
-      },
-    ]);
-    const result = await calculateVaultAirdrops(42161);
-    expect(result).toBe(0n);
+  it('clamps to zero when AUM is over-explained (indexer drift)', () => {
+    expect(
+      computeAirdropResidual({
+        ...base,
+        vaultBalance: 10n,
+        totalDeposits: 20n,
+      })
+    ).toBe(0n);
   });
 
-  it('returns zero when no transfers landed in the vault', async () => {
-    const result = await calculateVaultAirdrops(42161);
-    expect(result).toBe(0n);
+  it('credits net secondary flow back into the explained side', () => {
+    // Bought 3 of secondary tokens, sold 1; net 2 spent that is not in
+    // balance/deployed, so it must not inflate the airdrop residual.
+    expect(
+      computeAirdropResidual({
+        ...base,
+        vaultBalance: 8n,
+        totalDeposits: 10n,
+        secondaryBought: 3n,
+        secondarySold: 1n,
+      })
+    ).toBe(0n);
   });
 });

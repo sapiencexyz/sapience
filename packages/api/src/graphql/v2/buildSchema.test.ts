@@ -50,8 +50,6 @@ describe('v2 schema stub', () => {
       'claims',
       'close',
       'closes',
-      'collateralTransfer',
-      'collateralTransfers',
       'activity',
       'leaderboard',
       'protocol',

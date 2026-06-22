@@ -1,22 +1,22 @@
 import { erc20Abi, formatUnits, type Block } from 'viem';
+import { contracts } from '@sapience/sdk/contracts';
+import { predictionMarketVaultAbi } from '@sapience/sdk/abis';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import {
   getProviderForChain,
   resolveBlocksForTimestamps,
 } from '../../lib/utils';
-import { contracts } from '@sapience/sdk/contracts';
-import { predictionMarketVaultAbi } from '@sapience/sdk/abis';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { createLogger } from '../../core/logger';
 import { getConfiguredVaults } from './vaultConfig';
 import { sumEscrowBalancesAtBlock, getContractForBlock } from './vaultTvl';
 import { buildVaultAggregator } from './vaultAggregator';
+import { computeAirdropResidual } from './vaultPnL';
 import {
   upsertProtocolStatsSnapshot,
   resolveSnapshotIntervalSeconds,
 } from './snapshots';
 import { GAP_DEBUG, formatGapDecomposition } from './gapDecomposition';
 import type { ProtocolStatsData } from './types';
-
-import { createLogger } from '../../core/logger';
 
 const log = createLogger('services.protocolStats.backfill');
 
@@ -310,11 +310,19 @@ export async function backfillProtocolStats(
             timestamp,
             historicalAddrLower
           );
-          const airdropGains = aggregator.airdropsAt(
-            timestamp,
-            historicalAddrLower
-          );
           totals.dbReads += performance.now() - tDb;
+
+          // Airdrops = unexplained part of true on-chain AUM (direct
+          // donations to LPs). Residual of the reconciliation identity.
+          const airdropGains = computeAirdropResidual({
+            vaultBalance,
+            vaultDeployed,
+            totalDeposits: flowsResult.totalDeposits,
+            totalWithdrawals: flowsResult.totalWithdrawals,
+            realizedPnL: pnlResult.realizedPnL,
+            secondarySold: secondaryFlows.sold,
+            secondaryBought: secondaryFlows.bought,
+          });
 
           // Reconciliation identity (1634):
           //   balance + deployed = deposits − withdrawals + settlementPnL

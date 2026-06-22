@@ -38,11 +38,6 @@ import {
   openInterestByTimeToResolution,
   protocolStats,
 } from './queries/analytics';
-import {
-  collateralBalance,
-  collateralBalanceHistory,
-  collateralTransfers,
-} from './queries/collateralBalance';
 import { conditions } from './queries/conditions';
 import {
   attestations,
@@ -105,11 +100,7 @@ export const resolvers: Resolvers = {
     openInterestByCategory,
     openInterestByTimeToResolution,
     protocolStats,
-    // Collateral
     accountTotalVolume,
-    collateralBalance,
-    collateralBalanceHistory,
-    collateralTransfers,
     // Conditions / questions
     conditions,
     questions,

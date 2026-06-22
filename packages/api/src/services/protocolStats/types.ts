@@ -55,9 +55,6 @@ export interface VaultGapDecomposition {
   closesCounterpartyHolderCount: number;
   closesCounterpartyHolderPayout: bigint;
   primaryCollateralCommitted: bigint;
-  // CollateralTransfer leg (raw inflow source for airdrop residual)
-  collateralTransfersIn: bigint;
-  collateralTransfersInCount: number;
 }
 
 export interface ProtocolStatsData {
@@ -101,7 +98,6 @@ export interface VaultAggregator {
     timestamp: number,
     vaultAddressLower: string
   ) => VaultSecondaryFlowsResult;
-  airdropsAt: (timestamp: number, vaultAddressLower: string) => bigint;
   gapDecompositionAt: (
     timestamp: number,
     vaultAddressLower: string

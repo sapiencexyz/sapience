@@ -1,9 +1,10 @@
 import { erc20Abi, formatUnits } from 'viem';
-import prisma from '../../core/db';
-import { getProviderForChain, getBlockByTimestamp } from '../../lib/utils';
 import { contracts } from '@sapience/sdk/contracts';
 import { predictionMarketVaultAbi } from '@sapience/sdk/abis';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import prisma from '../../core/db';
+import { getProviderForChain, getBlockByTimestamp } from '../../lib/utils';
+import { createLogger } from '../../core/logger';
 import { getConfiguredVaults } from './vaultConfig';
 import {
   sumEscrowBalancesAtBlock,
@@ -14,7 +15,7 @@ import {
   calculateVaultPnL,
   calculateVaultFlows,
   calculateVaultSecondaryFlows,
-  calculateVaultAirdrops,
+  computeAirdropResidual,
 } from './vaultPnL';
 import { calculateVaultUnredeemedClaim } from './vaultUnredeemed';
 import {
@@ -23,8 +24,6 @@ import {
   formatGapDecomposition,
 } from './gapDecomposition';
 import type { ProtocolStatsData } from './types';
-
-import { createLogger } from '../../core/logger';
 
 const log = createLogger('services.protocolStats.snapshots');
 
@@ -205,31 +204,43 @@ export async function computeAndStoreProtocolStats(
     // its prediction.findMany calls don't interleave with fetchVaultDeployed /
     // calculateVaultPnL (which both query Prediction in a specific order the
     // cron-path tests rely on).
-    const [
-      vaultDeployed,
-      pnlResult,
-      flowsResult,
-      secondaryFlows,
-      airdropGains,
-    ] = await Promise.all([
-      fetchVaultDeployedAtBlock(chainId, blockNumber, timestamp, vault.address),
-      calculateVaultPnL(chainId, timestamp, vault.address),
-      calculateVaultFlows(chainId, timestamp, vault.address),
-      calculateVaultSecondaryFlows(chainId, timestamp, vault.address),
-      calculateVaultAirdrops(chainId, timestamp, vault.address),
-    ]);
+    const [vaultDeployed, pnlResult, flowsResult, secondaryFlows] =
+      await Promise.all([
+        fetchVaultDeployedAtBlock(
+          chainId,
+          blockNumber,
+          timestamp,
+          vault.address
+        ),
+        calculateVaultPnL(chainId, timestamp, vault.address),
+        calculateVaultFlows(chainId, timestamp, vault.address),
+        calculateVaultSecondaryFlows(chainId, timestamp, vault.address),
+      ]);
     const unredeemedClaim = await calculateVaultUnredeemedClaim(
       chainId,
       timestamp,
       vault.address
     );
 
+    // Airdrops = the unexplained part of the vault's true on-chain AUM
+    // (direct donations auto-distributed pro-rata to LPs). Derived as the
+    // residual of the reconciliation identity below.
+    const airdropGains = computeAirdropResidual({
+      vaultBalance,
+      vaultDeployed,
+      totalDeposits: flowsResult.totalDeposits,
+      totalWithdrawals: flowsResult.totalWithdrawals,
+      realizedPnL: pnlResult.realizedPnL,
+      secondarySold: secondaryFlows.sold,
+      secondaryBought: secondaryFlows.bought,
+    });
+
     // Reconciliation identity:
     //   balance + deployed
     //     = deposits - withdrawals
     //     + settlementPnL  (Close-based)
     //     + secondarySold - secondaryBought
-    //     + airdrops       (CollateralTransfer-based residual)
+    //     + airdrops       (balance residual; 0 unless AUM is over-explained)
     const actualTotalAssets = vaultBalance + vaultDeployed;
     const expectedTotalAssets =
       flowsResult.totalDeposits -
@@ -252,14 +263,14 @@ export async function computeAndStoreProtocolStats(
         `reconciliation Δ=${formatUnits(reconciliationDelta, 18)}`
     );
 
-    // A non-zero reconciliation Δ means the identity
-    //   balance + deployed = deposits − withdrawals + pnl + (sold − bought) + airdrops
-    // didn't balance — wUSDe entered or left the vault via a path no
-    // accounting leg models (un-tracked off-protocol transfer, missing
-    // CollateralTransfer indexer row, ungated mint to/from a non-vault-side
-    // Prediction record, etc.). Logged at info-level rather than error
-    // because cumulative-balance drift persists across every subsequent
-    // snapshot — making it loud causes alert fatigue rather than action.
+    // Airdrops absorb any positive residual, so a non-zero Δ here means the
+    // identity is OVER-explained: deposits − withdrawals + pnl + (sold −
+    // bought) exceeds the true on-chain balance + deployed. That points to an
+    // accounting leg over-counting (e.g. stale/duplicated VaultFlowEvent
+    // deposits, or a settlement leg double-counted) and is a real bug signal.
+    // Logged at info-level rather than error because cumulative-balance drift
+    // persists across every subsequent snapshot — making it loud causes alert
+    // fatigue rather than action.
     if (reconciliationDelta !== 0n) {
       log.info(
         `[ProtocolStats] reconciliation Δ ≠ 0 for ${vault.kind}@${vault.address} ts=${timestamp}: Δ=${formatUnits(reconciliationDelta, 18)} USDe ` +

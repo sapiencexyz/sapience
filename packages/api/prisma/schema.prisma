@@ -778,28 +778,6 @@ model SecondaryTrade {
   @@map("secondary_trade")
 }
 
-/// Indexed wUSDe (collateral token) Transfer events on Ethereal for historical balance queries
-model CollateralTransfer {
-  id              Int      @id @default(autoincrement())
-  createdAt       DateTime @default(now()) @db.Timestamp(6)
-  chainId         Int
-  blockNumber     Int
-  timestamp       DateTime @db.Timestamp(6)
-  transactionHash String   @db.VarChar
-  logIndex        Int
-  from            String   @db.VarChar
-  to              String   @db.VarChar
-  value           String   @db.VarChar  // Amount in wei
-
-  @@unique([chainId, transactionHash, logIndex])
-  @@index([chainId, from], map: "IDX_collateral_transfer_from")
-  @@index([chainId, to], map: "IDX_collateral_transfer_to")
-  @@index([chainId, blockNumber], map: "IDX_collateral_transfer_block")
-  // Keyset paging for Query.collateralTransfers orderBy (timestamp, id) DESC.
-  @@index([timestamp, id], map: "IDX_collateral_transfer_timestamp_id")
-  @@map("collateral_transfer")
-}
-
 /// Materialized top-N tag list for `Query.popularTags` (v1) and
 /// `Query.tags` (v2). No scheduled refresher exists: the resolvers
 /// refresh it inline when its newest `refreshedAt` is older than

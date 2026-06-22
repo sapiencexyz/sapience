@@ -46,7 +46,6 @@ export async function buildVaultAggregator(
       flowsAt: () => ({ totalDeposits: 0n, totalWithdrawals: 0n }),
       unredeemedClaimAt: () => 0n,
       secondaryAt: () => ({ bought: 0n, sold: 0n }),
-      airdropsAt: () => 0n,
       gapDecompositionAt: () => emptyDecomposition(),
     };
   }
@@ -58,73 +57,68 @@ export async function buildVaultAggregator(
   // row by the backfill script (the migration TRUNCATEd legacy rows).
   // `claim` rows are filtered by `holder ∈ vaultAddresses` for the
   // unredeemed-claim aggregator (one Claim row per on-chain `redeem()` call).
-  const [predictions, flows, claims, closes, trades, transfers] =
-    await Promise.all([
-      prisma.prediction.findMany({
-        where: {
-          chainId,
-          OR: [
-            { predictor: { in: vaultAddresses } },
-            { counterparty: { in: vaultAddresses } },
-          ],
+  const [predictions, flows, claims, closes, trades] = await Promise.all([
+    prisma.prediction.findMany({
+      where: {
+        chainId,
+        OR: [
+          { predictor: { in: vaultAddresses } },
+          { counterparty: { in: vaultAddresses } },
+        ],
+      },
+      select: {
+        onChainCreatedAt: true,
+        counterpartyCollateral: true,
+        predictorCollateral: true,
+        predictor: true,
+        counterparty: true,
+        pickConfigId: true,
+        pickConfiguration: {
+          select: { resolved: true, resolvedAt: true, result: true },
         },
-        select: {
-          onChainCreatedAt: true,
-          counterpartyCollateral: true,
-          predictorCollateral: true,
-          predictor: true,
-          counterparty: true,
-          pickConfigId: true,
-          pickConfiguration: {
-            select: { resolved: true, resolvedAt: true, result: true },
-          },
-        },
-      }),
-      prisma.vaultFlowEvent.findMany({
-        where: { chainId },
-        select: {
-          timestamp: true,
-          eventType: true,
-          assets: true,
-          vaultAddress: true,
-        },
-      }),
-      prisma.claim.findMany({
-        where: { chainId, holder: { in: vaultAddresses } },
-        select: { holder: true, collateralPaid: true, redeemedAt: true },
-      }),
-      prisma.close.findMany({
-        where: {
-          chainId,
-          OR: [
-            { predictorHolder: { in: vaultAddresses } },
-            { counterpartyHolder: { in: vaultAddresses } },
-          ],
-        },
-        select: {
-          burnedAt: true,
-          pickConfigId: true,
-          predictorHolder: true,
-          counterpartyHolder: true,
-          predictorPayout: true,
-          counterpartyPayout: true,
-        },
-      }),
-      prisma.secondaryTrade.findMany({
-        where: {
-          chainId,
-          OR: [
-            { buyer: { in: vaultAddresses } },
-            { seller: { in: vaultAddresses } },
-          ],
-        },
-        select: { executedAt: true, buyer: true, seller: true, price: true },
-      }),
-      prisma.collateralTransfer.findMany({
-        where: { chainId, to: { in: vaultAddresses } },
-        select: { to: true, timestamp: true, value: true },
-      }),
-    ]);
+      },
+    }),
+    prisma.vaultFlowEvent.findMany({
+      where: { chainId },
+      select: {
+        timestamp: true,
+        eventType: true,
+        assets: true,
+        vaultAddress: true,
+      },
+    }),
+    prisma.claim.findMany({
+      where: { chainId, holder: { in: vaultAddresses } },
+      select: { holder: true, collateralPaid: true, redeemedAt: true },
+    }),
+    prisma.close.findMany({
+      where: {
+        chainId,
+        OR: [
+          { predictorHolder: { in: vaultAddresses } },
+          { counterpartyHolder: { in: vaultAddresses } },
+        ],
+      },
+      select: {
+        burnedAt: true,
+        pickConfigId: true,
+        predictorHolder: true,
+        counterpartyHolder: true,
+        predictorPayout: true,
+        counterpartyPayout: true,
+      },
+    }),
+    prisma.secondaryTrade.findMany({
+      where: {
+        chainId,
+        OR: [
+          { buyer: { in: vaultAddresses } },
+          { seller: { in: vaultAddresses } },
+        ],
+      },
+      select: { executedAt: true, buyer: true, seller: true, price: true },
+    }),
+  ]);
 
   // Predicate ports of the SQL filters in `fetchVaultDeployed` /
   // `calculateVaultPnL` / `calculateVaultFlows`. Keep these inline so a future
@@ -227,42 +221,6 @@ export async function buildVaultAggregator(
     return { bought, sold };
   };
 
-  // Airdrops: total wUSDe transfers in to vault, minus inflows already
-  // accounted for via deposits, settlement payouts, and secondary sales.
-  // Mirrors the async `calculateVaultAirdrops` definition.
-  const airdropsAt = (t: number, vaultAddress: string): bigint => {
-    let transfersIn = 0n;
-    for (const tr of transfers) {
-      if (tr.to.toLowerCase() !== vaultAddress) continue;
-      if (Math.floor(tr.timestamp.getTime() / 1000) > t) continue;
-      transfersIn += BigInt(tr.value);
-    }
-
-    // Settlement inflow: union of Claim (per-holder redeem) and Close
-    // (bilateral burn). Mirrors `calculateVaultAirdrops`.
-    let settlementInflow = 0n;
-    for (const c of claims) {
-      if (c.holder.toLowerCase() !== vaultAddress) continue;
-      if (c.redeemedAt > t) continue;
-      settlementInflow += BigInt(c.collateralPaid);
-    }
-    for (const c of closes) {
-      if (c.burnedAt > t) continue;
-      if (c.predictorHolder.toLowerCase() === vaultAddress) {
-        settlementInflow += BigInt(c.predictorPayout);
-      }
-      if (c.counterpartyHolder.toLowerCase() === vaultAddress) {
-        settlementInflow += BigInt(c.counterpartyPayout);
-      }
-    }
-
-    const flowsRes = flowsAt(t, vaultAddress);
-    const secondary = secondaryAt(t, vaultAddress);
-    const explained =
-      flowsRes.totalDeposits + settlementInflow + secondary.sold;
-    return transfersIn > explained ? transfersIn - explained : 0n;
-  };
-
   const flowsAt = (t: number, vaultAddress: string): VaultFlowsResult => {
     let totalDeposits = 0n;
     let totalWithdrawals = 0n;
@@ -330,14 +288,7 @@ export async function buildVaultAggregator(
     t: number,
     vaultAddress: string
   ): VaultGapDecomposition =>
-    decomposeVaultGapInMemory(
-      predictions,
-      claims,
-      closes,
-      transfers,
-      t,
-      vaultAddress
-    );
+    decomposeVaultGapInMemory(predictions, claims, closes, t, vaultAddress);
 
   return {
     deployedAt,
@@ -345,7 +296,6 @@ export async function buildVaultAggregator(
     flowsAt,
     unredeemedClaimAt,
     secondaryAt,
-    airdropsAt,
     gapDecompositionAt,
   };
 }

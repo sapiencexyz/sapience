@@ -44,9 +44,8 @@ export function formatGapDecomposition(
     `  primary collateral committed (resolved preds): ${fmt(d.primaryCollateralCommitted)}`,
     `  realized PnL = union gross − primary = ${fmt(unionGross - d.primaryCollateralCommitted)}`,
     `  --- airdrop residual breakdown ---`,
-    `  CollateralTransfer inflows: ${fmt(d.collateralTransfersIn)} (${d.collateralTransfersInCount} transfers)`,
     `  explained = deposits + union gross payouts + secondary.sold = ${fmt(deposits + unionGross + secondary.sold)}`,
-    `  airdrop residual (clamped at 0) = ${fmt(airdrops)}`,
+    `  airdrop residual (balance − explained, clamped at 0) = ${fmt(airdrops)}`,
     `  --- legacy Prediction-side legs (informational) ---`,
     `  active stake: counterparty=${fmt(d.counterpartyActiveStake)} (${d.counterpartyActiveCount}), predictor=${fmt(d.predictorActiveStake)} (${d.predictorActiveCount})`,
     `  prediction-side wins (gain): as_cp=${fmt(d.winsAsCounterpartyGain)} (${d.winsAsCounterpartyCount}), as_pr=${fmt(d.winsAsPredictorGain)} (${d.winsAsPredictorCount})`,
@@ -65,7 +64,7 @@ export async function decomposeVaultGap(
   atTimestamp: number,
   vaultAddress: string
 ): Promise<VaultGapDecomposition> {
-  const [predictions, claims, closes, transfers] = await Promise.all([
+  const [predictions, claims, closes] = await Promise.all([
     prisma.prediction.findMany({
       where: {
         chainId,
@@ -109,21 +108,12 @@ export async function decomposeVaultGap(
         counterpartyPayout: true,
       },
     }),
-    prisma.collateralTransfer.findMany({
-      where: {
-        chainId,
-        to: vaultAddress,
-        timestamp: { lte: new Date(atTimestamp * 1000) },
-      },
-      select: { value: true },
-    }),
   ]);
 
   return decomposeVaultGapInMemory(
     predictions,
     claims,
     closes,
-    transfers,
     atTimestamp,
     vaultAddress
   );
@@ -157,17 +147,10 @@ interface DecompClose {
   counterpartyPayout: string;
 }
 
-interface DecompTransfer {
-  to?: string;
-  timestamp?: Date;
-  value: string;
-}
-
 export function decomposeVaultGapInMemory(
   predictions: DecompPrediction[],
   claims: DecompClaim[],
   closes: DecompClose[],
-  transfers: DecompTransfer[],
   t: number,
   vaultAddress: string
 ): VaultGapDecomposition {
@@ -193,8 +176,6 @@ export function decomposeVaultGapInMemory(
     closesCounterpartyHolderCount: 0,
     closesCounterpartyHolderPayout: 0n,
     primaryCollateralCommitted: 0n,
-    collateralTransfersIn: 0n,
-    collateralTransfersInCount: 0,
   };
 
   for (const p of predictions) {
@@ -289,18 +270,6 @@ export function decomposeVaultGapInMemory(
     }
   }
 
-  for (const tr of transfers) {
-    if (tr.to !== undefined && tr.to.toLowerCase() !== vaultAddress) continue;
-    if (
-      tr.timestamp !== undefined &&
-      Math.floor(tr.timestamp.getTime() / 1000) > t
-    ) {
-      continue;
-    }
-    d.collateralTransfersIn += BigInt(tr.value);
-    d.collateralTransfersInCount++;
-  }
-
   return d;
 }
 
@@ -330,7 +299,5 @@ export function emptyDecomposition(): VaultGapDecomposition {
     closesCounterpartyHolderCount: 0,
     closesCounterpartyHolderPayout: 0n,
     primaryCollateralCommitted: 0n,
-    collateralTransfersIn: 0n,
-    collateralTransfersInCount: 0,
   };
 }

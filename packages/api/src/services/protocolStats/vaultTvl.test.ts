@@ -9,7 +9,6 @@ const { mockPrisma, mockReadContract } = vi.hoisted(() => {
     vaultFlowEvent: { findMany: vi.fn() },
     close: { findMany: vi.fn() },
     secondaryTrade: { findMany: vi.fn() },
-    collateralTransfer: { findMany: vi.fn() },
     claim: { findMany: vi.fn() },
     protocolStatsSnapshot: {
       upsert: vi.fn(),

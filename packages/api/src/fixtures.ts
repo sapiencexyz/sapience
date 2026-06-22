@@ -6,7 +6,7 @@ import PredictionMarketEscrowIndexer from './workers/indexers/predictionMarketEs
 import SecondaryMarketIndexer from './workers/indexers/secondaryMarketIndexer';
 import PositionTokenTransferIndexer from './workers/indexers/positionTokenTransferIndexer';
 import ConditionSettledIndexer from './workers/indexers/conditionSettledIndexer';
-import CollateralTransferIndexer from './workers/indexers/collateralTransferIndexer';
+import VaultFlowIndexer from './workers/indexers/vaultFlowIndexer';
 import {
   getResolverAddressesForChain,
   getLegacyResolverAddressesForChain,
@@ -38,9 +38,7 @@ const buildIndexers = (): { [key: string]: IIndexer } => {
       chainId
     );
     indexers[`transfer-${chainId}`] = new PositionTokenTransferIndexer(chainId);
-    indexers[`collateral-transfer-${chainId}`] = new CollateralTransferIndexer(
-      chainId
-    );
+    indexers[`vault-flow-${chainId}`] = new VaultFlowIndexer(chainId);
 
     for (const { type, address } of getResolverAddressesForChain(chainId)) {
       indexers[`condition-settled-${type}-${chainId}`] =
