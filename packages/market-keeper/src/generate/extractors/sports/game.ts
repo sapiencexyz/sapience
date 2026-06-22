@@ -35,8 +35,6 @@ export const LEAGUE_DURATION_MIN: Record<string, number> = {
 /** League tags (also the fetch list). */
 export const SPORT_LEAGUES = Object.keys(LEAGUE_DURATION_MIN);
 
-const DEFAULT_MIN = 210;
-
 /** Normalize "2026-06-10 19:45:00+00" (or ISO) to epoch ms, or null. */
 function parseGameStart(gst: string): number | null {
   const iso = gst.replace(' ', 'T').replace(/\+00$/, 'Z');
@@ -46,17 +44,22 @@ function parseGameStart(gst: string): number | null {
 
 /**
  * Resolution time (unix SECONDS) for a game market = gameStartTime + the
- * per-league median duration. Returns null when there's no gameStartTime (e.g.
- * unscheduled match, or a futures/championship market) so callers fall back.
+ * per-league median duration.
+ *
+ * Sports-only: returns null when there's no gameStartTime (e.g. unscheduled
+ * match, or a futures/championship market) AND when there's no recognized
+ * sports league — Polymarket attaches a gameStartTime to some non-sports
+ * markets (e.g. S&P 500 index price markets), and the game rung must decline
+ * those so the cascade falls through instead of inventing a default duration.
  */
 export function gameEndTime(
   gameStartTime: string | null | undefined,
   league: string | null | undefined
 ): number | null {
   if (!gameStartTime) return null;
+  const mins = league ? LEAGUE_DURATION_MIN[league] : undefined;
+  if (mins == null) return null;
   const start = parseGameStart(gameStartTime);
   if (start == null) return null;
-  const mins =
-    (league ? LEAGUE_DURATION_MIN[league] : undefined) ?? DEFAULT_MIN;
   return toSec(start + mins * 60_000);
 }

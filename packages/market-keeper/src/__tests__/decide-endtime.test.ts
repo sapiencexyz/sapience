@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { decideEndTime, toUnixTimestamp } from '../generate/api';
+import { gameEndTime } from '../generate/extractors/sports/game';
 import type { SapienceCondition } from '../types';
 
 function makeCondition(
@@ -48,6 +49,25 @@ describe('decideEndTime', () => {
       const { ts, source } = decideEndTime(c);
       expect(ts).toBe(expected);
       expect(source).toBe('game');
+    });
+
+    it('declines the game rung when there is no recognized sports league (S&P index market with a Polymarket gameStartTime)', () => {
+      // Polymarket stamps some non-sports markets (e.g. S&P 500 index price
+      // markets) with a gameStartTime but no sports league. The game rung must
+      // decline so the cascade falls through to category/LLM/regex/PM instead
+      // of inventing a default "game duration" endTime. Regression for the SPY
+      // "Will S&P 500 hit (LOW) $740" market that logged source: game.
+      const c = makeCondition({
+        question: 'Will S&P 500 (SPY) hit (LOW) $740 Week of June 15?',
+        gameStartTime: '2026-06-14 21:00:00+00',
+        league: undefined,
+        endDate: '2026-06-19T16:00:00Z',
+        isTemplated: true,
+      });
+      const { ts, source } = decideEndTime(c);
+      expect(source).not.toBe('game');
+      expect(source).toBe('pm-fallback');
+      expect(ts).toBe(toUnixTimestamp('2026-06-19T16:00:00Z') + 86_400);
     });
 
     it('categoryEndTime wins over LLM, regex, and PM endDate', () => {
@@ -151,6 +171,22 @@ describe('decideEndTime', () => {
       expect(decideEndTime(c).ts).toBe(pmTs + 86_400);
       expect(decideEndTime(c).ts).not.toBe(pmTs); // not raw
       expect(decideEndTime(c).ts).not.toBe(pmTs + 14400); // not legacy 4h
+    });
+  });
+
+  // The game rung is sports-only: it fires off a recognized league's
+  // calibrated duration, and declines (returns null) when Polymarket attaches
+  // a gameStartTime to a non-sports market (no league).
+  describe('gameEndTime league gating', () => {
+    it('returns the calibrated end for a recognized sports league', () => {
+      expect(gameEndTime('2099-04-01 00:00:00+00', 'nba')).toBe(
+        toUnixTimestamp('2099-04-01T03:29:00Z') // +209m
+      );
+    });
+
+    it('declines a gameStartTime without a recognized league', () => {
+      expect(gameEndTime('2026-06-14 21:00:00+00', undefined)).toBeNull();
+      expect(gameEndTime('2026-06-14 21:00:00+00', null)).toBeNull();
     });
   });
 

@@ -664,6 +664,18 @@ export async function submitGroupMetadataUpdates(
   console.log(`[Metadata] ${updated} groups updated, ${failed} failed`);
 }
 
+/** Outcome counts from a submitToAPI run, surfaced for run reporting. */
+export interface SubmitResult {
+  /** Conditions submitted (after filters). */
+  conditions: number;
+  created: number;
+  skipped: number;
+  failed: number;
+  uniqueGroups: number;
+  cryptoGroupsSkipped: number;
+  cryptoConditionsSkipped: number;
+}
+
 /**
  * Submit all condition groups and conditions to the API
  */
@@ -671,7 +683,7 @@ export async function submitToAPI(
   apiUrl: string,
   privateKey: `0x${string}`,
   data: SapienceOutput
-): Promise<void> {
+): Promise<SubmitResult> {
   console.log(`Submitting to API: ${apiUrl}`);
 
   // Apply API filters pipeline
@@ -709,7 +721,15 @@ export async function submitToAPI(
 
   if (allConditions.length === 0) {
     console.log('[API] No conditions to submit');
-    return;
+    return {
+      conditions: 0,
+      created: 0,
+      skipped: 0,
+      failed: 0,
+      uniqueGroups: 0,
+      cryptoGroupsSkipped,
+      cryptoConditionsSkipped,
+    };
   }
 
   // Build batch payloads
@@ -860,4 +880,14 @@ export async function submitToAPI(
       `Crypto skipped: ${cryptoGroupsSkipped} groups, ${cryptoConditionsSkipped} conditions`
     );
   }
+
+  return {
+    conditions: payloads.length,
+    created: totalCreated,
+    skipped: totalSkipped,
+    failed: totalFailed,
+    uniqueGroups,
+    cryptoGroupsSkipped,
+    cryptoConditionsSkipped,
+  };
 }

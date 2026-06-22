@@ -47,6 +47,7 @@ export const ACCOUNT_ACTIVITY_QUERY = `
     $account: Address
     $conditionIds: [Bytes!]
     $pickConfigId: Bytes32
+    $token: Address
     $types: [ActivityType!]
     $first: Int!
     $after: String
@@ -58,6 +59,7 @@ export const ACCOUNT_ACTIVITY_QUERY = `
         account: $account
         conditionIds: $conditionIds
         pickConfigId: $pickConfigId
+        token: $token
         types: $types
       }
     ) {
@@ -195,6 +197,7 @@ export function useAccountActivity({
   pageSize = DEFAULT_PAGE_SIZE,
   activityType,
   pickConfigId,
+  token,
   conditionId,
   enabled: enabledOverride,
 }: {
@@ -206,6 +209,11 @@ export function useAccountActivity({
    * pickConfigId and trades by the pickConfig's predictor/counterparty tokens.
    */
   pickConfigId?: string;
+  /**
+   * Scope the feed to a single position token. With `account`, predictions
+   * only match the side that minted that token; trades match exact token.
+   */
+  token?: Address;
   /**
    * Scope the feed to a condition. Matches every pick configuration whose
    * picks reference this conditionId.
@@ -242,6 +250,7 @@ export function useAccountActivity({
       account ?? 'global',
       typeFilter,
       pickConfigId ?? null,
+      token ?? null,
       conditionId ?? null,
       pageSize,
     ],
@@ -263,6 +272,7 @@ export function useAccountActivity({
         account: account ?? null,
         conditionIds: conditionId ? [conditionId] : null,
         pickConfigId: pickConfigId ?? null,
+        token: token ?? null,
         types,
         first: pageSize,
         after: pageParam ?? null,

@@ -32,6 +32,7 @@ import {
   fetchMarketsByConditionIds,
   fetchEventTagsByIds,
 } from './fetch';
+import { emitStepSummary } from '../notify/summary';
 
 interface RefreshMetadataCLIOptions {
   dryRun: boolean;
@@ -244,6 +245,15 @@ export async function main() {
       printDryRun(metadataUpdates, groupMetadataUpdates);
       const totalSec = ((performance.now() - totalStart) / 1000).toFixed(1);
       log(`[RefreshMetadata] Total runtime: ${totalSec}s`);
+      emitStepSummary({
+        step: 'refresh-metadata',
+        dryRun: true,
+        metrics: {
+          scanned: existing.size,
+          conditionUpdates: metadataUpdates.length,
+          groupUpdates: groupMetadataUpdates.length,
+        },
+      });
       return;
     }
 
@@ -266,6 +276,14 @@ export async function main() {
 
     const totalSec = ((performance.now() - totalStart) / 1000).toFixed(1);
     log(`[RefreshMetadata] Total runtime: ${totalSec}s`);
+    emitStepSummary({
+      step: 'refresh-metadata',
+      metrics: {
+        scanned: existing.size,
+        conditionUpdates: metadataUpdates.length,
+        groupUpdates: groupMetadataUpdates.length,
+      },
+    });
   } catch (error) {
     logError('Error:', error);
     process.exit(1);

@@ -54,6 +54,7 @@ import {
 } from '../src/polygon/client.js';
 import { fetchWithRetry } from '../src/utils/fetch.js';
 import { confirmProductionAccess } from '../src/utils/index.js';
+import { emitStepSummary } from '../src/notify/summary.js';
 
 // ============ Constants ============
 
@@ -703,6 +704,19 @@ async function main() {
     console.log(`  Settled (tx sent):   ${totals.settled}`);
     console.log(`  Skipped:             ${totals.skipped}`);
     console.log(`  Errors:              ${totals.errors}`);
+
+    emitStepSummary({
+      step: 'settle-polymarket',
+      dryRun: options.dryRun,
+      metrics: {
+        total: totals.total,
+        alreadyResolved: totals.alreadyResolved,
+        canResolve: totals.canResolve,
+        settled: totals.settled,
+        skipped: totals.skipped,
+        errors: totals.errors,
+      },
+    });
   } catch (error) {
     console.error('Error:', error);
     process.exit(1);

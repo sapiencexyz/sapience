@@ -4,4 +4,9 @@
  * Writes only price/volume fields (disjoint from tags), so it's safe to run
  * frequently and independently of the other crons.
  */
-require('./lib/groups').runGroup('market-data');
+require('./lib/groups')
+  .runGroup('market-data')
+  .catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });

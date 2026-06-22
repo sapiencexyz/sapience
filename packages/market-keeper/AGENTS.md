@@ -43,6 +43,15 @@ pnpm --filter @sapience/market-keeper start
 
 The `start` script orchestrates `refresh-metadata → generate → relist → prices-and-1d-7d-volume → refresh-volume → cleanup-polymarket → settle-polymarket/manual → settle-pyth`; `scripts/start.js` is the source of truth for ordering. Settlement script selection is chain-dependent — mainnet (`5064014`) runs `settle-polymarket`, testnet runs `settle-manual`.
 
+## Discord alerts
+
+Set `DISCORD_KEEPER_WEBHOOK` (in the keeper's env, not just the API's) to enable two notification flows; with it unset both are silent no-ops.
+
+- **Per-cron run summaries.** The cron runner (`scripts/lib/groups.js`) posts one embed per group run (discovery / metadata-tags / market-data / settlement) with each subservice's ✅/❌ status, duration, and counts. Counts come from subservices appending a JSON line via `emitStepSummary()` (`src/notify/summary.ts`) to the `KEEPER_SUMMARY_FILE` the runner provisions per run. Set `KEEPER_SUMMARY_ON_FAILURE_ONLY=1` to suppress success summaries.
+- **Balance heartbeat.** `pnpm start:status` (`scripts/keeper-status.ts`, run as its own cron, e.g. hourly) reports OpenRouter credits + admin-wallet POL, escalating to a LOW alert below `OPENROUTER_MIN_CREDITS` / `ADMIN_MIN_POL`.
+
+All notification logic lives in `src/notify/` (compiled to dist); the source-JS runner reaches it only through the single `dist/src/notify/report` entry point.
+
 ## Environment Variables
 
 - `ADMIN_PRIVATE_KEY` - Private key for API auth and settlements
@@ -51,6 +60,11 @@ The `start` script orchestrates `refresh-metadata → generate → relist → pr
 - `LLM_ENABLED` - Enable LLM enrichment (optional)
 - `OPENROUTER_API_KEY` - OpenRouter key if LLM enabled
 - `LLM_MODEL` - Model to use (default: openai/gpt-4o-mini)
+- `DISCORD_KEEPER_WEBHOOK` - Discord webhook for keeper alerts (heartbeat + run summaries); unset = disabled
+- `OPENROUTER_MIN_CREDITS` - LOW-alert threshold for OpenRouter USD credits (default 10)
+- `ADMIN_MIN_POL` - LOW-alert threshold for admin wallet POL (default 5)
+- `KEEPER_SUMMARY_ON_FAILURE_ONLY` - set to `1` to only post run summaries on failure
+- `KEEPER_ENV` - optional alert environment label; falls back to `RAILWAY_ENVIRONMENT_NAME`, then `NODE_ENV`, then `development` (NODE_ENV is `production` on both staging and prod, so it can't distinguish them)
 
 ## Production Safety
 

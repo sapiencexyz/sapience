@@ -14,4 +14,9 @@
  */
 const { ORDER, runGroup } = require('./lib/groups');
 
-for (const name of ORDER) runGroup(name);
+(async () => {
+  for (const name of ORDER) await runGroup(name);
+})().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

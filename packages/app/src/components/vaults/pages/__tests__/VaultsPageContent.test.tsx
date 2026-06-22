@@ -10,17 +10,21 @@ const {
   mockUsePassiveLiquidityVault,
   mockUseCurrentAddress,
   mockUseVaultStats,
-  mockUseProtocolAnalytics,
+  mockUseVaultAccountValue,
+  mockUseProtocolStats,
   mockRouterReplace,
   mockSearchParamsToString,
+  mockVaultPnlChart,
 } = vi.hoisted(() => ({
   mockUseRestrictedJurisdiction: vi.fn(),
   mockUsePassiveLiquidityVault: vi.fn(),
   mockUseCurrentAddress: vi.fn(),
   mockUseVaultStats: vi.fn(),
-  mockUseProtocolAnalytics: vi.fn(),
+  mockUseVaultAccountValue: vi.fn(),
+  mockUseProtocolStats: vi.fn(),
   mockRouterReplace: vi.fn(),
   mockSearchParamsToString: vi.fn(() => ''),
+  mockVaultPnlChart: vi.fn(),
 }));
 
 // ---------------------------------------------------------------------------
@@ -43,7 +47,9 @@ vi.mock('~/hooks/blockchain/useCurrentAddress', () => ({
 vi.mock('~/hooks/graphql/useAnalytics', () => ({
   useVaultStats: (vaultAddress: string | undefined) =>
     mockUseVaultStats(vaultAddress),
-  useProtocolAnalytics: () => mockUseProtocolAnalytics(),
+  useProtocolStats: () => mockUseProtocolStats(),
+  useVaultAccountValue: (vaultAddress: string | undefined) =>
+    mockUseVaultAccountValue(vaultAddress),
 }));
 
 vi.mock('~/lib/context/ConnectDialogContext', () => ({
@@ -228,7 +234,10 @@ vi.mock('~/components/shared/Loader', () => {
 });
 
 vi.mock('~/components/vaults/VaultPnlChart', () => {
-  const VaultPnlChart = () => <div />;
+  const VaultPnlChart = (props: { isLoading?: boolean }) => {
+    mockVaultPnlChart(props);
+    return <div />;
+  };
   VaultPnlChart.displayName = 'VaultPnlChart';
   return { __esModule: true, default: VaultPnlChart };
 });
@@ -283,8 +292,19 @@ function setDefaults() {
     isLoading: false,
   });
 
-  mockUseProtocolAnalytics.mockReturnValue({
-    data: { stats: { totalValueLocked: '0' } },
+  mockUseVaultAccountValue.mockReturnValue({
+    data: {
+      collateralBalance: (1000n * 10n ** 18n).toString(),
+      deployedCollateral: '0',
+      claimableCollateral: '0',
+      totalValue: (1000n * 10n ** 18n).toString(),
+      timestamp: 1,
+    },
+    isLoading: false,
+  });
+
+  mockUseProtocolStats.mockReturnValue({
+    data: { totalValueLocked: '0' },
     isLoading: false,
   });
 }
@@ -346,7 +366,7 @@ describe('VaultsPageContent geofence', () => {
     expect(depositBtn).not.toBeDisabled();
   });
 
-  it('hides the options and singles vaults from tabs', () => {
+  it('shows the singles vault tab while keeping options hidden', () => {
     mockUseRestrictedJurisdiction.mockReturnValue({
       isRestricted: false,
       isPermitLoading: false,
@@ -366,11 +386,11 @@ describe('VaultsPageContent geofence', () => {
       screen.queryByRole('button', { name: 'Options Vault' })
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: 'Singles Vault' })
-    ).not.toBeInTheDocument();
+      screen.getByRole('button', { name: 'Singles Vault' })
+    ).toBeInTheDocument();
   });
 
-  it('accepts a hidden known/indexed vault address from the URL without rewriting it', () => {
+  it('accepts the singles vault address from the URL without rewriting it', () => {
     const singleLegVault = '0xSingleLegVault';
     mockSearchParamsToString.mockReturnValue(`address=${singleLegVault}`);
     mockUseRestrictedJurisdiction.mockReturnValue({
@@ -382,7 +402,9 @@ describe('VaultsPageContent geofence', () => {
 
     render(<VaultsPageContent />);
 
-    expect(screen.getByText('Singles Vault')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Singles Vault' })
+    ).toBeInTheDocument();
     expect(mockRouterReplace).not.toHaveBeenCalled();
     expect(
       mockUsePassiveLiquidityVault.mock.calls.some(
@@ -391,6 +413,28 @@ describe('VaultsPageContent geofence', () => {
       )
     ).toBe(true);
     expect(mockUseVaultStats).toHaveBeenCalledWith(singleLegVault);
+  });
+
+  it('loads stats and contract data only for the selected vault plus protocol rewards stats', () => {
+    mockUseRestrictedJurisdiction.mockReturnValue({
+      isRestricted: false,
+      isPermitLoading: false,
+      permitData: { permitted: true },
+      permitError: null,
+    });
+
+    render(<VaultsPageContent />);
+
+    expect(mockUseVaultStats).toHaveBeenCalledTimes(1);
+    expect(mockUseVaultStats).toHaveBeenCalledWith('0xVault');
+    expect(mockUseVaultAccountValue).toHaveBeenCalledTimes(1);
+    expect(mockUseVaultAccountValue).toHaveBeenCalledWith('0xVault');
+    expect(mockUsePassiveLiquidityVault).toHaveBeenCalledTimes(1);
+    expect(mockUsePassiveLiquidityVault).toHaveBeenCalledWith({
+      vaultAddress: '0xVault',
+      chainId: 42161,
+    });
+    expect(mockUseProtocolStats).toHaveBeenCalledTimes(1);
   });
 
   it('accepts the hidden options vault address from the URL without showing its tab', () => {
@@ -456,7 +500,17 @@ describe('VaultsPageContent vault balance display', () => {
       permitData: { permitted: true },
       permitError: null,
     });
-    // Liquid (on-chain) = 1,000; deployed (GraphQL) = 500 -> balance 1,500.
+    // Indexed collateral balance = 1,000; deployed = 500; claimable = 125 -> balance 1,625.
+    mockUseVaultAccountValue.mockReturnValue({
+      data: {
+        collateralBalance: (1000n * 10n ** 18n).toString(),
+        deployedCollateral: (500n * 10n ** 18n).toString(),
+        claimableCollateral: (125n * 10n ** 18n).toString(),
+        totalValue: (1625n * 10n ** 18n).toString(),
+        timestamp: 1,
+      },
+      isLoading: false,
+    });
     mockUseVaultStats.mockReturnValue({
       data: [{ deployedCollateral: (500n * 10n ** 18n).toString() }],
       isLoading: false,
@@ -466,7 +520,7 @@ describe('VaultsPageContent vault balance display', () => {
   it('renders the balance and progress bar once both sources have loaded', () => {
     render(<VaultsPageContent />);
 
-    expect(screen.getByText('1,500.00 USDe')).toBeInTheDocument();
+    expect(screen.getByText('1,625.00 USDe')).toBeInTheDocument();
     expect(screen.getByTestId('vault-balance-bar')).toBeInTheDocument();
     expect(screen.getByText(/deployed/)).toBeInTheDocument();
   });
@@ -475,40 +529,58 @@ describe('VaultsPageContent vault balance display', () => {
     render(<VaultsPageContent />);
 
     const fadeIn = 'animate-in fade-in duration-200';
-    expect(screen.getByText('1,500.00 USDe').className).toContain(fadeIn);
+    expect(screen.getByText('1,625.00 USDe').className).toContain(fadeIn);
     expect(
       screen.getByTestId('vault-balance-bar').parentElement?.className
     ).toContain(fadeIn);
     expect(screen.getByText(/deployed/).className).toContain(fadeIn);
   });
 
-  it('hides the balance number and progress bar until the on-chain read has loaded', () => {
+  it('uses the indexed account value rather than the live on-chain liquid read', () => {
     mockUsePassiveLiquidityVault.mockReturnValue({
       ...passiveVaultDefaults(),
-      vaultData: null,
+      vaultData: { totalLiquidValue: 9999n * 10n ** 18n, paused: false },
     });
 
     render(<VaultsPageContent />);
 
-    // Without the liquid value, the sum would misleadingly show only the
-    // deployed portion (500.00) - it must not render at all.
-    expect(screen.queryByText('500.00 USDe')).toBeNull();
-    expect(screen.queryByTestId('vault-balance-bar')).toBeNull();
-    expect(screen.queryByText(/deployed/)).toBeNull();
+    expect(screen.getByText('1,625.00 USDe')).toBeInTheDocument();
+    expect(screen.queryByText('10,499.00 USDe')).toBeNull();
   });
 
-  it('hides the balance number and progress bar until protocol stats have loaded', () => {
-    mockUseVaultStats.mockReturnValue({
+  it('hides the balance number and progress bar until indexed account value has loaded', () => {
+    mockUseVaultAccountValue.mockReturnValue({
       data: undefined,
       isLoading: true,
     });
 
     render(<VaultsPageContent />);
 
-    // Without the deployed value, the sum would misleadingly show only the
-    // liquid portion (1,000.00) - it must not render at all.
-    expect(screen.queryByText('1,000.00 USDe')).toBeNull();
+    expect(screen.queryByText('1,625.00 USDe')).toBeNull();
     expect(screen.queryByTestId('vault-balance-bar')).toBeNull();
     expect(screen.queryByText(/deployed/)).toBeNull();
+  });
+
+  it('drives the PnL chart loader from the vault-stats query, not the account value', () => {
+    // The chart renders `vaultStats`, so its loader must track that query.
+    // The account-value query (which backs the balance number) being settled
+    // must not make the chart claim it has finished loading its own series.
+    mockUseVaultStats.mockReturnValue({ data: undefined, isLoading: true });
+    mockUseVaultAccountValue.mockReturnValue({
+      data: {
+        collateralBalance: '0',
+        deployedCollateral: '0',
+        claimableCollateral: '0',
+        totalValue: '0',
+        timestamp: 1,
+      },
+      isLoading: false,
+    });
+
+    render(<VaultsPageContent />);
+
+    expect(mockVaultPnlChart).toHaveBeenCalledWith(
+      expect.objectContaining({ isLoading: true })
+    );
   });
 });

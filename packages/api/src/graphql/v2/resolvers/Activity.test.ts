@@ -162,12 +162,12 @@ describe('activity (v2)', () => {
     const tradeCall = mockPrisma.secondaryTrade.findMany.mock.calls[0]?.[0];
     expect(predictionCall.where).toEqual(
       expect.objectContaining({
-        OR: [{ predictor: '0xabc' }, { counterparty: '0xabc' }],
+        AND: [{ OR: [{ predictor: '0xabc' }, { counterparty: '0xabc' }] }],
       })
     );
     expect(tradeCall.where).toEqual(
       expect.objectContaining({
-        OR: [{ buyer: '0xabc' }, { seller: '0xabc' }],
+        AND: [{ OR: [{ buyer: '0xabc' }, { seller: '0xabc' }] }],
       })
     );
   });

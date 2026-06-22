@@ -2,9 +2,13 @@ import { useQuery } from '@tanstack/react-query';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import {
   fetchProtocolAnalytics,
+  fetchProtocolStats,
   fetchVaultStats,
+  fetchVaultAccountValue,
   type ProtocolAnalytics,
+  type ProtocolAnalyticsStat,
   type VaultStat,
+  type VaultAccountValue,
 } from '@sapience/sdk/queries';
 
 const CACHE_TIME_MS = 60 * 1000;
@@ -31,6 +35,43 @@ export function useVaultStats(vaultAddress?: string) {
 }
 
 /**
+ * Coherent indexed vault account value for the /vaults amount display.
+ * Uses one GraphQL account view instead of mixing live contract reads with
+ * cached vault stats snapshots.
+ */
+export function useVaultAccountValue(vaultAddress?: string) {
+  return useQuery<VaultAccountValue>({
+    queryKey: ['vaultAccountValue', vaultAddress?.toLowerCase() ?? null],
+    queryFn: () =>
+      vaultAddress
+        ? fetchVaultAccountValue(vaultAddress, DEFAULT_CHAIN_ID)
+        : Promise.resolve({
+            collateralBalance: '0',
+            deployedCollateral: '0',
+            claimableCollateral: '0',
+            totalValue: '0',
+            timestamp: null,
+          }),
+    enabled: !!vaultAddress,
+    staleTime: CACHE_TIME_MS,
+    refetchInterval: CACHE_TIME_MS,
+  });
+}
+
+/**
+ * Latest v2 protocol stats only. Use this when callers need the live aggregate
+ * numbers without the heavier history/open-interest analytics payload.
+ */
+export function useProtocolStats() {
+  return useQuery<ProtocolAnalyticsStat>({
+    queryKey: ['protocolStats'],
+    queryFn: () => fetchProtocolStats(),
+    staleTime: CACHE_TIME_MS,
+    refetchInterval: CACHE_TIME_MS,
+  });
+}
+
+/**
  * v2 protocol analytics: live stats, the recorded snapshot series and both
  * open-interest breakdowns in a single `protocol { ... }` query.
  */
@@ -43,7 +84,7 @@ export function useProtocolAnalytics() {
   });
 }
 
-export type { ProtocolAnalytics, VaultStat };
+export type { ProtocolAnalytics, VaultStat, VaultAccountValue };
 export type {
   ProtocolAnalyticsStat,
   ProtocolCategoryOpenInterest,

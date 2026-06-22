@@ -35,6 +35,14 @@ export type VaultRow = {
   chainId: number;
 };
 
+// Upper bound on rows returned by `statsHistory` in a single page when the
+// caller omits `first`. The vault snapshot table is append-only (grows ~1/day),
+// so an unbounded "return everything" page would balloon the public response
+// over time. This cap keeps the common case a single request (current series
+// is well under it) while bounding the worst case; a vault that ever exceeds
+// the cap pages forward via the offset `after` cursor (see SDK fetchVaultStats).
+export const MAX_STATS_POINTS = 2000;
+
 const vaultDomainId = (chainId: number, address: string) =>
   `${chainId}:${address.toLowerCase()}`;
 
@@ -181,9 +189,14 @@ export const Vault: VaultResolvers = {
 
   statsHistory: async (parent, args) => {
     const row = parent as unknown as VaultRow;
-    const first = clampTake(args.first ?? 30, {
-      defaultTake: 30,
-      maxTake: 365,
+    // Omitting `first` returns up to MAX_STATS_POINTS in one page (mirrors
+    // Account.statsHistory) — large enough that the daily series loads in a
+    // single request, but finite so a public query can't pull an ever-growing
+    // table unbounded. An explicit `first` still pages and is additionally
+    // capped pre-execution by GRAPHQL_MAX_LIST_SIZE.
+    const first = clampTake(args.first ?? MAX_STATS_POINTS, {
+      defaultTake: MAX_STATS_POINTS,
+      maxTake: MAX_STATS_POINTS,
     });
     const after = args.after ? decodeCursor(args.after) : null;
     const skip = after && /^\d+$/.test(after.k) ? Number(after.k) + 1 : 0;

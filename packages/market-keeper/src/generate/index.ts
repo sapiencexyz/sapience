@@ -8,6 +8,7 @@ import { validatePrivateKey, confirmProductionAccess } from '../utils';
 import { fetchEndingSoonestMarkets } from './market';
 import { groupMarkets, exportJSON } from './grouping';
 import { printDryRun, submitToAPI } from './api';
+import { emitStepSummary } from '../notify/summary';
 
 // ============ CLI Arguments ============
 
@@ -94,12 +95,39 @@ export async function main() {
     // Dry run mode - just print what would be submitted
     if (options.dryRun) {
       printDryRun(sapienceData);
+      emitStepSummary({
+        step: 'generate',
+        dryRun: true,
+        metrics: {
+          conditions: sapienceData.metadata.totalConditions,
+          groups: sapienceData.metadata.totalGroups,
+        },
+      });
       return;
     }
 
     // Submit to API if credentials are available
     if (hasAPICredentials && apiUrl && privateKey) {
-      await submitToAPI(apiUrl, privateKey, sapienceData);
+      const result = await submitToAPI(apiUrl, privateKey, sapienceData);
+      emitStepSummary({
+        step: 'generate',
+        metrics: {
+          conditions: result.conditions,
+          created: result.created,
+          skipped: result.skipped,
+          failed: result.failed,
+          groups: result.uniqueGroups,
+        },
+      });
+    } else {
+      emitStepSummary({
+        step: 'generate',
+        note: 'no API credentials',
+        metrics: {
+          conditions: sapienceData.metadata.totalConditions,
+          groups: sapienceData.metadata.totalGroups,
+        },
+      });
     }
   } catch (error) {
     console.error('Error:', error);

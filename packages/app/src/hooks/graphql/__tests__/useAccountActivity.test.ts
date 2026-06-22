@@ -189,6 +189,7 @@ describe('useAccountActivity', () => {
       account: null,
       conditionIds: null,
       pickConfigId: null,
+      token: null,
       types: null,
       first: 20,
       after: null,
@@ -288,6 +289,7 @@ describe('useAccountActivity', () => {
           account:
             '0xABCDEF0000000000000000000000000000000001' as `0x${string}`,
           pickConfigId: '0xpc1',
+          token: '0xpredictortoken' as `0x${string}`,
           conditionId: '0xc1',
           activityType: 'trade',
         }),
@@ -302,6 +304,7 @@ describe('useAccountActivity', () => {
     expect(variables).toMatchObject({
       account: '0xABCDEF0000000000000000000000000000000001',
       pickConfigId: '0xpc1',
+      token: '0xpredictortoken',
       conditionIds: ['0xc1'],
       types: ['TRADE'],
     });

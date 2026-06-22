@@ -17,6 +17,7 @@ import {
 } from '../utils';
 import { submitVolumeUpdates } from '../generate/api';
 import { fetchActiveConditionIds } from '../sapience/active-conditions';
+import { emitStepSummary } from '../notify/summary';
 
 // ============ Constants ============
 
@@ -471,6 +472,15 @@ export async function main() {
       const totalSec = ((performance.now() - totalStart) / 1000).toFixed(1);
       log(`\nTotal runtime: ${totalSec}s`);
       log('\n========== END DRY RUN ==========\n');
+      emitStepSummary({
+        step: 'refresh-volume',
+        dryRun: true,
+        metrics: {
+          scanned: conditionIds.length,
+          updates: successfulVolumes.length,
+          failed: totalFetchFailures,
+        },
+      });
       return;
     }
 
@@ -491,6 +501,14 @@ export async function main() {
 
     const totalSec = ((performance.now() - totalStart) / 1000).toFixed(1);
     log(`[RefreshVolume] Total runtime: ${totalSec}s`);
+    emitStepSummary({
+      step: 'refresh-volume',
+      metrics: {
+        scanned: conditionIds.length,
+        updates: successfulVolumes.length,
+        failed: totalFetchFailures,
+      },
+    });
   } catch (error) {
     logError('Error:', error);
     process.exit(1);

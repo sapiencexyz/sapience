@@ -359,8 +359,14 @@ type Vault implements Node {
   Time-series of this vault's economic snapshots, oldest-first (ascending
   `timestamp`, matching `Account.statsHistory` — chart-ready, no consumer
   re-sort). Backs the vault dashboard's TVL / PnL charts.
+
+  Omitting `first` returns up to a server-side cap (MAX_STATS_POINTS) in one
+  page, so the chart loads in a single request instead of a chain of paginated
+  round-trips — while still bounding the response for an append-only series.
+  Page forward with `after` if a vault ever exceeds the cap. (A literal `first`
+  above GRAPHQL_MAX_LIST_SIZE is still rejected pre-execution.)
   """
-  statsHistory(first: Int = 30, after: String, filter: VaultStatFilter): VaultStatConnection!
+  statsHistory(first: Int, after: String, filter: VaultStatFilter): VaultStatConnection!
 }
 
 """
@@ -1601,6 +1607,12 @@ input ActivityFilter {
   conditionIds: [Bytes!]
   pickConfigId: Bytes32
 
+  """
+  Restrict activity to a single position token. With `account`, predictions
+  match only the side that minted this token; trades match exact token.
+  """
+  token: Address
+
   """Restrict to a subset of activity types. `[]` is a zero-result query."""
   types: [ActivityType!]
 
@@ -1707,8 +1719,9 @@ type Protocol {
   the bucket's last (latest) snapshot; flow fields (`periodVolume`,
   `periodTradeCount`) sum across the bucket; the node's `timestamp` is the
   bucket start. With no `interval` the raw per-snapshot series is returned.
-  The default page (`first` omitted) fits the whole bucketed series in one
-  request, so the analytics dashboard no longer paginates.
+  Pass `first: null` to fit the whole bucketed series in one request — an
+  explicit null bypasses the default page size, so the analytics dashboard
+  no longer paginates; omitting `first` falls back to a 100-row page.
   """
   statsHistory(interval: TimeInterval, first: Int = 100, after: String, filter: ProtocolStatFilter): ProtocolStatConnection!
   openInterestByCategory: [CategoryOpenInterest!]!

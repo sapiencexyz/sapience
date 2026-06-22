@@ -1,5 +1,10 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { fetchVaultStats, GET_VAULT_STATS } from '../vault';
+import {
+  fetchVaultAccountValue,
+  fetchVaultStats,
+  GET_VAULT_ACCOUNT_VALUE,
+  GET_VAULT_STATS,
+} from '../vault';
 
 const mockGraphqlRequestV2 = vi.fn();
 vi.mock('../client/graphqlClient', () => ({
@@ -35,6 +40,9 @@ describe('GET_VAULT_STATS document', () => {
     expect(GET_VAULT_STATS).toContain(
       'vault(address: $address, chainId: $chainId)'
     );
+    // `first` is a nullable variable: omitting it lets the resolver return up
+    // to its MAX_STATS_POINTS cap in one page, while `pageInfo`/`after` keep a
+    // pagination fallback for any vault that exceeds the cap.
     expect(GET_VAULT_STATS).toContain(
       'statsHistory(first: $first, after: $after)'
     );
@@ -54,18 +62,34 @@ describe('GET_VAULT_STATS document', () => {
 });
 
 describe('fetchVaultStats', () => {
-  test('passes the address (lowercased), chainId and first page args', async () => {
+  test('single request (no pageSize) sends a null `first`, address lowercased', async () => {
     mockGraphqlRequestV2.mockResolvedValue(responseWith([node(1700000100)]));
     await fetchVaultStats('0xABCDEF', 42161);
+    expect(mockGraphqlRequestV2).toHaveBeenCalledTimes(1);
     expect(mockGraphqlRequestV2).toHaveBeenCalledWith(GET_VAULT_STATS, {
       address: '0xabcdef',
       chainId: 42161,
-      first: 100,
+      first: null,
       after: null,
     });
   });
 
-  test('pages through statsHistory until the connection is exhausted', async () => {
+  test('one request returns the bounded series when the server signals no next page', async () => {
+    mockGraphqlRequestV2.mockResolvedValue(
+      responseWith([node(1700000300), node(1700000200), node(1700000100)])
+    );
+
+    const result = await fetchVaultStats('0xabc', 42161);
+
+    // Single round-trip: the resolver's cap covers the whole series.
+    expect(mockGraphqlRequestV2).toHaveBeenCalledTimes(1);
+    // All snapshots accumulated, sorted oldest-first.
+    expect(result.map((s) => s.timestamp)).toEqual([
+      1700000100, 1700000200, 1700000300,
+    ]);
+  });
+
+  test('pages on `pageInfo` when a vault exceeds the server cap', async () => {
     mockGraphqlRequestV2
       .mockResolvedValueOnce(
         responseWith([node(1700000300), node(1700000200)], {
@@ -87,10 +111,20 @@ describe('fetchVaultStats', () => {
     expect(mockGraphqlRequestV2.mock.calls[1][1]).toMatchObject({
       after: 'cursor-1',
     });
-    // All three snapshots accumulated, sorted oldest-first.
     expect(result.map((s) => s.timestamp)).toEqual([
       1700000100, 1700000200, 1700000300,
     ]);
+  });
+
+  test('forwards an explicit pageSize as the per-page `first`', async () => {
+    mockGraphqlRequestV2.mockResolvedValue(responseWith([node(1700000100)]));
+    await fetchVaultStats('0xabc', 42161, 100);
+    expect(mockGraphqlRequestV2).toHaveBeenCalledWith(GET_VAULT_STATS, {
+      address: '0xabc',
+      chainId: 42161,
+      first: 100,
+      after: null,
+    });
   });
 
   test('maps wire nodes to the adapted vault stat shape', async () => {
@@ -151,5 +185,77 @@ describe('fetchVaultStats', () => {
     expect(await fetchVaultStats('0xabc', 42161)).toEqual([]);
     mockGraphqlRequestV2.mockResolvedValue(null);
     expect(await fetchVaultStats('0xabc', 42161)).toEqual([]);
+  });
+});
+
+describe('GET_VAULT_ACCOUNT_VALUE document', () => {
+  test('queries account collateralBalance and account statsHistory from one v2 surface', () => {
+    expect(GET_VAULT_ACCOUNT_VALUE).toContain(
+      'account(address: $address, chainId: $chainId)'
+    );
+    expect(GET_VAULT_ACCOUNT_VALUE).toContain('collateralBalance');
+    expect(GET_VAULT_ACCOUNT_VALUE).toContain('amount');
+    expect(GET_VAULT_ACCOUNT_VALUE).toContain('statsHistory(interval: DAY)');
+    // No explicit `first`: a literal above GRAPHQL_MAX_LIST_SIZE (100) is
+    // rejected pre-execution with PAGINATION_LIMIT_EXCEEDED, so we rely on the
+    // resolver's MAX_STATS_POINTS default for the full rolling-year window.
+    expect(GET_VAULT_ACCOUNT_VALUE).not.toContain('first:');
+    expect(GET_VAULT_ACCOUNT_VALUE).toContain('deployedCollateral');
+    expect(GET_VAULT_ACCOUNT_VALUE).toContain('claimableCollateral');
+  });
+});
+
+describe('fetchVaultAccountValue', () => {
+  test('lowercases the address and sums indexed wallet, deployed, and claimable collateral', async () => {
+    mockGraphqlRequestV2.mockResolvedValue({
+      account: {
+        collateralBalance: { amount: '1000' },
+        statsHistory: {
+          nodes: [
+            {
+              timestamp: 1700000000,
+              deployedCollateral: '250',
+              claimableCollateral: '25',
+            },
+            {
+              timestamp: 1700000100,
+              deployedCollateral: '500',
+              claimableCollateral: '125',
+            },
+          ],
+        },
+      },
+    });
+
+    const result = await fetchVaultAccountValue('0xABCDEF', 42161);
+
+    expect(mockGraphqlRequestV2).toHaveBeenCalledWith(GET_VAULT_ACCOUNT_VALUE, {
+      address: '0xabcdef',
+      chainId: 42161,
+    });
+    expect(result).toEqual({
+      collateralBalance: '1000',
+      deployedCollateral: '500',
+      claimableCollateral: '125',
+      totalValue: '1625',
+      timestamp: 1700000100,
+    });
+  });
+
+  test('defaults missing account stats to just the indexed wallet balance', async () => {
+    mockGraphqlRequestV2.mockResolvedValue({
+      account: {
+        collateralBalance: { amount: 1000 },
+        statsHistory: { nodes: [] },
+      },
+    });
+
+    await expect(fetchVaultAccountValue('0xabc', 42161)).resolves.toEqual({
+      collateralBalance: '1000',
+      deployedCollateral: '0',
+      claimableCollateral: '0',
+      totalValue: '1000',
+      timestamp: null,
+    });
   });
 });
