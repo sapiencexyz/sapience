@@ -413,16 +413,37 @@ export async function queryAccountBalance(
     ),
     -- Materialize all positions for this account once
     all_deployed AS (
-      SELECT "onChainCreatedAt" AS created_ts, "settledAt" AS settled_ts,
-        CASE WHEN predictor = ${addr}
-             THEN CAST("predictorCollateral" AS DECIMAL)
-             WHEN counterparty = ${addr}
-             THEN CAST("counterpartyCollateral" AS DECIMAL)
+      -- A prediction's collateral stops being "deployed" once its pick
+      -- configuration RESOLVES, not when the individual prediction settles
+      -- on-chain. Losing predictions are frequently never settled (the loser
+      -- has no incentive to claim), so "settledAt" stays null forever and
+      -- keying off it over-counts those losses as deployed indefinitely.
+      -- Mirror vaultAggregator.deployedAt: deployed while the pickConfig is
+      -- unresolved, dropped at Picks.resolvedAt. A pickConfig that is resolved
+      -- but missing a resolvedAt, or a pickConfigId pointing at a missing Picks
+      -- row, is treated as no longer deployed (undeploy_ts = created_ts ⇒ the
+      -- created<=bucket<undeploy window is empty). A null pickConfigId (rare
+      -- RPC-error case) has no resolution signal, so it stays deployed.
+      SELECT p."onChainCreatedAt" AS created_ts,
+        CASE
+          WHEN p."pickConfigId" IS NULL THEN NULL
+          WHEN pk.id IS NULL THEN p."onChainCreatedAt"
+          WHEN pk.resolved = false THEN NULL
+          WHEN pk."resolvedAt" IS NOT NULL THEN pk."resolvedAt"
+          ELSE p."onChainCreatedAt"
+        END AS undeploy_ts,
+        CASE WHEN p.predictor = ${addr}
+             THEN CAST(p."predictorCollateral" AS DECIMAL)
+             WHEN p.counterparty = ${addr}
+             THEN CAST(p."counterpartyCollateral" AS DECIMAL)
              ELSE 0 END AS collateral
-      FROM "Prediction"
-      WHERE predictor = ${addr} OR counterparty = ${addr}
+      FROM "Prediction" p
+      LEFT JOIN "Picks" pk ON p."pickConfigId" = pk.id
+      WHERE p.predictor = ${addr} OR p.counterparty = ${addr}
       UNION ALL
-      SELECT "mintedAt" AS created_ts, "settledAt" AS settled_ts,
+      -- Legacy V1 positions have no pickConfig and settle as a unit, so their
+      -- deploy window still keys off settledAt.
+      SELECT "mintedAt" AS created_ts, "settledAt" AS undeploy_ts,
         CASE WHEN predictor = ${addr}
              THEN CAST(COALESCE("predictorCollateral", '0') AS DECIMAL)
              WHEN counterparty = ${addr}
@@ -469,7 +490,7 @@ export async function queryAccountBalance(
         SELECT SUM(d.collateral)
         FROM all_deployed d
         WHERE d.created_ts <= b.bucket_epoch
-          AND (d.settled_ts IS NULL OR d.settled_ts > b.bucket_epoch)
+          AND (d.undeploy_ts IS NULL OR d.undeploy_ts > b.bucket_epoch)
       ), 0)::TEXT AS deployed_collateral,
       -- Claimable remaining = gross owed on each settled-won (pickConfig, side)
       -- MINUS the collateral already redeemed on that side up to the bucket,

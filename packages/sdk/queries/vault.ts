@@ -148,17 +148,19 @@ export interface VaultAccountValue {
 }
 
 // Sourced from the vault entity's live `stats` snapshot — NOT the
-// `account(...)` surface. The two compute `deployedCollateral` differently:
+// `account(...)` surface. Both now compute `deployedCollateral` off the pick
+// configuration's resolution (`Picks.resolved`/`resolvedAt`), so a position
+// drops out of "deployed" the moment its pickConfig resolves — including a
+// COUNTERPARTY_WINS loss that is never settled on-chain:
 //
-//   - `Vault.stats.deployedCollateral` (this query) keys "still open" off
-//     Picks.resolved/resolvedAt, so resolved positions drop out immediately.
-//   - `Account.statsHistory.deployedCollateral` keys it off Prediction.settledAt.
-//     Losing predictions are frequently never settled on-chain, so their
-//     counterpartyCollateral stays counted as deployed forever.
+//   - `Vault.stats.deployedCollateral` (this query) — vaultAggregator.deployedAt.
+//   - `Account.statsHistory.deployedCollateral` — queryAccountBalance SQL.
 //
-// The account path therefore over-counts deployed (e.g. ~4x for a vault with a
-// backlog of unsettled losses), inflating the headline balance well above the
-// vault's true AUM. The vault entity matches the figure the PnL chart plots.
+// They previously diverged: the account path keyed off Prediction.settledAt,
+// and losing predictions are frequently never settled on-chain, so their
+// counterpartyCollateral stayed counted as deployed forever — over-counting the
+// headline balance (e.g. ~4x for a vault with a backlog of unsettled losses).
+// Both paths now match the figure the PnL chart plots.
 export const GET_VAULT_ACCOUNT_VALUE = /* GraphQL */ `
   query VaultAccountValue($address: Address!, $chainId: Int) {
     vault(address: $address, chainId: $chainId) {

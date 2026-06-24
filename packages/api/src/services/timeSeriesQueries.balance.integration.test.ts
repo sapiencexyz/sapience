@@ -36,13 +36,18 @@ const HOLDER_OTHER_SIDE = '0xbbbb000000000000000000000000000000000002';
 // Predictor who redeems only PART of a winning side — claimable must decrement
 // by the redeemed amount, not drop to zero.
 const HOLDER_PARTIAL_CLAIM = '0xcccc000000000000000000000000000000000003';
+// Predictor holding one LOST position (pickConfig resolved COUNTERPARTY_WINS but
+// the prediction was never settled on-chain, settledAt = null) plus one still-
+// open position. Deployed collateral must drop the lost leg at the pickConfig's
+// resolvedAt, not wait forever on settledAt.
+const HOLDER_DEPLOY = '0xdddd000000000000000000000000000000000004';
 
 // Minimal slices of the tables queryAccountBalance touches. `position` (the V1
 // legacy table) exists only so the all_deployed UNION branch resolves; it stays
 // empty. Prediction carries both predictionId and pickConfigId so the DDL is
 // valid against the pre-fix query too (proving the test fails before the fix).
 const DDL = `
-  CREATE TABLE "Picks" (id text PRIMARY KEY, "predictorToken" text, "counterpartyToken" text);
+  CREATE TABLE "Picks" (id text PRIMARY KEY, "predictorToken" text, "counterpartyToken" text, resolved boolean, "resolvedAt" integer);
   CREATE TABLE "Prediction" (
     "predictionId" text, "pickConfigId" text, predictor text, counterparty text,
     "predictorCollateral" text, "counterpartyCollateral" text,
@@ -90,11 +95,15 @@ let dbAvailable = false;
       await client.$executeRawUnsafe(stmt);
     }
 
+    // Scenarios A/B/C are settled winners → their pickConfigs resolved day(1).
+    // pcLose resolves COUNTERPARTY_WINS day(3); pcOpen never resolves.
     await client.$executeRawUnsafe(
-      `INSERT INTO "Picks" (id, "predictorToken", "counterpartyToken") VALUES
-         ('pcA', 'ptokA', 'ctokA'),
-         ('pcB', 'ptokB', 'ctokB'),
-         ('pcC', 'ptokC', 'ctokC')`
+      `INSERT INTO "Picks" (id, "predictorToken", "counterpartyToken", resolved, "resolvedAt") VALUES
+         ('pcA', 'ptokA', 'ctokA', true, ${day(1)}),
+         ('pcB', 'ptokB', 'ctokB', true, ${day(1)}),
+         ('pcC', 'ptokC', 'ctokC', true, ${day(1)}),
+         ('pcLose', 'ptokLose', 'ctokLose', true, ${day(3)}),
+         ('pcOpen', 'ptokOpen', 'ctokOpen', false, NULL)`
     );
 
     // Scenario A — predictor with 100 claimable on a position settled day(2),
@@ -149,6 +158,25 @@ let dbAvailable = false;
     await client.$executeRawUnsafe(
       `INSERT INTO "Claim" (holder, "pickConfigId", "positionToken", "redeemedAt", "collateralPaid")
        VALUES ('${HOLDER_PARTIAL_CLAIM}', 'pcC', 'ptokC', ${day(4)}, '40')`
+    );
+
+    // Scenario D — deployed collateral with a resolved-but-unsettled loss.
+    //   pred-lose: predictor staked 20, pickConfig resolved COUNTERPARTY_WINS on
+    //     day(3), prediction NEVER settled on-chain (settledAt = null).
+    //   pred-open: predictor staked 5, pickConfig still unresolved.
+    // Deployed must read 25 while both are live, then drop to 5 from the
+    // pickConfig's resolvedAt — NOT stay at 25 forever on the null settledAt.
+    await client.$executeRawUnsafe(
+      `INSERT INTO "Prediction"
+         ("predictionId", "pickConfigId", predictor, counterparty,
+          "predictorCollateral", "counterpartyCollateral",
+          "predictorClaimable", "counterpartyClaimable",
+          "onChainCreatedAt", "settledAt")
+       VALUES
+         ('pred-lose', 'pcLose', '${HOLDER_DEPLOY}', '0xother',
+          '20', '0', '0', '0', ${day(1)}, NULL),
+         ('pred-open', 'pcOpen', '${HOLDER_DEPLOY}', '0xother',
+          '5', '0', '0', '0', ${day(1)}, NULL)`
     );
   }
 }
@@ -211,6 +239,38 @@ describe.skipIf(!dbAvailable)(
       // From day(5): 100 − 40 = 60 (the all-or-nothing bug reported 0 here).
       expect(byDay.get(5)).toBe(60);
       expect(byDay.get(7)).toBe(60);
+    });
+
+    const deployedByDay = async (holder: string) => {
+      const points = await queryAccountBalance(
+        holder,
+        TimeInterval.DAY,
+        from,
+        to,
+        client
+      );
+      return new Map(
+        points.map((p) => [
+          new Date(p.timestamp * 1000).getUTCDate(),
+          Number(p.deployedCollateral),
+        ])
+      );
+    };
+
+    it('drops a resolved-but-unsettled loss from deployed at the pickConfig resolvedAt', async () => {
+      const byDay = await deployedByDay(HOLDER_DEPLOY);
+
+      // Positions are created noon day(1); buckets are midnight, so they first
+      // count from the day(2) bucket. Both legs live (20 lost-leg + 5 open).
+      expect(byDay.get(2)).toBe(25);
+      // resolvedAt is noon day(3), still > the midnight day(3) bucket, so the
+      // lost leg is deployed through day(3).
+      expect(byDay.get(3)).toBe(25);
+      // From day(4) the pickConfig's resolvedAt has passed → the 20 stops being
+      // deployed, even though settledAt is still null. The bug keyed off
+      // settledAt and left this at 25 forever.
+      expect(byDay.get(4)).toBe(5);
+      expect(byDay.get(7)).toBe(5);
     });
   }
 );
