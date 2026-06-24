@@ -10,7 +10,7 @@ import {
   type PublicClient,
   type TypedDataDomain,
 } from 'viem';
-import type { Pick, MintRequest, BurnRequest } from '../types/escrow';
+import type { Pick } from '../types/escrow';
 import { computePickConfigId } from './escrowEncoding';
 import {
   verifySessionApproval,
