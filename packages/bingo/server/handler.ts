@@ -17,6 +17,7 @@ import {
   poolSecret,
 } from './draw.js';
 import { buildAnalytics } from './analytics.js';
+import { buildTreasuryReport } from './treasury.js';
 import { allEntitlements } from './entitlements.js';
 import {
   fundedLineFlags,
@@ -827,6 +828,23 @@ export async function handleApi(
       network,
       poolId: activePool(network).poolId,
       ...buildAnalytics(rows, sponsorships),
+    });
+    return true;
+  }
+
+  // Treasury risk + payout view: per-card winners (with multipliers) and a
+  // per-player rollup carrying gaming/abuse flags. Folds the same submissions
+  // the entitlements worklist reads — no extra chain reads of its own.
+  if (route === 'GET /api/admin/treasury') {
+    if (!isAdmin(req, network)) {
+      json(res, 401, { error: 'Unauthorized' });
+      return true;
+    }
+    const rows = await allEntitlements(network, poolsFor[network]);
+    json(res, 200, {
+      network,
+      poolId: activePool(network).poolId,
+      ...buildTreasuryReport(rows),
     });
     return true;
   }
