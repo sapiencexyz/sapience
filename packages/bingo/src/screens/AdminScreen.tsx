@@ -12,15 +12,18 @@ import { fmtUnits, shortAddress } from '../lib/format/balance';
 import { CHAIN_ID } from '../lib/chain';
 import {
   fetchAdminNonce,
+  fetchAnalytics,
   fetchEntitlements,
   fetchPool,
   fetchSponsorships,
   postAdminLogin,
+  type AnalyticsResponse,
   type EntitlementsResponse,
   type PoolResponse,
   type SponsorshipsResponse,
 } from '../lib/backendApi';
 import Nav from '../components/Nav';
+import AdminAnalyticsSection from '../components/AdminAnalyticsSection';
 import AdminSponsorshipSection from '../components/AdminSponsorshipSection';
 
 const RECEIPT_ABI = parseAbi([
@@ -66,6 +69,7 @@ export default function AdminScreen() {
   const [sponsorships, setSponsorships] =
     useState<SponsorshipsResponse | null>(null);
   const [sponsorError, setSponsorError] = useState<string | null>(null);
+  const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
 
   // SIWE: prove control of the treasury wallet (the receipt contract owner)
   // and receive a short-lived bearer token for the admin endpoints.
@@ -118,12 +122,14 @@ export default function AdminScreen() {
     setLoadError(null);
     setSponsorError(null);
     try {
-      const [ent, sponsors] = await Promise.all([
+      const [ent, sponsors, stats] = await Promise.all([
         fetchEntitlements(t),
         fetchSponsorships(t),
+        fetchAnalytics(t),
       ]);
       setEntitlements(ent);
       setSponsorships(sponsors);
+      setAnalytics(stats);
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -226,6 +232,12 @@ export default function AdminScreen() {
           </div>
         )}
       </section>
+
+      <AdminAnalyticsSection
+        analytics={analytics}
+        loading={loading}
+        loadError={loadError}
+      />
 
       <section className="screen admin-section">
         <h2>Entitlements & payouts</h2>

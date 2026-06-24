@@ -1753,6 +1753,23 @@ button.card-chip {
   margin-bottom: 0;
 }
 
+.admin-subhead {
+  margin: 1rem 0 0;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.admin-bar {
+  display: inline-block;
+  height: 0.65rem;
+  min-width: 2px;
+  border-radius: var(--r-sm);
+  background: var(--accent);
+  vertical-align: middle;
+}
+
 .admin-grant-form {
   display: flex;
   flex-direction: column;
