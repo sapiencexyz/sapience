@@ -16,6 +16,8 @@ import {
   fairnessCommitment,
   poolSecret,
 } from './draw.js';
+import { buildAnalytics } from './analytics.js';
+import { buildTreasuryReport } from './treasury.js';
 import { allEntitlements } from './entitlements.js';
 import {
   fundedLineFlags,
@@ -808,6 +810,42 @@ export async function handleApi(
       return true;
     }
     json(res, 200, await listSponsorships(network));
+    return true;
+  }
+
+  // Aggregate dashboard: a pure fold over the SAME on-chain reads the
+  // entitlements + sponsorships endpoints use. No new chain reads of its own.
+  if (route === 'GET /api/admin/analytics') {
+    if (!isAdmin(req, network)) {
+      json(res, 401, { error: 'Unauthorized' });
+      return true;
+    }
+    const [rows, sponsorships] = await Promise.all([
+      allEntitlements(network, poolsFor[network]),
+      listSponsorships(network),
+    ]);
+    json(res, 200, {
+      network,
+      poolId: activePool(network).poolId,
+      ...buildAnalytics(rows, sponsorships),
+    });
+    return true;
+  }
+
+  // Treasury risk + payout view: per-card winners (with multipliers) and a
+  // per-player rollup carrying gaming/abuse flags. Folds the same submissions
+  // the entitlements worklist reads — no extra chain reads of its own.
+  if (route === 'GET /api/admin/treasury') {
+    if (!isAdmin(req, network)) {
+      json(res, 401, { error: 'Unauthorized' });
+      return true;
+    }
+    const rows = await allEntitlements(network, poolsFor[network]);
+    json(res, 200, {
+      network,
+      poolId: activePool(network).poolId,
+      ...buildTreasuryReport(rows),
+    });
     return true;
   }
 

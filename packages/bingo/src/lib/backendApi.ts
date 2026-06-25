@@ -241,6 +241,105 @@ export interface SponsorshipsResponse {
   rows: SponsorshipHistoryRow[];
 }
 
+/** Aggregate admin dashboard. Mirrors bingo-server/analytics.ts
+ *  AnalyticsSummary (folded from the entitlements + sponsorships reads). */
+export interface AnalyticsResponse {
+  network?: Network;
+  poolId: string;
+  cards: {
+    total: number;
+    complete: number;
+    sponsored: number;
+    selfFunded: number;
+    distinctPlayers: number;
+  };
+  staked: {
+    totalWei: string;
+    sponsoredWei: string;
+    selfFundedWei: string;
+  };
+  wins: {
+    /** Win-count histogram over decided complete cards; index = wins. */
+    histogram: number[];
+    decidedCards: number;
+  };
+  bonuses: {
+    payableWei: string;
+    payableCount: number;
+    provisionalWei: string;
+    paidWei: string;
+    paidCount: number;
+  };
+  referrals: {
+    payableWei: string;
+    payableCount: number;
+    paidWei: string;
+    paidCount: number;
+    distinctReferrers: number;
+  };
+  sponsorship: {
+    sponsorAddress: Address | null;
+    bankrollWei: string;
+    beneficiaries: number;
+    played: number;
+    allocatedWei: string;
+    usedWei: string;
+    remainingWei: string;
+  };
+}
+
+/** Gaming/abuse signals attached to a card or player. Mirrors
+ *  bingo-server/treasury.ts RiskFlag. */
+export type RiskFlag =
+  | 'reroll'
+  | 'self-referral'
+  | 'referral-ring'
+  | 'win-rate-outlier'
+  | 'concentration';
+
+export interface TreasuryWinnerCard {
+  player: Address;
+  poolId: string;
+  cardIndex: number;
+  receiptTokenId: string | null;
+  wins: number;
+  /** Effective multiplier in bps (bonus / price). 25000 = 2.5×. */
+  multiplierBps: number;
+  cardPriceWei: string;
+  bonusOwedWei: string;
+  bonusPaidOnChain: boolean | null;
+  decided: boolean | null;
+  provisional: boolean | null;
+  flags: RiskFlag[];
+}
+
+export interface TreasuryPlayerRollup {
+  player: Address;
+  cards: number;
+  funded: number;
+  abandoned: number;
+  abandonedBelowFunded: number;
+  totalStakedWei: string;
+  totalBonusOwedWei: string;
+  totalBonusPaidWei: string;
+  maxMultiplierBps: number;
+  /** Won / funded lines over decided cards; null if none decided. */
+  winRate: number | null;
+  /** Share of total bonus owed, in bps. */
+  bonusShareBps: number;
+  riskFlags: RiskFlag[];
+}
+
+export interface TreasuryResponse {
+  network?: Network;
+  poolId: string;
+  winners: TreasuryWinnerCard[];
+  players: TreasuryPlayerRollup[];
+  totalBonusOwedWei: string;
+  totalBonusPaidWei: string;
+  baseWinRate: number | null;
+}
+
 // ---------------------------------------------------------------------------
 // Fetch plumbing
 // ---------------------------------------------------------------------------
@@ -403,6 +502,22 @@ export function fetchSponsorships(
   adminToken: string,
 ): Promise<SponsorshipsResponse> {
   return request<SponsorshipsResponse>('/api/admin/sponsorships', {
+    headers: { authorization: `Bearer ${adminToken}` },
+  });
+}
+
+export function fetchAnalytics(
+  adminToken: string,
+): Promise<AnalyticsResponse> {
+  return request<AnalyticsResponse>('/api/admin/analytics', {
+    headers: { authorization: `Bearer ${adminToken}` },
+  });
+}
+
+export function fetchTreasury(
+  adminToken: string,
+): Promise<TreasuryResponse> {
+  return request<TreasuryResponse>('/api/admin/treasury', {
     headers: { authorization: `Bearer ${adminToken}` },
   });
 }
