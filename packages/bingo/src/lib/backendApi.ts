@@ -288,6 +288,58 @@ export interface AnalyticsResponse {
   };
 }
 
+/** Gaming/abuse signals attached to a card or player. Mirrors
+ *  bingo-server/treasury.ts RiskFlag. */
+export type RiskFlag =
+  | 'reroll'
+  | 'self-referral'
+  | 'referral-ring'
+  | 'win-rate-outlier'
+  | 'concentration';
+
+export interface TreasuryWinnerCard {
+  player: Address;
+  poolId: string;
+  cardIndex: number;
+  receiptTokenId: string | null;
+  wins: number;
+  /** Effective multiplier in bps (bonus / price). 25000 = 2.5×. */
+  multiplierBps: number;
+  cardPriceWei: string;
+  bonusOwedWei: string;
+  bonusPaidOnChain: boolean | null;
+  decided: boolean | null;
+  provisional: boolean | null;
+  flags: RiskFlag[];
+}
+
+export interface TreasuryPlayerRollup {
+  player: Address;
+  cards: number;
+  funded: number;
+  abandoned: number;
+  abandonedBelowFunded: number;
+  totalStakedWei: string;
+  totalBonusOwedWei: string;
+  totalBonusPaidWei: string;
+  maxMultiplierBps: number;
+  /** Won / funded lines over decided cards; null if none decided. */
+  winRate: number | null;
+  /** Share of total bonus owed, in bps. */
+  bonusShareBps: number;
+  riskFlags: RiskFlag[];
+}
+
+export interface TreasuryResponse {
+  network?: Network;
+  poolId: string;
+  winners: TreasuryWinnerCard[];
+  players: TreasuryPlayerRollup[];
+  totalBonusOwedWei: string;
+  totalBonusPaidWei: string;
+  baseWinRate: number | null;
+}
+
 // ---------------------------------------------------------------------------
 // Fetch plumbing
 // ---------------------------------------------------------------------------
@@ -458,6 +510,14 @@ export function fetchAnalytics(
   adminToken: string,
 ): Promise<AnalyticsResponse> {
   return request<AnalyticsResponse>('/api/admin/analytics', {
+    headers: { authorization: `Bearer ${adminToken}` },
+  });
+}
+
+export function fetchTreasury(
+  adminToken: string,
+): Promise<TreasuryResponse> {
+  return request<TreasuryResponse>('/api/admin/treasury', {
     headers: { authorization: `Bearer ${adminToken}` },
   });
 }

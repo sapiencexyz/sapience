@@ -1770,6 +1770,38 @@ button.card-chip {
   vertical-align: middle;
 }
 
+.risk-badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.risk-badge {
+  display: inline-block;
+  padding: 0.05rem 0.4rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  border-radius: var(--r-sm);
+  background: var(--warn-soft);
+  color: var(--no);
+  border: 1px solid var(--no-soft);
+  cursor: help;
+  white-space: nowrap;
+}
+
+.admin-row-clickable {
+  cursor: pointer;
+}
+
+.admin-row-clickable:hover {
+  background: var(--surface);
+}
+
+.admin-nested-cell {
+  padding: 0.5rem;
+  background: var(--bg);
+}
+
 .admin-grant-form {
   display: flex;
   flex-direction: column;

@@ -16,14 +16,17 @@ import {
   fetchEntitlements,
   fetchPool,
   fetchSponsorships,
+  fetchTreasury,
   postAdminLogin,
   type AnalyticsResponse,
   type EntitlementsResponse,
   type PoolResponse,
   type SponsorshipsResponse,
+  type TreasuryResponse,
 } from '../lib/backendApi';
 import Nav from '../components/Nav';
 import AdminAnalyticsSection from '../components/AdminAnalyticsSection';
+import AdminTreasurySection from '../components/AdminTreasurySection';
 import AdminSponsorshipSection from '../components/AdminSponsorshipSection';
 
 const RECEIPT_ABI = parseAbi([
@@ -70,6 +73,7 @@ export default function AdminScreen() {
     useState<SponsorshipsResponse | null>(null);
   const [sponsorError, setSponsorError] = useState<string | null>(null);
   const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
+  const [treasury, setTreasury] = useState<TreasuryResponse | null>(null);
 
   // SIWE: prove control of the treasury wallet (the receipt contract owner)
   // and receive a short-lived bearer token for the admin endpoints.
@@ -122,14 +126,16 @@ export default function AdminScreen() {
     setLoadError(null);
     setSponsorError(null);
     try {
-      const [ent, sponsors, stats] = await Promise.all([
+      const [ent, sponsors, stats, treasuryReport] = await Promise.all([
         fetchEntitlements(t),
         fetchSponsorships(t),
         fetchAnalytics(t),
+        fetchTreasury(t),
       ]);
       setEntitlements(ent);
       setSponsorships(sponsors);
       setAnalytics(stats);
+      setTreasury(treasuryReport);
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -235,6 +241,12 @@ export default function AdminScreen() {
 
       <AdminAnalyticsSection
         analytics={analytics}
+        loading={loading}
+        loadError={loadError}
+      />
+
+      <AdminTreasurySection
+        treasury={treasury}
         loading={loading}
         loadError={loadError}
       />
