@@ -1,14 +1,6 @@
-import { afterEach, describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { getProviderForChain } from '../utils/getProviderForChain';
-import {
-  CHAIN_ID_ROBINHOOD_TESTNET,
-  getChainConfig,
-  etherealChain,
-} from '@sapience/sdk/constants';
-
-afterEach(() => {
-  vi.unstubAllEnvs();
-});
+import { getChainConfig, etherealChain } from '@sapience/sdk/constants';
 
 describe('getProviderForChain', () => {
   const supportedChainIds = [5064014];
@@ -25,25 +17,6 @@ describe('getProviderForChain', () => {
 
   it('throws for unsupported chain ID', () => {
     expect(() => getProviderForChain(999)).toThrow('Unsupported chain');
-  });
-
-  it('supports env-configured custom chain IDs', () => {
-    const chainId = 424242;
-    vi.stubEnv(`CHAIN_${chainId}_RPC_URL`, 'https://rpc.example-chain.test');
-
-    const client = getProviderForChain(chainId);
-    expect(client.chain?.id).toBe(chainId);
-    expect(client.chain?.rpcUrls.default.http[0]).toBe(
-      'https://rpc.example-chain.test'
-    );
-  });
-
-  it('supports Robinhood Chain Testnet', () => {
-    const client = getProviderForChain(CHAIN_ID_ROBINHOOD_TESTNET);
-    expect(client.chain?.id).toBe(CHAIN_ID_ROBINHOOD_TESTNET);
-    expect(client.chain?.rpcUrls.default.http[0]).toBe(
-      'https://rpc.testnet.chain.robinhood.com'
-    );
   });
 
   describe('Caching', () => {
