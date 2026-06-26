@@ -209,6 +209,57 @@ describe('buildDepositCalls', () => {
     expect(calls[2].to).toBe(vaultAddress);
   });
 
+  test('wrapNative=false skips the wrap even when wrapped balance is short', () => {
+    const calls = buildDepositCalls({
+      amount: '10',
+      assetAddress,
+      vaultAddress,
+      vaultAbi,
+      pricePerShare: '1',
+      wrappedBalance: 0n, // short, but collateral is a standalone ERC-20
+      currentAllowance: 100_000_000_000_000_000_000n,
+      wrapNative: false,
+    });
+    // approve already sufficient → just the deposit, no payable wrap
+    expect(calls).toHaveLength(1);
+    expect(calls[0].to).toBe(vaultAddress);
+    expect(calls.every((c) => c.value === 0n)).toBe(true);
+  });
+
+  test('wrapNative=false still approves when allowance is short', () => {
+    const calls = buildDepositCalls({
+      amount: '10',
+      assetAddress,
+      vaultAddress,
+      vaultAbi,
+      pricePerShare: '1',
+      wrappedBalance: 0n,
+      currentAllowance: 0n,
+      wrapNative: false,
+    });
+    // approve + deposit, but no wrap call with ETH value
+    expect(calls).toHaveLength(2);
+    expect(calls[0].to).toBe(assetAddress); // approve on asset
+    expect(calls.every((c) => c.value === 0n)).toBe(true);
+  });
+
+  test('non-18 decimals scale the deposit amount', () => {
+    const calls = buildDepositCalls({
+      amount: '10',
+      assetAddress,
+      vaultAddress,
+      vaultAbi,
+      pricePerShare: '1',
+      wrappedBalance: 100_000_000n, // 100 at 6 decimals
+      currentAllowance: 100_000_000n,
+      decimals: 6,
+      wrapNative: false,
+    });
+    expect(calls).toHaveLength(1);
+    const decoded = decodeFunctionData({ abi: vaultAbi, data: calls[0].data });
+    expect(decoded.args?.[0]).toBe(10_000_000n); // 10 * 1e6
+  });
+
   test('undefined pricePerShare is treated as "1"', () => {
     const calls = buildDepositCalls({
       amount: '10',

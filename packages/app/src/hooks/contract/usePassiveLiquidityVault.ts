@@ -2,11 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Address } from 'viem';
 import { erc20Abi, verifyMessage } from 'viem';
 import type { Abi } from 'abitype';
+import { predictionMarketVault } from '@sapience/sdk/contracts';
 import {
-  predictionMarketVault,
-  collateralToken,
-} from '@sapience/sdk/contracts';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+  CHAIN_ID_ETHEREAL,
+  CHAIN_ID_ETHEREAL_TESTNET,
+  DEFAULT_CHAIN_ID,
+} from '@sapience/sdk/constants';
 import { predictionMarketVaultAbi } from '@sapience/sdk/abis';
 import {
   formatVaultAssetAmount,
@@ -138,20 +139,32 @@ export function usePassiveLiquidityVault(
     },
   });
 
+  // Collateral token comes from the vault's own `asset()` (raw multicall index
+  // 5), not the hardcoded registry — so balance/allowance reads work on any
+  // chain, including a custom one where the SDK has no collateral entry.
+  const assetAddress = vaultData?.[5] as Address | undefined;
+
+  // On Ethereal the native gas token *is* the wrapped collateral; elsewhere the
+  // collateral is a standalone ERC-20 and gas is paid in ETH. This gates the
+  // payable-`deposit()` wrap step and the native-balance term below.
+  const isNativeCollateralChain =
+    TARGET_CHAIN_ID === CHAIN_ID_ETHEREAL ||
+    TARGET_CHAIN_ID === CHAIN_ID_ETHEREAL_TESTNET;
+
   const { data: nativeBalance, refetch: refetchNativeBalance } = useBalance({
     address: currentAddress,
     chainId: TARGET_CHAIN_ID,
-    query: { enabled: !!currentAddress },
+    query: { enabled: !!currentAddress && isNativeCollateralChain },
   });
 
   const { data: wusdeBalance, refetch: refetchWusdeBalance } = useReadContract({
     abi: erc20Abi,
-    address: collateralToken[DEFAULT_CHAIN_ID]?.address,
+    address: assetAddress,
     functionName: 'balanceOf',
     args: currentAddress ? [currentAddress] : undefined,
     chainId: TARGET_CHAIN_ID,
     query: {
-      enabled: !!currentAddress,
+      enabled: !!currentAddress && !!assetAddress,
       refetchInterval: 5000,
     },
   });
@@ -159,7 +172,7 @@ export function usePassiveLiquidityVault(
   const { data: wusdeAllowance, refetch: refetchWusdeAllowance } =
     useReadContract({
       abi: erc20Abi,
-      address: collateralToken[DEFAULT_CHAIN_ID]?.address,
+      address: assetAddress,
       functionName: 'allowance',
       args:
         currentAddress && VAULT_ADDRESS
@@ -167,7 +180,7 @@ export function usePassiveLiquidityVault(
           : undefined,
       chainId: TARGET_CHAIN_ID,
       query: {
-        enabled: !!currentAddress && !!VAULT_ADDRESS,
+        enabled: !!currentAddress && !!VAULT_ADDRESS && !!assetAddress,
       },
     });
 
@@ -271,7 +284,11 @@ export function usePassiveLiquidityVault(
   const nativeUsdeBalance = nativeBalance?.value || 0n;
   const wrappedUsdeBalance =
     typeof wusdeBalance === 'bigint' ? wusdeBalance : 0n;
-  const userAssetBalance = nativeUsdeBalance + wrappedUsdeBalance;
+  // Only fold in the native balance on chains where native == collateral
+  // (Ethereal). Elsewhere gas (ETH) is unrelated to the ERC-20 collateral.
+  const userAssetBalance = isNativeCollateralChain
+    ? nativeUsdeBalance + wrappedUsdeBalance
+    : wrappedUsdeBalance;
 
   const currentAllowance =
     typeof wusdeAllowance === 'bigint' ? wusdeAllowance : 0n;
@@ -346,6 +363,7 @@ export function usePassiveLiquidityVault(
         wrappedBalance: wrappedUsdeBalance,
         currentAllowance,
         decimals: assetDecimals,
+        wrapNative: isNativeCollateralChain,
       });
 
       await sendCalls({ chainId, calls });
@@ -358,6 +376,7 @@ export function usePassiveLiquidityVault(
       wrappedUsdeBalance,
       currentAllowance,
       assetDecimals,
+      isNativeCollateralChain,
     ]
   );
 

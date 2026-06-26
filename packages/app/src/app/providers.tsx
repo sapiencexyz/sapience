@@ -10,9 +10,11 @@ import type React from 'react';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { hashFn } from 'wagmi/query';
 import {
+  buildCustomChain,
   etherealChain,
   etherealTestnetChain,
   hyperEvmChain,
+  readCustomChainOverride,
 } from '@sapience/sdk/constants';
 import { httpWithRetry } from '~/lib/utils/util';
 import { SapienceProvider } from '~/lib/context/SapienceProvider';
@@ -69,6 +71,15 @@ const buildChainsAndTransports = () => {
     etherealChain,
     etherealTestnetChain,
   ];
+
+  // Custom-chain override (client only): register the user-supplied chain so the
+  // app can read/transact on it and `switchChain` resolves instead of erroring.
+  const override =
+    typeof window !== 'undefined' ? readCustomChainOverride() : null;
+  if (override && !chains.some((c) => c.id === override.chainId)) {
+    chains.push(buildCustomChain(override.chainId, override.rpcUrl));
+    transports[override.chainId] = httpWithRetry(override.rpcUrl);
+  }
 
   return { chains, transports };
 };

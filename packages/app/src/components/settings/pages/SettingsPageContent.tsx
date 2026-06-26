@@ -4,7 +4,7 @@ import { Label } from '@sapience/ui/components/ui/label';
 import { Input } from '@sapience/ui/components/ui/input';
 
 import { Card, CardContent } from '@sapience/ui/components/ui/card';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@sapience/ui/components/ui/button';
 import {
   DEFAULT_CHAIN_ID,
@@ -22,6 +22,14 @@ import {
 } from '~/lib/ws/MeshAuctionClient';
 import Loader from '~/components/shared/Loader';
 
+const MERIDIAN_TESTNET_SETTINGS = {
+  customRpcURL: 'https://rpc.testnet.chain.robinhood.com',
+  graphqlEndpoint: 'https://api.predict.meridiantest.net/graphql',
+  relayerEndpoint: 'https://relayer.predict.meridiantest.net/auction',
+  signalEndpoint: 'https://relayer.predict.meridiantest.net/signal',
+  chatBaseUrl: 'https://api.predict.meridiantest.net/chat',
+} as const;
+
 type SettingFieldProps = {
   id: string;
   value: string;
@@ -37,6 +45,7 @@ type SettingFieldProps = {
   maskAfterPersist?: boolean;
   disabled?: boolean;
   showResetButton?: boolean;
+  forceShowResetButton?: boolean;
 };
 
 const SettingField = ({
@@ -54,6 +63,7 @@ const SettingField = ({
   maskAfterPersist = false,
   disabled = false,
   showResetButton = true,
+  forceShowResetButton = false,
 }: SettingFieldProps) => {
   const [draft, setDraft] = useState<string>(value);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -107,7 +117,8 @@ const SettingField = ({
     }
   };
 
-  const showReset = showResetButton && draft !== defaultValue;
+  const showReset =
+    showResetButton && (draft !== defaultValue || forceShowResetButton);
 
   return (
     <div className="w-full">
@@ -150,22 +161,27 @@ const SettingField = ({
 const SettingsPageContent = () => {
   const { openChat } = useChat();
   const {
-    graphqlEndpoint,
+    graphqlEndpointV2,
     apiBaseUrl,
     signalEndpoint,
     chatBaseUrl,
     etherealRpcURL,
     arbitrumRpcURL,
+    customChainId,
+    customRpcURL,
     connectionDurationHours,
     meshRateLimit,
     meshMaxPeers,
     meshFanout,
     setGraphqlEndpoint,
+    setGraphqlEndpointV2,
     setApiBaseUrl,
     setSignalEndpoint,
     setChatBaseUrl,
     setEtherealRpcUrl,
     setArbitrumRpcUrl,
+    detectAndSetCustomChain,
+    clearCustomChain,
     setConnectionDurationHours,
     setMeshRateLimit,
     setMeshMaxPeers,
@@ -179,6 +195,8 @@ const SettingsPageContent = () => {
   const [chatInput, setChatInput] = useState('');
   const [etherealRpcInput, setEtherealRpcInput] = useState('');
   const [arbitrumRpcInput, setArbitrumRpcInput] = useState('');
+  const [, setIsDetecting] = useState(false);
+  const [detectError, setDetectError] = useState<string | null>(null);
   const [connectionDurationInput, setConnectionDurationInput] =
     useState<string>(String(DEFAULT_CONNECTION_DURATION_HOURS));
   const [meshRateLimitInput, setMeshRateLimitInput] = useState<number>(100);
@@ -187,6 +205,7 @@ const SettingsPageContent = () => {
 
   // Validation hints handled within SettingField to avoid parent re-renders breaking focus
   const [hydrated, setHydrated] = useState(false);
+  const lastPresetKeyRef = useRef<{ key: string; at: number } | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -194,7 +213,7 @@ const SettingsPageContent = () => {
 
   useEffect(() => {
     if (!mounted) return;
-    setGqlInput(graphqlEndpoint || defaults.graphqlEndpoint);
+    setGqlInput(graphqlEndpointV2 || defaults.graphqlEndpointV2);
     setApiInput(apiBaseUrl ?? defaults.apiBaseUrl);
     setSignalInput(signalEndpoint ?? defaults.signalEndpoint);
     setChatInput(chatBaseUrl ?? defaults.chatBaseUrl);
@@ -225,6 +244,115 @@ const SettingsPageContent = () => {
     return trimmed.endsWith('/') ? trimmed.slice(0, -1) : trimmed;
   };
 
+  const persistGraphqlEndpoint = (value: string | null) => {
+    setGraphqlEndpoint(null);
+    setGraphqlEndpointV2(value);
+  };
+
+  const persistPredictionMarketRpcEndpoint = (value: string | null) => {
+    if (!value) {
+      setEtherealRpcUrl(null);
+      clearCustomChain();
+      return;
+    }
+
+    const url = value.trim();
+    if (!isHttpUrl(url)) {
+      setDetectError('Must be an absolute http(s) URL');
+      return;
+    }
+    if (url === (etherealRpcURL ?? defaults.etherealRpcURL)) {
+      return;
+    }
+    setEtherealRpcUrl(url);
+    setIsDetecting(true);
+    setDetectError(null);
+    void detectAndSetCustomChain(url)
+      .then((result) => {
+        if ('error' in result) {
+          setDetectError(result.error);
+        }
+      })
+      .finally(() => setIsDetecting(false));
+  };
+
+  const hasCustomPredictionMarketChain =
+    customChainId != null || customRpcURL != null;
+  const needsChainReload =
+    customChainId != null &&
+    customRpcURL === etherealRpcInput.trim() &&
+    DEFAULT_CHAIN_ID !== customChainId;
+
+  const applyMeridianTestnetSettings = useCallback(async () => {
+    setIsDetecting(true);
+    setDetectError(null);
+    const result = await detectAndSetCustomChain(
+      MERIDIAN_TESTNET_SETTINGS.customRpcURL
+    );
+    setIsDetecting(false);
+    if ('error' in result) {
+      setDetectError(result.error);
+      return;
+    }
+
+    setGraphqlEndpoint(null);
+    setGraphqlEndpointV2(MERIDIAN_TESTNET_SETTINGS.graphqlEndpoint);
+    setApiBaseUrl(MERIDIAN_TESTNET_SETTINGS.relayerEndpoint);
+    setSignalEndpoint(MERIDIAN_TESTNET_SETTINGS.signalEndpoint);
+    setChatBaseUrl(MERIDIAN_TESTNET_SETTINGS.chatBaseUrl);
+    setEtherealRpcUrl(MERIDIAN_TESTNET_SETTINGS.customRpcURL);
+
+    setEtherealRpcInput(MERIDIAN_TESTNET_SETTINGS.customRpcURL);
+    setGqlInput(MERIDIAN_TESTNET_SETTINGS.graphqlEndpoint);
+    setApiInput(MERIDIAN_TESTNET_SETTINGS.relayerEndpoint);
+    setSignalInput(MERIDIAN_TESTNET_SETTINGS.signalEndpoint);
+    setChatInput(MERIDIAN_TESTNET_SETTINGS.chatBaseUrl);
+
+    if (typeof window !== 'undefined') {
+      window.location.reload();
+    }
+  }, [
+    detectAndSetCustomChain,
+    setApiBaseUrl,
+    setChatBaseUrl,
+    setGraphqlEndpoint,
+    setGraphqlEndpointV2,
+    setEtherealRpcUrl,
+    setSignalEndpoint,
+  ]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        (target.isContentEditable ||
+          ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
+      ) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+      const now = Date.now();
+      if (key === 'r') {
+        lastPresetKeyRef.current = { key, at: now };
+        return;
+      }
+      if (
+        key === 'h' &&
+        lastPresetKeyRef.current?.key === 'r' &&
+        now - lastPresetKeyRef.current.at < 1500
+      ) {
+        lastPresetKeyRef.current = null;
+        void applyMeridianTestnetSettings();
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [applyMeridianTestnetSettings]);
+
   return (
     <div className="relative min-h-screen">
       {/* Main Content */}
@@ -242,25 +370,37 @@ const SettingsPageContent = () => {
             <CardContent className="p-8">
               <div className="space-y-6">
                 <div className="grid gap-2">
-                  <Label htmlFor="ethereal-rpc-endpoint">
-                    {DEFAULT_CHAIN_ID === CHAIN_ID_ETHEREAL_TESTNET
-                      ? 'Ethereal Testnet'
-                      : 'Ethereal'}{' '}
-                    RPC Endpoint
+                  <Label htmlFor="prediction-market-rpc-endpoint">
+                    Prediction Market RPC Endpoint
                   </Label>
                   <SettingField
-                    id="ethereal-rpc-endpoint"
+                    id="prediction-market-rpc-endpoint"
                     value={etherealRpcInput}
                     setValue={setEtherealRpcInput}
                     defaultValue={defaults.etherealRpcURL}
-                    onPersist={setEtherealRpcUrl}
+                    onPersist={persistPredictionMarketRpcEndpoint}
                     validate={isHttpUrl}
                     normalizeOnChange={(s) => s.trim()}
                     invalidMessage="Must be an absolute http(s) URL"
+                    forceShowResetButton={hasCustomPredictionMarketChain}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    JSON-RPC URL for the Ethereal network (trading)
-                  </p>
+                  {detectError ? (
+                    <p className="text-xs text-red-500">{detectError}</p>
+                  ) : null}
+                  {needsChainReload ? (
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        className="h-9"
+                        onClick={() => {
+                          if (typeof window !== 'undefined')
+                            window.location.reload();
+                        }}
+                      >
+                        Apply &amp; Reload
+                      </Button>
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="grid gap-2">
@@ -306,14 +446,14 @@ const SettingsPageContent = () => {
                     id="graphql-endpoint"
                     value={gqlInput}
                     setValue={setGqlInput}
-                    defaultValue={defaults.graphqlEndpoint}
-                    onPersist={setGraphqlEndpoint}
+                    defaultValue={defaults.graphqlEndpointV2}
+                    onPersist={persistGraphqlEndpoint}
                     validate={isHttpUrl}
                     invalidMessage="Must be an absolute http(s) URL"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Used to fetch metadata, historical data, and onchain data
-                    via GraphQL
+                    Full GraphQL endpoint used by the app. Include the path
+                    required by the selected backend.
                   </p>
                 </div>
 

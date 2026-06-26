@@ -3,8 +3,11 @@
 import {
   DEFAULT_CHAIN_ID,
   CHAIN_ID_ETHEREAL_TESTNET,
+  CUSTOM_CHAIN_ID_KEY,
+  CUSTOM_RPC_URL_KEY,
   getRpcUrl,
 } from '@sapience/sdk/constants';
+import { createPublicClient, http } from 'viem';
 import type React from 'react';
 import {
   createContext,
@@ -17,7 +20,7 @@ import {
 
 type SettingsContextValue = {
   graphqlEndpoint: string | null;
-  /** v2 GraphQL transport endpoint (`/v2/graphql`). Resolves independently of v1. */
+  /** GraphQL endpoint used by the app. The full path is stored as configured. */
   graphqlEndpointV2: string | null;
   /**
    * Auction relayer base URL (stored as http(s) and typically includes the `/auction` path).
@@ -28,6 +31,13 @@ type SettingsContextValue = {
   adminBaseUrl: string | null;
   etherealRpcURL: string | null;
   arbitrumRpcURL: string | null;
+  /**
+   * Custom-chain override. When both are set, the app runs against this chain
+   * after a reload (see `readCustomChainOverride` in the SDK). `customChainId`
+   * is auto-detected from `customRpcURL` via `detectAndSetCustomChain`.
+   */
+  customChainId: number | null;
+  customRpcURL: string | null;
   /** Signal server endpoint (http(s) — converted to ws(s) at connection time). */
   signalEndpoint: string | null;
   connectionDurationHours: number | null;
@@ -41,6 +51,15 @@ type SettingsContextValue = {
   setAdminBaseUrl: (value: string | null) => void;
   setEtherealRpcUrl: (value: string | null) => void;
   setArbitrumRpcUrl: (value: string | null) => void;
+  /**
+   * Detect the chain ID from a custom RPC URL and persist both. Does NOT reload —
+   * the caller shows the detected id and offers an explicit "Apply & Reload".
+   */
+  detectAndSetCustomChain: (
+    rpcUrl: string
+  ) => Promise<{ chainId: number } | { error: string }>;
+  /** Clear the custom-chain override and reload back to the default chain. */
+  clearCustomChain: () => void;
   setSignalEndpoint: (value: string | null) => void;
   setConnectionDurationHours: (value: number | null) => void;
   setMeshRateLimit: (value: number | null) => void;
@@ -70,6 +89,9 @@ const STORAGE_KEYS = {
   admin: 'sapience.settings.adminBaseUrl',
   etherealRpcURL: 'sapience.settings.etherealRpcURL',
   arbitrumRpcURL: 'sapience.settings.arbitrumRpcURL',
+  // Custom-chain override keys are owned by the SDK (single source of truth)
+  customChainId: CUSTOM_CHAIN_ID_KEY,
+  customRpcURL: CUSTOM_RPC_URL_KEY,
   connectionDurationHours: 'sapience.settings.connectionDurationHours',
   signalEndpoint: 'sapience.settings.signalEndpoint',
   meshRateLimit: 'sapience.settings.meshRateLimit',
@@ -143,7 +165,7 @@ function getDefaultGraphqlEndpoint(): string {
   }
 }
 
-// v2 transport default: same origin resolution as v1, but targets `/v2/graphql`.
+// Default app GraphQL endpoint for Sapience deployments.
 function getDefaultGraphqlEndpointV2(): string {
   const baseUrl =
     process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz';
@@ -219,6 +241,12 @@ export const SettingsProvider = ({
   const [arbitrumRpcOverride, setArbitrumRpcOverride] = useState<string | null>(
     null
   );
+  const [customChainIdOverride, setCustomChainIdOverride] = useState<
+    number | null
+  >(null);
+  const [customRpcOverride, setCustomRpcOverride] = useState<string | null>(
+    null
+  );
   const [mounted, setMounted] = useState(false);
   const [connectionDurationHoursOverride, setConnectionDurationHoursOverride] =
     useState<number | null>(null);
@@ -288,6 +316,20 @@ export const SettingsProvider = ({
         setEtherealRpcOverride(etherealRpc);
       if (arbitrumRpc && isHttpUrl(arbitrumRpc))
         setArbitrumRpcOverride(arbitrumRpc);
+      const customRpc =
+        typeof window !== 'undefined'
+          ? window.localStorage.getItem(STORAGE_KEYS.customRpcURL)
+          : null;
+      const customId =
+        typeof window !== 'undefined'
+          ? window.localStorage.getItem(STORAGE_KEYS.customChainId)
+          : null;
+      if (customRpc && isHttpUrl(customRpc)) setCustomRpcOverride(customRpc);
+      if (customId) {
+        const parsed = Number(customId);
+        if (Number.isInteger(parsed) && parsed > 0)
+          setCustomChainIdOverride(parsed);
+      }
       if (cdh) {
         const parsed = parseInt(cdh, 10);
         if (Number.isFinite(parsed) && parsed >= 1)
@@ -381,6 +423,8 @@ export const SettingsProvider = ({
   const arbitrumRpcURL = mounted
     ? arbitrumRpcOverride || defaults.arbitrumRpcURL
     : null;
+  const customChainId = mounted ? customChainIdOverride : null;
+  const customRpcURL = mounted ? customRpcOverride : null;
   const connectionDurationHours = mounted
     ? (connectionDurationHoursOverride ?? defaults.connectionDurationHours)
     : null;
@@ -530,6 +574,51 @@ export const SettingsProvider = ({
     }
   }, []);
 
+  const detectAndSetCustomChain = useCallback(
+    async (
+      rpcUrl: string
+    ): Promise<{ chainId: number } | { error: string }> => {
+      const url = rpcUrl.trim();
+      if (!isHttpUrl(url)) {
+        return { error: 'Must be an absolute http(s) URL' };
+      }
+      try {
+        const client = createPublicClient({ transport: http(url) });
+        const chainId = await client.getChainId();
+        if (!Number.isInteger(chainId) || chainId <= 0) {
+          return { error: 'RPC returned an invalid chain ID' };
+        }
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem(STORAGE_KEYS.customRpcURL, url);
+          window.localStorage.setItem(
+            STORAGE_KEYS.customChainId,
+            String(chainId)
+          );
+        }
+        setCustomRpcOverride(url);
+        setCustomChainIdOverride(chainId);
+        return { chainId };
+      } catch {
+        return { error: 'Could not reach RPC or read chain ID' };
+      }
+    },
+    []
+  );
+
+  const clearCustomChain = useCallback(() => {
+    try {
+      if (typeof window === 'undefined') return;
+      window.localStorage.removeItem(STORAGE_KEYS.customRpcURL);
+      window.localStorage.removeItem(STORAGE_KEYS.customChainId);
+      setCustomRpcOverride(null);
+      setCustomChainIdOverride(null);
+      // Reload so DEFAULT_CHAIN_ID and the wagmi config re-evaluate to defaults.
+      window.location.reload();
+    } catch {
+      /* noop */
+    }
+  }, []);
+
   const setConnectionDurationHours = useCallback((value: number | null) => {
     try {
       if (typeof window === 'undefined') return;
@@ -610,6 +699,8 @@ export const SettingsProvider = ({
     adminBaseUrl,
     etherealRpcURL,
     arbitrumRpcURL,
+    customChainId,
+    customRpcURL,
     connectionDurationHours,
     meshRateLimit,
     meshMaxPeers,
@@ -622,6 +713,8 @@ export const SettingsProvider = ({
     setAdminBaseUrl,
     setEtherealRpcUrl,
     setArbitrumRpcUrl,
+    detectAndSetCustomChain,
+    clearCustomChain,
     setConnectionDurationHours,
     setMeshRateLimit,
     setMeshMaxPeers,

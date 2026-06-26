@@ -83,12 +83,15 @@ function getEtherealContractAddresses(chainId: number) {
     secondaryEscrowAddress &&
     secondaryEscrowAddress !== '0x0000000000000000000000000000000000000000';
   return {
-    wusde: collateralTokenAddresses[effectiveChainId].address,
+    // Guard with optional-chaining: a custom chain has no SDK registry entry,
+    // so these are undefined there. The smart-account/session path is not used
+    // on custom chains (EOA writes instead) — see SessionContext gating.
+    wusde: collateralTokenAddresses[effectiveChainId]?.address,
     predictionMarketEscrow: isEscrowDeployed ? escrowAddress : undefined,
     secondaryMarketEscrow: isSecondaryEscrowDeployed
       ? secondaryEscrowAddress
       : undefined,
-    vault: vaultAddresses[effectiveChainId].address,
+    vault: vaultAddresses[effectiveChainId]?.address,
   };
 }
 

@@ -1,32 +1,13 @@
 import { GraphQLClient } from 'graphql-request';
 
 const getGraphQLEndpoint = () => {
-  try {
-    if (typeof window !== 'undefined') {
-      const override = window.localStorage.getItem(
-        'sapience.settings.graphqlEndpoint'
-      );
-      if (override) return override;
-    }
-  } catch {
-    /* noop */
-  }
-  const baseUrl =
-    process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz';
-  try {
-    const u = new URL(baseUrl);
-    return `${u.origin}/graphql`;
-  } catch {
-    return 'https://api.sapience.xyz/graphql';
-  }
+  return getGraphQLEndpointV2();
 };
 
 /**
- * Resolves the v2 GraphQL endpoint (`/v2/graphql`).
- *
- * Mirrors {@link getGraphQLEndpoint} but targets the v2 transport. The v2
- * override is stored under its own localStorage key so it can diverge from v1
- * (e.g. point v2 at a different deployment) without affecting v1 routing.
+ * Resolves the GraphQL endpoint used by app queries. Sapience deployments use
+ * `/v2/graphql`; Meridian exposes the same schema at `/graphql`, so the setting
+ * stores the full endpoint path rather than deriving one from an origin.
  */
 export const getGraphQLEndpointV2 = () => {
   try {
