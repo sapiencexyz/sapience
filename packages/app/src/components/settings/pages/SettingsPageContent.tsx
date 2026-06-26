@@ -156,6 +156,8 @@ const SettingsPageContent = () => {
     chatBaseUrl,
     etherealRpcURL,
     arbitrumRpcURL,
+    customChainId,
+    customRpcURL,
     connectionDurationHours,
     meshRateLimit,
     meshMaxPeers,
@@ -166,6 +168,8 @@ const SettingsPageContent = () => {
     setChatBaseUrl,
     setEtherealRpcUrl,
     setArbitrumRpcUrl,
+    detectAndSetCustomChain,
+    clearCustomChain,
     setConnectionDurationHours,
     setMeshRateLimit,
     setMeshMaxPeers,
@@ -179,6 +183,9 @@ const SettingsPageContent = () => {
   const [chatInput, setChatInput] = useState('');
   const [etherealRpcInput, setEtherealRpcInput] = useState('');
   const [arbitrumRpcInput, setArbitrumRpcInput] = useState('');
+  const [customRpcInput, setCustomRpcInput] = useState('');
+  const [isDetecting, setIsDetecting] = useState(false);
+  const [detectError, setDetectError] = useState<string | null>(null);
   const [connectionDurationInput, setConnectionDurationInput] =
     useState<string>(String(DEFAULT_CONNECTION_DURATION_HOURS));
   const [meshRateLimitInput, setMeshRateLimitInput] = useState<number>(100);
@@ -200,6 +207,7 @@ const SettingsPageContent = () => {
     setChatInput(chatBaseUrl ?? defaults.chatBaseUrl);
     setEtherealRpcInput(etherealRpcURL ?? defaults.etherealRpcURL);
     setArbitrumRpcInput(arbitrumRpcURL ?? defaults.arbitrumRpcURL);
+    setCustomRpcInput(customRpcURL ?? '');
     setConnectionDurationInput(
       String(connectionDurationHours ?? defaults.connectionDurationHours)
     );
@@ -225,6 +233,26 @@ const SettingsPageContent = () => {
     return trimmed.endsWith('/') ? trimmed.slice(0, -1) : trimmed;
   };
 
+  const handleDetectChain = async () => {
+    const url = customRpcInput.trim();
+    if (!isHttpUrl(url)) {
+      setDetectError('Must be an absolute http(s) URL');
+      return;
+    }
+    setIsDetecting(true);
+    setDetectError(null);
+    const result = await detectAndSetCustomChain(url);
+    setIsDetecting(false);
+    if ('error' in result) {
+      setDetectError(result.error);
+    }
+  };
+
+  const isCustomActive = customChainId != null && !!customRpcURL;
+  // A detection has been saved this session but not yet applied (no reload).
+  const detectedButPendingReload =
+    customChainId != null && customRpcURL === customRpcInput.trim();
+
   return (
     <div className="relative min-h-screen">
       {/* Main Content */}
@@ -241,6 +269,81 @@ const SettingsPageContent = () => {
           <Card className="bg-background">
             <CardContent className="p-8">
               <div className="space-y-6">
+                <div className="grid gap-2 rounded-md border border-input p-4">
+                  <Label htmlFor="custom-rpc-endpoint">
+                    Custom Network RPC (Advanced)
+                  </Label>
+                  <div className="flex gap-3 items-start">
+                    <div className="flex-1">
+                      <Input
+                        id="custom-rpc-endpoint"
+                        value={customRpcInput}
+                        onChange={(e) => {
+                          setCustomRpcInput(e.target.value);
+                          setDetectError(null);
+                        }}
+                        placeholder="https://rpc.example-chain.com"
+                      />
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-10"
+                      disabled={isDetecting || !customRpcInput.trim()}
+                      onClick={handleDetectChain}
+                    >
+                      {isDetecting ? 'Detecting…' : 'Detect'}
+                    </Button>
+                  </div>
+                  {detectError ? (
+                    <p className="text-xs text-red-500">{detectError}</p>
+                  ) : null}
+                  {customChainId != null ? (
+                    <p className="text-xs text-muted-foreground">
+                      Detected chain ID:{' '}
+                      <span className="font-mono text-foreground">
+                        {customChainId}
+                      </span>
+                      {isCustomActive
+                        ? ' — active'
+                        : detectedButPendingReload
+                          ? ' — apply to use'
+                          : null}
+                    </p>
+                  ) : null}
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      className="h-9"
+                      disabled={customChainId == null}
+                      onClick={() => {
+                        if (typeof window !== 'undefined')
+                          window.location.reload();
+                      }}
+                    >
+                      Apply &amp; Reload
+                    </Button>
+                    {isCustomActive ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-9"
+                        onClick={clearCustomChain}
+                      >
+                        Revert to default
+                      </Button>
+                    ) : null}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Paste a JSON-RPC URL to run the app against a different EVM
+                    chain; the chain ID is detected automatically. Then point
+                    the GraphQL and Relayer endpoints below at a matching
+                    backend. Note: the auction/quote WebSocket is derived from
+                    the Relayer Endpoint, so set it to that backend&apos;s{' '}
+                    <span className="font-mono">/auction</span> path.
+                  </p>
+                </div>
+
                 <div className="grid gap-2">
                   <Label htmlFor="ethereal-rpc-endpoint">
                     {DEFAULT_CHAIN_ID === CHAIN_ID_ETHEREAL_TESTNET

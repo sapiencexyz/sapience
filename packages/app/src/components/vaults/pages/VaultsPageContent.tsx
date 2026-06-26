@@ -17,7 +17,7 @@ import {
 } from '@sapience/ui/components/ui/tabs';
 import { Clock } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { parseUnits } from 'viem';
+import { isAddress, parseUnits } from 'viem';
 import { formatDuration, intervalToDuration } from 'date-fns';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -112,8 +112,30 @@ const VaultsPageContent = () => {
     const match = knownVaultOptions.find(
       (v) => normalizeAddress(v.address) === queryVault
     );
-    return match ?? vaultOptions[0];
+    if (match) return match;
+    // An unrecognized but well-formed address is treated as a custom vault so
+    // deposit/withdraw work against vaults not in the SDK registry (e.g. on a
+    // custom chain). `queryVault` is lowercased, so validate without checksum.
+    if (queryVault && isAddress(queryVault, { strict: false })) {
+      return {
+        address: queryVault,
+        label: 'Custom Vault',
+      };
+    }
+    return vaultOptions[0];
   }, [queryVault, knownVaultOptions, vaultOptions]);
+
+  const isCustomVault = useMemo(
+    () =>
+      !!selectedVault &&
+      !knownVaultOptions.some(
+        (v) =>
+          normalizeAddress(v.address) ===
+          normalizeAddress(selectedVault.address)
+      ),
+    [selectedVault, knownVaultOptions]
+  );
+  const [customVaultInput, setCustomVaultInput] = useState('');
 
   useEffect(() => {
     if (!selectedVault || !hasVaultQueryParam) return;
@@ -667,20 +689,41 @@ const VaultsPageContent = () => {
           <h1 className="text-3xl md:text-5xl font-sans font-normal text-foreground">
             Vaults
           </h1>
-          <Tabs value={selectedVaultValue} onValueChange={handleVaultChange}>
-            <TabsList className="h-auto p-1">
-              {vaultOptions.map((option) => (
-                <TabsTrigger
-                  key={option.address}
-                  value={option.address}
-                  className="text-sm px-3 py-1.5 data-[state=active]:text-brand-white"
-                >
-                  {option.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+          {vaultOptions.length > 0 ? (
+            <Tabs value={selectedVaultValue} onValueChange={handleVaultChange}>
+              <TabsList className="h-auto p-1">
+                {vaultOptions.map((option) => (
+                  <TabsTrigger
+                    key={option.address}
+                    value={option.address}
+                    className="text-sm px-3 py-1.5 data-[state=active]:text-brand-white"
+                  >
+                    {option.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+          ) : null}
         </div>
+
+        {(vaultOptions.length === 0 || isCustomVault) && (
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <Input
+              value={customVaultInput}
+              onChange={(e) => setCustomVaultInput(e.target.value)}
+              placeholder="Custom vault address (0x…)"
+              className="sm:max-w-md font-mono text-sm"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!isAddress(customVaultInput.trim(), { strict: false })}
+              onClick={() => handleVaultChange(customVaultInput.trim())}
+            >
+              Load Vault
+            </Button>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 gap-8">
           <div>

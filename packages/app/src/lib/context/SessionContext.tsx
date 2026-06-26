@@ -16,9 +16,18 @@ import { privateKeyToAccount } from 'viem/accounts';
 import type { KernelAccountClient } from '@zerodev/sdk';
 import { DEFAULT_CHAIN_ID, CHAIN_ID_ARBITRUM } from '@sapience/sdk/constants';
 import {
+  collateralToken,
   predictionMarketEscrow,
   secondaryMarketEscrow,
 } from '@sapience/sdk/contracts/addresses';
+
+/**
+ * A custom-chain override has no SDK contract-address entries, so the
+ * smart-account / session-key infrastructure (ZeroDev kernel, escrow, vault
+ * addresses) cannot be configured for it. Detect that and force plain EOA
+ * transactions instead of attempting (and crashing on) the smart-account path.
+ */
+const IS_CUSTOM_CHAIN = !collateralToken[DEFAULT_CHAIN_ID];
 import {
   createSession,
   createArbitrumSession,
@@ -299,6 +308,11 @@ export function SessionProvider({ children }: SessionProviderProps) {
   // Sync account mode from localStorage after mount (client-side only)
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    // Custom chains have no smart-account infra — always use EOA.
+    if (IS_CUSTOM_CHAIN) {
+      setAccountModeInternal('eoa');
+      return;
+    }
     try {
       const stored = window.localStorage.getItem(
         'sapience:accountMode'
@@ -323,7 +337,9 @@ export function SessionProvider({ children }: SessionProviderProps) {
   // Derived flags - these are what the rest of the app should use
   // isUsingSmartAccount = mode is smart-account AND smart account address is available
   const isUsingSmartAccount =
-    accountMode === 'smart-account' && !!smartAccountAddress;
+    !IS_CUSTOM_CHAIN &&
+    accountMode === 'smart-account' &&
+    !!smartAccountAddress;
   // isUsingSession = using smart account AND session is active (can auto-sign)
   const isUsingSession = isUsingSmartAccount && isSessionActive;
 
@@ -518,7 +534,8 @@ export function SessionProvider({ children }: SessionProviderProps) {
       }
     };
 
-    if (walletAddress) {
+    // No smart-account/session infra on a custom chain — skip restore entirely.
+    if (walletAddress && !IS_CUSTOM_CHAIN) {
       void restore();
     }
   }, [walletAddress, extractSessionApprovalData]);

@@ -172,6 +172,7 @@ vi.mock('viem', () => ({
     if (!Number.isFinite(n)) return 0n;
     return BigInt(Math.floor(n)) * 10n ** BigInt(decimals);
   },
+  isAddress: (value: string) => /^0x[0-9a-fA-F]{40}$/.test(value),
 }));
 
 vi.mock('date-fns', () => ({
@@ -457,7 +458,7 @@ describe('VaultsPageContent geofence', () => {
     expect(mockUseVaultStats).toHaveBeenCalledWith(optionsVault);
   });
 
-  it('rewrites an unknown vault address to the default vault', () => {
+  it('treats an unknown but valid vault address as a Custom Vault without rewriting', () => {
     const unknownVault = '0x0000000000000000000000000000000000000abc';
     mockSearchParamsToString.mockReturnValue(`address=${unknownVault}`);
     mockUseRestrictedJurisdiction.mockReturnValue({
@@ -469,10 +470,11 @@ describe('VaultsPageContent geofence', () => {
 
     render(<VaultsPageContent />);
 
-    expect(screen.queryByText('Custom Vault')).not.toBeInTheDocument();
-    expect(mockRouterReplace).toHaveBeenCalledWith('/vaults?address=0xvault', {
-      scroll: false,
-    });
+    // The address drives a synthetic "Custom Vault" rather than falling back to
+    // the first known vault, so deposit/withdraw work against unregistered vaults.
+    expect(screen.getByText('Custom Vault')).toBeInTheDocument();
+    expect(mockRouterReplace).not.toHaveBeenCalled();
+    expect(mockUseVaultStats).toHaveBeenCalledWith(unknownVault);
   });
 
   it('defaults to the first vault tab without rewriting the URL when no address query param is present', () => {

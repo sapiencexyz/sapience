@@ -304,9 +304,15 @@ const ApprovalDialog: React.FC = () => {
           functionName: 'deposit',
         });
 
+        const wusdeAddress = collateralToken[chainId]?.address;
+        if (!wusdeAddress) {
+          throw new Error(
+            `No collateral token configured for chain ${chainId}`
+          );
+        }
         await sendTransactionAsync({
           chainId,
-          to: collateralToken[chainId].address,
+          to: wusdeAddress,
           data: wrapCalldata,
           value: wrapAmount,
         });
