@@ -9,6 +9,7 @@ import {
   DEFAULT_CHAIN_ID,
   etherealChain,
   etherealTestnetChain,
+  getChainConfig,
 } from '@sapience/sdk/constants';
 import {
   DEFAULT_RETRY_COUNT,
@@ -79,15 +80,33 @@ export function getPublicClientForChainId(chainId: number) {
   const envKey = `NEXT_PUBLIC_RPC_${chainId}` as keyof NodeJS.ProcessEnv;
   const envUrl = process.env[envKey as string];
 
+  // Chains not in viem/chains (e.g. Robinhood/Meridian testnet, or a custom
+  // localStorage-override chain) are resolved via the SDK, which reads the
+  // built-in registry and the custom-chain override. Without this, the client
+  // below would silently fall back to mainnet's default RPC (eth.merkle.io)
+  // and send calls for this chain to the wrong network.
+  let sdkChain: ReturnType<typeof getChainConfig> | undefined;
+  try {
+    sdkChain = getChainConfig(chainId);
+  } catch {
+    sdkChain = undefined;
+  }
+
+  const resolvedChain = chainObj ?? sdkChain ?? mainnet;
   const defaultUrl =
     envUrl ||
     chainObj?.rpcUrls?.default?.http?.[0] ||
+    sdkChain?.rpcUrls?.default?.http?.[0] ||
     (chainId === 1 ? 'https://ethereum-rpc.publicnode.com' : undefined);
 
+  if (!defaultUrl) {
+    throw new Error(
+      `No RPC URL configured for chainId=${chainId}. Set NEXT_PUBLIC_RPC_${chainId} or a custom-chain override.`
+    );
+  }
+
   const client = createPublicClient({
-    chain: (chainObj ?? mainnet) as Parameters<
-      typeof createPublicClient
-    >[0]['chain'],
+    chain: resolvedChain as Parameters<typeof createPublicClient>[0]['chain'],
     transport: httpWithRetry(defaultUrl),
   });
   publicClientCache.set(chainId, client);

@@ -89,7 +89,7 @@ export default function ConnectDialog({
   const { isConnected, address } = useAccount();
   const [isClient, setIsClient] = useState(false);
   const { clearLoggedOut } = useAuth();
-  const { startSession, sessionCreationStep } = useSession();
+  const { startSession, sessionCreationStep, accountMode } = useSession();
   const { connectionDurationHours } = useSettings();
 
   // Track if we're creating a session after wallet connection
@@ -193,6 +193,8 @@ export default function ConnectDialog({
 
   // Start session when opened with startSessionOnOpen flag (e.g. after refcode entry)
   useEffect(() => {
+    // Sessions are a smart-account feature; never create one in EOA/wallet mode.
+    if (accountMode !== 'smart-account') return;
     if (!startSessionOnOpen || !open || !isConnected || isCreatingSession)
       return;
 
@@ -216,7 +218,7 @@ export default function ConnectDialog({
     };
 
     void runSession();
-  }, [startSessionOnOpen, open, isConnected]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [startSessionOnOpen, open, isConnected, accountMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-create session when wallet connects, then close dialog
   // Only creates session if user has a valid referral relationship.
@@ -231,6 +233,12 @@ export default function ConnectDialog({
         '[ConnectDialog] Fresh wallet connection detected, checking referral status...'
       );
       clearLoggedOut();
+
+      // EOA/wallet mode doesn't use sessions — just connect and close.
+      if (accountMode !== 'smart-account') {
+        onOpenChange(false);
+        return;
+      }
 
       const createSessionAsync = async () => {
         try {
@@ -308,6 +316,7 @@ export default function ConnectDialog({
     startSession,
     address,
     connectionDurationHours,
+    accountMode,
   ]);
 
   const handleEIP6963Connect = useCallback(

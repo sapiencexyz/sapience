@@ -9,6 +9,11 @@ export const CHAIN_ID_ROBINHOOD_TESTNET = 46630 as const;
 const BUILT_IN_TRADING_CHAIN_IDS = new Set<number>([
   CHAIN_ID_ETHEREAL,
   CHAIN_ID_ETHEREAL_TESTNET,
+  // Robinhood/Meridian testnet has the full contract deployment (escrow, vault,
+  // collateral) in the registry and ZeroDev smart-account support, so it gets
+  // the same smart-account/session treatment as the Ethereal chains rather than
+  // being forced to EOA-only like a generic custom chain.
+  CHAIN_ID_ROBINHOOD_TESTNET,
 ]);
 
 /**
