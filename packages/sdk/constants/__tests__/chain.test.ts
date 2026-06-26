@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
   CHAIN_ID_ETHEREAL,
+  CHAIN_ID_ROBINHOOD_TESTNET,
   CUSTOM_CHAIN_ID_KEY,
   CUSTOM_RPC_URL_KEY,
   DEFAULT_CHAIN_ID,
@@ -23,6 +24,7 @@ function stubWindow(store: Record<string, string>) {
 }
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   vi.unstubAllGlobals();
 });
 
@@ -79,8 +81,25 @@ describe('buildCustomChain', () => {
 });
 
 describe('getChainConfig', () => {
+  test('returns Robinhood Chain Testnet config', () => {
+    const chain = getChainConfig(CHAIN_ID_ROBINHOOD_TESTNET);
+    expect(chain.id).toBe(CHAIN_ID_ROBINHOOD_TESTNET);
+    expect(chain.name).toBe('Robinhood Testnet');
+    expect(chain.rpcUrls.default.http[0]).toBe(
+      'https://rpc.testnet.chain.robinhood.com'
+    );
+  });
+
   test('throws for an unknown chain when no override is set', () => {
     expect(() => getChainConfig(CUSTOM_CHAIN_ID)).toThrow(/Unsupported chain/);
+  });
+
+  test('builds a generic chain for env-configured chains in Node', () => {
+    vi.stubEnv(`CHAIN_${CUSTOM_CHAIN_ID}_RPC_URL`, CUSTOM_RPC);
+
+    const chain = getChainConfig(CUSTOM_CHAIN_ID);
+    expect(chain.id).toBe(CUSTOM_CHAIN_ID);
+    expect(getRpcUrl(CUSTOM_CHAIN_ID)).toBe(CUSTOM_RPC);
   });
 
   test('builds a generic chain for the override chain', () => {

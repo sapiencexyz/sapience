@@ -20,7 +20,7 @@ import {
 
 type SettingsContextValue = {
   graphqlEndpoint: string | null;
-  /** v2 GraphQL transport endpoint (`/v2/graphql`). Resolves independently of v1. */
+  /** GraphQL endpoint used by the app. The full path is stored as configured. */
   graphqlEndpointV2: string | null;
   /**
    * Auction relayer base URL (stored as http(s) and typically includes the `/auction` path).
@@ -165,7 +165,7 @@ function getDefaultGraphqlEndpoint(): string {
   }
 }
 
-// v2 transport default: same origin resolution as v1, but targets `/v2/graphql`.
+// Default app GraphQL endpoint for Sapience deployments.
 function getDefaultGraphqlEndpointV2(): string {
   const baseUrl =
     process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz';

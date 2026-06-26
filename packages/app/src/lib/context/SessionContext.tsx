@@ -14,20 +14,22 @@ import { useAccount, useSwitchChain, useWriteContract } from 'wagmi';
 import type { Address, EIP1193Provider, Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import type { KernelAccountClient } from '@zerodev/sdk';
-import { DEFAULT_CHAIN_ID, CHAIN_ID_ARBITRUM } from '@sapience/sdk/constants';
 import {
-  collateralToken,
+  DEFAULT_CHAIN_ID,
+  CHAIN_ID_ARBITRUM,
+  isBuiltInTradingChain,
+} from '@sapience/sdk/constants';
+import {
   predictionMarketEscrow,
   secondaryMarketEscrow,
 } from '@sapience/sdk/contracts/addresses';
 
 /**
- * A custom-chain override has no SDK contract-address entries, so the
- * smart-account / session-key infrastructure (ZeroDev kernel, escrow, vault
- * addresses) cannot be configured for it. Detect that and force plain EOA
- * transactions instead of attempting (and crashing on) the smart-account path.
+ * Smart-account / session-key infrastructure is only configured for the
+ * built-in Ethereal trading chains. Custom deployments may provide contract
+ * addresses, but still need plain EOA transactions unless explicitly supported.
  */
-const IS_CUSTOM_CHAIN = !collateralToken[DEFAULT_CHAIN_ID];
+const IS_CUSTOM_CHAIN = !isBuiltInTradingChain(DEFAULT_CHAIN_ID);
 import {
   createSession,
   createArbitrumSession,
