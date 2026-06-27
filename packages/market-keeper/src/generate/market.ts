@@ -31,10 +31,19 @@ export async function fetchEndingSoonMarketsViaKeyset(
   const allMarkets: PolymarketMarket[] = [];
   const seenConditionIds = new Set<string>(); // deduplicate across pages
   const PAGE_SIZE = 100; // keyset max page size (since 2026-05-14)
+  // Hard backstop against a pathological non-terminating walk. The window is
+  // bounded to MAX_END_DATE_DAYS so the real page count is small; this only
+  // ever trips if the server keeps issuing fresh cursors without converging.
+  const MAX_PAGES = 5000;
 
+  // Order ending-soonest so the cursor walks the window front-to-back. `order`
+  // must be set for `ascending` to take effect (Gamma ignores `ascending`
+  // otherwise). Both ends of the window are bounded server-side so the walk
+  // terminates at the window edge instead of paging the entire active set.
   const baseParams =
     `limit=${PAGE_SIZE}` +
     `&active=true&closed=false` +
+    `&order=endDate&ascending=true` +
     `&end_date_min=${encodeURIComponent(minEndDate.toISOString())}` +
     `&end_date_max=${encodeURIComponent(maxEndDate.toISOString())}`;
 
@@ -86,12 +95,21 @@ export async function fetchEndingSoonMarketsViaKeyset(
     if (!body.next_cursor) break;
 
     // Safety net for the reported keyset bug where the server ignores the
-    // cursor and re-serves the first page with a persistent next_cursor: a page
-    // that adds zero new markets means we are not advancing — stop rather than
-    // loop forever.
-    if (newMarketsCount === 0) {
+    // cursor and re-serves the same page with an unchanged next_cursor. Detect
+    // the stuck cursor directly (next_cursor === the cursor we just sent) rather
+    // than inferring it from a zero-new-market page — a page can legitimately
+    // add zero markets because every row was deduped or filtered out by the
+    // window guard, and stopping on that would truncate the walk early.
+    if (body.next_cursor === cursor) {
       console.warn(
-        `[Polymarket] Page ${pageCount} added no new markets despite a next_cursor — stopping to avoid a pagination loop`
+        `[Polymarket] Page ${pageCount} returned an unchanged cursor — stopping to avoid a pagination loop`
+      );
+      break;
+    }
+
+    if (pageCount >= MAX_PAGES) {
+      console.error(
+        `[Polymarket] Reached ${MAX_PAGES}-page cap without exhausting the cursor — stopping (results may be incomplete)`
       );
       break;
     }
@@ -165,58 +183,96 @@ export async function fetchEndingSoonestMarkets(): Promise<PolymarketMarket[]> {
 }
 
 /**
- * Fetch markets from the /events endpoint by tag slugs.
+ * Fetch markets from the /events/keyset endpoint by tag slugs.
  * Returns flattened market objects from event.markets[].
  * Injects the parent event into each market's `events` array so downstream
  * grouping logic (which reads market.events[0]) works correctly.
+ *
+ * Uses cursor-based keyset pagination for the same reason as the markets walk:
+ * the legacy /events endpoint is on the same deprecation track (sunset
+ * 2026-05-01) and offset pagination is rejected. end_date_max bounds the window
+ * server-side; the per-tag walk follows next_cursor to exhaustion.
  */
-async function fetchMarketsByEventTags(
+export async function fetchMarketsByEventTags(
   tagSlugs: string[],
   maxEndDate: Date
 ): Promise<PolymarketMarket[]> {
   const markets: PolymarketMarket[] = [];
+  const PAGE_SIZE = 100; // keyset max page size
+  const MAX_PAGES = 5000; // non-termination backstop (see markets walk)
+
+  const baseParams =
+    `limit=${PAGE_SIZE}` +
+    `&active=true&closed=false` +
+    `&end_date_max=${encodeURIComponent(maxEndDate.toISOString())}`;
 
   for (const tag of tagSlugs) {
-    const url = `https://gamma-api.polymarket.com/events?active=true&closed=false&tag_slug=${encodeURIComponent(tag)}&limit=200`;
+    let cursor: string | undefined;
+    let pageCount = 0;
+    let tagMarketCount = 0;
 
-    const response = await fetchWithRetry(url, {
-      headers: { Accept: 'application/json' },
-    });
+    while (true) {
+      pageCount++;
+      const url =
+        `https://gamma-api.polymarket.com/events/keyset?${baseParams}` +
+        `&tag_slug=${encodeURIComponent(tag)}` +
+        (cursor ? `&after_cursor=${encodeURIComponent(cursor)}` : '');
 
-    if (!response.ok) {
-      console.warn(
-        `[Polymarket] Failed to fetch events for tag "${tag}": HTTP ${response.status}`
-      );
-      continue;
-    }
+      const response = await fetchWithRetry(url, {
+        headers: { Accept: 'application/json' },
+      });
 
-    const events: Array<{
-      id?: string;
-      title?: string;
-      slug?: string;
-      description?: string;
-      markets?: PolymarketMarket[];
-    }> = await response.json();
+      if (!response.ok) {
+        console.warn(
+          `[Polymarket] Failed to fetch events for tag "${tag}": HTTP ${response.status}`
+        );
+        break; // give up on this tag, move on to the next
+      }
 
-    for (const event of events) {
-      const parentEvent = {
-        id: event.id,
-        title: event.title,
-        slug: event.slug,
-        description: event.description,
-      };
+      const body: {
+        events?: Array<{
+          id?: string;
+          title?: string;
+          slug?: string;
+          description?: string;
+          markets?: PolymarketMarket[];
+        }>;
+        next_cursor?: string;
+      } = await response.json();
+      const events = body.events ?? [];
 
-      for (const market of event.markets ?? []) {
-        if (new Date(market.endDate) < maxEndDate) {
-          // Inject parent event so grouping logic can read market.events[0]
-          market.events = [parentEvent];
-          markets.push(market);
+      for (const event of events) {
+        const parentEvent = {
+          id: event.id,
+          title: event.title,
+          slug: event.slug,
+          description: event.description,
+        };
+
+        for (const market of event.markets ?? []) {
+          if (new Date(market.endDate) < maxEndDate) {
+            // Inject parent event so grouping logic can read market.events[0]
+            market.events = [parentEvent];
+            markets.push(market);
+            tagMarketCount++;
+          }
         }
       }
+
+      // Normal end (no next_cursor), stuck-cursor guard, and hard backstop —
+      // mirroring the markets/keyset walk.
+      if (!body.next_cursor || body.next_cursor === cursor) break;
+      if (pageCount >= MAX_PAGES) {
+        console.error(
+          `[Polymarket] Tag "${tag}": reached ${MAX_PAGES}-page cap — stopping (results may be incomplete)`
+        );
+        break;
+      }
+      cursor = body.next_cursor;
     }
 
     console.log(
-      `[Polymarket] Tag "${tag}": fetched ${events.length} events with ${markets.length} markets`
+      `[Polymarket] Tag "${tag}": fetched ${tagMarketCount} markets in window across ${pageCount} page(s)`
     );
   }
 
