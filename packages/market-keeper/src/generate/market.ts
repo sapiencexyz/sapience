@@ -8,34 +8,44 @@ import { fetchWithRetry } from '../utils';
 import { runPipeline, printPipelineStats, MARKET_FILTERS } from './pipeline';
 
 /**
- * Fetch markets that end soonest (for --ending-soon mode)
- * Orders by endDate ascending, no volume sorting
- * Iteratively fetches pages by moving end_date_min based on max endDate from previous response
+ * Page through Gamma's /markets/keyset endpoint for markets ending within the
+ * [minEndDate, maxEndDate) window, deduplicated by conditionId.
+ *
+ * Uses cursor-based pagination (after_cursor / next_cursor). Polymarket
+ * deprecated offset pagination on the legacy /markets endpoint (sunset
+ * 2026-05-01) and now returns HTTP 422 — "offset too large, use /markets/keyset
+ * for deeper pagination" — once the offset grows large. Discovery hit this
+ * whenever a large cluster of markets shared a single endDate: the old fetcher's
+ * offset fallback walked deep enough to trip the cap and the keeper crashed.
+ * Keyset has no offset cap, so it walks same-endDate clusters of any size
+ * without truncating.
+ *
+ * Both ends of the window are bounded server-side via end_date_min/end_date_max
+ * so the cursor walk terminates at the window edge instead of paging the entire
+ * active-market set.
  */
-export async function fetchEndingSoonestMarkets(): Promise<PolymarketMarket[]> {
-  // Minimum end time: current time + 1 minute (ISO format for API)
-  let currentMinEndDate = new Date(Date.now() + 60 * 1000).toISOString();
-  // Maximum end time: current time + MAX_END_DATE_DAYS
-  const maxEndDate = new Date(
-    Date.now() + MAX_END_DATE_DAYS * 24 * 60 * 60 * 1000
-  );
-
+export async function fetchEndingSoonMarketsViaKeyset(
+  minEndDate: Date,
+  maxEndDate: Date
+): Promise<PolymarketMarket[]> {
   const allMarkets: PolymarketMarket[] = [];
-  const seenConditionIds = new Set<string>(); // Track seen markets to deduplicate
-  // Polymarket's /markets endpoint silently caps `limit` at 100 server-side;
-  // requesting more returns 100 anyway, and the `markets.length < PAGE_SIZE`
-  // short-page stop signal below would then misfire after page 1.
-  const PAGE_SIZE = 100;
-  let pageCount = 0;
-  let offset = 0;
+  const seenConditionIds = new Set<string>(); // deduplicate across pages
+  const PAGE_SIZE = 100; // keyset max page size (since 2026-05-14)
 
-  console.log(
-    `[Polymarket] Fetching ending-soon markets until ${maxEndDate.toISOString()}...`
-  );
+  const baseParams =
+    `limit=${PAGE_SIZE}` +
+    `&active=true&closed=false` +
+    `&end_date_min=${encodeURIComponent(minEndDate.toISOString())}` +
+    `&end_date_max=${encodeURIComponent(maxEndDate.toISOString())}`;
+
+  let cursor: string | undefined;
+  let pageCount = 0;
 
   while (true) {
     pageCount++;
-    const url = `https://gamma-api.polymarket.com/markets?limit=${PAGE_SIZE}&offset=${offset}&active=true&closed=false&order=endDate&ascending=true&end_date_min=${currentMinEndDate}`;
+    const url =
+      `https://gamma-api.polymarket.com/markets/keyset?${baseParams}` +
+      (cursor ? `&after_cursor=${encodeURIComponent(cursor)}` : '');
 
     const response = await fetchWithRetry(url, {
       headers: { Accept: 'application/json' },
@@ -53,65 +63,71 @@ export async function fetchEndingSoonestMarkets(): Promise<PolymarketMarket[]> {
       );
     }
 
-    const markets: PolymarketMarket[] = await response.json();
+    const body: { markets?: PolymarketMarket[]; next_cursor?: string } =
+      await response.json();
+    const markets = body.markets ?? [];
 
-    if (markets.length === 0) {
-      console.log(`[Polymarket] Page ${pageCount}: No more markets`);
-      break;
+    let newMarketsCount = 0;
+    for (const m of markets) {
+      // end_date_max bounds the window server-side; this guards against any
+      // boundary markets (endDate === maxEndDate) slipping through.
+      if (new Date(m.endDate) >= maxEndDate) continue;
+      if (seenConditionIds.has(m.conditionId)) continue;
+      seenConditionIds.add(m.conditionId);
+      allMarkets.push(m);
+      newMarketsCount++;
     }
-
-    // Find the max endDate in this batch to use as next page's min
-    const maxEndDateInBatch = markets.reduce((max, m) => {
-      const endDate = new Date(m.endDate);
-      return endDate > max ? endDate : max;
-    }, new Date(0));
 
     console.log(
-      `[Polymarket] Page ${pageCount}: Fetched ${markets.length} markets (max endDate: ${maxEndDateInBatch.toISOString()})`
+      `[Polymarket] Page ${pageCount}: fetched ${markets.length} markets (+${newMarketsCount} new, ${allMarkets.length} total)`
     );
 
-    // Add markets that are within our time window
-    const marketsInWindow = markets.filter(
-      (m) => new Date(m.endDate) < maxEndDate
-    );
+    // Normal termination: the server omits next_cursor on the final page.
+    if (!body.next_cursor) break;
 
-    // Deduplicate and add markets that are within our time window
-    let newMarketsCount = 0;
-    for (const m of marketsInWindow) {
-      if (!seenConditionIds.has(m.conditionId)) {
-        seenConditionIds.add(m.conditionId);
-        allMarkets.push(m);
-        newMarketsCount++;
-      }
-    }
-
-    // Stop conditions:
-    // 1. Got less than PAGE_SIZE markets (no more pages)
-    // 2. Max endDate in batch exceeds our window (all remaining markets are beyond our window)
-    // 3. No new markets added (we've seen all markets at this endDate)
-    if (
-      markets.length < PAGE_SIZE ||
-      maxEndDateInBatch >= maxEndDate ||
-      newMarketsCount === 0
-    ) {
+    // Safety net for the reported keyset bug where the server ignores the
+    // cursor and re-serves the first page with a persistent next_cursor: a page
+    // that adds zero new markets means we are not advancing — stop rather than
+    // loop forever.
+    if (newMarketsCount === 0) {
+      console.warn(
+        `[Polymarket] Page ${pageCount} added no new markets despite a next_cursor — stopping to avoid a pagination loop`
+      );
       break;
     }
 
-    // Move the cursor to fetch next page
-    const newMinEndDate = maxEndDateInBatch.toISOString();
-    if (newMinEndDate === currentMinEndDate) {
-      // Cursor didn't advance — many markets share the same endDate.
-      // Use offset to page through them.
-      offset += PAGE_SIZE;
-    } else {
-      currentMinEndDate = newMinEndDate;
-      offset = 0;
-    }
+    cursor = body.next_cursor;
   }
 
   console.log(
     `[Polymarket] Total fetched: ${allMarkets.length} markets across ${pageCount} pages`
   );
+
+  return allMarkets;
+}
+
+/**
+ * Fetch markets that end soonest (for --ending-soon mode), within the
+ * MAX_END_DATE_DAYS window, then augment with supplementary event-tag markets
+ * and run the raw-market filter pipeline.
+ */
+export async function fetchEndingSoonestMarkets(): Promise<PolymarketMarket[]> {
+  // Minimum end time: current time + 1 minute
+  const minEndDate = new Date(Date.now() + 60 * 1000);
+  // Maximum end time: current time + MAX_END_DATE_DAYS
+  const maxEndDate = new Date(
+    Date.now() + MAX_END_DATE_DAYS * 24 * 60 * 60 * 1000
+  );
+
+  console.log(
+    `[Polymarket] Fetching ending-soon markets until ${maxEndDate.toISOString()}...`
+  );
+
+  const allMarkets = await fetchEndingSoonMarketsViaKeyset(
+    minEndDate,
+    maxEndDate
+  );
+  const seenConditionIds = new Set(allMarkets.map((m) => m.conditionId));
 
   // Fetch supplementary markets from /events endpoint by tag slug.
   // The /markets list endpoint has blind spots where some active markets
