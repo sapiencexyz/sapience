@@ -11,20 +11,12 @@ import {
 } from '@sapience/ui/components/ui/dialog';
 import { Button } from '@sapience/ui/components/ui/button';
 import { Wallet } from 'lucide-react';
-import {
-  CHAIN_ID_ETHEREAL_TESTNET,
-  DEFAULT_CHAIN_ID,
-} from '@sapience/sdk/constants';
-import { fetchUserReferralStatus } from '~/hooks/referrals/useReferrals';
 import { useAuth } from '~/lib/context/AuthContext';
 import { useSession } from '~/lib/context/SessionContext';
 import {
   useSettings,
   DEFAULT_CONNECTION_DURATION_HOURS,
 } from '~/lib/context/SettingsContext';
-
-// On staging (Ethereal Testnet) we don't gate access behind an invite code.
-const IS_STAGING = DEFAULT_CHAIN_ID === CHAIN_ID_ETHEREAL_TESTNET;
 
 // EIP-6963 types
 interface EIP6963ProviderInfo {
@@ -220,18 +212,14 @@ export default function ConnectDialog({
     void runSession();
   }, [startSessionOnOpen, open, isConnected, accountMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-create session when wallet connects, then close dialog
-  // Only creates session if user has a valid referral relationship.
-  // If no referral, closes the dialog and lets Header show the refcode dialog.
+  // Auto-create session when wallet connects, then close dialog.
   useEffect(() => {
     const wasConnected = prevConnectedRef.current;
     prevConnectedRef.current = isConnected;
 
     // Detect fresh wallet connection (went from disconnected to connected while dialog is open)
     if (isConnected && !wasConnected && open && address) {
-      console.debug(
-        '[ConnectDialog] Fresh wallet connection detected, checking referral status...'
-      );
+      console.debug('[ConnectDialog] Fresh wallet connection detected');
       clearLoggedOut();
 
       // EOA/wallet mode doesn't use sessions — just connect and close.
@@ -242,51 +230,6 @@ export default function ConnectDialog({
 
       const createSessionAsync = async () => {
         try {
-          const currentAddress = address.toLowerCase();
-          // Staging skips the invite-code gate entirely.
-          let hasReferral = IS_STAGING;
-
-          if (!IS_STAGING) {
-            try {
-              const status = await fetchUserReferralStatus(currentAddress);
-
-              hasReferral = !!(
-                status.refCodeHash ||
-                status.referredBy ||
-                status.referredByCode
-              );
-
-              console.debug('[ConnectDialog] Referral check:', {
-                currentAddress,
-                hasReferral,
-                refCodeHash: status.refCodeHash,
-                referredBy: status.referredBy,
-                referredByCode: status.referredByCode,
-              });
-            } catch (error) {
-              console.error(
-                '[ConnectDialog] Failed to check referral status:',
-                error
-              );
-              // On error, check localStorage fallback (same logic as Header)
-              try {
-                const key = `sapience:referralCode:${currentAddress}`;
-                const existing = window.localStorage.getItem(key);
-                hasReferral = !!existing;
-              } catch {
-                // If localStorage fails, assume no referral
-                hasReferral = false;
-              }
-            }
-          }
-
-          if (!hasReferral) {
-            // No referral — close dialog and let Header show RequiredReferralCodeDialog
-            onOpenChange(false);
-            return;
-          }
-
-          // Has referral — start session creation with progress overlay
           setIsCreatingSession(true);
           console.debug('[ConnectDialog] Starting session');
           await startSession({
