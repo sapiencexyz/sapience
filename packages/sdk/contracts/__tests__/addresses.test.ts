@@ -9,6 +9,8 @@ import {
   collateralToken,
   manualConditionResolver,
   predictionMarketEscrow,
+  predictionMarketVault,
+  singleLegVault,
   secondaryMarketEscrow,
 } from '../addresses';
 import {
@@ -207,5 +209,26 @@ describe('Robinhood Chain Mainnet collateral', () => {
     expect(collateralToken[CHAIN_ID_ROBINHOOD_MAINNET]?.address).toBe(
       '0x5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34'
     );
+  });
+});
+
+describe('Robinhood Chain Mainnet vaults', () => {
+  it('registers the main (Core) and single-leg vaults so they show as tabs', () => {
+    expect(predictionMarketVault[CHAIN_ID_ROBINHOOD_MAINNET]?.address).toBe(
+      '0x79cB914f3F336426E89FaB55A9488AB25770552D'
+    );
+    expect(singleLegVault[CHAIN_ID_ROBINHOOD_MAINNET]?.address).toBe(
+      '0xdD9B39FFedf8602Ff86c3621f30Bbc598a2Df223'
+    );
+  });
+
+  it('has no legacy entries for the mainnet protocol contracts', () => {
+    expect(predictionMarketEscrow[CHAIN_ID_ROBINHOOD_MAINNET]?.legacy).toEqual(
+      []
+    );
+    expect(predictionMarketVault[CHAIN_ID_ROBINHOOD_MAINNET]?.legacy).toEqual(
+      []
+    );
+    expect(singleLegVault[CHAIN_ID_ROBINHOOD_MAINNET]?.legacy).toEqual([]);
   });
 });
