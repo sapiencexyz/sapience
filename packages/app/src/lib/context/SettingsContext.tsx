@@ -310,8 +310,12 @@ export const SettingsProvider = ({
         typeof window !== 'undefined'
           ? window.localStorage.getItem(STORAGE_KEYS.signalEndpoint)
           : null;
-      if (sig && isHttpUrl(sig))
+      if (sig !== null && sig.trim() === '') {
+        // Explicit disable: the mesh signal is turned off.
+        setSignalEndpointOverride('');
+      } else if (sig && isHttpUrl(sig)) {
         setSignalEndpointOverride(normalizeBaseUrlPreservePath(sig));
+      }
       if (etherealRpc && isHttpUrl(etherealRpc))
         setEtherealRpcOverride(etherealRpc);
       if (arbitrumRpc && isHttpUrl(arbitrumRpc))
@@ -411,7 +415,11 @@ export const SettingsProvider = ({
     : null;
   const apiBaseUrl = mounted ? apiBaseOverride || defaults.apiBaseUrl : null;
   const signalEndpoint = mounted
-    ? signalEndpointOverride || defaults.signalEndpoint
+    ? // An empty (not null) override means the mesh is explicitly disabled, so
+      // keep it blank instead of falling back to the default endpoint.
+      signalEndpointOverride === ''
+      ? ''
+      : signalEndpointOverride || defaults.signalEndpoint
     : null;
   const chatBaseUrl = mounted ? chatBaseOverride || defaults.chatBaseUrl : null;
   const adminBaseUrl = mounted
@@ -492,9 +500,17 @@ export const SettingsProvider = ({
   const setSignalEndpoint = useCallback((value: string | null) => {
     try {
       if (typeof window === 'undefined') return;
-      if (!value) {
+      // null resets to the default endpoint (removes the override entirely).
+      if (value === null) {
         window.localStorage.removeItem(STORAGE_KEYS.signalEndpoint);
         setSignalEndpointOverride(null);
+        return;
+      }
+      // An explicit empty string disables the mesh: persist a blank value so it
+      // is honored over the default endpoint and getSignalUrl() returns ''.
+      if (value.trim() === '') {
+        window.localStorage.setItem(STORAGE_KEYS.signalEndpoint, '');
+        setSignalEndpointOverride('');
         return;
       }
       const v = normalizeBaseUrlPreservePath(value);

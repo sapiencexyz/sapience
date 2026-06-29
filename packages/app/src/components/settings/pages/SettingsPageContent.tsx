@@ -22,12 +22,30 @@ import {
 } from '~/lib/ws/MeshAuctionClient';
 import Loader from '~/components/shared/Loader';
 
-const MERIDIAN_TESTNET_SETTINGS = {
+// Endpoint presets applied via keyboard shortcuts on the Settings page:
+//   r → h → t  applies the Meridian testnet (Robinhood testnet) preset
+//   r → h → m  applies the Meridian production (Robinhood mainnet) preset
+// Both presets leave the signal endpoint blank, which disables the mesh so the
+// app never attempts to connect to a signaling server.
+type EndpointPreset = {
+  customRpcURL: string;
+  graphqlEndpoint: string;
+  relayerEndpoint: string;
+  chatBaseUrl: string;
+};
+
+const MERIDIAN_TESTNET_SETTINGS: EndpointPreset = {
   customRpcURL: 'https://rpc.testnet.chain.robinhood.com',
   graphqlEndpoint: 'https://api.predict.meridiantest.net/graphql',
   relayerEndpoint: 'https://relayer.predict.meridiantest.net/auction',
-  signalEndpoint: 'https://relayer.predict.meridiantest.net/signal',
   chatBaseUrl: 'https://api.predict.meridiantest.net/chat',
+} as const;
+
+const MERIDIAN_MAINNET_SETTINGS: EndpointPreset = {
+  customRpcURL: 'https://rpc.chain.robinhood.com',
+  graphqlEndpoint: 'https://api.predict.meridian.xyz/graphql',
+  relayerEndpoint: 'https://relayer.predict.meridian.xyz/auction',
+  chatBaseUrl: 'https://api.predict.meridian.xyz/chat',
 } as const;
 
 type SettingFieldProps = {
@@ -283,43 +301,46 @@ const SettingsPageContent = () => {
     customRpcURL === etherealRpcInput.trim() &&
     DEFAULT_CHAIN_ID !== customChainId;
 
-  const applyMeridianTestnetSettings = useCallback(async () => {
-    setIsDetecting(true);
-    setDetectError(null);
-    const result = await detectAndSetCustomChain(
-      MERIDIAN_TESTNET_SETTINGS.customRpcURL
-    );
-    setIsDetecting(false);
-    if ('error' in result) {
-      setDetectError(result.error);
-      return;
-    }
+  const applyEndpointPreset = useCallback(
+    async (preset: EndpointPreset) => {
+      setIsDetecting(true);
+      setDetectError(null);
+      const result = await detectAndSetCustomChain(preset.customRpcURL);
+      setIsDetecting(false);
+      if ('error' in result) {
+        setDetectError(result.error);
+        return;
+      }
 
-    setGraphqlEndpoint(null);
-    setGraphqlEndpointV2(MERIDIAN_TESTNET_SETTINGS.graphqlEndpoint);
-    setApiBaseUrl(MERIDIAN_TESTNET_SETTINGS.relayerEndpoint);
-    setSignalEndpoint(MERIDIAN_TESTNET_SETTINGS.signalEndpoint);
-    setChatBaseUrl(MERIDIAN_TESTNET_SETTINGS.chatBaseUrl);
-    setEtherealRpcUrl(MERIDIAN_TESTNET_SETTINGS.customRpcURL);
+      setGraphqlEndpoint(null);
+      setGraphqlEndpointV2(preset.graphqlEndpoint);
+      setApiBaseUrl(preset.relayerEndpoint);
+      // Blank signal endpoint disables the mesh: the app won't connect to a
+      // signaling server for either preset.
+      setSignalEndpoint('');
+      setChatBaseUrl(preset.chatBaseUrl);
+      setEtherealRpcUrl(preset.customRpcURL);
 
-    setEtherealRpcInput(MERIDIAN_TESTNET_SETTINGS.customRpcURL);
-    setGqlInput(MERIDIAN_TESTNET_SETTINGS.graphqlEndpoint);
-    setApiInput(MERIDIAN_TESTNET_SETTINGS.relayerEndpoint);
-    setSignalInput(MERIDIAN_TESTNET_SETTINGS.signalEndpoint);
-    setChatInput(MERIDIAN_TESTNET_SETTINGS.chatBaseUrl);
+      setEtherealRpcInput(preset.customRpcURL);
+      setGqlInput(preset.graphqlEndpoint);
+      setApiInput(preset.relayerEndpoint);
+      setSignalInput('');
+      setChatInput(preset.chatBaseUrl);
 
-    if (typeof window !== 'undefined') {
-      window.location.reload();
-    }
-  }, [
-    detectAndSetCustomChain,
-    setApiBaseUrl,
-    setChatBaseUrl,
-    setGraphqlEndpoint,
-    setGraphqlEndpointV2,
-    setEtherealRpcUrl,
-    setSignalEndpoint,
-  ]);
+      if (typeof window !== 'undefined') {
+        window.location.reload();
+      }
+    },
+    [
+      detectAndSetCustomChain,
+      setApiBaseUrl,
+      setChatBaseUrl,
+      setGraphqlEndpoint,
+      setGraphqlEndpointV2,
+      setEtherealRpcUrl,
+      setSignalEndpoint,
+    ]
+  );
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -334,24 +355,27 @@ const SettingsPageContent = () => {
       }
 
       const key = event.key.toLowerCase();
+      if (!/^[a-z]$/.test(key)) return;
       const now = Date.now();
-      if (key === 'r') {
-        lastPresetKeyRef.current = { key, at: now };
-        return;
-      }
-      if (
-        key === 'h' &&
-        lastPresetKeyRef.current?.key === 'r' &&
-        now - lastPresetKeyRef.current.at < 1500
-      ) {
+      const prev = lastPresetKeyRef.current;
+      // Build a rolling buffer of the last few keys typed within the window so
+      // "r h t" and "r h m" can be detected as ordered sequences.
+      const buffer =
+        prev && now - prev.at < 1500 ? `${prev.key}${key}`.slice(-3) : key;
+      lastPresetKeyRef.current = { key: buffer, at: now };
+
+      if (buffer.endsWith('rht')) {
         lastPresetKeyRef.current = null;
-        void applyMeridianTestnetSettings();
+        void applyEndpointPreset(MERIDIAN_TESTNET_SETTINGS);
+      } else if (buffer.endsWith('rhm')) {
+        lastPresetKeyRef.current = null;
+        void applyEndpointPreset(MERIDIAN_MAINNET_SETTINGS);
       }
     };
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [applyMeridianTestnetSettings]);
+  }, [applyEndpointPreset]);
 
   return (
     <div className="relative min-h-screen">
