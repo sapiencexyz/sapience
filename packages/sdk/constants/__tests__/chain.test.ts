@@ -2,12 +2,14 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
   CHAIN_ID_ETHEREAL,
   CHAIN_ID_ROBINHOOD_TESTNET,
+  CHAIN_ID_ROBINHOOD_MAINNET,
   CUSTOM_CHAIN_ID_KEY,
   CUSTOM_RPC_URL_KEY,
   DEFAULT_CHAIN_ID,
   buildCustomChain,
   getChainConfig,
   getRpcUrl,
+  isBuiltInTradingChain,
   readCustomChainOverride,
 } from '../chain';
 
@@ -118,5 +120,32 @@ describe('getChainConfig', () => {
       [CUSTOM_RPC_URL_KEY]: CUSTOM_RPC,
     });
     expect(() => getChainConfig(99999)).toThrow(/Unsupported chain/);
+  });
+
+  test('returns Robinhood Chain Mainnet config with its default RPC', () => {
+    const chain = getChainConfig(CHAIN_ID_ROBINHOOD_MAINNET);
+    expect(chain.id).toBe(CHAIN_ID_ROBINHOOD_MAINNET);
+    expect(chain.name).toBe('Robinhood');
+    expect(chain.rpcUrls.default.http[0]).toBe(
+      'https://rpc.chain.robinhood.com'
+    );
+  });
+
+  test('honors a Settings custom RPC override for Robinhood mainnet', () => {
+    // A custom RPC set in Settings (the custom-chain override) must win over the
+    // hardcoded default, even though the mainnet is a first-class chain.
+    stubWindow({
+      [CUSTOM_CHAIN_ID_KEY]: String(CHAIN_ID_ROBINHOOD_MAINNET),
+      [CUSTOM_RPC_URL_KEY]: CUSTOM_RPC,
+    });
+    expect(getRpcUrl(CHAIN_ID_ROBINHOOD_MAINNET)).toBe(CUSTOM_RPC);
+    // Identity is preserved (still the Robinhood mainnet chain, not a generic one).
+    expect(getChainConfig(CHAIN_ID_ROBINHOOD_MAINNET).name).toBe('Robinhood');
+  });
+});
+
+describe('isBuiltInTradingChain', () => {
+  test('treats Robinhood mainnet as a first-class trading chain', () => {
+    expect(isBuiltInTradingChain(CHAIN_ID_ROBINHOOD_MAINNET)).toBe(true);
   });
 });

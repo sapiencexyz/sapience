@@ -15,6 +15,10 @@ const BUILT_IN_TRADING_CHAIN_IDS = new Set<number>([
   // the same smart-account/session treatment as the Ethereal chains rather than
   // being forced to EOA-only like a generic custom chain.
   CHAIN_ID_ROBINHOOD_TESTNET,
+  // Robinhood/Meridian mainnet is a first-class chain with the same
+  // smart-account/session treatment. Its RPC is user-overridable via Settings
+  // (see getChainConfig below).
+  CHAIN_ID_ROBINHOOD_MAINNET,
 ]);
 
 /**
@@ -202,6 +206,28 @@ export const robinhoodTestnetChain = {
 } as const satisfies Chain;
 
 /**
+ * Robinhood Chain Mainnet definition for Meridian deployments.
+ */
+export const robinhoodMainnetChain = {
+  id: CHAIN_ID_ROBINHOOD_MAINNET,
+  name: 'Robinhood',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'Ether',
+    symbol: 'ETH',
+  },
+  rpcUrls: {
+    default: { http: ['https://rpc.chain.robinhood.com'] },
+  },
+  blockExplorers: {
+    default: {
+      name: 'Robinhood Chain Explorer',
+      url: 'https://explorer.chain.robinhood.com',
+    },
+  },
+} as const satisfies Chain;
+
+/**
  * Get chain configuration with optional env-var RPC override.
  * Env var: CHAIN_{chainId}_RPC_URL (e.g., CHAIN_5064014_RPC_URL)
  */
@@ -220,6 +246,17 @@ export function getChainConfig(chainId: number): Chain {
       return envRpc
         ? { ...robinhoodTestnetChain, rpcUrls: { default: { http: [envRpc] } } }
         : robinhoodTestnetChain;
+    case CHAIN_ID_ROBINHOOD_MAINNET: {
+      // First-class chain, but its RPC stays user-overridable: prefer a server
+      // env override, then a custom RPC set in Settings (the localStorage
+      // custom-chain override), falling back to the default Robinhood RPC.
+      const override = readCustomChainOverride();
+      const rpc =
+        envRpc || (override?.chainId === chainId ? override.rpcUrl : undefined);
+      return rpc
+        ? { ...robinhoodMainnetChain, rpcUrls: { default: { http: [rpc] } } }
+        : robinhoodMainnetChain;
+    }
     default: {
       // Server deployments can opt into any EVM chain by setting
       // CHAIN_<chainId>_RPC_URL alongside DEFAULT_CHAIN_ID.

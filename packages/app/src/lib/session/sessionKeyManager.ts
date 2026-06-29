@@ -57,6 +57,7 @@ import {
   CHAIN_ID_ETHEREAL_TESTNET,
   CHAIN_ID_ARBITRUM,
   CHAIN_ID_ROBINHOOD_TESTNET,
+  CHAIN_ID_ROBINHOOD_MAINNET,
   etherealChain,
   etherealTestnetChain,
   getChainConfig,
@@ -197,6 +198,11 @@ function getZeroDevUrls(chainId: number): {
     [CHAIN_ID_ROBINHOOD_TESTNET]: {
       bundler: process.env.NEXT_PUBLIC_ZERODEV_BUNDLER_URL_ROBINHOOD,
       paymaster: process.env.NEXT_PUBLIC_ZERODEV_PAYMASTER_URL_ROBINHOOD,
+    },
+    [CHAIN_ID_ROBINHOOD_MAINNET]: {
+      bundler: process.env.NEXT_PUBLIC_ZERODEV_BUNDLER_URL_ROBINHOOD_MAINNET,
+      paymaster:
+        process.env.NEXT_PUBLIC_ZERODEV_PAYMASTER_URL_ROBINHOOD_MAINNET,
     },
   };
 
