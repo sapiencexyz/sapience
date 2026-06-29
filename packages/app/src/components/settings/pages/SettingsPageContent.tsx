@@ -60,6 +60,11 @@ type SettingFieldProps = {
   type?: 'text' | 'password';
   placeholder?: string;
   clearOnEmpty?: boolean;
+  // What to persist when the field is cleared. Defaults to `null`, which
+  // removes the override and resets to the default value. Set to `''` to keep
+  // an explicit blank value (e.g. the signal endpoint, where blank disables the
+  // mesh) so the field is not repopulated with the default on blur.
+  emptyPersistValue?: string | null;
   maskAfterPersist?: boolean;
   disabled?: boolean;
   showResetButton?: boolean;
@@ -78,6 +83,7 @@ const SettingField = ({
   type = 'text',
   placeholder,
   clearOnEmpty = true,
+  emptyPersistValue = null,
   maskAfterPersist = false,
   disabled = false,
   showResetButton = true,
@@ -114,8 +120,8 @@ const SettingField = ({
     setIsFocused(false);
     if (!draft) {
       if (clearOnEmpty) {
-        onPersist(null);
-        setValue('');
+        onPersist(emptyPersistValue);
+        setValue(emptyPersistValue ?? '');
       }
       return;
     }
@@ -533,10 +539,12 @@ const SettingsPageContent = () => {
                     onPersist={setSignalEndpoint}
                     validate={isHttpUrl}
                     normalizeOnChange={normalizeBase}
+                    emptyPersistValue=""
                     invalidMessage="Must be an absolute http(s) base URL"
                   />
                   <p className="text-xs text-muted-foreground">
-                    WebRTC signaling server for mesh peer discovery
+                    WebRTC signaling server for mesh peer discovery. Leave blank
+                    to disable the mesh and route orders through the relayer.
                   </p>
                 </div>
 
