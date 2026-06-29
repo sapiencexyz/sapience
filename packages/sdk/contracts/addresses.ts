@@ -1,5 +1,8 @@
 import type { Address } from 'viem';
-import { CHAIN_ID_ROBINHOOD_TESTNET } from '../constants/chain';
+import {
+  CHAIN_ID_ROBINHOOD_TESTNET,
+  CHAIN_ID_ROBINHOOD_MAINNET,
+} from '../constants/chain';
 
 export type ChainId = 42161 | 5064014 | number;
 
@@ -32,6 +35,11 @@ export const collateralToken: ChainAddressMap = {
   },
   [CHAIN_ID_ROBINHOOD_TESTNET]: {
     address: '0xCc4225D5F36b26b211675E8d9B7f11511Ba58D2C',
+    legacy: [] as const,
+  },
+  [CHAIN_ID_ROBINHOOD_MAINNET]: {
+    // USDe on Robinhood/Meridian mainnet
+    address: '0x5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34',
     legacy: [] as const,
   },
 } as const;

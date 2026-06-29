@@ -689,41 +689,47 @@ const VaultsPageContent = () => {
           <h1 className="text-3xl md:text-5xl font-sans font-normal text-foreground">
             Vaults
           </h1>
-          {vaultOptions.length > 0 ? (
-            <Tabs value={selectedVaultValue} onValueChange={handleVaultChange}>
-              <TabsList className="h-auto p-1">
-                {vaultOptions.map((option) => (
-                  <TabsTrigger
-                    key={option.address}
-                    value={option.address}
-                    className="text-sm px-3 py-1.5 data-[state=active]:text-brand-white"
-                  >
-                    {option.label}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
-          ) : null}
-        </div>
-
-        {(vaultOptions.length === 0 || isCustomVault) && (
-          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
-            <Input
-              value={customVaultInput}
-              onChange={(e) => setCustomVaultInput(e.target.value)}
-              placeholder="Custom vault address (0x…)"
-              className="sm:max-w-md font-mono text-sm"
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!isAddress(customVaultInput.trim(), { strict: false })}
-              onClick={() => handleVaultChange(customVaultInput.trim())}
-            >
-              Load Vault
-            </Button>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+            {vaultOptions.length > 0 ? (
+              <Tabs
+                value={selectedVaultValue}
+                onValueChange={handleVaultChange}
+              >
+                <TabsList className="h-auto p-1">
+                  {vaultOptions.map((option) => (
+                    <TabsTrigger
+                      key={option.address}
+                      value={option.address}
+                      className="text-sm px-3 py-1.5 data-[state=active]:text-brand-white"
+                    >
+                      {option.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
+            ) : null}
+            {(vaultOptions.length === 0 || isCustomVault) && (
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+                <Input
+                  value={customVaultInput}
+                  onChange={(e) => setCustomVaultInput(e.target.value)}
+                  placeholder="Custom vault address (0x…)"
+                  className="sm:w-72 font-mono text-sm"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={
+                    !isAddress(customVaultInput.trim(), { strict: false })
+                  }
+                  onClick={() => handleVaultChange(customVaultInput.trim())}
+                >
+                  Load Vault
+                </Button>
+              </div>
+            )}
           </div>
-        )}
+        </div>
 
         <div className="grid grid-cols-1 gap-8">
           <div>

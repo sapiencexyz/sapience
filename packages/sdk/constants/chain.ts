@@ -5,6 +5,7 @@ export const CHAIN_ID_POLYGON = 137 as const;
 export const CHAIN_ID_ETHEREAL = 5064014 as const;
 export const CHAIN_ID_ETHEREAL_TESTNET = 13374202 as const;
 export const CHAIN_ID_ROBINHOOD_TESTNET = 46630 as const;
+export const CHAIN_ID_ROBINHOOD_MAINNET = 4663 as const;
 
 const BUILT_IN_TRADING_CHAIN_IDS = new Set<number>([
   CHAIN_ID_ETHEREAL,
@@ -101,6 +102,7 @@ export const COLLATERAL_SYMBOLS: Record<number, string> = {
   [CHAIN_ID_ETHEREAL]: 'USDe',
   [CHAIN_ID_ETHEREAL_TESTNET]: 'USDe',
   [CHAIN_ID_ROBINHOOD_TESTNET]: 'USDe',
+  [CHAIN_ID_ROBINHOOD_MAINNET]: 'USDe',
 } as const;
 
 /**

@@ -13,6 +13,7 @@ import {
 } from '../addresses';
 import {
   CHAIN_ID_ROBINHOOD_TESTNET,
+  CHAIN_ID_ROBINHOOD_MAINNET,
   COLLATERAL_SYMBOLS,
   getChainConfig,
 } from '../../constants/chain';
@@ -196,6 +197,15 @@ describe('Robinhood Chain Testnet deployment', () => {
         '0x888e445f96515186b7b262d959fff4af14151ca9',
         '0xc1525cf7d9b9ed81ce277c2bf96fb1e0e85e1e7e',
       ])
+    );
+  });
+});
+
+describe('Robinhood Chain Mainnet collateral', () => {
+  it('expects USDe collateral at the mainnet token address', () => {
+    expect(COLLATERAL_SYMBOLS[CHAIN_ID_ROBINHOOD_MAINNET]).toBe('USDe');
+    expect(collateralToken[CHAIN_ID_ROBINHOOD_MAINNET]?.address).toBe(
+      '0x5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34'
     );
   });
 });
