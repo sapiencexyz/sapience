@@ -302,8 +302,12 @@ export const SettingsProvider = ({
       if (gV2 && isHttpUrl(gV2)) setGraphqlV2Override(gV2);
       if (a && isHttpUrl(a))
         setApiBaseOverride(normalizeBaseUrlPreservePath(a));
-      if (c && isHttpUrl(c))
+      if (c !== null && c.trim() === '') {
+        // Explicit disable: chat is turned off and the bubble is hidden.
+        setChatBaseOverride('');
+      } else if (c && isHttpUrl(c)) {
         setChatBaseOverride(normalizeBaseUrlPreservePath(c));
+      }
       if (admin && isHttpUrl(admin))
         setAdminBaseOverride(normalizeBaseUrlPreservePath(admin));
       const sig =
@@ -421,7 +425,13 @@ export const SettingsProvider = ({
       ? ''
       : signalEndpointOverride || defaults.signalEndpoint
     : null;
-  const chatBaseUrl = mounted ? chatBaseOverride || defaults.chatBaseUrl : null;
+  const chatBaseUrl = mounted
+    ? // An empty (not null) override means chat is explicitly disabled, so keep
+      // it blank instead of falling back to the default endpoint.
+      chatBaseOverride === ''
+      ? ''
+      : chatBaseOverride || defaults.chatBaseUrl
+    : null;
   const adminBaseUrl = mounted
     ? adminBaseOverride || defaults.adminBaseUrl
     : null;
@@ -525,9 +535,17 @@ export const SettingsProvider = ({
   const setChatBaseUrl = useCallback((value: string | null) => {
     try {
       if (typeof window === 'undefined') return;
-      if (!value) {
+      // null resets to the default endpoint (removes the override entirely).
+      if (value === null) {
         window.localStorage.removeItem(STORAGE_KEYS.chat);
         setChatBaseOverride(null);
+        return;
+      }
+      // An explicit empty string disables chat: persist a blank value so it is
+      // honored over the default endpoint and the chat bubble stays hidden.
+      if (value.trim() === '') {
+        window.localStorage.setItem(STORAGE_KEYS.chat, '');
+        setChatBaseOverride('');
         return;
       }
       const v = normalizeBaseUrlPreservePath(value);

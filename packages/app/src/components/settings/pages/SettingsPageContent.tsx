@@ -31,21 +31,18 @@ type EndpointPreset = {
   customRpcURL: string;
   graphqlEndpoint: string;
   relayerEndpoint: string;
-  chatBaseUrl: string;
 };
 
 const MERIDIAN_TESTNET_SETTINGS: EndpointPreset = {
   customRpcURL: 'https://rpc.testnet.chain.robinhood.com',
   graphqlEndpoint: 'https://api.predict.meridiantest.net/graphql',
   relayerEndpoint: 'https://relayer.predict.meridiantest.net/auction',
-  chatBaseUrl: 'https://api.predict.meridiantest.net/chat',
 } as const;
 
 const MERIDIAN_MAINNET_SETTINGS: EndpointPreset = {
   customRpcURL: 'https://rpc.chain.robinhood.com',
   graphqlEndpoint: 'https://api.predict.meridian.xyz/graphql',
   relayerEndpoint: 'https://relayer.predict.meridian.xyz/auction',
-  chatBaseUrl: 'https://api.predict.meridian.xyz/chat',
 } as const;
 
 type SettingFieldProps = {
@@ -324,14 +321,16 @@ const SettingsPageContent = () => {
       // Blank signal endpoint disables the mesh: the app won't connect to a
       // signaling server for either preset.
       setSignalEndpoint('');
-      setChatBaseUrl(preset.chatBaseUrl);
+      // Blank chat endpoint disables chat and hides the chat bubble for the
+      // Robinhood/Meridian presets.
+      setChatBaseUrl('');
       setEtherealRpcUrl(preset.customRpcURL);
 
       setEtherealRpcInput(preset.customRpcURL);
       setGqlInput(preset.graphqlEndpoint);
       setApiInput(preset.relayerEndpoint);
       setSignalInput('');
-      setChatInput(preset.chatBaseUrl);
+      setChatInput('');
 
       if (typeof window !== 'undefined') {
         window.location.reload();
@@ -497,6 +496,7 @@ const SettingsPageContent = () => {
                     onPersist={setChatBaseUrl}
                     validate={isHttpUrl}
                     normalizeOnChange={normalizeBase}
+                    emptyPersistValue=""
                     invalidMessage="Must be an absolute http(s) base URL"
                   />
                   <p className="text-xs text-muted-foreground">
@@ -508,7 +508,8 @@ const SettingsPageContent = () => {
                     >
                       chat widget
                     </button>{' '}
-                    to send and receive signed messages
+                    to send and receive signed messages. Leave blank to disable
+                    chat and hide the chat bubble.
                   </p>
                 </div>
 
