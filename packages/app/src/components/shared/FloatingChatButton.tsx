@@ -3,9 +3,15 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import ChatButton from '~/components/layout/ChatButton';
 import { useChat } from '~/lib/context/ChatContext';
+import { useSettings } from '~/lib/context/SettingsContext';
 
 const FloatingChatButton = () => {
   const { isOpen } = useChat();
+  const { chatBaseUrl } = useSettings();
+
+  // An empty chat endpoint (e.g. the Robinhood/Meridian presets) disables chat,
+  // so hide the bubble entirely. `chatBaseUrl` is also null before mount.
+  if (!chatBaseUrl) return null;
 
   return (
     <AnimatePresence initial={false}>

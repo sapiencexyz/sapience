@@ -12,6 +12,7 @@ import { SettingsProvider, useSettings } from './SettingsContext';
 
 const V2_KEY = 'sapience.settings.graphqlEndpointV2';
 const V1_KEY = 'sapience.settings.graphqlEndpoint';
+const CHAT_KEY = 'sapience.settings.chatBaseUrl';
 
 // jsdom in this environment does not ship a working localStorage (it requires
 // node's --localstorage-file flag), so install a minimal in-memory shim. The
@@ -66,6 +67,33 @@ function Probe() {
         onClick={() => setGraphqlEndpointV2(null)}
       >
         clear
+      </button>
+    </div>
+  );
+}
+
+function ChatProbe() {
+  const { chatBaseUrl, setChatBaseUrl, defaults } = useSettings();
+  return (
+    <div>
+      {/* Distinguish '' (disabled) from null (pre-mount) in the DOM. */}
+      <span data-testid="chat">
+        {chatBaseUrl === '' ? '<empty>' : chatBaseUrl}
+      </span>
+      <span data-testid="default-chat">{defaults.chatBaseUrl}</span>
+      <button
+        type="button"
+        data-testid="chat-disable"
+        onClick={() => setChatBaseUrl('')}
+      >
+        disable
+      </button>
+      <button
+        type="button"
+        data-testid="chat-reset"
+        onClick={() => setChatBaseUrl(null)}
+      >
+        reset
       </button>
     </div>
   );
@@ -169,5 +197,80 @@ describe('SettingsContext v2 GraphQL endpoint', () => {
       expect(window.localStorage.getItem(V2_KEY)).toBeNull();
     });
     expect(screen.getByTestId('v2').textContent).toMatch(/\/v2\/graphql$/);
+  });
+});
+
+describe('SettingsContext chat endpoint disable', () => {
+  test('defaults to a non-empty chat endpoint so the bubble shows', async () => {
+    render(
+      <SettingsProvider>
+        <ChatProbe />
+      </SettingsProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('chat').textContent).not.toBe('');
+    });
+    expect(screen.getByTestId('chat').textContent).not.toBe('<empty>');
+  });
+
+  test('hydrates an explicit blank override as disabled (empty string)', async () => {
+    window.localStorage.setItem(CHAT_KEY, '');
+
+    render(
+      <SettingsProvider>
+        <ChatProbe />
+      </SettingsProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('chat').textContent).toBe('<empty>');
+    });
+  });
+
+  test('setChatBaseUrl("") persists a blank value and disables chat', async () => {
+    render(
+      <SettingsProvider>
+        <ChatProbe />
+      </SettingsProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('chat').textContent).not.toBe('');
+    });
+
+    act(() => {
+      screen.getByTestId('chat-disable').click();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('chat').textContent).toBe('<empty>');
+    });
+    // Blank must be persisted (empty string), not removed, so it wins over the
+    // default on the next load.
+    expect(window.localStorage.getItem(CHAT_KEY)).toBe('');
+  });
+
+  test('setChatBaseUrl(null) removes the override and re-enables the default', async () => {
+    window.localStorage.setItem(CHAT_KEY, '');
+
+    render(
+      <SettingsProvider>
+        <ChatProbe />
+      </SettingsProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('chat').textContent).toBe('<empty>');
+    });
+
+    act(() => {
+      screen.getByTestId('chat-reset').click();
+    });
+
+    await waitFor(() => {
+      expect(window.localStorage.getItem(CHAT_KEY)).toBeNull();
+    });
+    expect(screen.getByTestId('chat').textContent).not.toBe('<empty>');
   });
 });
