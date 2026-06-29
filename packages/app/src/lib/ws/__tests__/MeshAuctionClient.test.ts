@@ -103,4 +103,22 @@ describe('getSignalUrl', () => {
     const getSignalUrl = await loadGetSignalUrl();
     expect(getSignalUrl()).toBe('wss://env-signal.example.com');
   });
+
+  it('returns empty string (mesh disabled) when signal endpoint is explicitly blank', async () => {
+    store[SIGNAL_KEY] = '';
+    const getSignalUrl = await loadGetSignalUrl();
+    expect(getSignalUrl()).toBe('');
+  });
+
+  it('explicit blank signal disable wins over NEXT_PUBLIC_SIGNAL_URL env', async () => {
+    process.env.NEXT_PUBLIC_SIGNAL_URL = 'wss://env-signal.example.com';
+    store[SIGNAL_KEY] = '';
+    const getSignalUrl = await loadGetSignalUrl();
+    expect(getSignalUrl()).toBe('');
+  });
+
+  it('does not disable when signal key is absent (uses default)', async () => {
+    const getSignalUrl = await loadGetSignalUrl();
+    expect(getSignalUrl()).toBe('wss://relayer.sapience.xyz/signal');
+  });
 });
