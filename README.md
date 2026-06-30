@@ -52,7 +52,6 @@ All trading happens on [Ethereal](https://ethereal.trade) using [USDe](https://e
 | [`ui`](packages/ui)                       | Shared React component library                                        |
 | [`docs`](packages/docs)                   | Documentation site at [docs.sapience.xyz](https://docs.sapience.xyz)  |
 | [`market-keeper`](packages/market-keeper) | Cron pipeline for ingesting Polymarket markets and running settlement |
-| [`edge-cache`](packages/edge-cache)       | Cloudflare Worker that proxies and caches the GraphQL endpoint        |
 
 ### Quick Start
 

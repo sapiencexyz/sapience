@@ -15,7 +15,6 @@ This document captures the context agents need when working in the Sapience mono
   - `packages/relayer` – WebSocket relayer that brokers auctions between predictors and counterparties.
   - `packages/docs` – Documentation portal powered by Vocs.
   - `packages/market-keeper` – Cron pipeline that ingests Polymarket markets, generates conditions, and runs settlement.
-  - `packages/edge-cache` – Cloudflare Worker that proxies and caches the GraphQL endpoint.
 - Backend services deploy on Railway with per-service build/start commands (see `railway.toml` and the Railway dashboard).
 
 ## Core Commands
