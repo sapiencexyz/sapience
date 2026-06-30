@@ -4,9 +4,9 @@ import {
   GET_PICK_CONFIGURATIONS,
 } from '../pickConfigurations';
 
-const mockGraphqlRequestV2 = vi.fn();
+const mockGraphqlRequest = vi.fn();
 vi.mock('../client/graphqlClient', () => ({
-  graphqlRequestV2: (...args: unknown[]) => mockGraphqlRequestV2(...args),
+  graphqlRequest: (...args: unknown[]) => mockGraphqlRequest(...args),
 }));
 
 beforeEach(() => {
@@ -81,18 +81,18 @@ describe('GET_PICK_CONFIGURATIONS v2 document', () => {
 
 describe('fetchPickConfigurations', () => {
   test('uses default first=10 and no filter when no opts provided', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       pickConfigurations: { nodes: [] },
     });
     await fetchPickConfigurations();
-    expect(mockGraphqlRequestV2).toHaveBeenCalledWith(GET_PICK_CONFIGURATIONS, {
+    expect(mockGraphqlRequest).toHaveBeenCalledWith(GET_PICK_CONFIGURATIONS, {
       first: 10,
       filter: undefined,
     });
   });
 
   test('passes chainId and resolved through the v2 filter', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       pickConfigurations: { nodes: [] },
     });
     await fetchPickConfigurations({
@@ -100,25 +100,25 @@ describe('fetchPickConfigurations', () => {
       chainId: 42161,
       resolved: false,
     });
-    expect(mockGraphqlRequestV2).toHaveBeenCalledWith(GET_PICK_CONFIGURATIONS, {
+    expect(mockGraphqlRequest).toHaveBeenCalledWith(GET_PICK_CONFIGURATIONS, {
       first: 50,
       filter: { chainId: 42161, resolved: false },
     });
   });
 
   test('omits unset filter keys', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       pickConfigurations: { nodes: [] },
     });
     await fetchPickConfigurations({ take: 5, resolved: true });
-    expect(mockGraphqlRequestV2).toHaveBeenCalledWith(GET_PICK_CONFIGURATIONS, {
+    expect(mockGraphqlRequest).toHaveBeenCalledWith(GET_PICK_CONFIGURATIONS, {
       first: 5,
       filter: { resolved: true },
     });
   });
 
   test('maps v2 nodes onto the stable PickConfigurationResult shape', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       pickConfigurations: { nodes: [v2Node()] },
     });
     const [pc] = await fetchPickConfigurations();
@@ -159,7 +159,7 @@ describe('fetchPickConfigurations', () => {
   });
 
   test('coerces collateral BigInt values to strings', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       pickConfigurations: {
         nodes: [
           v2Node({
@@ -175,7 +175,7 @@ describe('fetchPickConfigurations', () => {
   });
 
   test('emulates v1 skip by over-fetching and slicing', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       pickConfigurations: {
         nodes: [
           v2Node({ pickConfigId: '0x1' }),
@@ -185,7 +185,7 @@ describe('fetchPickConfigurations', () => {
       },
     });
     const result = await fetchPickConfigurations({ take: 2, skip: 1 });
-    expect(mockGraphqlRequestV2).toHaveBeenCalledWith(
+    expect(mockGraphqlRequest).toHaveBeenCalledWith(
       GET_PICK_CONFIGURATIONS,
       expect.objectContaining({ first: 3 })
     );
@@ -193,11 +193,11 @@ describe('fetchPickConfigurations', () => {
   });
 
   test('throws on invalid response structure', async () => {
-    mockGraphqlRequestV2.mockResolvedValue(null);
+    mockGraphqlRequest.mockResolvedValue(null);
     await expect(fetchPickConfigurations()).rejects.toThrow(
       'Failed to fetch pick configurations: Invalid response structure'
     );
-    mockGraphqlRequestV2.mockResolvedValue({});
+    mockGraphqlRequest.mockResolvedValue({});
     await expect(fetchPickConfigurations()).rejects.toThrow(
       'Failed to fetch pick configurations: Invalid response structure'
     );

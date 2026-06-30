@@ -1,4 +1,4 @@
-import { graphqlRequestV2 } from './client/graphqlClient';
+import { graphqlRequest } from './client/graphqlClient';
 
 export type CategoryQueryResult = {
   name: string;
@@ -33,6 +33,6 @@ function toCategoryQueryResults(
 }
 
 export async function fetchCategories(): Promise<CategoryQueryResult[]> {
-  const data = await graphqlRequestV2<CategoriesV2Response>(GET_CATEGORIES);
+  const data = await graphqlRequest<CategoriesV2Response>(GET_CATEGORIES);
   return toCategoryQueryResults(data);
 }

@@ -8,9 +8,9 @@ import {
   CONDITIONS_BY_IDS_QUERY,
 } from '../conditions';
 
-const mockGraphqlRequestV2 = vi.fn();
+const mockGraphqlRequest = vi.fn();
 vi.mock('../client/graphqlClient', () => ({
-  graphqlRequestV2: (...args: unknown[]) => mockGraphqlRequestV2(...args),
+  graphqlRequest: (...args: unknown[]) => mockGraphqlRequest(...args),
 }));
 
 beforeEach(() => {
@@ -221,25 +221,25 @@ describe('buildConditionFilter', () => {
 
 describe('fetchConditions', () => {
   test('requests first=take with the built filter', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({ conditions: { nodes: [] } });
+    mockGraphqlRequest.mockResolvedValue({ conditions: { nodes: [] } });
     await fetchConditions();
-    expect(mockGraphqlRequestV2).toHaveBeenCalledWith(GET_CONDITIONS, {
+    expect(mockGraphqlRequest).toHaveBeenCalledWith(GET_CONDITIONS, {
       first: 50,
       filter: { public: true },
     });
   });
 
   test('passes chainId into the filter', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({ conditions: { nodes: [] } });
+    mockGraphqlRequest.mockResolvedValue({ conditions: { nodes: [] } });
     await fetchConditions({ chainId: 5064014 });
-    expect(mockGraphqlRequestV2).toHaveBeenCalledWith(GET_CONDITIONS, {
+    expect(mockGraphqlRequest).toHaveBeenCalledWith(GET_CONDITIONS, {
       first: 50,
       filter: { chainId: 5064014, public: true },
     });
   });
 
   test('maps v2 nodes onto the stable ConditionType shape', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       conditions: { nodes: [v2Node] },
     });
     const [c] = await fetchConditions();
@@ -269,7 +269,7 @@ describe('fetchConditions', () => {
   });
 
   test('coerces openInterest to string and endTime to number', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       conditions: {
         nodes: [{ ...v2Node, openInterest: 12345, endTime: '1767225600' }],
       },
@@ -280,7 +280,7 @@ describe('fetchConditions', () => {
   });
 
   test('null similarMarket/conditionGroup/category map to empty/flat nulls', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       conditions: {
         nodes: [
           {
@@ -305,9 +305,9 @@ describe('fetchConditions', () => {
       ...v2Node,
       conditionId: `0x${i}`,
     }));
-    mockGraphqlRequestV2.mockResolvedValue({ conditions: { nodes } });
+    mockGraphqlRequest.mockResolvedValue({ conditions: { nodes } });
     const result = await fetchConditions({ take: 5, skip: 2 });
-    expect(mockGraphqlRequestV2).toHaveBeenCalledWith(
+    expect(mockGraphqlRequest).toHaveBeenCalledWith(
       GET_CONDITIONS,
       expect.objectContaining({ first: 7 })
     );
@@ -321,20 +321,20 @@ describe('fetchConditions', () => {
   });
 
   test('clamps first to the v2 maxTake of 100', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({ conditions: { nodes: [] } });
+    mockGraphqlRequest.mockResolvedValue({ conditions: { nodes: [] } });
     await fetchConditions({ take: 100, skip: 50 });
-    expect(mockGraphqlRequestV2).toHaveBeenCalledWith(
+    expect(mockGraphqlRequest).toHaveBeenCalledWith(
       GET_CONDITIONS,
       expect.objectContaining({ first: 100 })
     );
   });
 
   test('throws on invalid response structure', async () => {
-    mockGraphqlRequestV2.mockResolvedValue(null);
+    mockGraphqlRequest.mockResolvedValue(null);
     await expect(fetchConditions()).rejects.toThrow(
       'Failed to fetch conditions: Invalid response structure'
     );
-    mockGraphqlRequestV2.mockResolvedValue({});
+    mockGraphqlRequest.mockResolvedValue({});
     await expect(fetchConditions()).rejects.toThrow(
       'Failed to fetch conditions: Invalid response structure'
     );
@@ -351,15 +351,15 @@ describe('fetchConditionsByIds', () => {
   test('returns empty array for empty ids without a request', async () => {
     const result = await fetchConditionsByIds(query, []);
     expect(result).toEqual([]);
-    expect(mockGraphqlRequestV2).not.toHaveBeenCalled();
+    expect(mockGraphqlRequest).not.toHaveBeenCalled();
   });
 
   test('passes ids as the $ids variable and unwraps connection nodes', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       conditions: { nodes: [{ id: '0xa' }, { id: '0xb' }] },
     });
     const result = await fetchConditionsByIds(query, ['0xa', '0xb']);
-    expect(mockGraphqlRequestV2).toHaveBeenCalledWith(query, {
+    expect(mockGraphqlRequest).toHaveBeenCalledWith(query, {
       ids: ['0xa', '0xb'],
     });
     expect(result).toEqual([{ id: '0xa' }, { id: '0xb' }]);
@@ -367,27 +367,27 @@ describe('fetchConditionsByIds', () => {
 
   test('exactly 100 ids uses a single request', async () => {
     const ids = Array.from({ length: 100 }, (_, i) => `id-${i}`);
-    mockGraphqlRequestV2.mockResolvedValue({ conditions: { nodes: [] } });
+    mockGraphqlRequest.mockResolvedValue({ conditions: { nodes: [] } });
     await fetchConditionsByIds(query, ids);
-    expect(mockGraphqlRequestV2).toHaveBeenCalledTimes(1);
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
   });
 
   test('chunks ids exceeding 100 into batched requests', async () => {
     const ids = Array.from({ length: 250 }, (_, i) => `id-${i}`);
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       conditions: { nodes: [{ id: 'result' }] },
     });
     const result = await fetchConditionsByIds(query, ids);
-    expect(mockGraphqlRequestV2).toHaveBeenCalledTimes(3);
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(3);
     expect(result).toHaveLength(3);
     // each chunk rides the same $ids contract
-    expect(mockGraphqlRequestV2.mock.calls[0][1].ids).toHaveLength(100);
-    expect(mockGraphqlRequestV2.mock.calls[2][1].ids).toHaveLength(50);
+    expect(mockGraphqlRequest.mock.calls[0][1].ids).toHaveLength(100);
+    expect(mockGraphqlRequest.mock.calls[2][1].ids).toHaveLength(50);
   });
 
   test('flattens results from multiple chunks', async () => {
     const ids = Array.from({ length: 200 }, (_, i) => `id-${i}`);
-    mockGraphqlRequestV2
+    mockGraphqlRequest
       .mockResolvedValueOnce({
         conditions: { nodes: [{ id: 'a' }, { id: 'b' }] },
       })
@@ -397,7 +397,7 @@ describe('fetchConditionsByIds', () => {
   });
 
   test('uses custom resultKey', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       myCustomKey: { nodes: [{ id: 'id-1' }] },
     });
     const result = await fetchConditionsByIds(query, ['id-1'], 'myCustomKey');
@@ -405,7 +405,7 @@ describe('fetchConditionsByIds', () => {
   });
 
   test('handles null connection gracefully', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({ conditions: null });
+    mockGraphqlRequest.mockResolvedValue({ conditions: null });
     const result = await fetchConditionsByIds(query, ['id-1']);
     expect(result).toEqual([]);
   });
@@ -430,11 +430,11 @@ describe('CONDITIONS_BY_IDS_QUERY v2 document', () => {
 describe('fetchConditionsByIdsQuery', () => {
   test('no request for empty ids', async () => {
     await fetchConditionsByIdsQuery([]);
-    expect(mockGraphqlRequestV2).not.toHaveBeenCalled();
+    expect(mockGraphqlRequest).not.toHaveBeenCalled();
   });
 
   test('maps similarMarket.markets back onto flat similarMarkets', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       conditions: {
         nodes: [
           {
@@ -460,7 +460,7 @@ describe('fetchConditionsByIdsQuery', () => {
   });
 
   test('missing similarMarket maps to empty similarMarkets', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       conditions: { nodes: [{ id: '0xa', similarMarket: null }] },
     });
     const result = await fetchConditionsByIdsQuery(['0xa']);

@@ -2,7 +2,7 @@
 
 import { isAddress } from 'viem';
 import { formatUnits } from './_prediction-helpers';
-import { getGraphQLEndpointV2 } from '~/lib/data/graphql';
+import { getGraphQLEndpoint } from '~/lib/data/graphql';
 import { mainnetClient } from '~/lib/utils/util';
 import { getEnsAvatarUrlForAddress } from '~/lib/ens/avatar.server';
 import { SCHEMA_UID } from '~/lib/constants';
@@ -76,7 +76,7 @@ export interface EnsInfo {
 // ---------- Helpers ----------
 
 async function gqlFetch<T>(query: string, variables?: object): Promise<T> {
-  const res = await fetch(getGraphQLEndpointV2(), {
+  const res = await fetch(getGraphQLEndpoint(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ query, variables }),

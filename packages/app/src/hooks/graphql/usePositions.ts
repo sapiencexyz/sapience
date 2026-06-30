@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { graphqlRequestV2 } from '@sapience/sdk/queries/client/graphqlClient';
+import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import {
   PICK_CONFIGURATION_V2_FIELDS,
   toPickConfigData,
@@ -405,7 +405,7 @@ export function usePredictionsCount(address?: string, chainId?: number) {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => {
-      const resp = await graphqlRequestV2<{
+      const resp = await graphqlRequest<{
         predictions: { totalCount: number } | null;
       }>(PREDICTIONS_COUNT_QUERY, {
         participant: address,
@@ -440,7 +440,7 @@ export function usePredictions(params: {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => {
-      const resp = await graphqlRequestV2<{
+      const resp = await graphqlRequest<{
         predictions: { nodes: PredictionV2Node[] } | null;
       }>(PREDICTIONS_QUERY, {
         participant: address,
@@ -617,7 +617,7 @@ export function usePredictionsByConditionId(params: {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => {
-      const resp = await graphqlRequestV2<{
+      const resp = await graphqlRequest<{
         predictions: { nodes: PredictionByConditionV2Node[] } | null;
       }>(PREDICTIONS_BY_CONDITION_QUERY, { conditionId, first: take });
       return (resp?.predictions?.nodes ?? []).map(toScatterPrediction);
@@ -646,7 +646,7 @@ export function usePrediction(predictionId?: string) {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => {
-      const resp = await graphqlRequestV2<{
+      const resp = await graphqlRequest<{
         prediction: PredictionV2Node | null;
       }>(PREDICTION_QUERY, { predictionId });
       return resp?.prediction ? toPrediction(resp.prediction) : null;

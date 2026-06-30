@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { graphqlRequestV2 } from '@sapience/sdk/queries/client/graphqlClient';
+import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import {
   PICK_CONFIGURATION_V2_FIELDS,
   toPickConfigData,
@@ -50,7 +50,7 @@ export function usePickConfigsByTokens(tokens: string[]) {
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     queryFn: async () => {
-      const resp = await graphqlRequestV2<{
+      const resp = await graphqlRequest<{
         pickConfigurations: { nodes: PickConfigurationV2Node[] } | null;
       }>(PICK_CONFIGS_BY_TOKENS_QUERY, { tokens: sorted });
       return (resp?.pickConfigurations?.nodes ?? []).map(toPickConfigData);

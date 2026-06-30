@@ -1,6 +1,6 @@
 import { getAddress } from 'viem';
 import { FORECAST_SCHEMA_UID } from '../constants/resolver';
-import { graphqlRequestV2 } from './client/graphqlClient';
+import { graphqlRequest } from './client/graphqlClient';
 
 const DEFAULT_SCHEMA_UID = FORECAST_SCHEMA_UID;
 
@@ -178,7 +178,7 @@ function toForecastPage(
 export async function fetchForecasts(
   params: FetchForecastsParams
 ): Promise<FormattedAttestation[]> {
-  const data = await graphqlRequestV2<ForecastsConnectionResponse>(
+  const data = await graphqlRequest<ForecastsConnectionResponse>(
     GET_FORECASTS_QUERY,
     { filter: buildForecastFilter(params), first: 100 }
   );
@@ -196,7 +196,7 @@ export async function fetchForecastsPage(
   params: FetchForecastsParams,
   page: ForecastPageArgs
 ): Promise<ForecastPage> {
-  const data = await graphqlRequestV2<ForecastsConnectionResponse>(
+  const data = await graphqlRequest<ForecastsConnectionResponse>(
     GET_FORECASTS_PAGINATED_QUERY,
     {
       filter: buildForecastFilter(params),

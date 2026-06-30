@@ -25,7 +25,7 @@ import {
 import {
   PREDICTION_BY_ID_QUERY,
   CONDITIONS_BY_IDS_QUERY,
-  getGraphQLEndpointV2,
+  getGraphQLEndpoint,
   toPredictionData,
   formatUnits,
   normalizeChoiceLabel,
@@ -57,7 +57,7 @@ export async function GET(req: Request) {
       try {
         // Both legs run against /v2/graphql; the prediction node is mapped
         // back to the v1-shaped PredictionData via the shared mapper.
-        const graphqlEndpoint = getGraphQLEndpointV2();
+        const graphqlEndpoint = getGraphQLEndpoint();
         let prediction: PredictionData | null = null;
 
         const response = await fetch(graphqlEndpoint, {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { graphqlRequestV2 } from '@sapience/sdk/queries/client/graphqlClient';
+import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 
 /**
  * Secondary-market trade as consumed by the app. v2 drops the numeric
@@ -139,7 +139,7 @@ export function useSecondaryTradesByAddress(params: {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => {
-      const resp = await graphqlRequestV2<TradesV2Response>(
+      const resp = await graphqlRequest<TradesV2Response>(
         TRADES_BY_PARTICIPANT_QUERY,
         {
           participant: address,
@@ -171,7 +171,7 @@ export function useSecondaryTrade(tradeHash?: string) {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => {
-      const resp = await graphqlRequestV2<{ trade: TradeV2Node | null }>(
+      const resp = await graphqlRequest<{ trade: TradeV2Node | null }>(
         TRADE_QUERY,
         { tradeHash }
       );
@@ -201,7 +201,7 @@ export function useSecondaryTrades(params: {
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     queryFn: async () => {
-      const resp = await graphqlRequestV2<TradesV2Response>(ALL_TRADES_QUERY, {
+      const resp = await graphqlRequest<TradesV2Response>(ALL_TRADES_QUERY, {
         chainId: chainId ?? null,
         first: take,
       });

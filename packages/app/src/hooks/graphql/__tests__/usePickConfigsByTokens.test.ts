@@ -4,11 +4,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 
 const mockGraphqlRequest = vi.fn();
-const mockGraphqlRequestV2 = vi.fn();
 
 vi.mock('@sapience/sdk/queries/client/graphqlClient', () => ({
   graphqlRequest: (...args: unknown[]) => mockGraphqlRequest(...args),
-  graphqlRequestV2: (...args: unknown[]) => mockGraphqlRequestV2(...args),
 }));
 
 function createWrapper() {
@@ -73,10 +71,7 @@ function makeNode(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockGraphqlRequest.mockRejectedValue(
-    new Error('v1 transport must not be used')
-  );
-  mockGraphqlRequestV2.mockResolvedValue({
+  mockGraphqlRequest.mockResolvedValue({
     pickConfigurations: { nodes: [] },
   });
 });
@@ -106,12 +101,11 @@ describe('usePickConfigsByTokens', () => {
     });
 
     await waitFor(() => {
-      expect(mockGraphqlRequestV2).toHaveBeenCalledTimes(1);
+      expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
     });
 
-    const [, variables] = mockGraphqlRequestV2.mock.calls[0];
+    const [, variables] = mockGraphqlRequest.mock.calls[0];
     expect(variables).toEqual({ tokens: ['0xaaa', '0xbbb'] });
-    expect(mockGraphqlRequest).not.toHaveBeenCalled();
   });
 
   it('does not fetch with an empty token list', async () => {
@@ -122,12 +116,12 @@ describe('usePickConfigsByTokens', () => {
     });
 
     await new Promise((r) => setTimeout(r, 50));
-    expect(mockGraphqlRequestV2).not.toHaveBeenCalled();
+    expect(mockGraphqlRequest).not.toHaveBeenCalled();
   });
 
   it('keys the map by both predictor and counterparty tokens with side flags', async () => {
     const mod = await getModule();
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       pickConfigurations: { nodes: [makeNode()] },
     });
 
@@ -146,7 +140,7 @@ describe('usePickConfigsByTokens', () => {
 
   it('omits configs whose tokens were not requested', async () => {
     const mod = await getModule();
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       pickConfigurations: { nodes: [makeNode()] },
     });
 
@@ -164,7 +158,7 @@ describe('usePickConfigsByTokens', () => {
 
   it('adapts v2 nodes into the existing PickConfigData shape', async () => {
     const mod = await getModule();
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       pickConfigurations: { nodes: [makeNode()] },
     });
 

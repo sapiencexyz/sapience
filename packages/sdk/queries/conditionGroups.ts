@@ -1,4 +1,4 @@
-import { graphqlRequestV2 } from './client/graphqlClient';
+import { graphqlRequest } from './client/graphqlClient';
 
 export interface ConditionGroupConditionType {
   /** CTF on-chain condition id (lowercase 0x-hex) — v2 `conditionId`. */
@@ -259,7 +259,7 @@ export async function fetchConditionGroups(opts?: {
   // over-fetching (capped at the server's maxTake) and slicing locally.
   const first = Math.min(take + skip, V2_MAX_FIRST);
 
-  const data = await graphqlRequestV2<ConditionGroupsV2Response>(
+  const data = await graphqlRequest<ConditionGroupsV2Response>(
     GET_CONDITION_GROUPS,
     {
       first,

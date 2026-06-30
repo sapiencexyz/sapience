@@ -1,18 +1,9 @@
-// Shared GraphQL endpoint resolution
+// Shared GraphQL endpoint resolution (server/OG contexts). Sapience serves the
+// schema at `/v2/graphql`; Meridian exposes the same schema at `/graphql`. This
+// env-only resolver returns the default endpoint; client code reads any user
+// override via the SDK's `getGraphQLEndpoint`.
 
 export function getGraphQLEndpoint(): string {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz';
-  try {
-    const u = new URL(baseUrl);
-    return `${u.origin}/graphql`;
-  } catch {
-    return 'https://api.sapience.xyz/graphql';
-  }
-}
-
-// v2 transport: same origin resolution as v1, but targets `/v2/graphql`.
-export function getGraphQLEndpointV2(): string {
   const baseUrl =
     process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz';
   try {

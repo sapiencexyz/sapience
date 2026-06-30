@@ -1,4 +1,4 @@
-import { graphqlRequestV2 } from './client/graphqlClient';
+import { graphqlRequest } from './client/graphqlClient';
 
 /**
  * Per-vault economic snapshot series, fetched from the v2 `vault(address:,
@@ -116,7 +116,7 @@ export async function fetchVaultStats(
   // Bound the loop defensively against a non-progressing cursor; the daily
   // series can't realistically exceed a few thousand snapshots.
   for (let page = 0; page < 50; page += 1) {
-    const data: VaultStatsResponse = await graphqlRequestV2<VaultStatsResponse>(
+    const data: VaultStatsResponse = await graphqlRequest<VaultStatsResponse>(
       GET_VAULT_STATS,
       {
         address: address.toLowerCase(),
@@ -191,7 +191,7 @@ export async function fetchVaultAccountValue(
   address: string,
   chainId?: number
 ): Promise<VaultAccountValue> {
-  const data = await graphqlRequestV2<VaultAccountValueResponse>(
+  const data = await graphqlRequest<VaultAccountValueResponse>(
     GET_VAULT_ACCOUNT_VALUE,
     {
       address: address.toLowerCase(),

@@ -8,10 +8,8 @@ import {
 } from '../questions';
 
 const mockGraphqlRequest = vi.fn();
-const mockGraphqlRequestV2 = vi.fn();
 vi.mock('../client/graphqlClient', () => ({
   graphqlRequest: (...args: unknown[]) => mockGraphqlRequest(...args),
-  graphqlRequestV2: (...args: unknown[]) => mockGraphqlRequestV2(...args),
 }));
 
 const emptyConnection = {
@@ -104,10 +102,7 @@ function makeGroupNode(
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockGraphqlRequest.mockRejectedValue(
-    new Error('v1 transport must not be used')
-  );
-  mockGraphqlRequestV2.mockResolvedValue(emptyConnection);
+  mockGraphqlRequest.mockResolvedValue(emptyConnection);
 });
 
 describe('GET_QUESTIONS document', () => {
@@ -352,8 +347,8 @@ describe('fetchQuestionsSorted', () => {
 
   test('requests the v2 document with explicit orderBy', async () => {
     await fetchQuestionsSorted(baseParams);
-    expect(mockGraphqlRequestV2).toHaveBeenCalledTimes(1);
-    const [doc, vars] = mockGraphqlRequestV2.mock.calls[0];
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
+    const [doc, vars] = mockGraphqlRequest.mock.calls[0];
     expect(doc).toBe(GET_QUESTIONS);
     expect(vars.orderBy).toEqual({ field: 'CREATED_AT', direction: 'DESC' });
     expect(vars.filter).toBeUndefined();
@@ -364,7 +359,7 @@ describe('fetchQuestionsSorted', () => {
       cursor: `cur-${id}`,
       node: makeConditionNode({ conditionId: id }),
     }));
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       questions: { edges, pageInfo: { hasNextPage: false, endCursor: null } },
     });
 
@@ -374,14 +369,14 @@ describe('fetchQuestionsSorted', () => {
       skip: 1,
     });
 
-    const [, vars] = mockGraphqlRequestV2.mock.calls[0];
+    const [, vars] = mockGraphqlRequest.mock.calls[0];
     expect(vars.first).toBe(3);
     expect(result.map((q) => q.condition!.id)).toEqual(['0xb', '0xc']);
   });
 
   test('caps first at the v2 maxTake of 100', async () => {
     await fetchQuestionsSorted({ ...baseParams, take: 80, skip: 40 });
-    const [, vars] = mockGraphqlRequestV2.mock.calls[0];
+    const [, vars] = mockGraphqlRequest.mock.calls[0];
     expect(vars.first).toBe(100);
   });
 
@@ -393,7 +388,7 @@ describe('fetchQuestionsSorted', () => {
       minEndTime: 1700,
       resolutionStatus: 'unresolved',
     });
-    const [, vars] = mockGraphqlRequestV2.mock.calls[0];
+    const [, vars] = mockGraphqlRequest.mock.calls[0];
     expect(vars.filter).toEqual({
       chainId: 5064014,
       search: 'eth',
@@ -403,7 +398,7 @@ describe('fetchQuestionsSorted', () => {
   });
 
   test('maps union edges into v1 QuestionType envelopes', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       questions: {
         edges: [
           { cursor: 'c1', node: makeConditionNode() },
@@ -427,7 +422,7 @@ describe('fetchQuestionsSorted', () => {
   });
 
   test('throws on an invalid response structure', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({ questions: null });
+    mockGraphqlRequest.mockResolvedValue({ questions: null });
     await expect(fetchQuestionsSorted(baseParams)).rejects.toThrow(
       'Invalid response structure'
     );
@@ -435,6 +430,5 @@ describe('fetchQuestionsSorted', () => {
 
   test('never touches the v1 transport', async () => {
     await fetchQuestionsSorted(baseParams);
-    expect(mockGraphqlRequest).not.toHaveBeenCalled();
   });
 });

@@ -4,11 +4,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 
 const mockGraphqlRequest = vi.fn();
-const mockGraphqlRequestV2 = vi.fn();
 
 vi.mock('@sapience/sdk/queries/client/graphqlClient', () => ({
   graphqlRequest: (...args: unknown[]) => mockGraphqlRequest(...args),
-  graphqlRequestV2: (...args: unknown[]) => mockGraphqlRequestV2(...args),
 }));
 
 function createWrapper() {
@@ -49,10 +47,7 @@ function makeTradeNode(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockGraphqlRequest.mockRejectedValue(
-    new Error('v1 transport must not be used')
-  );
-  mockGraphqlRequestV2.mockResolvedValue({ trades: { nodes: [] } });
+  mockGraphqlRequest.mockResolvedValue({ trades: { nodes: [] } });
 });
 
 describe('v2 trade documents', () => {
@@ -97,16 +92,15 @@ describe('useSecondaryTradesByAddress', () => {
     );
 
     await waitFor(() => {
-      expect(mockGraphqlRequestV2).toHaveBeenCalledTimes(1);
+      expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
     });
 
-    const [, variables] = mockGraphqlRequestV2.mock.calls[0];
+    const [, variables] = mockGraphqlRequest.mock.calls[0];
     expect(variables).toEqual({
       participant: '0xme',
       chainId: 8453,
       first: 50,
     });
-    expect(mockGraphqlRequest).not.toHaveBeenCalled();
   });
 
   it('passes chainId: null when chainId is omitted', async () => {
@@ -117,10 +111,10 @@ describe('useSecondaryTradesByAddress', () => {
     });
 
     await waitFor(() => {
-      expect(mockGraphqlRequestV2).toHaveBeenCalledTimes(1);
+      expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
     });
 
-    const [, variables] = mockGraphqlRequestV2.mock.calls[0];
+    const [, variables] = mockGraphqlRequest.mock.calls[0];
     expect(variables).toEqual({
       participant: '0xme',
       chainId: null,
@@ -130,7 +124,7 @@ describe('useSecondaryTradesByAddress', () => {
 
   it('returns mapped trades without numeric row ids', async () => {
     const mod = await getModule();
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       trades: { nodes: [makeTradeNode({ id: 42 })] },
     });
 
@@ -172,7 +166,7 @@ describe('useSecondaryTradesByAddress', () => {
     });
 
     await new Promise((r) => setTimeout(r, 50));
-    expect(mockGraphqlRequestV2).not.toHaveBeenCalled();
+    expect(mockGraphqlRequest).not.toHaveBeenCalled();
   });
 });
 
@@ -185,17 +179,16 @@ describe('useSecondaryTrades (all trades)', () => {
     });
 
     await waitFor(() => {
-      expect(mockGraphqlRequestV2).toHaveBeenCalledTimes(1);
+      expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
     });
 
-    const [, variables] = mockGraphqlRequestV2.mock.calls[0];
+    const [, variables] = mockGraphqlRequest.mock.calls[0];
     expect(variables).toEqual({ chainId: 8453, first: 50 });
-    expect(mockGraphqlRequest).not.toHaveBeenCalled();
   });
 
   it('normalizes BigInt wire values to strings', async () => {
     const mod = await getModule();
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       trades: { nodes: [makeTradeNode({ tokenAmount: 5, price: 7 })] },
     });
 
@@ -215,7 +208,7 @@ describe('useSecondaryTrades (all trades)', () => {
 describe('useSecondaryTrade', () => {
   it('looks up a single trade by tradeHash', async () => {
     const mod = await getModule();
-    mockGraphqlRequestV2.mockResolvedValue({ trade: makeTradeNode() });
+    mockGraphqlRequest.mockResolvedValue({ trade: makeTradeNode() });
 
     const { result } = renderHook(() => mod.useSecondaryTrade('0xhash1'), {
       wrapper: createWrapper(),
@@ -225,7 +218,7 @@ describe('useSecondaryTrade', () => {
       expect(result.current.data).not.toBeNull();
     });
 
-    const [, variables] = mockGraphqlRequestV2.mock.calls[0];
+    const [, variables] = mockGraphqlRequest.mock.calls[0];
     expect(variables).toEqual({ tradeHash: '0xhash1' });
     expect(result.current.data?.tradeHash).toBe('0xhash1');
     expect(result.current.data).not.toHaveProperty('id');
@@ -233,14 +226,14 @@ describe('useSecondaryTrade', () => {
 
   it('returns null when the trade is missing', async () => {
     const mod = await getModule();
-    mockGraphqlRequestV2.mockResolvedValue({ trade: null });
+    mockGraphqlRequest.mockResolvedValue({ trade: null });
 
     const { result } = renderHook(() => mod.useSecondaryTrade('0xmissing'), {
       wrapper: createWrapper(),
     });
 
     await waitFor(() => {
-      expect(mockGraphqlRequestV2).toHaveBeenCalledTimes(1);
+      expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
     });
 
     expect(result.current.data).toBeNull();

@@ -1,4 +1,4 @@
-import { graphqlRequestV2 } from './client/graphqlClient';
+import { graphqlRequest } from './client/graphqlClient';
 import type { ConditionType } from './conditions';
 import type {
   ConditionGroupType,
@@ -413,7 +413,7 @@ export async function fetchQuestionsSorted(
   const { take, skip, ...feedParams } = params;
   const { filter, orderBy } = buildQuestionsVariables(feedParams);
 
-  const data = await graphqlRequestV2<QuestionsV2Response>(GET_QUESTIONS, {
+  const data = await graphqlRequest<QuestionsV2Response>(GET_QUESTIONS, {
     first: Math.min(take + skip, V2_MAX_FIRST),
     after: null,
     filter,

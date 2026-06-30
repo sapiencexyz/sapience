@@ -5,9 +5,9 @@ import {
   GET_PROTOCOL_STATS_HISTORY_PAGE,
 } from '../protocol';
 
-const mockGraphqlRequestV2 = vi.fn();
+const mockGraphqlRequest = vi.fn();
 vi.mock('../client/graphqlClient', () => ({
-  graphqlRequestV2: (...args: unknown[]) => mockGraphqlRequestV2(...args),
+  graphqlRequest: (...args: unknown[]) => mockGraphqlRequest(...args),
 }));
 
 beforeEach(() => {
@@ -96,10 +96,10 @@ describe('GET_PROTOCOL_ANALYTICS document', () => {
 
 describe('fetchProtocolAnalytics', () => {
   test('requests the daily-bucketed series in one page (interval DAY, first null)', async () => {
-    mockGraphqlRequestV2.mockResolvedValue(fullResponse());
+    mockGraphqlRequest.mockResolvedValue(fullResponse());
     await fetchProtocolAnalytics();
-    expect(mockGraphqlRequestV2).toHaveBeenCalledTimes(1);
-    expect(mockGraphqlRequestV2).toHaveBeenCalledWith(GET_PROTOCOL_ANALYTICS, {
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
+    expect(mockGraphqlRequest).toHaveBeenCalledWith(GET_PROTOCOL_ANALYTICS, {
       interval: 'DAY',
       first: null,
       after: null,
@@ -112,7 +112,7 @@ describe('fetchProtocolAnalytics', () => {
       nodes: [stat(1700000100), stat(1700000200)],
       pageInfo: { hasNextPage: true, endCursor: 'cursor-1' },
     };
-    mockGraphqlRequestV2.mockResolvedValueOnce(page1).mockResolvedValueOnce({
+    mockGraphqlRequest.mockResolvedValueOnce(page1).mockResolvedValueOnce({
       protocol: {
         statsHistory: {
           nodes: [stat(1700000300)],
@@ -123,15 +123,15 @@ describe('fetchProtocolAnalytics', () => {
 
     const result = await fetchProtocolAnalytics();
 
-    expect(mockGraphqlRequestV2).toHaveBeenCalledTimes(2);
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(2);
     // First call: the combined analytics query, daily-bucketed first page.
-    expect(mockGraphqlRequestV2).toHaveBeenNthCalledWith(
+    expect(mockGraphqlRequest).toHaveBeenNthCalledWith(
       1,
       GET_PROTOCOL_ANALYTICS,
       { interval: 'DAY', first: null, after: null }
     );
     // Second call: the lighter history-only page query, threading the cursor.
-    expect(mockGraphqlRequestV2).toHaveBeenNthCalledWith(
+    expect(mockGraphqlRequest).toHaveBeenNthCalledWith(
       2,
       GET_PROTOCOL_STATS_HISTORY_PAGE,
       { interval: 'DAY', first: null, after: 'cursor-1' }
@@ -142,7 +142,7 @@ describe('fetchProtocolAnalytics', () => {
   });
 
   test('unwraps the protocol payload, with history as a plain array', async () => {
-    mockGraphqlRequestV2.mockResolvedValue(fullResponse());
+    mockGraphqlRequest.mockResolvedValue(fullResponse());
 
     const result = await fetchProtocolAnalytics();
     expect(result.stats.timestamp).toBe(1700000300);
@@ -167,7 +167,7 @@ describe('fetchProtocolAnalytics', () => {
       totalValueLocked: 900,
       periodVolume: 100,
     }) as never;
-    mockGraphqlRequestV2.mockResolvedValue(resp);
+    mockGraphqlRequest.mockResolvedValue(resp);
 
     const result = await fetchProtocolAnalytics();
     expect(result.stats.cumulativeVolume).toBe('1000');
@@ -184,7 +184,7 @@ describe('fetchProtocolAnalytics', () => {
       stat(1700000100),
       stat(1700000150),
     ];
-    mockGraphqlRequestV2.mockResolvedValue(resp);
+    mockGraphqlRequest.mockResolvedValue(resp);
 
     const result = await fetchProtocolAnalytics();
     expect(result.statsHistory.map((s) => s.timestamp)).toEqual([
@@ -199,7 +199,7 @@ describe('fetchProtocolAnalytics', () => {
       resp.protocol.openInterestByTimeToResolution[1], // (1d, 7d]
       resp.protocol.openInterestByTimeToResolution[0], // (null, 1d]
     ];
-    mockGraphqlRequestV2.mockResolvedValue(resp);
+    mockGraphqlRequest.mockResolvedValue(resp);
 
     const result = await fetchProtocolAnalytics();
     expect(
@@ -215,7 +215,7 @@ describe('fetchProtocolAnalytics', () => {
         openInterest: '300',
       } as never,
     ];
-    mockGraphqlRequestV2.mockResolvedValue(resp);
+    mockGraphqlRequest.mockResolvedValue(resp);
 
     const result = await fetchProtocolAnalytics();
     expect(result.openInterestByCategory[0].category).toEqual({
@@ -225,12 +225,12 @@ describe('fetchProtocolAnalytics', () => {
   });
 
   test('throws on invalid response structure', async () => {
-    mockGraphqlRequestV2.mockResolvedValue(null);
+    mockGraphqlRequest.mockResolvedValue(null);
     await expect(fetchProtocolAnalytics()).rejects.toThrow(
       'Failed to fetch protocol analytics: Invalid response structure'
     );
 
-    mockGraphqlRequestV2.mockResolvedValue({});
+    mockGraphqlRequest.mockResolvedValue({});
     await expect(fetchProtocolAnalytics()).rejects.toThrow(
       'Failed to fetch protocol analytics: Invalid response structure'
     );

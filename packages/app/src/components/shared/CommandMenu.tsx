@@ -28,7 +28,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@sapience/ui/components/ui/dialog';
-import { graphqlRequestV2 } from '@sapience/sdk/queries/client/graphqlClient';
+import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { isAddress, getAddress } from 'viem';
 import { getDeterministicCategoryColor } from '~/lib/theme/categoryPalette';
@@ -137,7 +137,7 @@ function useCommandMenuSearch(search: string | undefined, enabled: boolean) {
   return useQuery<SearchConditionRow[]>({
     queryKey: ['commandMenuSearch', search],
     queryFn: async () => {
-      const data = await graphqlRequestV2<{
+      const data = await graphqlRequest<{
         questions: { edges: Array<{ node: SearchQuestionNode }> };
       }>(SEARCH_QUESTIONS, {
         // Overfetch 3x: groups expand into multiple rows, and we re-sort

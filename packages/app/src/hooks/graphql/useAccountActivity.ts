@@ -3,7 +3,7 @@
 import { useCallback, useMemo } from 'react';
 import type { Address } from 'viem';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { graphqlRequestV2 } from '@sapience/sdk/queries/client/graphqlClient';
+import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import {
   PREDICTION_V2_FIELDS,
   toPrediction,
@@ -266,7 +266,7 @@ export function useAccountActivity({
         ? (lastPage.pageInfo.endCursor ?? undefined)
         : undefined,
     queryFn: async ({ pageParam }) => {
-      const resp = await graphqlRequestV2<{
+      const resp = await graphqlRequest<{
         activity: ActivityConnectionV2 | null;
       }>(ACCOUNT_ACTIVITY_QUERY, {
         account: account ?? null,

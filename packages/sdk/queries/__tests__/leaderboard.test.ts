@@ -10,9 +10,9 @@ import {
   GET_USER_PROFIT_RANK,
 } from '../leaderboard';
 
-const mockGraphqlRequestV2 = vi.fn();
+const mockGraphqlRequest = vi.fn();
 vi.mock('../client/graphqlClient', () => ({
-  graphqlRequestV2: (...args: unknown[]) => mockGraphqlRequestV2(...args),
+  graphqlRequest: (...args: unknown[]) => mockGraphqlRequest(...args),
 }));
 
 beforeEach(() => {
@@ -35,7 +35,7 @@ describe('fetchLeaderboard', () => {
   });
 
   test('maps ranking edges to { address, totalPnL } with totalPnL := pnlFormatted', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       leaderboard: {
         edges: [
           {
@@ -63,17 +63,17 @@ describe('fetchLeaderboard', () => {
     ]);
     // No internal/extra fields leak (rank is derivable from order).
     expect(Object.keys(result[0])).toEqual(['address', 'totalPnL']);
-    expect(mockGraphqlRequestV2).toHaveBeenCalledWith(GET_PROFIT_LEADERBOARD);
+    expect(mockGraphqlRequest).toHaveBeenCalledWith(GET_PROFIT_LEADERBOARD);
   });
 
   test('returns empty array when connection has no edges', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({ leaderboard: { edges: [] } });
+    mockGraphqlRequest.mockResolvedValue({ leaderboard: { edges: [] } });
     const result = await fetchLeaderboard();
     expect(result).toEqual([]);
   });
 
   test('returns empty array when leaderboard is missing', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({ leaderboard: null });
+    mockGraphqlRequest.mockResolvedValue({ leaderboard: null });
     const result = await fetchLeaderboard();
     expect(result).toEqual([]);
   });
@@ -86,7 +86,7 @@ describe('fetchLeaderboard', () => {
         account: { address: `0x${i.toString(16).padStart(40, '0')}` },
       },
     }));
-    mockGraphqlRequestV2.mockResolvedValue({ leaderboard: { edges } });
+    mockGraphqlRequest.mockResolvedValue({ leaderboard: { edges } });
 
     const result = await fetchLeaderboard();
     expect(result).toHaveLength(100);
@@ -110,29 +110,23 @@ describe('fetchAccuracyLeaderboard', () => {
   });
 
   test('uses default limit of 10', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({ leaderboard: { edges: [] } });
+    mockGraphqlRequest.mockResolvedValue({ leaderboard: { edges: [] } });
     await fetchAccuracyLeaderboard();
-    expect(mockGraphqlRequestV2).toHaveBeenCalledWith(
-      GET_ACCURACY_LEADERBOARD,
-      {
-        first: 10,
-      }
-    );
+    expect(mockGraphqlRequest).toHaveBeenCalledWith(GET_ACCURACY_LEADERBOARD, {
+      first: 10,
+    });
   });
 
   test('passes custom limit', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({ leaderboard: { edges: [] } });
+    mockGraphqlRequest.mockResolvedValue({ leaderboard: { edges: [] } });
     await fetchAccuracyLeaderboard(25);
-    expect(mockGraphqlRequestV2).toHaveBeenCalledWith(
-      GET_ACCURACY_LEADERBOARD,
-      {
-        first: 25,
-      }
-    );
+    expect(mockGraphqlRequest).toHaveBeenCalledWith(GET_ACCURACY_LEADERBOARD, {
+      first: 25,
+    });
   });
 
   test('maps edges to slim { address, rank, accuracyScore } rows (accuracy is 0-1)', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       leaderboard: {
         edges: [
           { node: { rank: 1, accuracy: 0.92, account: { address: '0xa' } } },
@@ -154,7 +148,7 @@ describe('fetchAccuracyLeaderboard', () => {
   });
 
   test('defaults accuracyScore to 0 when node accuracy is null', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       leaderboard: {
         edges: [
           { node: { rank: 1, accuracy: null, account: { address: '0xa' } } },
@@ -167,7 +161,7 @@ describe('fetchAccuracyLeaderboard', () => {
   });
 
   test('returns empty array when no data', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({ leaderboard: null });
+    mockGraphqlRequest.mockResolvedValue({ leaderboard: null });
     const result = await fetchAccuracyLeaderboard();
     expect(result).toEqual([]);
   });
@@ -188,18 +182,18 @@ describe('fetchForecasterRank', () => {
   });
 
   test('lowercases address before sending', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       account: { ranking: { rank: 5, accuracy: 0.85 } },
       leaderboard: { totalCount: 100 },
     });
 
     await fetchForecasterRank('0xAbCdEf1234567890');
-    const call = mockGraphqlRequestV2.mock.calls[0];
+    const call = mockGraphqlRequest.mock.calls[0];
     expect(call[1].address).toBe('0xabcdef1234567890');
   });
 
   test('returns rank data when ranked', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       account: { ranking: { rank: 5, accuracy: 0.85 } },
       leaderboard: { totalCount: 100 },
     });
@@ -213,7 +207,7 @@ describe('fetchForecasterRank', () => {
   });
 
   test('returns nulls when unranked (ranking is null)', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       account: { ranking: null },
       leaderboard: { totalCount: 42 },
     });
@@ -227,7 +221,7 @@ describe('fetchForecasterRank', () => {
   });
 
   test('defaults accuracyScore to 0 when ranked with null accuracy', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       account: { ranking: { rank: 3, accuracy: null } },
       leaderboard: { totalCount: 50 },
     });
@@ -238,7 +232,7 @@ describe('fetchForecasterRank', () => {
   });
 
   test('defaults totalForecasters to 0 when count is missing', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       account: { ranking: { rank: 1, accuracy: 0.5 } },
       leaderboard: null,
     });
@@ -264,18 +258,18 @@ describe('fetchUserProfitRank', () => {
   });
 
   test('lowercases address before sending', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       account: { ranking: { rank: 1, pnlFormatted: '10' } },
       leaderboard: { totalCount: 4 },
     });
 
     await fetchUserProfitRank('0xBoB');
-    const call = mockGraphqlRequestV2.mock.calls[0];
+    const call = mockGraphqlRequest.mock.calls[0];
     expect(call[1].address).toBe('0xbob');
   });
 
   test('returns server-computed rank, pnl and full participant count', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       account: { ranking: { rank: 137, pnlFormatted: '500.25' } },
       leaderboard: { totalCount: 5000 },
     });
@@ -291,7 +285,7 @@ describe('fetchUserProfitRank', () => {
   });
 
   test('returns null rank and zero pnl when unranked', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       account: { ranking: null },
       leaderboard: { totalCount: 4 },
     });
@@ -303,7 +297,7 @@ describe('fetchUserProfitRank', () => {
   });
 
   test('handles missing account and count gracefully', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       account: null,
       leaderboard: null,
     });

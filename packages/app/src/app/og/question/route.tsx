@@ -24,7 +24,7 @@ import {
   createErrorImageResponse,
 } from '../_shared';
 import { PREFERRED_ESTIMATE_QUOTER } from '~/lib/constants';
-import { getGraphQLEndpointV2 } from '~/lib/data/graphql';
+import { getGraphQLEndpoint } from '~/lib/data/graphql';
 
 export const runtime = 'nodejs';
 
@@ -183,7 +183,7 @@ async function fetchConditionData(
       resolvers: resolver ? [resolver] : null,
     };
 
-    const response = await fetch(getGraphQLEndpointV2(), {
+    const response = await fetch(getGraphQLEndpoint(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query, variables }),

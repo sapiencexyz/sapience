@@ -6,9 +6,9 @@ import {
   GET_VAULT_STATS,
 } from '../vault';
 
-const mockGraphqlRequestV2 = vi.fn();
+const mockGraphqlRequest = vi.fn();
 vi.mock('../client/graphqlClient', () => ({
-  graphqlRequestV2: (...args: unknown[]) => mockGraphqlRequestV2(...args),
+  graphqlRequest: (...args: unknown[]) => mockGraphqlRequest(...args),
 }));
 
 beforeEach(() => {
@@ -63,10 +63,10 @@ describe('GET_VAULT_STATS document', () => {
 
 describe('fetchVaultStats', () => {
   test('single request (no pageSize) sends a null `first`, address lowercased', async () => {
-    mockGraphqlRequestV2.mockResolvedValue(responseWith([node(1700000100)]));
+    mockGraphqlRequest.mockResolvedValue(responseWith([node(1700000100)]));
     await fetchVaultStats('0xABCDEF', 42161);
-    expect(mockGraphqlRequestV2).toHaveBeenCalledTimes(1);
-    expect(mockGraphqlRequestV2).toHaveBeenCalledWith(GET_VAULT_STATS, {
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
+    expect(mockGraphqlRequest).toHaveBeenCalledWith(GET_VAULT_STATS, {
       address: '0xabcdef',
       chainId: 42161,
       first: null,
@@ -75,14 +75,14 @@ describe('fetchVaultStats', () => {
   });
 
   test('one request returns the bounded series when the server signals no next page', async () => {
-    mockGraphqlRequestV2.mockResolvedValue(
+    mockGraphqlRequest.mockResolvedValue(
       responseWith([node(1700000300), node(1700000200), node(1700000100)])
     );
 
     const result = await fetchVaultStats('0xabc', 42161);
 
     // Single round-trip: the resolver's cap covers the whole series.
-    expect(mockGraphqlRequestV2).toHaveBeenCalledTimes(1);
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
     // All snapshots accumulated, sorted oldest-first.
     expect(result.map((s) => s.timestamp)).toEqual([
       1700000100, 1700000200, 1700000300,
@@ -90,7 +90,7 @@ describe('fetchVaultStats', () => {
   });
 
   test('pages on `pageInfo` when a vault exceeds the server cap', async () => {
-    mockGraphqlRequestV2
+    mockGraphqlRequest
       .mockResolvedValueOnce(
         responseWith([node(1700000300), node(1700000200)], {
           hasNextPage: true,
@@ -106,9 +106,9 @@ describe('fetchVaultStats', () => {
 
     const result = await fetchVaultStats('0xabc', 42161);
 
-    expect(mockGraphqlRequestV2).toHaveBeenCalledTimes(2);
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(2);
     // Second page threads the first page's endCursor as `after`.
-    expect(mockGraphqlRequestV2.mock.calls[1][1]).toMatchObject({
+    expect(mockGraphqlRequest.mock.calls[1][1]).toMatchObject({
       after: 'cursor-1',
     });
     expect(result.map((s) => s.timestamp)).toEqual([
@@ -117,9 +117,9 @@ describe('fetchVaultStats', () => {
   });
 
   test('forwards an explicit pageSize as the per-page `first`', async () => {
-    mockGraphqlRequestV2.mockResolvedValue(responseWith([node(1700000100)]));
+    mockGraphqlRequest.mockResolvedValue(responseWith([node(1700000100)]));
     await fetchVaultStats('0xabc', 42161, 100);
-    expect(mockGraphqlRequestV2).toHaveBeenCalledWith(GET_VAULT_STATS, {
+    expect(mockGraphqlRequest).toHaveBeenCalledWith(GET_VAULT_STATS, {
       address: '0xabc',
       chainId: 42161,
       first: 100,
@@ -128,7 +128,7 @@ describe('fetchVaultStats', () => {
   });
 
   test('maps wire nodes to the adapted vault stat shape', async () => {
-    mockGraphqlRequestV2.mockResolvedValue(
+    mockGraphqlRequest.mockResolvedValue(
       responseWith([node(1700000100), node(1700000200)])
     );
     const result = await fetchVaultStats('0xabc', 42161);
@@ -153,7 +153,7 @@ describe('fetchVaultStats', () => {
   });
 
   test('sorts snapshots oldest-first (statsHistory defaults to DESC)', async () => {
-    mockGraphqlRequestV2.mockResolvedValue(
+    mockGraphqlRequest.mockResolvedValue(
       responseWith([node(1700000200), node(1700000100), node(1700000150)])
     );
     const result = await fetchVaultStats('0xabc', 42161);
@@ -163,7 +163,7 @@ describe('fetchVaultStats', () => {
   });
 
   test('normalizes BigInt-scalar wire values (number or string) to decimal strings', async () => {
-    mockGraphqlRequestV2.mockResolvedValue(
+    mockGraphqlRequest.mockResolvedValue(
       responseWith([
         node(1700000100, {
           balance: 1000,
@@ -181,9 +181,9 @@ describe('fetchVaultStats', () => {
   });
 
   test('returns an empty array when the vault is unknown (null vault)', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({ vault: null });
+    mockGraphqlRequest.mockResolvedValue({ vault: null });
     expect(await fetchVaultStats('0xabc', 42161)).toEqual([]);
-    mockGraphqlRequestV2.mockResolvedValue(null);
+    mockGraphqlRequest.mockResolvedValue(null);
     expect(await fetchVaultStats('0xabc', 42161)).toEqual([]);
   });
 });
@@ -208,7 +208,7 @@ describe('GET_VAULT_ACCOUNT_VALUE document', () => {
 
 describe('fetchVaultAccountValue', () => {
   test('lowercases the address and sums vault balance, deployed, and claimable collateral', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       vault: {
         stats: {
           timestamp: 1700000100,
@@ -221,7 +221,7 @@ describe('fetchVaultAccountValue', () => {
 
     const result = await fetchVaultAccountValue('0xABCDEF', 42161);
 
-    expect(mockGraphqlRequestV2).toHaveBeenCalledWith(GET_VAULT_ACCOUNT_VALUE, {
+    expect(mockGraphqlRequest).toHaveBeenCalledWith(GET_VAULT_ACCOUNT_VALUE, {
       address: '0xabcdef',
       chainId: 42161,
     });
@@ -235,7 +235,7 @@ describe('fetchVaultAccountValue', () => {
   });
 
   test('defaults to zeros when the vault has no stats snapshot yet', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       vault: { stats: null },
     });
 
@@ -249,7 +249,7 @@ describe('fetchVaultAccountValue', () => {
   });
 
   test('defaults to zeros when the address is not a configured vault', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({ vault: null });
+    mockGraphqlRequest.mockResolvedValue({ vault: null });
 
     await expect(fetchVaultAccountValue('0xabc', 42161)).resolves.toEqual({
       collateralBalance: '0',

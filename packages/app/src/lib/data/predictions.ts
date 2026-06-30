@@ -1,7 +1,7 @@
 // Prediction data types, queries, and fetch helpers.
 // Shared across SSR pages, client components, and OG image routes.
 
-import { getGraphQLEndpointV2 } from './graphql';
+import { getGraphQLEndpoint } from './graphql';
 import {
   toPickConfigData,
   type PickConfigurationV2Node,
@@ -181,7 +181,7 @@ export async function fetchPredictionWithConditions(
   prediction: PredictionData | null;
   conditions: (ConditionData & { id: string })[];
 }> {
-  const resp = await fetch(getGraphQLEndpointV2(), {
+  const resp = await fetch(getGraphQLEndpoint(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -201,7 +201,7 @@ export async function fetchPredictionWithConditions(
 
   let conditions: (ConditionData & { id: string })[] = [];
   try {
-    const condResp = await fetch(getGraphQLEndpointV2(), {
+    const condResp = await fetch(getGraphQLEndpoint(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

@@ -1,4 +1,4 @@
-import { graphqlRequestV2 } from './client/graphqlClient';
+import { graphqlRequest } from './client/graphqlClient';
 
 /**
  * Protocol-wide analytics, fetched from the v2 `protocol` singleton.
@@ -262,7 +262,7 @@ const HISTORY_PAGE_SIZE = null;
 const MAX_HISTORY_PAGES = 50;
 
 export async function fetchProtocolStats(): Promise<ProtocolAnalyticsStat> {
-  const data = await graphqlRequestV2<{
+  const data = await graphqlRequest<{
     protocol: { stats: WireStat } | null;
   }>(GET_PROTOCOL_STATS);
   const stats = data?.protocol?.stats;
@@ -275,7 +275,7 @@ export async function fetchProtocolStats(): Promise<ProtocolAnalyticsStat> {
 }
 
 export async function fetchProtocolAnalytics(): Promise<ProtocolAnalytics> {
-  const data = await graphqlRequestV2<ProtocolAnalyticsV2Response>(
+  const data = await graphqlRequest<ProtocolAnalyticsV2Response>(
     GET_PROTOCOL_ANALYTICS,
     { interval: HISTORY_INTERVAL, first: HISTORY_PAGE_SIZE, after: null }
   );
@@ -287,7 +287,7 @@ export async function fetchProtocolAnalytics(): Promise<ProtocolAnalytics> {
 
   for (let page = 1; page < MAX_HISTORY_PAGES; page += 1) {
     if (!pageInfo?.hasNextPage || !pageInfo.endCursor) break;
-    const next = await graphqlRequestV2<{
+    const next = await graphqlRequest<{
       protocol: { statsHistory: StatsHistoryPage } | null;
     }>(GET_PROTOCOL_STATS_HISTORY_PAGE, {
       interval: HISTORY_INTERVAL,

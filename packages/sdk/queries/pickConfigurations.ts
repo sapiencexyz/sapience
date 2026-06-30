@@ -1,4 +1,4 @@
-import { graphqlRequestV2 } from './client/graphqlClient';
+import { graphqlRequest } from './client/graphqlClient';
 
 export const GET_PICK_CONFIGURATIONS = /* GraphQL */ `
   query PickConfigurations($first: Int, $filter: PickConfigurationFilter) {
@@ -142,7 +142,7 @@ export async function fetchPickConfigurations(opts?: {
   // over-fetching (capped at the server's maxTake) and slicing locally.
   const first = Math.min(take + skip, V2_MAX_FIRST);
 
-  const data = await graphqlRequestV2<PickConfigurationsV2Response>(
+  const data = await graphqlRequest<PickConfigurationsV2Response>(
     GET_PICK_CONFIGURATIONS,
     {
       first,

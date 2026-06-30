@@ -7,7 +7,7 @@ const mockGraphqlRequest = vi.fn();
 
 // The hook uses the v2 transport (/v2/graphql) — mock that symbol, not v1.
 vi.mock('@sapience/sdk/queries/client/graphqlClient', () => ({
-  graphqlRequestV2: (...args: unknown[]) => mockGraphqlRequest(...args),
+  graphqlRequest: (...args: unknown[]) => mockGraphqlRequest(...args),
 }));
 
 // One client per test, torn down in afterEach so an in-flight fetchNextPage

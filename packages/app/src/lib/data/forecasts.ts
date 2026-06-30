@@ -1,7 +1,7 @@
 // Forecast data types, queries, and fetch helpers.
 // Shared across SSR pages, client components, and OG image routes.
 
-import { getGraphQLEndpointV2 } from './graphql';
+import { getGraphQLEndpoint } from './graphql';
 
 // v2 document — untagged so graphql-eslint (v1 schema) skips it.
 // `forecast(uid:)` is the v2 lookup for an EAS forecast attestation; the
@@ -95,7 +95,7 @@ export function d18ToPercentage(d18Value: string): number {
 export async function fetchAttestationByUid(
   uid: string
 ): Promise<AttestationData | null> {
-  const endpoint = getGraphQLEndpointV2();
+  const endpoint = getGraphQLEndpoint();
   const resp = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

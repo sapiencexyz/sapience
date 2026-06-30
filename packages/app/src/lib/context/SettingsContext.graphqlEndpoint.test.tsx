@@ -1,8 +1,9 @@
 /**
- * Tests for the v2 GraphQL endpoint wiring in SettingsContext.
+ * Tests for the single GraphQL endpoint wiring in SettingsContext.
  *
- * Covers the default `/v2/graphql` resolution, localStorage override
- * hydration, and the setter persisting under its own key without disturbing v1.
+ * Covers the default `/v2/graphql` resolution, localStorage override hydration,
+ * migration from the legacy `graphqlEndpointV2` key, and the setter persisting
+ * under the single key while clearing the legacy one.
  */
 
 import { render, screen, waitFor, act } from '@testing-library/react';
@@ -10,8 +11,8 @@ import { beforeAll, describe, test, expect, beforeEach } from 'vitest';
 
 import { SettingsProvider, useSettings } from './SettingsContext';
 
-const V2_KEY = 'sapience.settings.graphqlEndpointV2';
-const V1_KEY = 'sapience.settings.graphqlEndpoint';
+const KEY = 'sapience.settings.graphqlEndpoint';
+const LEGACY_KEY = 'sapience.settings.graphqlEndpointV2';
 const CHAT_KEY = 'sapience.settings.chatBaseUrl';
 
 // jsdom in this environment does not ship a working localStorage (it requires
@@ -45,18 +46,16 @@ beforeAll(() => {
 });
 
 function Probe() {
-  const { graphqlEndpoint, graphqlEndpointV2, setGraphqlEndpointV2, defaults } =
-    useSettings();
+  const { graphqlEndpoint, setGraphqlEndpoint, defaults } = useSettings();
   return (
     <div>
-      <span data-testid="v1">{graphqlEndpoint ?? ''}</span>
-      <span data-testid="v2">{graphqlEndpointV2 ?? ''}</span>
-      <span data-testid="default-v2">{defaults.graphqlEndpointV2}</span>
+      <span data-testid="endpoint">{graphqlEndpoint ?? ''}</span>
+      <span data-testid="default">{defaults.graphqlEndpoint}</span>
       <button
         type="button"
         data-testid="set"
         onClick={() =>
-          setGraphqlEndpointV2('https://staging.example.com/v2/graphql')
+          setGraphqlEndpoint('https://staging.example.com/v2/graphql')
         }
       >
         set
@@ -64,7 +63,7 @@ function Probe() {
       <button
         type="button"
         data-testid="clear"
-        onClick={() => setGraphqlEndpointV2(null)}
+        onClick={() => setGraphqlEndpoint(null)}
       >
         clear
       </button>
@@ -103,8 +102,8 @@ beforeEach(() => {
   window.localStorage.clear();
 });
 
-describe('SettingsContext v2 GraphQL endpoint', () => {
-  test('defaults v2 endpoint to the /v2/graphql path of the API origin', async () => {
+describe('SettingsContext GraphQL endpoint', () => {
+  test('defaults the endpoint to the /v2/graphql path of the API origin', async () => {
     render(
       <SettingsProvider>
         <Probe />
@@ -112,24 +111,15 @@ describe('SettingsContext v2 GraphQL endpoint', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('v2').textContent).toMatch(/\/v2\/graphql$/);
+      expect(screen.getByTestId('endpoint').textContent).toMatch(
+        /\/v2\/graphql$/
+      );
     });
-
-    // v1 must remain on the bare /graphql path, not /v2/graphql.
-    const v1 = screen.getByTestId('v1').textContent ?? '';
-    expect(v1.endsWith('/graphql')).toBe(true);
-    expect(v1.endsWith('/v2/graphql')).toBe(false);
-
-    expect(screen.getByTestId('default-v2').textContent).toMatch(
-      /\/v2\/graphql$/
-    );
+    expect(screen.getByTestId('default').textContent).toMatch(/\/v2\/graphql$/);
   });
 
-  test('hydrates the v2 endpoint from its dedicated localStorage key', async () => {
-    window.localStorage.setItem(
-      V2_KEY,
-      'https://override.example.com/v2/graphql'
-    );
+  test('hydrates the endpoint from its localStorage key', async () => {
+    window.localStorage.setItem(KEY, 'https://override.example.com/v2/graphql');
 
     render(
       <SettingsProvider>
@@ -138,13 +128,18 @@ describe('SettingsContext v2 GraphQL endpoint', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('v2').textContent).toBe(
+      expect(screen.getByTestId('endpoint').textContent).toBe(
         'https://override.example.com/v2/graphql'
       );
     });
   });
 
-  test('setter persists under the v2 key and leaves the v1 key untouched', async () => {
+  test('migrates from the legacy v2 key when the new key is absent', async () => {
+    window.localStorage.setItem(
+      LEGACY_KEY,
+      'https://api.predict.meridian.xyz/graphql'
+    );
+
     render(
       <SettingsProvider>
         <Probe />
@@ -152,7 +147,26 @@ describe('SettingsContext v2 GraphQL endpoint', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('v2').textContent).not.toBe('');
+      expect(screen.getByTestId('endpoint').textContent).toBe(
+        'https://api.predict.meridian.xyz/graphql'
+      );
+    });
+  });
+
+  test('setter persists under the key and clears the legacy key', async () => {
+    window.localStorage.setItem(
+      LEGACY_KEY,
+      'https://api.predict.meridian.xyz/graphql'
+    );
+
+    render(
+      <SettingsProvider>
+        <Probe />
+      </SettingsProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('endpoint').textContent).not.toBe('');
     });
 
     act(() => {
@@ -160,22 +174,19 @@ describe('SettingsContext v2 GraphQL endpoint', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('v2').textContent).toBe(
+      expect(screen.getByTestId('endpoint').textContent).toBe(
         'https://staging.example.com/v2/graphql'
       );
     });
-    expect(window.localStorage.getItem(V2_KEY)).toBe(
+    expect(window.localStorage.getItem(KEY)).toBe(
       'https://staging.example.com/v2/graphql'
     );
-    // Writing v2 must not write the v1 override key.
-    expect(window.localStorage.getItem(V1_KEY)).toBeNull();
+    // The legacy key must be removed so a stale value can't resurface.
+    expect(window.localStorage.getItem(LEGACY_KEY)).toBeNull();
   });
 
-  test('clearing the v2 override removes the key and falls back to the default', async () => {
-    window.localStorage.setItem(
-      V2_KEY,
-      'https://override.example.com/v2/graphql'
-    );
+  test('clearing the override removes the key and falls back to the default', async () => {
+    window.localStorage.setItem(KEY, 'https://override.example.com/v2/graphql');
 
     render(
       <SettingsProvider>
@@ -184,7 +195,7 @@ describe('SettingsContext v2 GraphQL endpoint', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('v2').textContent).toBe(
+      expect(screen.getByTestId('endpoint').textContent).toBe(
         'https://override.example.com/v2/graphql'
       );
     });
@@ -194,9 +205,11 @@ describe('SettingsContext v2 GraphQL endpoint', () => {
     });
 
     await waitFor(() => {
-      expect(window.localStorage.getItem(V2_KEY)).toBeNull();
+      expect(window.localStorage.getItem(KEY)).toBeNull();
     });
-    expect(screen.getByTestId('v2').textContent).toMatch(/\/v2\/graphql$/);
+    expect(screen.getByTestId('endpoint').textContent).toMatch(
+      /\/v2\/graphql$/
+    );
   });
 });
 

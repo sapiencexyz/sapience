@@ -1,4 +1,4 @@
-import { graphqlRequestV2 } from './client/graphqlClient';
+import { graphqlRequest } from './client/graphqlClient';
 
 export interface ConditionType {
   /** CTF on-chain condition id (lowercase 0x-hex) — v2 `conditionId`. */
@@ -222,7 +222,7 @@ export async function fetchConditions(opts?: {
   // over-fetching (capped at the server's maxTake) and slicing locally.
   const first = Math.min(take + skip, V2_MAX_FIRST);
 
-  const data = await graphqlRequestV2<ConditionsV2Response>(GET_CONDITIONS, {
+  const data = await graphqlRequest<ConditionsV2Response>(GET_CONDITIONS, {
     first,
     filter: Object.keys(filter).length > 0 ? filter : undefined,
   });
@@ -253,7 +253,7 @@ export async function fetchConditionsByIds<T>(
 
   type ByIdsResponse = Record<string, { nodes?: T[] } | null | undefined>;
   const requestChunk = async (chunk: string[]): Promise<T[]> => {
-    const resp = await graphqlRequestV2<ByIdsResponse>(query, { ids: chunk });
+    const resp = await graphqlRequest<ByIdsResponse>(query, { ids: chunk });
     return resp?.[resultKey]?.nodes ?? [];
   };
 

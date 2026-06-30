@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { ToastAction } from '@sapience/ui/components/ui/toast';
 import { useRouter } from 'next/navigation';
-import { graphqlRequestV2 } from '@sapience/sdk/queries/client/graphqlClient';
+import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { useTerminalLogs } from '~/components/terminal/TerminalLogsContext';
 
 // v2: participant filter collapses v1's address arg; orderBy is explicit.
@@ -57,7 +57,7 @@ export function useTradeSettledNotifications() {
     queryKey: ['recentCounterpartyPredictions', address],
     queryFn: async () => {
       if (!address) return [];
-      const result = await graphqlRequestV2<PredictionsQueryResponse>(
+      const result = await graphqlRequest<PredictionsQueryResponse>(
         RECENT_PREDICTIONS_QUERY,
         {
           participant: address.toLowerCase(),

@@ -1,7 +1,7 @@
 // OG-specific formatting utilities + re-exports from shared data layer.
 
 // Re-exports for backward compatibility with OG routes and _profile-helpers
-export { getGraphQLEndpoint, getGraphQLEndpointV2 } from '~/lib/data/graphql';
+export { getGraphQLEndpoint } from '~/lib/data/graphql';
 export {
   PREDICTION_BY_ID_QUERY,
   CONDITIONS_BY_IDS_QUERY,

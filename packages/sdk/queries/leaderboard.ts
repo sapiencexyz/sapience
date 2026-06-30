@@ -1,4 +1,4 @@
-import { graphqlRequestV2 } from './client/graphqlClient';
+import { graphqlRequest } from './client/graphqlClient';
 
 export interface AggregatedLeaderboardEntry {
   address: string;
@@ -137,7 +137,7 @@ function toForecasterScores(
 export async function fetchLeaderboard(): Promise<
   AggregatedLeaderboardEntry[]
 > {
-  const data = await graphqlRequestV2<{
+  const data = await graphqlRequest<{
     leaderboard: RankingEdges<PnlRankingNode>;
   }>(GET_PROFIT_LEADERBOARD);
   return toLeaderboardEntries(data?.leaderboard).slice(0, 100);
@@ -146,7 +146,7 @@ export async function fetchLeaderboard(): Promise<
 export async function fetchAccuracyLeaderboard(
   limit = 10
 ): Promise<ForecasterScore[]> {
-  const data = await graphqlRequestV2<{
+  const data = await graphqlRequest<{
     leaderboard: RankingEdges<AccuracyRankingNode>;
   }>(GET_ACCURACY_LEADERBOARD, { first: limit });
   return toForecasterScores(data?.leaderboard);
@@ -156,7 +156,7 @@ export async function fetchForecasterRank(
   address: string
 ): Promise<ForecasterRankResult> {
   const a = address.toLowerCase();
-  const data = await graphqlRequestV2<{
+  const data = await graphqlRequest<{
     account: {
       ranking: { rank: number; accuracy: number | null } | null;
     } | null;
@@ -184,7 +184,7 @@ export async function fetchUserProfitRank(
   ownerAddress: string
 ): Promise<UserProfitRankResult> {
   const addressLc = ownerAddress.toLowerCase();
-  const data = await graphqlRequestV2<{
+  const data = await graphqlRequest<{
     account: {
       ranking: { rank: number; pnlFormatted: string } | null;
     } | null;

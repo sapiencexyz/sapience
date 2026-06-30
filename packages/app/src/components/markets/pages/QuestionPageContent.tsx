@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { graphqlRequestV2 } from '@sapience/sdk/queries/client/graphqlClient';
+import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import Image from 'next/image';
 import { PythOracleMark } from '@sapience/ui';
 import dynamic from 'next/dynamic';
@@ -131,7 +131,7 @@ export default function QuestionPageContent({
           }
         }
       `;
-      const resp = await graphqlRequestV2<{
+      const resp = await graphqlRequest<{
         conditions: {
           nodes: Array<{
             id: string;

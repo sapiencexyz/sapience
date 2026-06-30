@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { graphqlRequestV2 } from '@sapience/sdk/queries/client/graphqlClient';
+import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 
 /**
  * Forward-only cursor pagination for v2 GraphQL connections.
@@ -127,13 +127,14 @@ export function useCursorPagination<TNode>(
         ? (lastPage.pageInfo.endCursor ?? undefined)
         : undefined,
     queryFn: async ({ pageParam }) => {
-      const resp = await graphqlRequestV2<
-        Record<string, RelayConnection<TNode>>
-      >(query, {
-        ...(variables ?? {}),
-        first: pageSize,
-        after: pageParam ?? null,
-      });
+      const resp = await graphqlRequest<Record<string, RelayConnection<TNode>>>(
+        query,
+        {
+          ...(variables ?? {}),
+          first: pageSize,
+          after: pageParam ?? null,
+        }
+      );
       return resp?.[connectionKey] ?? EMPTY_CONNECTION;
     },
   });

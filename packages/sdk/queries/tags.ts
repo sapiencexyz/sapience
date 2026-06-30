@@ -1,4 +1,4 @@
-import { graphqlRequestV2 } from './client/graphqlClient';
+import { graphqlRequest } from './client/graphqlClient';
 
 type PopularTagsV2Response = {
   tags: {
@@ -21,6 +21,6 @@ function toTagNames(data: PopularTagsV2Response | null): string[] {
 }
 
 export async function fetchPopularTags(): Promise<string[]> {
-  const data = await graphqlRequestV2<PopularTagsV2Response>(GET_POPULAR_TAGS);
+  const data = await graphqlRequest<PopularTagsV2Response>(GET_POPULAR_TAGS);
   return toTagNames(data);
 }
