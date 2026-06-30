@@ -8,6 +8,7 @@ import {
   type UseQueryResult,
 } from '@tanstack/react-query';
 import { useAdminApi } from '~/hooks/useAdminApi';
+import { useSettings } from '~/lib/context/SettingsContext';
 
 export type AdminConditionGroupCondition = {
   id: string;
@@ -28,14 +29,19 @@ export type AdminConditionGroup = {
 
 const ADMIN_CONDITION_GROUPS_QUERY_KEY = ['admin', 'conditionGroups'] as const;
 
-// The admin base URL points at the predict backend's signed `/admin` router;
-// its origin also serves the unauthenticated `/graphql` endpoint. We read
-// groups from GraphQL so the operator is never prompted to sign just to
-// browse — only saving (the reorder mutation) is signed. The ids line up with
-// the REST surface: `Condition.conditionId` is the row primary key the reorder
-// endpoint expects, and `ConditionGroup.groupId` is the numeric `:id` param.
-function graphqlEndpointFrom(base: string): string {
-  return `${new URL(base).origin}/graphql`;
+// This page targets a single predict backend origin taken from the
+// `graphqlEndpoint` setting — the field the Meridian env presets actually set
+// (the separate `adminBaseUrl` setting defaults to the legacy sapience origin
+// and is left untouched by those presets, so deriving from it sent loads to the
+// wrong backend). Groups load from that `/graphql` endpoint unauthenticated, so
+// the operator is never prompted to sign just to browse; only saving (the
+// reorder mutation) is signed, and it derives the `/admin` REST base from the
+// same origin so load and save can never drift to different backends. The ids
+// line up with the REST surface: `Condition.conditionId` is the row primary key
+// the reorder endpoint expects, and `ConditionGroup.groupId` is the numeric
+// `:id` param.
+function adminBaseFromGraphqlEndpoint(graphqlEndpoint: string): string {
+  return `${new URL(graphqlEndpoint).origin}/admin`;
 }
 
 // Note: the GraphQL `conditions` connection only returns public conditions, so
@@ -178,11 +184,11 @@ async function fetchAllConditionGroups(
 export function useAdminConditionGroups(
   enabled: boolean
 ): UseQueryResult<AdminConditionGroup[]> {
-  const { base } = useAdminApi();
+  const { graphqlEndpoint } = useSettings();
   return useQuery({
-    queryKey: [...ADMIN_CONDITION_GROUPS_QUERY_KEY, base],
-    queryFn: () => fetchAllConditionGroups(graphqlEndpointFrom(base)),
-    enabled,
+    queryKey: [...ADMIN_CONDITION_GROUPS_QUERY_KEY, graphqlEndpoint],
+    queryFn: () => fetchAllConditionGroups(graphqlEndpoint as string),
+    enabled: enabled && Boolean(graphqlEndpoint),
   });
 }
 
@@ -201,7 +207,11 @@ export function useReorderConditionGroup(): UseMutationResult<
   Error,
   ReorderConditionGroupInput
 > {
-  const { putJson } = useAdminApi();
+  const { graphqlEndpoint } = useSettings();
+  const adminBase = graphqlEndpoint
+    ? adminBaseFromGraphqlEndpoint(graphqlEndpoint)
+    : undefined;
+  const { putJson } = useAdminApi(adminBase);
   const queryClient = useQueryClient();
   return useMutation<AdminConditionGroup, Error, ReorderConditionGroupInput>({
     mutationFn: ({ groupId, conditionIds }) =>
