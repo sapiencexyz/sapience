@@ -525,6 +525,39 @@ describe('VaultsPageContent geofence', () => {
   });
 });
 
+describe('VaultsPageContent vault switch reset', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setDefaults();
+    mockUseRestrictedJurisdiction.mockReturnValue({
+      isRestricted: false,
+      isPermitLoading: false,
+      permitData: { permitted: true },
+      permitError: null,
+    });
+  });
+
+  it('clears the deposit and withdraw amounts when the selected vault changes', () => {
+    mockSearchParamsToString.mockReturnValue('address=0xVault');
+    const { rerender } = render(<VaultsPageContent />);
+
+    // Enter amounts on the current vault (inputs[0] = deposit, inputs[1] = withdraw).
+    const inputs = screen.getAllByPlaceholderText('0.0');
+    fireEvent.change(inputs[0], { target: { value: '50' } });
+    fireEvent.change(inputs[1], { target: { value: '25' } });
+    expect((inputs[0] as HTMLInputElement).value).toBe('50');
+    expect((inputs[1] as HTMLInputElement).value).toBe('25');
+
+    // Switch to a different vault.
+    mockSearchParamsToString.mockReturnValue('address=0xStrategyBVault');
+    rerender(<VaultsPageContent />);
+
+    const inputsAfter = screen.getAllByPlaceholderText('0.0');
+    expect((inputsAfter[0] as HTMLInputElement).value).toBe('');
+    expect((inputsAfter[1] as HTMLInputElement).value).toBe('');
+  });
+});
+
 describe('VaultsPageContent vault balance display', () => {
   beforeEach(() => {
     vi.clearAllMocks();

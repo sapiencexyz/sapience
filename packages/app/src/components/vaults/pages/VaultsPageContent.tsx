@@ -204,9 +204,21 @@ const VaultsPageContent = () => {
 
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [activeTab, setActiveTab] = useState('deposit');
   const [pendingAction, setPendingAction] = useState<
     'deposit' | 'withdraw' | 'cancelDeposit' | 'cancelWithdrawal' | undefined
   >(undefined);
+
+  // Switching vaults keeps the same mounted form, so its inputs/tab/in-flight
+  // state would otherwise carry over and be applied against the newly selected
+  // vault's price, balances, and allowance. Reset everything when the vault
+  // address changes so the form always reflects the vault it's pointed at.
+  useEffect(() => {
+    setDepositAmount('');
+    setWithdrawAmount('');
+    setActiveTab('deposit');
+    setPendingAction(undefined);
+  }, [VAULT_ADDRESS]);
 
   const depositWei = (() => {
     if (!depositAmount) return 0n;
@@ -306,7 +318,7 @@ const VaultsPageContent = () => {
   }, []);
 
   const renderVaultForm = () => (
-    <Tabs defaultValue="deposit" className="w-full">
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
       <TabsList className="grid w-full grid-cols-2 mb-3">
         <TabsTrigger
           value="deposit"
