@@ -9,6 +9,8 @@ import { Button } from '@sapience/ui/components/ui/button';
 import {
   DEFAULT_CHAIN_ID,
   CHAIN_ID_ETHEREAL_TESTNET,
+  CHAIN_ID_ROBINHOOD_TESTNET,
+  CHAIN_ID_ROBINHOOD_MAINNET,
 } from '@sapience/sdk/constants';
 import { useChat } from '~/lib/context/ChatContext';
 import {
@@ -28,18 +30,24 @@ import Loader from '~/components/shared/Loader';
 // Both presets leave the signal endpoint blank, which disables the mesh so the
 // app never attempts to connect to a signaling server.
 type EndpointPreset = {
+  // Static chain ID for the preset. Used as the fallback when the RPC can't be
+  // reached at apply time, so the preset still switches chains and populates the
+  // settings fields instead of erroring out.
+  chainId: number;
   customRpcURL: string;
   graphqlEndpoint: string;
   relayerEndpoint: string;
 };
 
 const MERIDIAN_TESTNET_SETTINGS: EndpointPreset = {
+  chainId: CHAIN_ID_ROBINHOOD_TESTNET,
   customRpcURL: 'https://rpc.testnet.chain.robinhood.com',
   graphqlEndpoint: 'https://api.predict.meridiantest.net/graphql',
   relayerEndpoint: 'https://relayer.predict.meridiantest.net/auction',
 } as const;
 
 const MERIDIAN_MAINNET_SETTINGS: EndpointPreset = {
+  chainId: CHAIN_ID_ROBINHOOD_MAINNET,
   customRpcURL: 'https://rpc.chain.robinhood.com',
   graphqlEndpoint: 'https://api.predict.meridian.xyz/graphql',
   relayerEndpoint: 'https://relayer.predict.meridian.xyz/auction',
@@ -308,7 +316,14 @@ const SettingsPageContent = () => {
     async (preset: EndpointPreset) => {
       setIsDetecting(true);
       setDetectError(null);
-      const result = await detectAndSetCustomChain(preset.customRpcURL);
+      // Pass the preset's static chain ID as a fallback so an unreachable RPC
+      // still applies the override and populates the fields below, rather than
+      // bailing out (which left the mainnet preset doing nothing when its RPC
+      // was temporarily unreachable).
+      const result = await detectAndSetCustomChain(
+        preset.customRpcURL,
+        preset.chainId
+      );
       setIsDetecting(false);
       if ('error' in result) {
         setDetectError(result.error);

@@ -54,9 +54,15 @@ type SettingsContextValue = {
   /**
    * Detect the chain ID from a custom RPC URL and persist both. Does NOT reload —
    * the caller shows the detected id and offers an explicit "Apply & Reload".
+   *
+   * `fallbackChainId` is used for known presets where the chain ID is static: if
+   * the RPC can't be reached (or returns a bogus id), the override is still
+   * applied with the known id instead of failing, so the app switches chains and
+   * the settings fields populate even when the RPC is temporarily unreachable.
    */
   detectAndSetCustomChain: (
-    rpcUrl: string
+    rpcUrl: string,
+    fallbackChainId?: number
   ) => Promise<{ chainId: number } | { error: string }>;
   /** Clear the custom-chain override and reload back to the default chain. */
   clearCustomChain: () => void;
@@ -610,18 +616,14 @@ export const SettingsProvider = ({
 
   const detectAndSetCustomChain = useCallback(
     async (
-      rpcUrl: string
+      rpcUrl: string,
+      fallbackChainId?: number
     ): Promise<{ chainId: number } | { error: string }> => {
       const url = rpcUrl.trim();
       if (!isHttpUrl(url)) {
         return { error: 'Must be an absolute http(s) URL' };
       }
-      try {
-        const client = createPublicClient({ transport: http(url) });
-        const chainId = await client.getChainId();
-        if (!Number.isInteger(chainId) || chainId <= 0) {
-          return { error: 'RPC returned an invalid chain ID' };
-        }
+      const persist = (chainId: number) => {
         if (typeof window !== 'undefined') {
           window.localStorage.setItem(STORAGE_KEYS.customRpcURL, url);
           window.localStorage.setItem(
@@ -631,8 +633,29 @@ export const SettingsProvider = ({
         }
         setCustomRpcOverride(url);
         setCustomChainIdOverride(chainId);
+      };
+      try {
+        const client = createPublicClient({ transport: http(url) });
+        const chainId = await client.getChainId();
+        if (!Number.isInteger(chainId) || chainId <= 0) {
+          // RPC reachable but returned a bogus id — fall back to the known id
+          // when the caller supplied one (presets), otherwise surface the error.
+          if (fallbackChainId != null) {
+            persist(fallbackChainId);
+            return { chainId: fallbackChainId };
+          }
+          return { error: 'RPC returned an invalid chain ID' };
+        }
+        persist(chainId);
         return { chainId };
       } catch {
+        // RPC unreachable. For known presets we still apply the override with the
+        // static id so the app switches chains and the fields populate; for a
+        // user-entered URL with no known id, surface the error as before.
+        if (fallbackChainId != null) {
+          persist(fallbackChainId);
+          return { chainId: fallbackChainId };
+        }
         return { error: 'Could not reach RPC or read chain ID' };
       }
     },
