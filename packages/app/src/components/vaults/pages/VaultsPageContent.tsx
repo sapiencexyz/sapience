@@ -426,7 +426,7 @@ const VaultsPageContent = () => {
               if (isInteractionDelayActive) return 'Cooldown in progress';
               if (depositAmount && exceedsVaultCapacity)
                 return 'Exceeds Vault Capacity';
-              if (quoteSignatureValid === false)
+              if (depositAmount && quoteSignatureValid !== true)
                 return 'Waiting for Price Quote';
               if (!pricePerShare || pricePerShare === '0')
                 return 'Cannot connect to vault';

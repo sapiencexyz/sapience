@@ -367,6 +367,40 @@ describe('VaultsPageContent geofence', () => {
     expect(depositBtn).not.toBeDisabled();
   });
 
+  it('does not show "Waiting for Price Quote" before an amount is entered', () => {
+    mockUsePassiveLiquidityVault.mockReturnValue({
+      ...passiveVaultDefaults(),
+      quoteSignatureValid: false,
+    });
+
+    render(<VaultsPageContent />);
+
+    // With no deposit amount entered, the button should fall back to its
+    // default label instead of nagging about a missing price quote.
+    expect(
+      screen.queryByRole('button', { name: /Waiting for Price Quote/ })
+    ).toBeNull();
+    expect(
+      screen.getByRole('button', { name: /Submit Deposit/ })
+    ).toBeInTheDocument();
+  });
+
+  it('shows "Waiting for Price Quote" once an amount is entered but the quote is not yet valid', () => {
+    mockUsePassiveLiquidityVault.mockReturnValue({
+      ...passiveVaultDefaults(),
+      quoteSignatureValid: false,
+    });
+
+    render(<VaultsPageContent />);
+
+    const inputs = screen.getAllByPlaceholderText('0.0');
+    fireEvent.change(inputs[0], { target: { value: '10' } });
+
+    expect(
+      screen.getByRole('button', { name: /Waiting for Price Quote/ })
+    ).toBeInTheDocument();
+  });
+
   it('shows the singles vault tab while keeping options hidden', () => {
     mockUseRestrictedJurisdiction.mockReturnValue({
       isRestricted: false,
