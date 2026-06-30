@@ -29,17 +29,19 @@ export type AdminConditionGroup = {
 
 const ADMIN_CONDITION_GROUPS_QUERY_KEY = ['admin', 'conditionGroups'] as const;
 
-// This page targets a single predict backend origin taken from the
-// `graphqlEndpoint` setting — the field the Meridian env presets actually set
-// (the separate `adminBaseUrl` setting defaults to the legacy sapience origin
-// and is left untouched by those presets, so deriving from it sent loads to the
-// wrong backend). Groups load from that `/graphql` endpoint unauthenticated, so
-// the operator is never prompted to sign just to browse; only saving (the
-// reorder mutation) is signed, and it derives the `/admin` REST base from the
-// same origin so load and save can never drift to different backends. The ids
-// line up with the REST surface: `Condition.conditionId` is the row primary key
-// the reorder endpoint expects, and `ConditionGroup.groupId` is the numeric
-// `:id` param.
+// This page targets the single GraphQL endpoint the app is actually configured
+// with. That value lives in the `graphqlEndpointV2` setting — the one the
+// "GraphQL Endpoint" Settings field and the Meridian env presets write, and the
+// one the SDK client reads for every app query (Sapience serves it at
+// `/v2/graphql`, Meridian at `/graphql`, so it stores a full URL). The separate
+// `adminBaseUrl` / v1 `graphqlEndpoint` settings are legacy and default to the
+// stale sapience origin, so reading them sent loads to the wrong backend.
+// Groups load from this endpoint unauthenticated, so the operator is never
+// prompted to sign just to browse; only saving (the reorder mutation) is signed,
+// and it derives the `/admin` REST base from the same origin so load and save
+// can never drift to different backends. The ids line up with the REST surface:
+// `Condition.conditionId` is the row primary key the reorder endpoint expects,
+// and `ConditionGroup.groupId` is the numeric `:id` param.
 function adminBaseFromGraphqlEndpoint(graphqlEndpoint: string): string {
   return `${new URL(graphqlEndpoint).origin}/admin`;
 }
@@ -184,11 +186,11 @@ async function fetchAllConditionGroups(
 export function useAdminConditionGroups(
   enabled: boolean
 ): UseQueryResult<AdminConditionGroup[]> {
-  const { graphqlEndpoint } = useSettings();
+  const { graphqlEndpointV2 } = useSettings();
   return useQuery({
-    queryKey: [...ADMIN_CONDITION_GROUPS_QUERY_KEY, graphqlEndpoint],
-    queryFn: () => fetchAllConditionGroups(graphqlEndpoint as string),
-    enabled: enabled && Boolean(graphqlEndpoint),
+    queryKey: [...ADMIN_CONDITION_GROUPS_QUERY_KEY, graphqlEndpointV2],
+    queryFn: () => fetchAllConditionGroups(graphqlEndpointV2 as string),
+    enabled: enabled && Boolean(graphqlEndpointV2),
   });
 }
 
@@ -207,9 +209,9 @@ export function useReorderConditionGroup(): UseMutationResult<
   Error,
   ReorderConditionGroupInput
 > {
-  const { graphqlEndpoint } = useSettings();
-  const adminBase = graphqlEndpoint
-    ? adminBaseFromGraphqlEndpoint(graphqlEndpoint)
+  const { graphqlEndpointV2 } = useSettings();
+  const adminBase = graphqlEndpointV2
+    ? adminBaseFromGraphqlEndpoint(graphqlEndpointV2)
     : undefined;
   const { putJson } = useAdminApi(adminBase);
   const queryClient = useQueryClient();
