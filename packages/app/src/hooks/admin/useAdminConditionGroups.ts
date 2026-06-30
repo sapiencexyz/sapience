@@ -23,6 +23,7 @@ export type AdminConditionGroup = {
   name: string;
   negRisk: boolean;
   condition: AdminConditionGroupCondition[];
+  hasMoreConditions: boolean;
 };
 
 const ADMIN_CONDITION_GROUPS_QUERY_KEY = ['admin', 'conditionGroups'] as const;
@@ -60,6 +61,9 @@ const ADMIN_CONDITION_GROUPS_QUERY = `
             displayOrder
             similarMarketVolume
           }
+          pageInfo {
+            hasNextPage
+          }
         }
       }
       pageInfo {
@@ -83,7 +87,10 @@ type GqlGroupNode = {
   groupId: number;
   name: string;
   negRisk: boolean;
-  conditions: { nodes: GqlConditionNode[] };
+  conditions: {
+    nodes: GqlConditionNode[];
+    pageInfo?: { hasNextPage: boolean };
+  };
 };
 
 type AdminConditionGroupsResponse = {
@@ -98,6 +105,25 @@ type AdminConditionGroupsResponse = {
 
 // Safety cap on pagination: 20 * 100 = 2000 groups. Well above the real count.
 const MAX_GROUP_PAGES = 20;
+
+async function readErrorMessage(resp: Response): Promise<string> {
+  const fallback = `Failed to load condition groups (${resp.status})`;
+  const text = await resp.text().catch(() => '');
+  if (!text) return fallback;
+
+  try {
+    const parsed = JSON.parse(text) as {
+      errors?: { message?: string }[];
+      message?: string;
+      error?: string;
+    };
+    const message =
+      parsed.errors?.[0]?.message ?? parsed.message ?? parsed.error ?? text;
+    return `${fallback}: ${message}`;
+  } catch {
+    return `${fallback}: ${text}`;
+  }
+}
 
 async function fetchAllConditionGroups(
   endpoint: string
@@ -115,7 +141,7 @@ async function fetchAllConditionGroups(
       }),
     });
     if (!resp.ok) {
-      throw new Error(`Failed to load condition groups (${resp.status})`);
+      throw new Error(await readErrorMessage(resp));
     }
     const json = (await resp.json()) as AdminConditionGroupsResponse;
     if (Array.isArray(json.errors) && json.errors.length > 0) {
@@ -128,6 +154,7 @@ async function fetchAllConditionGroups(
         id: node.groupId,
         name: node.name,
         negRisk: node.negRisk,
+        hasMoreConditions: node.conditions?.pageInfo?.hasNextPage ?? false,
         condition: (node.conditions?.nodes ?? []).map((c) => ({
           id: c.conditionId,
           question: c.question,

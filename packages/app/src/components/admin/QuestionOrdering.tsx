@@ -20,8 +20,8 @@ import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@sapience/ui/components/ui/button';
 import { Input } from '@sapience/ui/components/ui/input';
 import { useToast } from '@sapience/ui/hooks/use-toast';
-import { GripVertical } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { ArrowDown, ArrowUp, Check, GripVertical } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAccount } from 'wagmi';
 
 import {
@@ -56,9 +56,11 @@ function isPermutation(base: string[], next: string[]): boolean {
 function SortableConditionRow({
   condition,
   position,
+  baselinePosition,
 }: {
   condition: AdminConditionGroupCondition;
   position: number;
+  baselinePosition: number;
 }) {
   const {
     attributes,
@@ -69,12 +71,17 @@ function SortableConditionRow({
     isDragging,
   } = useSortable({ id: condition.id });
 
+  // delta > 0 → moved up the list (toward the top); < 0 → moved down.
+  const delta = baselinePosition - position;
+  const moved = delta !== 0;
+
   return (
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
-        'flex items-center gap-3 rounded-md border bg-background px-3 py-2',
+        'flex items-center gap-3 rounded-md border bg-background px-3 py-2 transition-colors',
+        moved && 'border-amber-500/60 bg-amber-500/10',
         isDragging && 'opacity-70 shadow-sm'
       )}
     >
@@ -87,12 +94,40 @@ function SortableConditionRow({
       >
         <GripVertical className="h-4 w-4" />
       </button>
-      <span className="w-6 shrink-0 text-sm tabular-nums text-muted-foreground">
-        {position}
+      <span className="flex w-12 shrink-0 items-center gap-1 tabular-nums">
+        <span
+          className={cn(
+            'text-sm',
+            moved ? 'font-semibold text-foreground' : 'text-muted-foreground'
+          )}
+        >
+          {position}
+        </span>
+        {moved ? (
+          <span
+            className={cn(
+              'flex items-center text-xs font-medium',
+              delta > 0 ? 'text-emerald-600' : 'text-rose-600'
+            )}
+            aria-label={
+              delta > 0 ? `Moved up ${delta}` : `Moved down ${Math.abs(delta)}`
+            }
+          >
+            {delta > 0 ? (
+              <ArrowUp className="h-3 w-3" />
+            ) : (
+              <ArrowDown className="h-3 w-3" />
+            )}
+            {Math.abs(delta)}
+          </span>
+        ) : null}
       </span>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm">{conditionLabel(condition)}</p>
         <p className="text-xs text-muted-foreground">
+          {moved ? (
+            <span className="text-amber-600">was #{baselinePosition} · </span>
+          ) : null}
           {volumeFormatter.format(condition.similarMarketVolume)} Vol
         </p>
       </div>
@@ -107,6 +142,10 @@ const QuestionOrdering = () => {
   const [groupFilter, setGroupFilter] = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
   const [order, setOrder] = useState<string[]>([]);
+  const loadedBaselineRef = useRef<{ groupId: number | null; key: string }>({
+    groupId: null,
+    key: '',
+  });
 
   // Loading reads the public GraphQL endpoint, so it is safe to fetch on mount
   // without a wallet or signature.
@@ -136,11 +175,37 @@ const QuestionOrdering = () => {
     [selectedGroup]
   );
 
-  // Reset the working order whenever a different group is selected or the
-  // group's saved order changes (e.g. after a successful save refetch).
-  useEffect(() => {
-    setOrder(baselineIds);
+  const baselineKey = useMemo(() => baselineIds.join('\u0000'), [baselineIds]);
+
+  const baselineIndexById = useMemo(() => {
+    const map = new Map<string, number>();
+    baselineIds.forEach((id, index) => map.set(id, index));
+    return map;
   }, [baselineIds]);
+
+  const isDirty = useMemo(
+    () => order.join(',') !== baselineIds.join(','),
+    [order, baselineIds]
+  );
+
+  const movedCount = useMemo(
+    () => order.reduce((n, id, i) => (baselineIds[i] === id ? n : n + 1), 0),
+    [order, baselineIds]
+  );
+
+  // Reset the working order when the operator selects a different group. For
+  // background refetches of the same group, keep a dirty draft intact.
+  useEffect(() => {
+    const loaded = loadedBaselineRef.current;
+    const groupChanged = loaded.groupId !== selectedGroupId;
+    const baselineChanged = loaded.key !== baselineKey;
+
+    if (groupChanged || (!isDirty && baselineChanged)) {
+      setOrder(baselineIds);
+    }
+
+    loadedBaselineRef.current = { groupId: selectedGroupId, key: baselineKey };
+  }, [baselineIds, baselineKey, isDirty, selectedGroupId]);
 
   const conditionsById = useMemo(() => {
     const map = new Map<string, AdminConditionGroupCondition>();
@@ -149,11 +214,6 @@ const QuestionOrdering = () => {
     );
     return map;
   }, [selectedGroup]);
-
-  const isDirty = useMemo(
-    () => order.join(',') !== baselineIds.join(','),
-    [order, baselineIds]
-  );
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -304,6 +364,9 @@ const QuestionOrdering = () => {
                             key={conditionId}
                             condition={condition}
                             position={index + 1}
+                            baselinePosition={
+                              (baselineIndexById.get(conditionId) ?? index) + 1
+                            }
                           />
                         );
                       })}
@@ -311,28 +374,62 @@ const QuestionOrdering = () => {
                   </SortableContext>
                 </DndContext>
 
-                <div className="flex items-center justify-end gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={!isDirty || reorderMutation.isPending}
-                    onClick={() => setOrder(baselineIds)}
-                  >
-                    Reset
-                  </Button>
-                  <Button
-                    size="sm"
-                    disabled={
-                      !isDirty || !isConnected || reorderMutation.isPending
-                    }
-                    onClick={handleSave}
-                  >
-                    {reorderMutation.isPending ? 'Saving…' : 'Save order'}
-                  </Button>
+                {selectedGroup.hasMoreConditions ? (
+                  <p className="rounded-md border border-yellow-500/40 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-700 dark:text-yellow-300">
+                    Only the first 100 public conditions are loaded for this
+                    group. Saving will reorder only the loaded conditions and
+                    leave the rest untouched.
+                  </p>
+                ) : null}
+
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 text-xs">
+                    {isDirty ? (
+                      <>
+                        <span className="h-2 w-2 rounded-full bg-amber-500" />
+                        <span className="font-medium text-amber-600">
+                          {movedCount}{' '}
+                          {movedCount === 1 ? 'question' : 'questions'} moved ·
+                          unsaved
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="h-3.5 w-3.5 text-emerald-600" />
+                        <span className="text-muted-foreground">
+                          All changes saved
+                        </span>
+                      </>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={!isDirty || reorderMutation.isPending}
+                      onClick={() => setOrder(baselineIds)}
+                    >
+                      Reset
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={
+                        !isDirty || !isConnected || reorderMutation.isPending
+                      }
+                      onClick={handleSave}
+                    >
+                      {reorderMutation.isPending ? 'Saving…' : 'Save order'}
+                    </Button>
+                  </div>
                 </div>
                 {!isConnected ? (
                   <p className="text-right text-xs text-muted-foreground">
                     Connect an admin wallet to save.
+                  </p>
+                ) : isDirty ? (
+                  <p className="text-right text-xs text-muted-foreground">
+                    Saving prompts a one-time wallet signature and updates only
+                    display order.
                   </p>
                 ) : null}
               </>
