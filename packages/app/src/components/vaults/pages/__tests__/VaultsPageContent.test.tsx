@@ -619,4 +619,28 @@ describe('VaultsPageContent vault balance display', () => {
       expect.objectContaining({ isLoading: true })
     );
   });
+
+  it('drives TVL from the live on-chain vault balance plus indexer escrow terms', () => {
+    // Indexer reports a stale liquid/total; the live on-chain balance must win.
+    mockUsePassiveLiquidityVault.mockReturnValue({
+      ...passiveVaultDefaults(),
+      vaultCollateralBalance: 30n * 10n ** 18n, // live on-chain liquid
+    });
+    mockUseVaultAccountValue.mockReturnValue({
+      data: {
+        collateralBalance: (999n * 10n ** 18n).toString(), // stale, must be ignored
+        deployedCollateral: (10n * 10n ** 18n).toString(),
+        claimableCollateral: (5n * 10n ** 18n).toString(),
+        totalValue: (999n * 10n ** 18n).toString(), // stale, must be ignored
+        timestamp: 1,
+      },
+      isLoading: false,
+    });
+
+    render(<VaultsPageContent />);
+
+    // TVL = live 30 + deployed 10 + claimable 5 = 45.00 (not the stale 999.00)
+    expect(screen.getAllByText(/45\.00 USDe/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/999\.00 USDe/)).toBeNull();
+  });
 });

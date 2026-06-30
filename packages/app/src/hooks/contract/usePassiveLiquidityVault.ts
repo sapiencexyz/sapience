@@ -169,6 +169,28 @@ export function usePassiveLiquidityVault(
     },
   });
 
+  // Live collateral actually held by the vault contract. The TVL/progress bar
+  // uses this for the in-vault (liquid) term instead of the periodically-indexed
+  // value, so a deposit/cancel/withdrawal is reflected immediately. The
+  // escrow-held terms (deployed + claimable) still come from the indexer since
+  // they can't be read cheaply on-chain.
+  const { data: vaultCollateralBalanceRaw, refetch: refetchVaultCollateral } =
+    useReadContract({
+      abi: erc20Abi,
+      address: assetAddress,
+      functionName: 'balanceOf',
+      args: VAULT_ADDRESS ? [VAULT_ADDRESS] : undefined,
+      chainId: TARGET_CHAIN_ID,
+      query: {
+        enabled: !!VAULT_ADDRESS && !!assetAddress,
+        refetchInterval: 5000,
+      },
+    });
+  const vaultCollateralBalance =
+    typeof vaultCollateralBalanceRaw === 'bigint'
+      ? vaultCollateralBalanceRaw
+      : undefined;
+
   const { data: wusdeAllowance, refetch: refetchWusdeAllowance } =
     useReadContract({
       abi: erc20Abi,
@@ -234,6 +256,7 @@ export function usePassiveLiquidityVault(
       refetchWusdeBalance();
       refetchWusdeAllowance();
       refetchPendingMapping();
+      refetchVaultCollateral();
     },
     successMessage: 'Vault transaction submission was successful',
     fallbackErrorMessage: 'Vault transaction failed',
@@ -443,6 +466,7 @@ export function usePassiveLiquidityVault(
     vaultData: parsedVaultData,
     userData: parsedUserData,
     pendingRequest,
+    vaultCollateralBalance,
     userAssetBalance,
     assetDecimals,
     allowance: currentAllowance,

@@ -171,6 +171,7 @@ const VaultsPageContent = () => {
     vaultData,
     userData,
     pendingRequest,
+    vaultCollateralBalance,
     userAssetBalance,
     assetDecimals,
     isVaultPending,
@@ -581,15 +582,27 @@ const VaultsPageContent = () => {
     ? BigInt(vaultAccountValue.deployedCollateral)
     : 0n;
 
-  // Vault AUM is computed from one indexed account view: current wallet
-  // collateral balance + collateral deployed in open positions + settled/won
-  // collateral owed but not yet claimed. Keeping all three terms on the same
-  // freshness boundary avoids the old live-contract + cached-snapshot drift.
-  const tvlWei = vaultAccountValue?.totalValue
-    ? BigInt(vaultAccountValue.totalValue)
+  const claimableWei = vaultAccountValue?.claimableCollateral
+    ? BigInt(vaultAccountValue.claimableCollateral)
     : 0n;
 
-  const isBalanceReady = !!vaultAccountValue;
+  // Vault AUM = collateral actually in the vault contract (liquid) + collateral
+  // deployed in open positions + settled/won collateral owed but not yet claimed.
+  // The liquid term is read live on-chain (`vaultCollateralBalance`, the asset's
+  // balanceOf(vault)) so a deposit/cancel/withdrawal is reflected immediately,
+  // rather than waiting on the periodic indexer snapshot. The escrow-held terms
+  // (deployed + claimable) still come from the indexer since they can't be read
+  // cheaply on-chain. Falls back to the indexer's totalValue until the on-chain
+  // read resolves.
+  const tvlWei =
+    vaultCollateralBalance !== undefined
+      ? vaultCollateralBalance + deployedWei + claimableWei
+      : vaultAccountValue?.totalValue
+        ? BigInt(vaultAccountValue.totalValue)
+        : 0n;
+
+  const isBalanceReady =
+    vaultCollateralBalance !== undefined || !!vaultAccountValue;
 
   const utilizationPercent = useMemo(() => {
     if (tvlWei <= 0n) return 0;
