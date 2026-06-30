@@ -9,9 +9,9 @@ import {
   fetchUserForecasts,
 } from '../forecasts';
 
-const mockGraphqlRequestV2 = vi.fn();
+const mockGraphqlRequest = vi.fn();
 vi.mock('../client/graphqlClient', () => ({
-  graphqlRequestV2: (...args: unknown[]) => mockGraphqlRequestV2(...args),
+  graphqlRequest: (...args: unknown[]) => mockGraphqlRequest(...args),
 }));
 
 beforeEach(() => {
@@ -34,10 +34,10 @@ function makeNode(overrides: Record<string, unknown> = {}) {
 }
 
 // ============================================================================
-// v2 documents
+// forecast documents
 // ============================================================================
 
-describe('v2 forecast documents', () => {
+describe('forecast documents', () => {
   test('list query targets the forecasts connection with explicit ATTESTED_AT DESC', () => {
     expect(GET_FORECASTS_QUERY).toContain('forecasts(');
     expect(GET_FORECASTS_QUERY).toContain(
@@ -46,7 +46,7 @@ describe('v2 forecast documents', () => {
     expect(GET_FORECASTS_QUERY).toContain('first: $first');
     expect(GET_FORECASTS_QUERY).toContain('filter: $filter');
     expect(GET_FORECASTS_QUERY).toContain('nodes');
-    // v2 field names — not the v1 attestation row shape
+    // current field names — not the legacy attestation row shape
     expect(GET_FORECASTS_QUERY).toContain('attestedAt');
     expect(GET_FORECASTS_QUERY).toContain('value');
     expect(GET_FORECASTS_QUERY).not.toContain('prediction');
@@ -71,11 +71,11 @@ describe('v2 forecast documents', () => {
 // ============================================================================
 
 describe('formatAttestationData', () => {
-  test('maps v2 value straight through', () => {
+  test('maps value straight through', () => {
     expect(formatAttestationData(makeNode()).value).toBe('75');
   });
 
-  test('keys id on the EAS uid (no numeric row id in v2)', () => {
+  test('keys id on the EAS uid (no numeric row id)', () => {
     const result = formatAttestationData(makeNode());
     expect(result.id).toBe('0xabc123');
     expect(result.uid).toBe('0xabc123');
@@ -104,11 +104,11 @@ describe('formatAttestationData', () => {
     expect(result.conditionId).toBe('0xcond1');
   });
 
-  test('null comment becomes empty string (v2 comment is nullable)', () => {
+  test('null comment becomes empty string (comment is nullable)', () => {
     expect(formatAttestationData(makeNode({ comment: null })).comment).toBe('');
   });
 
-  test('null conditionId becomes undefined (v2 conditionId is nullable)', () => {
+  test('null conditionId becomes undefined (conditionId is nullable)', () => {
     expect(
       formatAttestationData(makeNode({ conditionId: null })).conditionId
     ).toBeUndefined();
@@ -170,47 +170,47 @@ describe('generateForecastsQueryKey', () => {
 
 describe('fetchForecasts', () => {
   test('defaults filter.schemaId to the forecast schema UID', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({ forecasts: { nodes: [] } });
+    mockGraphqlRequest.mockResolvedValue({ forecasts: { nodes: [] } });
     await fetchForecasts({});
-    const [doc, vars] = mockGraphqlRequestV2.mock.calls[0];
+    const [doc, vars] = mockGraphqlRequest.mock.calls[0];
     expect(doc).toBe(GET_FORECASTS_QUERY);
     expect(vars.filter.schemaId).toBe(DEFAULT_SCHEMA_UID);
   });
 
-  test('requests max 100 forecasts (v2 maxTake)', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({ forecasts: { nodes: [] } });
+  test('requests max 100 forecasts (connection max page size)', async () => {
+    mockGraphqlRequest.mockResolvedValue({ forecasts: { nodes: [] } });
     await fetchForecasts({});
-    expect(mockGraphqlRequestV2.mock.calls[0][1].first).toBe(100);
+    expect(mockGraphqlRequest.mock.calls[0][1].first).toBe(100);
   });
 
   test('normalizes attester address with EIP-55 checksum', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({ forecasts: { nodes: [] } });
+    mockGraphqlRequest.mockResolvedValue({ forecasts: { nodes: [] } });
     await fetchForecasts({
       attesterAddress: '0x1234567890abcdef1234567890abcdef12345678',
     });
-    expect(mockGraphqlRequestV2.mock.calls[0][1].filter.attester).toBe(
+    expect(mockGraphqlRequest.mock.calls[0][1].filter.attester).toBe(
       '0x1234567890AbcdEF1234567890aBcdef12345678'
     );
   });
 
   test('keeps an unparseable attester address as provided', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({ forecasts: { nodes: [] } });
+    mockGraphqlRequest.mockResolvedValue({ forecasts: { nodes: [] } });
     await fetchForecasts({ attesterAddress: 'not-an-address' });
-    expect(mockGraphqlRequestV2.mock.calls[0][1].filter.attester).toBe(
+    expect(mockGraphqlRequest.mock.calls[0][1].filter.attester).toBe(
       'not-an-address'
     );
   });
 
-  test('maps single conditionId onto the v2 conditionIds list filter', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({ forecasts: { nodes: [] } });
+  test('maps single conditionId onto the conditionIds list filter', async () => {
+    mockGraphqlRequest.mockResolvedValue({ forecasts: { nodes: [] } });
     await fetchForecasts({ conditionId: '0xcond1' });
-    expect(mockGraphqlRequestV2.mock.calls[0][1].filter.conditionIds).toEqual([
+    expect(mockGraphqlRequest.mock.calls[0][1].filter.conditionIds).toEqual([
       '0xcond1',
     ]);
   });
 
   test('returns nodes mapped through formatAttestationData', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       forecasts: { nodes: [makeNode()] },
     });
     const result = await fetchForecasts({});
@@ -221,7 +221,7 @@ describe('fetchForecasts', () => {
   });
 
   test('throws on invalid response structure', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({});
+    mockGraphqlRequest.mockResolvedValue({});
     await expect(fetchForecasts({})).rejects.toThrow(
       'Failed to fetch forecasts: Invalid response structure'
     );
@@ -242,9 +242,9 @@ describe('fetchForecastsPage', () => {
   });
 
   test('sends first with explicit ATTESTED_AT DESC by default', async () => {
-    mockGraphqlRequestV2.mockResolvedValue(page());
+    mockGraphqlRequest.mockResolvedValue(page());
     await fetchForecastsPage({}, { first: 20 });
-    const [doc, vars] = mockGraphqlRequestV2.mock.calls[0];
+    const [doc, vars] = mockGraphqlRequest.mock.calls[0];
     expect(doc).toBe(GET_FORECASTS_PAGINATED_QUERY);
     expect(vars.first).toBe(20);
     expect(vars.after).toBeNull();
@@ -252,22 +252,22 @@ describe('fetchForecastsPage', () => {
   });
 
   test('threads the after cursor', async () => {
-    mockGraphqlRequestV2.mockResolvedValue(page());
+    mockGraphqlRequest.mockResolvedValue(page());
     await fetchForecastsPage({}, { first: 20, after: 'cursor-0' });
-    expect(mockGraphqlRequestV2.mock.calls[0][1].after).toBe('cursor-0');
+    expect(mockGraphqlRequest.mock.calls[0][1].after).toBe('cursor-0');
   });
 
   test('supports ascending direction', async () => {
-    mockGraphqlRequestV2.mockResolvedValue(page());
+    mockGraphqlRequest.mockResolvedValue(page());
     await fetchForecastsPage({}, { first: 20, orderDirection: 'asc' });
-    expect(mockGraphqlRequestV2.mock.calls[0][1].orderBy).toEqual({
+    expect(mockGraphqlRequest.mock.calls[0][1].orderBy).toEqual({
       field: 'ATTESTED_AT',
       direction: 'ASC',
     });
   });
 
   test('returns formatted items plus pageInfo', async () => {
-    mockGraphqlRequestV2.mockResolvedValue(page());
+    mockGraphqlRequest.mockResolvedValue(page());
     const result = await fetchForecastsPage({}, { first: 20 });
     expect(result.items).toHaveLength(1);
     expect(result.items[0].uid).toBe('0xabc123');
@@ -278,7 +278,7 @@ describe('fetchForecastsPage', () => {
   });
 
   test('normalizes a missing endCursor to null', async () => {
-    mockGraphqlRequestV2.mockResolvedValue(
+    mockGraphqlRequest.mockResolvedValue(
       page({ pageInfo: { hasNextPage: false } })
     );
     const result = await fetchForecastsPage({}, { first: 20 });
@@ -286,7 +286,7 @@ describe('fetchForecastsPage', () => {
   });
 
   test('throws on invalid response structure', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({ forecasts: null });
+    mockGraphqlRequest.mockResolvedValue({ forecasts: null });
     await expect(fetchForecastsPage({}, { first: 20 })).rejects.toThrow(
       'Failed to fetch forecasts: Invalid response structure'
     );
@@ -299,7 +299,7 @@ describe('fetchForecastsPage', () => {
 
 describe('fetchUserForecasts', () => {
   test('filters by attester and returns a formatted page', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       forecasts: {
         nodes: [makeNode({ value: '80' })],
         pageInfo: { hasNextPage: false, endCursor: null },
@@ -312,7 +312,7 @@ describe('fetchUserForecasts', () => {
       orderDirection: 'desc',
     });
 
-    const vars = mockGraphqlRequestV2.mock.calls[0][1];
+    const vars = mockGraphqlRequest.mock.calls[0][1];
     expect(vars.filter.attester).toBe(
       '0x1234567890AbcdEF1234567890aBcdef12345678'
     );
@@ -323,7 +323,7 @@ describe('fetchUserForecasts', () => {
   });
 
   test('passes after cursor and ascending direction', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       forecasts: {
         nodes: [],
         pageInfo: { hasNextPage: false, endCursor: null },
@@ -336,14 +336,14 @@ describe('fetchUserForecasts', () => {
       orderDirection: 'asc',
     });
 
-    const vars = mockGraphqlRequestV2.mock.calls[0][1];
+    const vars = mockGraphqlRequest.mock.calls[0][1];
     expect(vars.after).toBe('cursor-5');
     expect(vars.first).toBe(10);
     expect(vars.orderBy).toEqual({ field: 'ATTESTED_AT', direction: 'ASC' });
   });
 
   test('returns empty items when the page has no nodes', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       forecasts: {
         nodes: [],
         pageInfo: { hasNextPage: false, endCursor: null },

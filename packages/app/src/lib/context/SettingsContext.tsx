@@ -19,9 +19,8 @@ import {
 } from 'react';
 
 type SettingsContextValue = {
-  graphqlEndpoint: string | null;
   /** GraphQL endpoint used by the app. The full path is stored as configured. */
-  graphqlEndpointV2: string | null;
+  graphqlEndpoint: string | null;
   /**
    * Auction relayer base URL (stored as http(s) and typically includes the `/auction` path).
    * This is used to construct the auction WebSocket URL via `toAuctionWsUrl(...)`.
@@ -45,7 +44,6 @@ type SettingsContextValue = {
   meshMaxPeers: number | null;
   meshFanout: number | null;
   setGraphqlEndpoint: (value: string | null) => void;
-  setGraphqlEndpointV2: (value: string | null) => void;
   setApiBaseUrl: (value: string | null) => void;
   setChatBaseUrl: (value: string | null) => void;
   setAdminBaseUrl: (value: string | null) => void;
@@ -73,7 +71,6 @@ type SettingsContextValue = {
   setMeshFanout: (value: number | null) => void;
   defaults: {
     graphqlEndpoint: string;
-    graphqlEndpointV2: string;
     apiBaseUrl: string;
     chatBaseUrl: string;
     adminBaseUrl: string;
@@ -89,7 +86,8 @@ type SettingsContextValue = {
 
 const STORAGE_KEYS = {
   graphql: 'sapience.settings.graphqlEndpoint',
-  graphqlV2: 'sapience.settings.graphqlEndpointV2',
+  // Legacy key, read once for migration into `graphql` then removed on save.
+  legacyGraphqlV2: 'sapience.settings.graphqlEndpointV2',
   api: 'sapience.settings.apiBaseUrl',
   chat: 'sapience.settings.chatBaseUrl',
   admin: 'sapience.settings.adminBaseUrl',
@@ -160,19 +158,9 @@ function getDefaultRelayerBase(): string {
   }
 }
 
+// Default app GraphQL endpoint. Sapience serves the schema at `/v2/graphql`;
+// Meridian exposes the same schema at `/graphql` and overrides the full URL.
 function getDefaultGraphqlEndpoint(): string {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz';
-  try {
-    const u = new URL(baseUrl);
-    return `${u.origin}/graphql`;
-  } catch {
-    return 'https://api.sapience.xyz/graphql';
-  }
-}
-
-// Default app GraphQL endpoint for Sapience deployments.
-function getDefaultGraphqlEndpointV2(): string {
   const baseUrl =
     process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz';
   try {
@@ -233,9 +221,6 @@ export const SettingsProvider = ({
   children: React.ReactNode;
 }) => {
   const [graphqlOverride, setGraphqlOverride] = useState<string | null>(null);
-  const [graphqlV2Override, setGraphqlV2Override] = useState<string | null>(
-    null
-  );
   const [apiBaseOverride, setApiBaseOverride] = useState<string | null>(null);
   const [chatBaseOverride, setChatBaseOverride] = useState<string | null>(null);
   const [adminBaseOverride, setAdminBaseOverride] = useState<string | null>(
@@ -276,9 +261,10 @@ export const SettingsProvider = ({
         typeof window !== 'undefined'
           ? window.localStorage.getItem(STORAGE_KEYS.graphql)
           : null;
-      const gV2 =
+      // Migration: older sessions stored the endpoint under the legacy v2 key.
+      const gLegacy =
         typeof window !== 'undefined'
-          ? window.localStorage.getItem(STORAGE_KEYS.graphqlV2)
+          ? window.localStorage.getItem(STORAGE_KEYS.legacyGraphqlV2)
           : null;
       const a =
         typeof window !== 'undefined'
@@ -304,8 +290,8 @@ export const SettingsProvider = ({
         typeof window !== 'undefined'
           ? window.localStorage.getItem(STORAGE_KEYS.connectionDurationHours)
           : null;
-      if (g && isHttpUrl(g)) setGraphqlOverride(g);
-      if (gV2 && isHttpUrl(gV2)) setGraphqlV2Override(gV2);
+      const gResolved = g && isHttpUrl(g) ? g : gLegacy;
+      if (gResolved && isHttpUrl(gResolved)) setGraphqlOverride(gResolved);
       if (a && isHttpUrl(a))
         setApiBaseOverride(normalizeBaseUrlPreservePath(a));
       if (c !== null && c.trim() === '') {
@@ -384,7 +370,6 @@ export const SettingsProvider = ({
   const defaults = useMemo(
     () => ({
       graphqlEndpoint: getDefaultGraphqlEndpoint(),
-      graphqlEndpointV2: getDefaultGraphqlEndpointV2(),
       apiBaseUrl: getDefaultRelayerBase(),
       signalEndpoint: getDefaultSignalEndpoint(),
       chatBaseUrl: getDefaultChatBase(),
@@ -419,9 +404,6 @@ export const SettingsProvider = ({
 
   const graphqlEndpoint = mounted
     ? graphqlOverride || defaults.graphqlEndpoint
-    : null;
-  const graphqlEndpointV2 = mounted
-    ? graphqlV2Override || defaults.graphqlEndpointV2
     : null;
   const apiBaseUrl = mounted ? apiBaseOverride || defaults.apiBaseUrl : null;
   const signalEndpoint = mounted
@@ -465,6 +447,8 @@ export const SettingsProvider = ({
   const setGraphqlEndpoint = useCallback((value: string | null) => {
     try {
       if (typeof window === 'undefined') return;
+      // Always clear the legacy v2 key so a stale value can't resurface.
+      window.localStorage.removeItem(STORAGE_KEYS.legacyGraphqlV2);
       if (!value) {
         window.localStorage.removeItem(STORAGE_KEYS.graphql);
         setGraphqlOverride(null);
@@ -474,23 +458,6 @@ export const SettingsProvider = ({
       if (!isHttpUrl(v)) return;
       window.localStorage.setItem(STORAGE_KEYS.graphql, v);
       setGraphqlOverride(v);
-    } catch {
-      /* noop */
-    }
-  }, []);
-
-  const setGraphqlEndpointV2 = useCallback((value: string | null) => {
-    try {
-      if (typeof window === 'undefined') return;
-      if (!value) {
-        window.localStorage.removeItem(STORAGE_KEYS.graphqlV2);
-        setGraphqlV2Override(null);
-        return;
-      }
-      const v = value.trim();
-      if (!isHttpUrl(v)) return;
-      window.localStorage.setItem(STORAGE_KEYS.graphqlV2, v);
-      setGraphqlV2Override(v);
     } catch {
       /* noop */
     }
@@ -749,7 +716,6 @@ export const SettingsProvider = ({
 
   const value: SettingsContextValue = {
     graphqlEndpoint,
-    graphqlEndpointV2,
     apiBaseUrl,
     signalEndpoint,
     chatBaseUrl,
@@ -763,7 +729,6 @@ export const SettingsProvider = ({
     meshMaxPeers,
     meshFanout,
     setGraphqlEndpoint,
-    setGraphqlEndpointV2,
     setApiBaseUrl,
     setSignalEndpoint,
     setChatBaseUrl,

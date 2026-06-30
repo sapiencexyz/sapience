@@ -1,13 +1,13 @@
 // Prediction data types, queries, and fetch helpers.
 // Shared across SSR pages, client components, and OG image routes.
 
-import { getGraphQLEndpointV2 } from './graphql';
+import { getGraphQLEndpoint } from './graphql';
 import {
   toPickConfigData,
-  type PickConfigurationV2Node,
+  type PickConfigurationNode,
 } from '~/lib/adapters/pickConfig';
 
-// v2 document — runs against the /v2/graphql endpoint. Variables:
+// GraphQL document — runs against the /v2/graphql endpoint. Variables:
 // { predictionId }. The pickConfig carries the full scalar set (mapped via
 // the shared adapter) but slim picks: condition metadata comes from the
 // separate CONDITIONS_BY_IDS_QUERY leg, so the heavy embed is skipped.
@@ -52,7 +52,7 @@ export const PREDICTION_BY_ID_QUERY = `
   }
 `;
 
-// v2 document — runs against the /v2/graphql endpoint. Variables: { ids }.
+// GraphQL document — runs against the /v2/graphql endpoint. Variables: { ids }.
 // `id: conditionId` keeps the CTF hash under the stable `id` name.
 export const CONDITIONS_BY_IDS_QUERY = `
   query ConditionsByIds($ids: [Bytes!]!) {
@@ -77,8 +77,8 @@ export const CONDITIONS_BY_IDS_QUERY = `
 `;
 
 export interface PredictionPick {
-  /** Re-keyed stable string `${pickConfigId}:${conditionId}` — v2 drops the
-   *  numeric Prisma row id. */
+  /** Re-keyed stable string `${pickConfigId}:${conditionId}` — the GraphQL schema
+   *  has no numeric Prisma row id. */
   id: string;
   conditionResolver: string;
   conditionId: string;
@@ -113,9 +113,9 @@ export interface PredictionData {
   pickConfig?: PredictionPickConfig | null;
 }
 
-/** v2 wire shape of the PREDICTION_BY_ID_QUERY node (BigInt scalars may
+/** GraphQL wire shape of the PREDICTION_BY_ID_QUERY node (BigInt scalars may
  *  arrive as numbers). */
-export type PredictionByIdV2Node = {
+export type PredictionByIdNode = {
   predictionId: string;
   chainId: number;
   escrow: string;
@@ -129,19 +129,19 @@ export type PredictionByIdV2Node = {
   settledAt?: number | null;
   result: 'PREDICTOR_WINS' | 'COUNTERPARTY_WINS' | 'NON_DECISIVE' | null;
   createdAt: string;
-  pickConfig?: PickConfigurationV2Node | null;
+  pickConfig?: PickConfigurationNode | null;
 };
 
 /**
- * Pure mapper: v2 Prediction node → SSR `PredictionData`.
+ * Pure mapper: GraphQL Prediction node → SSR `PredictionData`.
  *
  * - `marketAddress` := `escrow`
- * - `result` := `result ?? 'UNRESOLVED'` (v2 result is nullable)
+ * - `result` := `result ?? 'UNRESOLVED'` (the GraphQL result is nullable)
  * - BigInt scalars normalized via `String()`
  * - `pickConfig` via the shared adapter (escrow → marketAddress,
  *   resolver → conditionResolver, YES/NO → 1/0)
  */
-export function toPredictionData(node: PredictionByIdV2Node): PredictionData {
+export function toPredictionData(node: PredictionByIdNode): PredictionData {
   return {
     predictionId: node.predictionId,
     chainId: node.chainId,
@@ -181,7 +181,7 @@ export async function fetchPredictionWithConditions(
   prediction: PredictionData | null;
   conditions: (ConditionData & { id: string })[];
 }> {
-  const resp = await fetch(getGraphQLEndpointV2(), {
+  const resp = await fetch(getGraphQLEndpoint(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -191,7 +191,7 @@ export async function fetchPredictionWithConditions(
   });
   if (!resp.ok) return { prediction: null, conditions: [] };
   const json = await resp.json();
-  const node: PredictionByIdV2Node | null = json?.data?.prediction ?? null;
+  const node: PredictionByIdNode | null = json?.data?.prediction ?? null;
   if (!node) return { prediction: null, conditions: [] };
   const prediction = toPredictionData(node);
 
@@ -201,7 +201,7 @@ export async function fetchPredictionWithConditions(
 
   let conditions: (ConditionData & { id: string })[] = [];
   try {
-    const condResp = await fetch(getGraphQLEndpointV2(), {
+    const condResp = await fetch(getGraphQLEndpoint(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

@@ -1,10 +1,10 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { graphqlRequestV2 } from '@sapience/sdk/queries/client/graphqlClient';
+import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { formatUnits } from 'viem';
 
-// v2: top-level `accountTotalVolume(address:)` became
+// The GraphQL schema exposes account total volume as
 // `account(address:) { stats { totalVolume } }`. `account` synthesizes a
 // record for addresses with no User row (G6), so this works for any address.
 const TRADING_VOLUME_QUERY = `
@@ -26,7 +26,7 @@ export function useProfileVolume(address?: string) {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => {
-      const resp = await graphqlRequestV2<{
+      const resp = await graphqlRequest<{
         account: { stats: { totalVolume: string | number } } | null;
       }>(TRADING_VOLUME_QUERY, { address: address?.toLowerCase() });
 

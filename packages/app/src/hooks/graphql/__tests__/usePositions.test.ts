@@ -3,12 +3,12 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 
-const mockGraphqlRequestV2 = vi.fn();
+const mockGraphqlRequest = vi.fn();
 
 // The position hooks page via `useCursorPagination`, which issues its requests
-// through `graphqlRequestV2`. Mock that single transport export.
+// through `graphqlRequest`. Mock that single transport export.
 vi.mock('@sapience/sdk/queries/client/graphqlClient', () => ({
-  graphqlRequestV2: (...args: unknown[]) => mockGraphqlRequestV2(...args),
+  graphqlRequest: (...args: unknown[]) => mockGraphqlRequest(...args),
 }));
 
 function createWrapper() {
@@ -37,7 +37,7 @@ async function getHooks() {
 const HOLDER = '0xabc';
 const CONDITION_ID = '0xcond';
 
-// A v2 `Position` node (the adapter maps it to a PositionBalance).
+// A `Position` node (the adapter maps it to a PositionBalance).
 const makeNode = (id: string) => ({
   id,
   chainId: 1,
@@ -55,7 +55,7 @@ const makeNode = (id: string) => ({
   pickConfig: null,
 });
 
-// A Relay `PositionConnection` page. Per the v2 contract, an all-synthesized-
+// A Relay `PositionConnection` page. Per the connection contract, an all-synthesized-
 // away page still reports an advancing `endCursor` while more raw rows exist,
 // so `endCursor` is independent of whether `nodes` is empty.
 const conn = (
@@ -72,14 +72,14 @@ const conn = (
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockGraphqlRequestV2.mockResolvedValue(conn([], false));
+  mockGraphqlRequest.mockResolvedValue(conn([], false));
 });
 
 describe('usePositionBalances — pagination', () => {
   it('stops paginating when the server reports hasNextPage=false', async () => {
     const { usePositionBalances } = await getHooks();
 
-    mockGraphqlRequestV2
+    mockGraphqlRequest
       .mockResolvedValueOnce(conn([makeNode('1')], true))
       .mockResolvedValueOnce(conn([], false));
 
@@ -97,7 +97,7 @@ describe('usePositionBalances — pagination', () => {
       result.current.fetchMore();
     });
     await waitFor(() => {
-      expect(mockGraphqlRequestV2).toHaveBeenCalledTimes(2);
+      expect(mockGraphqlRequest).toHaveBeenCalledTimes(2);
     });
 
     expect(result.current.hasMore).toBe(false);
@@ -108,7 +108,7 @@ describe('usePositionBalances — pagination', () => {
     // behind it — page on pageInfo, never on node count.
     const { usePositionBalances } = await getHooks();
 
-    mockGraphqlRequestV2
+    mockGraphqlRequest
       .mockResolvedValueOnce(conn([], true, 'cursor-after-empty'))
       .mockResolvedValueOnce(conn([makeNode('99')], false));
 
@@ -146,9 +146,9 @@ describe('usePositionBalances — pagination', () => {
     );
 
     await waitFor(() => {
-      expect(mockGraphqlRequestV2).toHaveBeenCalledTimes(1);
+      expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
     });
-    expect(mockGraphqlRequestV2.mock.calls[0][1]).toMatchObject({
+    expect(mockGraphqlRequest.mock.calls[0][1]).toMatchObject({
       filter: { holder: HOLDER, chainId: 42, settled: true },
       first: 25,
       after: null,
@@ -163,9 +163,9 @@ describe('usePositionBalances — pagination', () => {
     });
 
     await waitFor(() => {
-      expect(mockGraphqlRequestV2).toHaveBeenCalledTimes(1);
+      expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
     });
-    expect(mockGraphqlRequestV2.mock.calls[0][1].filter).toEqual({
+    expect(mockGraphqlRequest.mock.calls[0][1].filter).toEqual({
       holder: HOLDER,
     });
   });
@@ -176,7 +176,7 @@ describe('usePositionBalances — pagination', () => {
     renderHook(() => usePositionBalances({}), { wrapper: createWrapper() });
 
     await new Promise((r) => setTimeout(r, 20));
-    expect(mockGraphqlRequestV2).not.toHaveBeenCalled();
+    expect(mockGraphqlRequest).not.toHaveBeenCalled();
   });
 });
 
@@ -184,7 +184,7 @@ describe('usePositionBalancesByConditionId — pagination', () => {
   it('stops paginating when hasNextPage=false (same rule as the holder hook)', async () => {
     const { usePositionBalancesByConditionId } = await getHooks();
 
-    mockGraphqlRequestV2
+    mockGraphqlRequest
       .mockResolvedValueOnce(conn([makeNode('1')], true))
       .mockResolvedValueOnce(conn([], false));
 
@@ -206,7 +206,7 @@ describe('usePositionBalancesByConditionId — pagination', () => {
       result.current.fetchMore();
     });
     await waitFor(() => {
-      expect(mockGraphqlRequestV2).toHaveBeenCalledTimes(2);
+      expect(mockGraphqlRequest).toHaveBeenCalledTimes(2);
     });
     expect(result.current.hasMore).toBe(false);
   });
@@ -220,9 +220,9 @@ describe('usePositionBalancesByConditionId — pagination', () => {
     );
 
     await waitFor(() => {
-      expect(mockGraphqlRequestV2).toHaveBeenCalledTimes(1);
+      expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
     });
-    expect(mockGraphqlRequestV2.mock.calls[0][1].filter).toEqual({
+    expect(mockGraphqlRequest.mock.calls[0][1].filter).toEqual({
       conditionIds: [CONDITION_ID],
     });
   });

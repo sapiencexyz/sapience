@@ -190,7 +190,7 @@ const SettingField = ({
 const SettingsPageContent = () => {
   const { openChat } = useChat();
   const {
-    graphqlEndpointV2,
+    graphqlEndpoint,
     apiBaseUrl,
     signalEndpoint,
     chatBaseUrl,
@@ -203,7 +203,6 @@ const SettingsPageContent = () => {
     meshMaxPeers,
     meshFanout,
     setGraphqlEndpoint,
-    setGraphqlEndpointV2,
     setApiBaseUrl,
     setSignalEndpoint,
     setChatBaseUrl,
@@ -242,7 +241,7 @@ const SettingsPageContent = () => {
 
   useEffect(() => {
     if (!mounted) return;
-    setGqlInput(graphqlEndpointV2 || defaults.graphqlEndpointV2);
+    setGqlInput(graphqlEndpoint || defaults.graphqlEndpoint);
     setApiInput(apiBaseUrl ?? defaults.apiBaseUrl);
     setSignalInput(signalEndpoint ?? defaults.signalEndpoint);
     setChatInput(chatBaseUrl ?? defaults.chatBaseUrl);
@@ -274,8 +273,7 @@ const SettingsPageContent = () => {
   };
 
   const persistGraphqlEndpoint = (value: string | null) => {
-    setGraphqlEndpoint(null);
-    setGraphqlEndpointV2(value);
+    setGraphqlEndpoint(value);
   };
 
   const persistPredictionMarketRpcEndpoint = (value: string | null) => {
@@ -330,8 +328,7 @@ const SettingsPageContent = () => {
         return;
       }
 
-      setGraphqlEndpoint(null);
-      setGraphqlEndpointV2(preset.graphqlEndpoint);
+      setGraphqlEndpoint(preset.graphqlEndpoint);
       setApiBaseUrl(preset.relayerEndpoint);
       // Blank signal endpoint disables the mesh: the app won't connect to a
       // signaling server for either preset.
@@ -356,7 +353,6 @@ const SettingsPageContent = () => {
       setApiBaseUrl,
       setChatBaseUrl,
       setGraphqlEndpoint,
-      setGraphqlEndpointV2,
       setEtherealRpcUrl,
       setSignalEndpoint,
     ]
@@ -490,7 +486,7 @@ const SettingsPageContent = () => {
                     id="graphql-endpoint"
                     value={gqlInput}
                     setValue={setGqlInput}
-                    defaultValue={defaults.graphqlEndpointV2}
+                    defaultValue={defaults.graphqlEndpoint}
                     onPersist={persistGraphqlEndpoint}
                     validate={isHttpUrl}
                     invalidMessage="Must be an absolute http(s) URL"

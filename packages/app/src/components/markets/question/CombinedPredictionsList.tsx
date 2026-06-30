@@ -17,7 +17,7 @@ type CombinedConditionDetail = {
   category?: { slug?: string | null } | null;
 };
 
-// v2 document — untagged so graphql-eslint (pinned to the v1 schema) skips it.
+// Untagged so graphql-eslint (pinned to the legacy schema) skips it.
 const COMBINED_CONDITIONS_QUERY = `
   query CombinedConditions($ids: [Bytes!]!) {
     conditions(

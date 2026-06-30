@@ -47,8 +47,8 @@ function makePredictionNode(overrides: Record<string, unknown> = {}) {
   };
 }
 
-describe('PREDICTION_BY_ID_QUERY (v2)', () => {
-  it('looks up by predictionId with v2 field names', () => {
+describe('PREDICTION_BY_ID_QUERY (GraphQL)', () => {
+  it('looks up by predictionId with the GraphQL field names', () => {
     expect(PREDICTION_BY_ID_QUERY).toContain(
       'prediction(predictionId: $predictionId)'
     );
@@ -61,7 +61,7 @@ describe('PREDICTION_BY_ID_QUERY (v2)', () => {
 });
 
 describe('toPredictionData', () => {
-  it('maps the v2 node to the SSR PredictionData shape', () => {
+  it('maps the GraphQL node to the SSR PredictionData shape', () => {
     const mapped = toPredictionData(
       makePredictionNode() as Parameters<typeof toPredictionData>[0]
     );
@@ -105,7 +105,7 @@ describe('fetchPredictionWithConditions', () => {
     vi.unstubAllGlobals();
   });
 
-  it('posts both legs to the v2 endpoint and maps the prediction', async () => {
+  it('posts both legs to the GraphQL endpoint and maps the prediction', async () => {
     fetchMock
       .mockResolvedValueOnce({
         ok: true,

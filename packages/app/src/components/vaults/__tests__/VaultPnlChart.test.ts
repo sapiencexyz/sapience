@@ -10,7 +10,7 @@ const ONE_DAY = 24 * 60 * 60;
 const NOW_SEC = Date.UTC(2026, 3, 24, 0, 0, 0) / 1000;
 
 // The chart util now consumes the adapted `{ timestamp, pnl, tvl }` point
-// (whole wUSDe) produced by `toVaultStatPoint`, not the raw v1 ProtocolStat.
+// (whole wUSDe) produced by `toVaultStatPoint`, not the raw ProtocolStat it previously consumed.
 function makeStat({
   timestamp,
   tvl,

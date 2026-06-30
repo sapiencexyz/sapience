@@ -1,19 +1,19 @@
 /**
- * Shared adapter: v2 `PickConfiguration` node → the existing app-side
- * `PickConfigData` shape (usePositions). Every v2 consumer that embeds a
+ * Shared adapter: GraphQL `PickConfiguration` node → the existing app-side
+ * `PickConfigData` shape (usePositions). Every consumer that embeds a
  * pick configuration (trades, activity, predictions, positions) maps the
- * wire node through `toPickConfigData` so the semantic v1→v2 renames live
+ * wire node through `toPickConfigData` so the semantic wire-to-app renames live
  * in exactly one place:
  *
- * - `id`            := `pickConfigId` (deterministic 0x-hash, v2 drops row ids)
+ * - `id`            := `pickConfigId` (deterministic 0x-hash; the schema has no row ids)
  * - `marketAddress` := `escrow`
- * - `result`        := `result ?? 'UNRESOLVED'` (v2 result is nullable)
+ * - `result`        := `result ?? 'UNRESOLVED'` (the GraphQL result is nullable)
  * - picks: `conditionResolver` := `resolver`,
  *          `predictedOutcome`  := `'YES' → 1`, otherwise `0`,
  *          `condition.id`      := `conditionId` (the CTF hash — field name
  *          stays `id` so app hash-matching sites keep working)
  * - pick `id` is re-keyed to the stable string `${pickConfigId}:${conditionId}`
- *   (v1's numeric Prisma row id is gone in v2; we never invent fake numbers)
+ *   (the GraphQL schema exposes no numeric Prisma row id; we never invent fake numbers)
  */
 import type {
   PickConditionData,
@@ -21,8 +21,8 @@ import type {
   PickData,
 } from '~/hooks/graphql/usePositions';
 
-/** v2 wire shape of an embedded pick condition (CTF hash + metadata). */
-export type PickConditionV2Node = {
+/** GraphQL wire shape of an embedded pick condition (CTF hash + metadata). */
+export type PickConditionNode = {
   conditionId: string;
   shortName?: string | null;
   optionName?: string | null;
@@ -37,16 +37,16 @@ export type PickConditionV2Node = {
   category?: { slug?: string | null } | null;
 };
 
-/** v2 wire shape of a pick (no row id; `resolver` instead of `conditionResolver`). */
-export type PickV2Node = {
+/** GraphQL wire shape of a pick (no row id; `resolver` instead of `conditionResolver`). */
+export type PickNode = {
   conditionId: string;
   resolver: string;
   predictedOutcome: 'YES' | 'NO';
-  condition?: PickConditionV2Node | null;
+  condition?: PickConditionNode | null;
 };
 
-/** v2 wire shape of a PickConfiguration node. */
-export type PickConfigurationV2Node = {
+/** GraphQL wire shape of a PickConfiguration node. */
+export type PickConfigurationNode = {
   pickConfigId: string;
   chainId: number;
   escrow: string;
@@ -61,7 +61,7 @@ export type PickConfigurationV2Node = {
   counterpartyToken?: string | null;
   endsAt?: number | null;
   isLegacy: boolean;
-  picks?: PickV2Node[] | null;
+  picks?: PickNode[] | null;
 };
 
 /**
@@ -76,11 +76,11 @@ export type AdaptedPickConfigData = Omit<PickConfigData, 'picks'> & {
 };
 
 /**
- * Selection set for a v2 `PickConfiguration` node, matching
- * {@link PickConfigurationV2Node}. Interpolate inside a `nodes { ... }`
+ * Selection set for a GraphQL `PickConfiguration` node, matching
+ * {@link PickConfigurationNode}. Interpolate inside a `nodes { ... }`
  * (or single-object) selection.
  */
-export const PICK_CONFIGURATION_V2_FIELDS = `
+export const PICK_CONFIGURATION_FIELDS = `
   pickConfigId
   chainId
   escrow
@@ -119,7 +119,7 @@ export const PICK_CONFIGURATION_V2_FIELDS = `
 `;
 
 function toPickConditionData(
-  condition: PickConditionV2Node | null | undefined
+  condition: PickConditionNode | null | undefined
 ): PickConditionData | null {
   if (!condition) return null;
   return {
@@ -138,10 +138,7 @@ function toPickConditionData(
   };
 }
 
-function toAdaptedPick(
-  pickConfigId: string,
-  pick: PickV2Node
-): AdaptedPickData {
+function toAdaptedPick(pickConfigId: string, pick: PickNode): AdaptedPickData {
   return {
     id: `${pickConfigId}:${pick.conditionId}`,
     pickConfigId,
@@ -153,12 +150,12 @@ function toAdaptedPick(
 }
 
 /**
- * Pure mapper: v2 `PickConfiguration` node → `PickConfigData`. BigInt
+ * Pure mapper: GraphQL `PickConfiguration` node → `PickConfigData`. BigInt
  * scalar fields are normalized via `String()` so collateral values are
  * always strings regardless of how the BigInt scalar serialized.
  */
 export function toPickConfigData(
-  node: PickConfigurationV2Node
+  node: PickConfigurationNode
 ): AdaptedPickConfigData {
   return {
     id: node.pickConfigId,

@@ -24,7 +24,7 @@ import {
   createErrorImageResponse,
 } from '../_shared';
 import { PREFERRED_ESTIMATE_QUOTER } from '~/lib/constants';
-import { getGraphQLEndpointV2 } from '~/lib/data/graphql';
+import { getGraphQLEndpoint } from '~/lib/data/graphql';
 
 export const runtime = 'nodejs';
 
@@ -153,6 +153,8 @@ function CategoryIcon({
 interface ConditionData {
   question: string | null;
   categorySlug: string | null;
+  chainId: number | null;
+  resolver: string | null;
 }
 
 async function fetchConditionData(
@@ -160,7 +162,7 @@ async function fetchConditionData(
   resolver?: string
 ): Promise<ConditionData> {
   try {
-    // v2: by-ids lookups skip the public-only listing default, and
+    // By-ids lookups skip the public-only listing default, and
     // `resolvers` composes with `conditionIds` for the multi-resolver
     // disambiguation (both matched case-insensitively server-side).
     const query = `
@@ -172,6 +174,8 @@ async function fetchConditionData(
         ) {
           nodes {
             question
+            chainId
+            resolver
             category { slug }
           }
         }
@@ -183,22 +187,36 @@ async function fetchConditionData(
       resolvers: resolver ? [resolver] : null,
     };
 
-    const response = await fetch(getGraphQLEndpointV2(), {
+    const response = await fetch(getGraphQLEndpoint(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query, variables }),
     });
 
-    if (!response.ok) return { question: null, categorySlug: null };
+    if (!response.ok) {
+      return {
+        question: null,
+        categorySlug: null,
+        chainId: null,
+        resolver: null,
+      };
+    }
 
     const result = await response.json();
     const condition = result?.data?.conditions?.nodes?.[0];
     return {
       question: condition?.question || null,
       categorySlug: condition?.category?.slug || null,
+      chainId: condition?.chainId ?? null,
+      resolver: condition?.resolver ?? null,
     };
   } catch {
-    return { question: null, categorySlug: null };
+    return {
+      question: null,
+      categorySlug: null,
+      chainId: null,
+      resolver: null,
+    };
   }
 }
 
@@ -210,10 +228,20 @@ const ESTIMATE_TIMEOUT_MS = 5000;
  * escrow auction.start, and waits for a bid from PREFERRED_ESTIMATE_QUOTER.
  * Returns probability (0-1) or null on timeout/error.
  */
-async function fetchEstimate(conditionId: string): Promise<number | null> {
+async function fetchEstimate({
+  conditionId,
+  resolver,
+  chainId,
+}: {
+  conditionId: string;
+  resolver?: string;
+  chainId: number;
+}): Promise<number | null> {
   const resolverAddress =
-    conditionalTokensConditionResolver[DEFAULT_CHAIN_ID]?.address;
+    resolver ?? conditionalTokensConditionResolver[chainId]?.address;
   if (!resolverAddress) return null;
+  const escrowAddress = predictionMarketEscrow[chainId]?.address;
+  if (!escrowAddress) return null;
 
   const formattedConditionId = (
     conditionId.startsWith('0x') ? conditionId : `0x${conditionId}`
@@ -221,7 +249,7 @@ async function fetchEstimate(conditionId: string): Promise<number | null> {
 
   const picks = canonicalizePicks([
     {
-      conditionResolver: resolverAddress,
+      conditionResolver: resolverAddress as `0x${string}`,
       conditionId: formattedConditionId,
       predictedOutcome: OutcomeSide.YES,
     },
@@ -250,9 +278,8 @@ async function fetchEstimate(conditionId: string): Promise<number | null> {
           predictor: zeroAddress,
           predictorNonce: 0,
           predictorDeadline: nowSec + 300,
-          chainId: DEFAULT_CHAIN_ID,
-          escrowContract:
-            predictionMarketEscrow[DEFAULT_CHAIN_ID]?.address ?? '',
+          chainId,
+          escrowContract: escrowAddress,
         });
       },
       onAuctionBids: (payload) => {
@@ -326,11 +353,12 @@ export async function GET(req: Request) {
       return createErrorImageResponse(new Error('Missing conditionId'));
     }
 
-    // Fetch condition data and live estimate in parallel
-    const [conditionData, estimate] = await Promise.all([
-      fetchConditionData(conditionId, resolver),
-      fetchEstimate(conditionId),
-    ]);
+    const conditionData = await fetchConditionData(conditionId, resolver);
+    const estimate = await fetchEstimate({
+      conditionId,
+      resolver: conditionData.resolver ?? resolver,
+      chainId: conditionData.chainId ?? DEFAULT_CHAIN_ID,
+    });
 
     const question = conditionData.question || 'Question on Sapience';
     const categorySlug = conditionData.categorySlug;

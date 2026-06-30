@@ -1,11 +1,11 @@
-import { graphqlRequestV2 } from './client/graphqlClient';
+import { graphqlRequest } from './client/graphqlClient';
 
 export type CategoryQueryResult = {
   name: string;
   slug: string;
 };
 
-type CategoriesV2Response = {
+type CategoriesResponse = {
   categories: {
     nodes: Array<{ name: string; slug: string }>;
   };
@@ -23,7 +23,7 @@ export const GET_CATEGORIES = /* GraphQL */ `
 `;
 
 function toCategoryQueryResults(
-  data: CategoriesV2Response | null
+  data: CategoriesResponse | null
 ): CategoryQueryResult[] {
   const nodes = data?.categories?.nodes;
   if (!Array.isArray(nodes)) {
@@ -33,6 +33,6 @@ function toCategoryQueryResults(
 }
 
 export async function fetchCategories(): Promise<CategoryQueryResult[]> {
-  const data = await graphqlRequestV2<CategoriesV2Response>(GET_CATEGORIES);
+  const data = await graphqlRequest<CategoriesResponse>(GET_CATEGORIES);
   return toCategoryQueryResults(data);
 }

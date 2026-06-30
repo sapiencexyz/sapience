@@ -1038,6 +1038,17 @@ export default function QuestionsTable({
                             isLast={idx === data.conditions.length - 1}
                           />
                         ))}
+                      {isExpanded && data.hasMoreConditions ? (
+                        <TableRow className="hover:bg-transparent border-b border-brand-white/10">
+                          <TableCell
+                            colSpan={columns.length}
+                            className="py-2 pl-12 text-xs text-muted-foreground"
+                          >
+                            Showing first {data.conditions.length} options. More
+                            options are available in this market group.
+                          </TableCell>
+                        </TableRow>
+                      ) : null}
                     </React.Fragment>
                   );
                 })}

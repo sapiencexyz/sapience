@@ -13,8 +13,8 @@ function getPublicApiBaseUrl(): string {
 
 /**
  * Per-user referral status + referrals, from the public REST endpoint
- * `GET /referrals/users/:address`. Referral data is attribution-only and v2
- * GraphQL deliberately does not expose it, so all referral reads go through
+ * `GET /referrals/users/:address`. Referral data is attribution-only and the
+ * GraphQL endpoint deliberately does not expose it, so all referral reads go through
  * REST. A missing user resolves to the empty/no-referral shape (never null).
  */
 export type UserReferralStatus = {

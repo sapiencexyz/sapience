@@ -14,9 +14,9 @@ import {
 const CACHE_TIME_MS = 60 * 1000;
 
 /**
- * Per-vault snapshot series from the v2 `vault(address:).statsHistory`
+ * Per-vault snapshot series from the `vault(address:).statsHistory`
  * surface. Backs the vault dashboard (VaultsPageContent, VaultPnlChart) — the
- * migration off v1's `protocolStats(vaultAddress:)`.
+ * migration off the old `protocolStats(vaultAddress:)`.
  *
  * Returns an empty array (not undefined) when no address is provided so call
  * sites can read it unconditionally; `enabled` keeps the network call gated.
@@ -59,7 +59,7 @@ export function useVaultAccountValue(vaultAddress?: string) {
 }
 
 /**
- * Latest v2 protocol stats only. Use this when callers need the live aggregate
+ * Latest protocol stats only. Use this when callers need the live aggregate
  * numbers without the heavier history/open-interest analytics payload.
  */
 export function useProtocolStats() {
@@ -72,7 +72,7 @@ export function useProtocolStats() {
 }
 
 /**
- * v2 protocol analytics: live stats, the recorded snapshot series and both
+ * Protocol analytics: live stats, the recorded snapshot series and both
  * open-interest breakdowns in a single `protocol { ... }` query.
  */
 export function useProtocolAnalytics() {

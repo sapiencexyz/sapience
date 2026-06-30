@@ -4,11 +4,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 
 const mockGraphqlRequest = vi.fn();
-const mockGraphqlRequestV2 = vi.fn();
 
 vi.mock('@sapience/sdk/queries/client/graphqlClient', () => ({
   graphqlRequest: (...args: unknown[]) => mockGraphqlRequest(...args),
-  graphqlRequestV2: (...args: unknown[]) => mockGraphqlRequestV2(...args),
 }));
 
 function createWrapper() {
@@ -90,15 +88,12 @@ function makePredictionNode(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockGraphqlRequest.mockRejectedValue(
-    new Error('v1 transport must not be used for predictions')
-  );
-  mockGraphqlRequestV2.mockResolvedValue({ predictions: { nodes: [] } });
+  mockGraphqlRequest.mockResolvedValue({ predictions: { nodes: [] } });
 });
 
 // ─── Document shapes ─────────────────────────────────────────────────────────
 
-describe('v2 prediction documents', () => {
+describe('prediction documents', () => {
   it('predictions list query filters by participant with explicit orderBy', async () => {
     const mod = await getModule();
     const doc = mod.PREDICTIONS_QUERY as string;
@@ -138,9 +133,9 @@ describe('v2 prediction documents', () => {
     expect(doc).not.toContain('predictionCount');
   });
 
-  it('positions documents stay on v1 (wave 3)', async () => {
+  it('does not export a POSITION_BALANCES_QUERY document', async () => {
     const mod = await getModule();
-    // The v1 positions half is untouched: no v2 connection args.
+    // No standalone POSITION_BALANCES_QUERY export; positions go through POSITIONS_QUERY.
     expect(mod.POSITION_BALANCES_QUERY).toBeUndefined();
   });
 });
@@ -148,9 +143,9 @@ describe('v2 prediction documents', () => {
 // ─── Hooks ───────────────────────────────────────────────────────────────────
 
 describe('usePredictions', () => {
-  it('maps v2 nodes to the app Prediction shape via the shared adapter', async () => {
+  it('maps nodes to the app Prediction shape via the shared adapter', async () => {
     const mod = await getModule();
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       predictions: { nodes: [makePredictionNode()] },
     });
 
@@ -162,9 +157,8 @@ describe('usePredictions', () => {
     await waitFor(() => {
       expect(result.current.data.length).toBe(1);
     });
-    expect(mockGraphqlRequest).not.toHaveBeenCalled();
 
-    const [, variables] = mockGraphqlRequestV2.mock.calls[0];
+    const [, variables] = mockGraphqlRequest.mock.calls[0];
     expect(variables).toMatchObject({
       participant: '0xaaa',
       chainId: 8453,
@@ -181,7 +175,7 @@ describe('usePredictions', () => {
     expect(p.isLegacy).toBe(false);
     expect(p.pickConfig?.id).toBe('0xpc1');
     expect(p.pickConfig?.marketAddress).toBe('0xescrow');
-    // v1 pickConfig.predictionId is backfilled from the parent prediction
+    // legacy pickConfig.predictionId is backfilled from the parent prediction
     expect(p.pickConfig?.predictionId).toBe('0xpred1');
     expect(p.pickConfig?.picks[0]?.conditionResolver).toBe('0xresolver');
     expect(p.pickConfig?.picks[0]?.predictedOutcome).toBe(1);
@@ -190,7 +184,7 @@ describe('usePredictions', () => {
 
   it('maps null result to UNRESOLVED', async () => {
     const mod = await getModule();
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       predictions: {
         nodes: [
           makePredictionNode({
@@ -218,7 +212,7 @@ describe('usePredictions', () => {
 describe('usePredictionsCount', () => {
   it('reads totalCount from the first: 0 connection', async () => {
     const mod = await getModule();
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       predictions: { totalCount: 7 },
     });
 
@@ -230,7 +224,7 @@ describe('usePredictionsCount', () => {
     await waitFor(() => {
       expect(result.current).toBe(7);
     });
-    const [, variables] = mockGraphqlRequestV2.mock.calls[0];
+    const [, variables] = mockGraphqlRequest.mock.calls[0];
     expect(variables).toMatchObject({ participant: '0xaaa', chainId: 8453 });
   });
 });
@@ -238,7 +232,7 @@ describe('usePredictionsCount', () => {
 describe('usePrediction', () => {
   it('fetches a single prediction by predictionId', async () => {
     const mod = await getModule();
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       prediction: makePredictionNode(),
     });
 
@@ -249,21 +243,21 @@ describe('usePrediction', () => {
     await waitFor(() => {
       expect(result.current.data).not.toBeNull();
     });
-    const [, variables] = mockGraphqlRequestV2.mock.calls[0];
+    const [, variables] = mockGraphqlRequest.mock.calls[0];
     expect(variables).toMatchObject({ predictionId: '0xpred1' });
     expect(result.current.data?.marketAddress).toBe('0xescrow');
   });
 
   it('returns null when the prediction does not exist', async () => {
     const mod = await getModule();
-    mockGraphqlRequestV2.mockResolvedValue({ prediction: null });
+    mockGraphqlRequest.mockResolvedValue({ prediction: null });
 
     const { result } = renderHook(() => mod.usePrediction('0xmissing'), {
       wrapper: createWrapper(),
     });
 
     await waitFor(() => {
-      expect(mockGraphqlRequestV2).toHaveBeenCalledTimes(1);
+      expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
     });
     expect(result.current.data).toBeNull();
   });
@@ -272,7 +266,7 @@ describe('usePrediction', () => {
 describe('usePredictionsByConditionId', () => {
   it('maps the slim projection for the question-page chart', async () => {
     const mod = await getModule();
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       predictions: {
         nodes: [
           {
@@ -322,7 +316,7 @@ describe('usePredictionsByConditionId', () => {
       expect(result.current.data.length).toBe(1);
     });
 
-    const [, variables] = mockGraphqlRequestV2.mock.calls[0];
+    const [, variables] = mockGraphqlRequest.mock.calls[0];
     expect(variables).toMatchObject({ conditionId: '0xcond1', first: 50 });
 
     const p = result.current.data[0];

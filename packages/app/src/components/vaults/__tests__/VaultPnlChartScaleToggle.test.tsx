@@ -76,7 +76,7 @@ import VaultPnlChart from '~/components/vaults/VaultPnlChart';
 const DAY = 24 * 60 * 60;
 const nowSec = Math.floor(Date.now() / 1000);
 
-// v2 VaultStat shape: TVL = balance + deployedCollateral + claimableCollateral,
+// GraphQL VaultStat shape: TVL = balance + deployedCollateral + claimableCollateral,
 // PnL = cumulativePnl (all wei strings).
 const vaultStats = [
   {

@@ -4,11 +4,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 
 const mockGraphqlRequest = vi.fn();
-const mockGraphqlRequestV2 = vi.fn();
 
 vi.mock('@sapience/sdk/queries/client/graphqlClient', () => ({
   graphqlRequest: (...args: unknown[]) => mockGraphqlRequest(...args),
-  graphqlRequestV2: (...args: unknown[]) => mockGraphqlRequestV2(...args),
 }));
 
 function createWrapper() {
@@ -30,7 +28,7 @@ async function getModule() {
   return import('../useAccountActivity');
 }
 
-// ─── v2 wire fixtures ────────────────────────────────────────────────────────
+// ─── wire fixtures ───────────────────────────────────────────────────────────
 
 function makePickConfigNode(overrides: Record<string, unknown> = {}) {
   return {
@@ -141,16 +139,13 @@ function makeConnection(
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockGraphqlRequest.mockRejectedValue(
-    new Error('v1 transport must not be used')
-  );
-  mockGraphqlRequestV2.mockResolvedValue(makeConnection([]));
+  mockGraphqlRequest.mockResolvedValue(makeConnection([]));
 });
 
 // ─── Document shape ──────────────────────────────────────────────────────────
 
-describe('v2 activity document', () => {
-  it('queries the v2 activity connection with edge timestamps and inline fragments', async () => {
+describe('activity document', () => {
+  it('queries the activity connection with edge timestamps and inline fragments', async () => {
     const mod = await getModule();
     const doc = mod.ACCOUNT_ACTIVITY_QUERY as string;
     expect(doc).toContain('activity(');
@@ -162,9 +157,9 @@ describe('v2 activity document', () => {
     expect(doc).toContain('... on Prediction');
     expect(doc).toContain('... on Trade');
     expect(doc).toContain('__typename');
-    // v1 envelope is gone
+    // old envelope is gone
     expect(doc).not.toContain('accountActivity');
-    // untagged document — app graphql-eslint validates tagged docs against v1
+    // untagged document — app graphql-eslint (pinned to the legacy schema) skips it
     expect(doc).not.toContain('GraphQL */');
   });
 });
@@ -172,7 +167,7 @@ describe('v2 activity document', () => {
 // ─── Hook behavior ───────────────────────────────────────────────────────────
 
 describe('useAccountActivity', () => {
-  it('runs the v2 query for the global feed with null filters', async () => {
+  it('runs the query for the global feed with null filters', async () => {
     const mod = await getModule();
 
     renderHook(() => mod.useAccountActivity({}), {
@@ -180,11 +175,10 @@ describe('useAccountActivity', () => {
     });
 
     await waitFor(() => {
-      expect(mockGraphqlRequestV2).toHaveBeenCalledTimes(1);
+      expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
     });
-    expect(mockGraphqlRequest).not.toHaveBeenCalled();
 
-    const [, variables] = mockGraphqlRequestV2.mock.calls[0];
+    const [, variables] = mockGraphqlRequest.mock.calls[0];
     expect(variables).toMatchObject({
       account: null,
       conditionIds: null,
@@ -199,7 +193,7 @@ describe('useAccountActivity', () => {
   it('maps a Prediction edge through the shared pickConfig adapter', async () => {
     const mod = await getModule();
 
-    mockGraphqlRequestV2.mockResolvedValue(
+    mockGraphqlRequest.mockResolvedValue(
       makeConnection([{ timestamp: 1700000123, node: makePredictionNode() }])
     );
 
@@ -240,7 +234,7 @@ describe('useAccountActivity', () => {
 
     // edge timestamp deliberately differs from executedAt to pin the edge
     // as the single source of time
-    mockGraphqlRequestV2.mockResolvedValue(
+    mockGraphqlRequest.mockResolvedValue(
       makeConnection([{ timestamp: 1700009999, node: makeTradeNode() }])
     );
 
@@ -277,10 +271,10 @@ describe('useAccountActivity', () => {
     });
 
     await new Promise((r) => setTimeout(r, 20));
-    expect(mockGraphqlRequestV2).not.toHaveBeenCalled();
+    expect(mockGraphqlRequest).not.toHaveBeenCalled();
   });
 
-  it('maps the filter surface to v2 ActivityFilter variables', async () => {
+  it('maps the filter surface to ActivityFilter variables', async () => {
     const mod = await getModule();
 
     renderHook(
@@ -297,10 +291,10 @@ describe('useAccountActivity', () => {
     );
 
     await waitFor(() => {
-      expect(mockGraphqlRequestV2).toHaveBeenCalledTimes(1);
+      expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
     });
 
-    const [, variables] = mockGraphqlRequestV2.mock.calls[0];
+    const [, variables] = mockGraphqlRequest.mock.calls[0];
     expect(variables).toMatchObject({
       account: '0xABCDEF0000000000000000000000000000000001',
       pickConfigId: '0xpc1',
@@ -318,9 +312,9 @@ describe('useAccountActivity', () => {
       wrapper,
     });
     await waitFor(() => {
-      expect(mockGraphqlRequestV2).toHaveBeenCalledTimes(1);
+      expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
     });
-    expect(mockGraphqlRequestV2.mock.calls[0][1]).toMatchObject({
+    expect(mockGraphqlRequest.mock.calls[0][1]).toMatchObject({
       types: ['PREDICTION'],
     });
 
@@ -328,9 +322,9 @@ describe('useAccountActivity', () => {
       wrapper: createWrapper(),
     });
     await waitFor(() => {
-      expect(mockGraphqlRequestV2).toHaveBeenCalledTimes(2);
+      expect(mockGraphqlRequest).toHaveBeenCalledTimes(2);
     });
-    expect(mockGraphqlRequestV2.mock.calls[1][1]).toMatchObject({
+    expect(mockGraphqlRequest.mock.calls[1][1]).toMatchObject({
       types: null,
     });
   });
@@ -338,7 +332,7 @@ describe('useAccountActivity', () => {
   it('paginates by threading pageInfo.endCursor into after', async () => {
     const mod = await getModule();
 
-    mockGraphqlRequestV2
+    mockGraphqlRequest
       .mockResolvedValueOnce(
         makeConnection(
           [{ timestamp: 1700000002, node: makePredictionNode() }],
@@ -380,12 +374,12 @@ describe('useAccountActivity', () => {
       ]);
     });
 
-    expect(mockGraphqlRequestV2).toHaveBeenCalledTimes(2);
-    expect(mockGraphqlRequestV2.mock.calls[0][1]).toMatchObject({
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(2);
+    expect(mockGraphqlRequest.mock.calls[0][1]).toMatchObject({
       first: 1,
       after: null,
     });
-    expect(mockGraphqlRequestV2.mock.calls[1][1]).toMatchObject({
+    expect(mockGraphqlRequest.mock.calls[1][1]).toMatchObject({
       first: 1,
       after: 'CUR1',
     });
@@ -395,7 +389,7 @@ describe('useAccountActivity', () => {
   it('dedupes items across pages on the domain id', async () => {
     const mod = await getModule();
 
-    mockGraphqlRequestV2
+    mockGraphqlRequest
       .mockResolvedValueOnce(
         makeConnection(
           [

@@ -1,4 +1,4 @@
-import { graphqlRequestV2 } from './client/graphqlClient';
+import { graphqlRequest } from './client/graphqlClient';
 import type { ConditionType } from './conditions';
 import type {
   ConditionGroupType,
@@ -34,8 +34,8 @@ export interface QuestionType {
   condition?: ConditionType | null;
 }
 
-/** Map friendly VolumeWindow values to v2 `VolumeWindow` enum keys. */
-const VOLUME_WINDOW_TO_V2: Record<VolumeWindow, string> = {
+/** Map friendly VolumeWindow values to `VolumeWindow` enum keys. */
+const VOLUME_WINDOW_TO_API: Record<VolumeWindow, string> = {
   '1h': 'ONE_HOUR',
   '4h': 'FOUR_HOURS',
   '24h': 'TWENTY_FOUR_HOURS',
@@ -47,8 +47,8 @@ const VOLUME_WINDOW_TO_V2: Record<VolumeWindow, string> = {
 };
 
 /**
- * v2 packs the volume window into the sort enum (`QuestionOrderField`)
- * instead of v1's separate `sortField + similarMarketVolumeWindow` pair.
+ * The volume window is packed into the sort enum (`QuestionOrderField`)
+ * rather than a separate `sortField + similarMarketVolumeWindow` pair.
  */
 const VOLUME_WINDOW_TO_ORDER_FIELD: Record<VolumeWindow, string> = {
   '1h': 'SIMILAR_MARKET_VOLUME_1H',
@@ -61,7 +61,7 @@ const VOLUME_WINDOW_TO_ORDER_FIELD: Record<VolumeWindow, string> = {
   '7dFiltered': 'SIMILAR_MARKET_VOLUME_7D_FILTERED',
 };
 
-const SORT_FIELD_TO_V2: Record<
+const SORT_FIELD_TO_API: Record<
   Exclude<SortField, 'similarMarketVolume'>,
   string
 > = {
@@ -71,7 +71,7 @@ const SORT_FIELD_TO_V2: Record<
   predictionCount: 'PREDICTION_COUNT',
 };
 
-const RESOLUTION_STATUS_TO_V2: Record<ResolutionStatusValue, string> = {
+const RESOLUTION_STATUS_TO_API: Record<ResolutionStatusValue, string> = {
   all: 'ALL',
   unresolved: 'UNRESOLVED',
   resolved: 'RESOLVED',
@@ -79,13 +79,13 @@ const RESOLUTION_STATUS_TO_V2: Record<ResolutionStatusValue, string> = {
   resolvedNo: 'RESOLVED_NO',
 };
 
-/** v2 maxTake for the questions connection. */
-const V2_MAX_FIRST = 100;
+/** The questions connection's max page size. */
+const MAX_PAGE_SIZE = 100;
 
 /**
  * Shared Condition selection for both union members. The feed reads the
- * flat windowed-volume mirrors (v1-compat columns on the v2 Condition)
- * because `market-helpers` string-indexes them for client-side filters.
+ * flat windowed-volume mirror columns on the Condition because
+ * `market-helpers` string-indexes them for client-side filters.
  */
 const QUESTION_CONDITION_FIELDS = `
   conditionId
@@ -123,7 +123,7 @@ const QUESTION_CONDITION_FIELDS = `
 `;
 
 /**
- * v2 interleaved Condition + ConditionGroup feed.
+ * Interleaved Condition + ConditionGroup feed.
  *
  * `QuestionConnection` deliberately exposes ONLY `edges` + `pageInfo` —
  * no `nodes` (union members don't share a field set) and no `totalCount`
@@ -162,6 +162,10 @@ export const GET_QUESTIONS = `
               nodes {
                 ${QUESTION_CONDITION_FIELDS}
                 displayOrder
+              }
+              pageInfo {
+                hasNextPage
+                endCursor
               }
             }
           }
@@ -202,13 +206,13 @@ export interface QuestionsVariables {
 }
 
 /**
- * Maps the stable v1-shaped feed params onto v2 `QuestionFilter` +
- * `QuestionOrder`. orderBy is always explicit.
+ * Maps the stable feed params onto `QuestionFilter` + `QuestionOrder`.
+ * orderBy is always explicit.
  *
- * Windowed volume sorts pack the window into the order-field enum. v1's
- * windowless `similarMarketVolume` sort ordered by the ALL-TIME column,
- * which has no v2 counterpart — `SIMILAR_MARKET_VOLUME_7D` is the
- * documented closest proxy (follow-up if v2 grows an all-time variant).
+ * Windowed volume sorts pack the window into the order-field enum. The
+ * windowless `similarMarketVolume` sort has no all-time counterpart on the
+ * server — `SIMILAR_MARKET_VOLUME_7D` is the documented closest proxy
+ * (follow-up if the server grows an all-time variant).
  */
 export function buildQuestionsVariables(
   params: QuestionFeedParams
@@ -218,7 +222,7 @@ export function buildQuestionsVariables(
     field:
       params.sortField === 'similarMarketVolume'
         ? VOLUME_WINDOW_TO_ORDER_FIELD[params.similarMarketVolumeWindow ?? '7d']
-        : SORT_FIELD_TO_V2[params.sortField],
+        : SORT_FIELD_TO_API[params.sortField],
     direction,
   };
 
@@ -241,7 +245,9 @@ export function buildQuestionsVariables(
   }
   if (params.resolutionStatus) {
     const mapped =
-      RESOLUTION_STATUS_TO_V2[params.resolutionStatus as ResolutionStatusValue];
+      RESOLUTION_STATUS_TO_API[
+        params.resolutionStatus as ResolutionStatusValue
+      ];
     if (mapped) {
       filter.resolutionStatus = mapped;
     }
@@ -274,7 +280,7 @@ export function buildQuestionsVariables(
   }
   if (params.similarMarketVolumeWindow) {
     filter.similarMarketVolumeWindow =
-      VOLUME_WINDOW_TO_V2[params.similarMarketVolumeWindow];
+      VOLUME_WINDOW_TO_API[params.similarMarketVolumeWindow];
   }
 
   return {
@@ -283,7 +289,7 @@ export function buildQuestionsVariables(
   };
 }
 
-type QuestionConditionV2Node = {
+type QuestionConditionNode = {
   conditionId: string;
   createdAt: string;
   question: string;
@@ -313,27 +319,30 @@ type QuestionConditionV2Node = {
   category?: { name: string; slug: string } | null;
 };
 
-/** Raw v2 `QuestionItem` union node — discriminate on `__typename`. */
-export type QuestionItemV2 =
-  | ({ __typename: 'Condition' } & QuestionConditionV2Node)
+/** Raw `QuestionItem` union node — discriminate on `__typename`. */
+export type QuestionItem =
+  | ({ __typename: 'Condition' } & QuestionConditionNode)
   | {
       __typename: 'ConditionGroup';
       id: string;
       createdAt: string;
       name: string;
       category?: { name: string; slug: string } | null;
-      conditions?: { nodes?: QuestionConditionV2Node[] } | null;
+      conditions?: {
+        nodes?: QuestionConditionNode[];
+        pageInfo?: { hasNextPage: boolean; endCursor: string | null };
+      } | null;
     };
 
-type QuestionsV2Response = {
+type QuestionsResponse = {
   questions: {
-    edges: Array<{ cursor: string; node: QuestionItemV2 }>;
+    edges: Array<{ cursor: string; node: QuestionItem }>;
     pageInfo: { hasNextPage: boolean; endCursor: string | null };
   };
 };
 
 function toFeedCondition(
-  node: QuestionConditionV2Node,
+  node: QuestionConditionNode,
   conditionGroupId: string | null
 ): ConditionGroupConditionType {
   return {
@@ -372,11 +381,11 @@ function toFeedCondition(
 }
 
 /**
- * Rebuilds the v1 `QuestionType` envelope from a v2 `QuestionItem` union
+ * Rebuilds the `QuestionType` envelope from a `QuestionItem` union
  * node so feed consumers (MarketsPage / QuestionsTable / market-helpers)
  * keep their `questionType` + `condition` / `group` reads unchanged.
  */
-export function toQuestionType(node: QuestionItemV2): QuestionType {
+export function toQuestionType(node: QuestionItem): QuestionType {
   if (node.__typename === 'ConditionGroup') {
     return {
       questionType: 'group',
@@ -390,6 +399,8 @@ export function toQuestionType(node: QuestionItemV2): QuestionType {
         conditions: (node.conditions?.nodes ?? []).map((c) =>
           toFeedCondition(c, node.id)
         ),
+        hasMoreConditions: Boolean(node.conditions?.pageInfo?.hasNextPage),
+        conditionsEndCursor: node.conditions?.pageInfo?.endCursor ?? null,
       },
       condition: null,
     };
@@ -402,8 +413,8 @@ export function toQuestionType(node: QuestionItemV2): QuestionType {
 }
 
 /**
- * v1-compatible offset fetch over the v2 cursor connection: over-fetch
- * `take + skip` (capped at the server's maxTake) and slice locally.
+ * Offset fetch over the cursor connection: page until `take + skip` rows
+ * are available, then slice locally.
  * Cursor-native consumers should drive `GET_QUESTIONS` directly with
  * `buildQuestionsVariables` + `toQuestionType` instead.
  */
@@ -413,19 +424,30 @@ export async function fetchQuestionsSorted(
   const { take, skip, ...feedParams } = params;
   const { filter, orderBy } = buildQuestionsVariables(feedParams);
 
-  const data = await graphqlRequestV2<QuestionsV2Response>(GET_QUESTIONS, {
-    first: Math.min(take + skip, V2_MAX_FIRST),
-    after: null,
-    filter,
-    orderBy,
-  });
+  const target = skip + take;
+  const items: QuestionItem[] = [];
+  let after: string | null = null;
 
-  const edges = data?.questions?.edges;
-  if (!Array.isArray(edges)) {
-    throw new Error('Failed to fetch questions: Invalid response structure');
+  while (items.length < target) {
+    const data: QuestionsResponse = await graphqlRequest<QuestionsResponse>(
+      GET_QUESTIONS,
+      {
+        first: Math.min(target - items.length, MAX_PAGE_SIZE),
+        after,
+        filter,
+        orderBy,
+      }
+    );
+
+    const edges = data?.questions?.edges;
+    if (!Array.isArray(edges)) {
+      throw new Error('Failed to fetch questions: Invalid response structure');
+    }
+    items.push(...edges.map((edge) => edge.node));
+    const pageInfo = data.questions.pageInfo;
+    if (!pageInfo?.hasNextPage || !pageInfo.endCursor) break;
+    after = pageInfo.endCursor;
   }
 
-  return edges
-    .map((edge) => toQuestionType(edge.node))
-    .slice(skip, skip + take);
+  return items.map(toQuestionType).slice(skip, skip + take);
 }
