@@ -2,11 +2,16 @@ import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
-import type { AdminConditionGroup } from '~/hooks/admin/useAdminConditionGroups';
+import type {
+  AdminConditionGroup,
+  AdminConditionGroupCondition,
+} from '~/hooks/admin/useAdminConditionGroups';
 
 const toastSpy = vi.fn();
 const reorderMutate = vi.fn();
 let groupsData: AdminConditionGroup[] = [];
+let hydratedByGlobalId = new Map<string, AdminConditionGroupCondition[]>();
+let conditionsLoading = false;
 
 vi.mock('@sapience/ui/hooks/use-toast', () => ({
   useToast: () => ({ toast: toastSpy }),
@@ -111,6 +116,26 @@ vi.mock('~/hooks/admin/useAdminConditionGroups', async () => {
       isFetching: false,
       refetch: vi.fn(),
     }),
+    useAdminGroupConditions: (
+      globalId: string | null | undefined,
+      enabled: boolean
+    ) => {
+      const fallback = groupsData.find(
+        (g) => g.globalId === globalId
+      )?.condition;
+      const data =
+        enabled && globalId
+          ? (hydratedByGlobalId.get(globalId) ?? fallback)
+          : undefined;
+      return {
+        data,
+        isLoading: conditionsLoading,
+        isFetching: conditionsLoading,
+        isError: false,
+        error: null,
+        refetch: vi.fn(),
+      };
+    },
     useReorderConditionGroup: () => ({
       mutate: reorderMutate,
       isPending: false,
@@ -125,6 +150,7 @@ function makeGroup(
 ): AdminConditionGroup {
   return {
     id: 42,
+    globalId: 'gid-42',
     name: 'Test group',
     negRisk: false,
     hasMoreConditions: false,
@@ -153,6 +179,8 @@ function makeGroup(
 describe('QuestionOrdering', () => {
   beforeEach(() => {
     groupsData = [makeGroup()];
+    hydratedByGlobalId = new Map();
+    conditionsLoading = false;
     reorderMutate.mockReset();
     toastSpy.mockReset();
   });
@@ -185,28 +213,55 @@ describe('QuestionOrdering', () => {
     fireEvent.click(screen.getByRole('button', { name: /Test group/ }));
     await screen.findByText('Question A');
 
-    // Nothing changed yet → clean state, no movement annotations.
     expect(screen.getByText('All changes saved')).toBeInTheDocument();
     expect(screen.queryByText(/moved · unsaved/)).not.toBeInTheDocument();
     expect(screen.queryByText(/was #/)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Move A after B' }));
 
-    // Both rows shifted → unsaved indicator + "was #" annotations appear.
     expect(await screen.findByText(/moved · unsaved/)).toBeInTheDocument();
     expect(screen.getAllByText(/was #/).length).toBeGreaterThan(0);
     expect(screen.queryByText('All changes saved')).not.toBeInTheDocument();
   });
 
-  it('warns when the backend reports more than 100 public conditions', async () => {
+  it('shows loading until all conditions are hydrated', async () => {
+    conditionsLoading = true;
     groupsData = [makeGroup({ hasMoreConditions: true })];
 
     render(<QuestionOrdering />);
-
     fireEvent.click(screen.getByRole('button', { name: /Test group/ }));
 
     expect(
-      await screen.findByText(/Only the first 100 public conditions are loaded/)
+      await screen.findByText(/Loading all public conditions/)
     ).toBeInTheDocument();
+    expect(screen.queryByText('Question A')).not.toBeInTheDocument();
+  });
+
+  it('saves the full hydrated membership for large groups', async () => {
+    const tail: AdminConditionGroupCondition = {
+      id: 'condition-c',
+      question: 'Question C',
+      shortName: null,
+      optionName: null,
+      similarMarketVolume: 300,
+      displayOrder: 2,
+    };
+    groupsData = [makeGroup({ hasMoreConditions: true })];
+    hydratedByGlobalId.set('gid-42', [...makeGroup().condition, tail]);
+
+    render(<QuestionOrdering />);
+    fireEvent.click(screen.getByRole('button', { name: /Test group/ }));
+    await screen.findByText('Question C');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Move A after B' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save order' }));
+
+    expect(reorderMutate).toHaveBeenCalledWith(
+      {
+        groupId: 42,
+        conditionIds: ['condition-b', 'condition-a', 'condition-c'],
+      },
+      expect.any(Object)
+    );
   });
 });

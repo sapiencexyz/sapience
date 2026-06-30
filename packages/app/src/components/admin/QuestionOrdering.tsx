@@ -26,6 +26,7 @@ import { useAccount } from 'wagmi';
 
 import {
   useAdminConditionGroups,
+  useAdminGroupConditions,
   useReorderConditionGroup,
   type AdminConditionGroup,
   type AdminConditionGroupCondition,
@@ -154,6 +155,21 @@ const QuestionOrdering = () => {
 
   const groups = useMemo(() => groupsQuery.data ?? [], [groupsQuery.data]);
 
+  const selectedGroup: AdminConditionGroup | null = useMemo(
+    () => groups.find((group) => group.id === selectedGroupId) ?? null,
+    [groups, selectedGroupId]
+  );
+
+  const conditionsQuery = useAdminGroupConditions(
+    selectedGroup?.globalId,
+    selectedGroupId !== null
+  );
+
+  const activeConditions = useMemo(
+    () => conditionsQuery.data ?? [],
+    [conditionsQuery.data]
+  );
+
   const filteredGroups = useMemo(() => {
     const query = groupFilter.trim().toLowerCase();
     const sorted = [...groups].sort((a, b) => a.name.localeCompare(b.name));
@@ -165,15 +181,16 @@ const QuestionOrdering = () => {
     );
   }, [groups, groupFilter]);
 
-  const selectedGroup: AdminConditionGroup | null = useMemo(
-    () => groups.find((group) => group.id === selectedGroupId) ?? null,
-    [groups, selectedGroupId]
+  const baselineIds = useMemo(
+    () => activeConditions.map((condition) => condition.id),
+    [activeConditions]
   );
 
-  const baselineIds = useMemo(
-    () => selectedGroup?.condition.map((condition) => condition.id) ?? [],
-    [selectedGroup]
-  );
+  const conditionsReady =
+    selectedGroupId !== null &&
+    !conditionsQuery.isLoading &&
+    !conditionsQuery.isFetching &&
+    conditionsQuery.data !== undefined;
 
   const baselineKey = useMemo(() => baselineIds.join('\u0000'), [baselineIds]);
 
@@ -209,11 +226,9 @@ const QuestionOrdering = () => {
 
   const conditionsById = useMemo(() => {
     const map = new Map<string, AdminConditionGroupCondition>();
-    selectedGroup?.condition.forEach((condition) =>
-      map.set(condition.id, condition)
-    );
+    activeConditions.forEach((condition) => map.set(condition.id, condition));
     return map;
-  }, [selectedGroup]);
+  }, [activeConditions]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -232,7 +247,7 @@ const QuestionOrdering = () => {
   };
 
   const handleSave = () => {
-    if (selectedGroupId === null) return;
+    if (selectedGroupId === null || !conditionsReady) return;
     // Defense in depth: only ever save a pure reordering of what we loaded.
     if (!isPermutation(baselineIds, order)) {
       toast({
@@ -327,7 +342,10 @@ const QuestionOrdering = () => {
                   >
                     <span className="min-w-0 truncate">{group.name}</span>
                     <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-                      #{group.id} · {group.condition.length}
+                      #{group.id} ·{' '}
+                      {group.hasMoreConditions
+                        ? `${group.condition.length}+`
+                        : group.condition.length}
                     </span>
                   </button>
                 ))
@@ -340,7 +358,26 @@ const QuestionOrdering = () => {
               <p className="text-sm text-muted-foreground">
                 Select a group to reorder its questions.
               </p>
-            ) : selectedGroup.condition.length === 0 ? (
+            ) : conditionsQuery.isLoading || conditionsQuery.isFetching ? (
+              <p className="text-sm text-muted-foreground">
+                Loading all public conditions…
+              </p>
+            ) : conditionsQuery.isError ? (
+              <div className="space-y-2">
+                <p className="text-sm text-red-500">
+                  {conditionsQuery.error instanceof Error
+                    ? conditionsQuery.error.message
+                    : 'Failed to load conditions for this group.'}
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void conditionsQuery.refetch()}
+                >
+                  Retry
+                </Button>
+              </div>
+            ) : activeConditions.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 This group has no public conditions.
               </p>
@@ -374,14 +411,6 @@ const QuestionOrdering = () => {
                   </SortableContext>
                 </DndContext>
 
-                {selectedGroup.hasMoreConditions ? (
-                  <p className="rounded-md border border-yellow-500/40 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-700 dark:text-yellow-300">
-                    Only the first 100 public conditions are loaded for this
-                    group. Saving will reorder only the loaded conditions and
-                    leave the rest untouched.
-                  </p>
-                ) : null}
-
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5 text-xs">
                     {isDirty ? (
@@ -406,7 +435,11 @@ const QuestionOrdering = () => {
                     <Button
                       variant="ghost"
                       size="sm"
-                      disabled={!isDirty || reorderMutation.isPending}
+                      disabled={
+                        !conditionsReady ||
+                        !isDirty ||
+                        reorderMutation.isPending
+                      }
                       onClick={() => setOrder(baselineIds)}
                     >
                       Reset
@@ -414,7 +447,10 @@ const QuestionOrdering = () => {
                     <Button
                       size="sm"
                       disabled={
-                        !isDirty || !isConnected || reorderMutation.isPending
+                        !conditionsReady ||
+                        !isDirty ||
+                        !isConnected ||
+                        reorderMutation.isPending
                       }
                       onClick={handleSave}
                     >
