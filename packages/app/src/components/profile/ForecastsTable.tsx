@@ -229,10 +229,10 @@ const ForecastsTable = ({
     { id: 'rawTime', desc: true },
   ]);
 
-  // v2 orders forecasts by ATTESTED_AT only — sorting picks the direction.
+  // The endpoint orders forecasts by ATTESTED_AT only — sorting picks the direction.
   const orderDirection = sorting[0]?.desc ? 'desc' : 'asc';
 
-  // Cursor-paginated fetch (v2 first/after). Page accumulation lives in the
+  // Cursor-paginated fetch (first/after). Page accumulation lives in the
   // infinite query; changing direction or attester resets via the query key.
   const {
     data: attestations,
@@ -280,7 +280,7 @@ const ForecastsTable = ({
     staleTime: 60_000,
     gcTime: 5 * 60 * 1000,
     queryFn: async () => {
-      // v2 document — untagged so graphql-eslint (v1 schema) skips it.
+      // Untagged so graphql-eslint (pinned to the legacy schema) skips it.
       const query = `
         query ConditionsByIds($ids: [Bytes!]!) {
           conditions(
@@ -448,7 +448,7 @@ const ForecastsTable = ({
       {
         id: 'value',
         accessorFn: (row) => row.value,
-        // v2 has no server-side ordering by forecast value (ATTESTED_AT only),
+        // The endpoint has no server-side ordering by forecast value (ATTESTED_AT only),
         // so this column is no longer sortable.
         enableSorting: false,
         header: () => <span className="text-sm font-medium">Forecast</span>,

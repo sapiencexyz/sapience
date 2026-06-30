@@ -37,7 +37,7 @@ async function getHooks() {
 const HOLDER = '0xabc';
 const CONDITION_ID = '0xcond';
 
-// A v2 `Position` node (the adapter maps it to a PositionBalance).
+// A `Position` node (the adapter maps it to a PositionBalance).
 const makeNode = (id: string) => ({
   id,
   chainId: 1,
@@ -55,7 +55,7 @@ const makeNode = (id: string) => ({
   pickConfig: null,
 });
 
-// A Relay `PositionConnection` page. Per the v2 contract, an all-synthesized-
+// A Relay `PositionConnection` page. Per the connection contract, an all-synthesized-
 // away page still reports an advancing `endCursor` while more raw rows exist,
 // so `endCursor` is independent of whether `nodes` is empty.
 const conn = (

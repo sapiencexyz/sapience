@@ -3,10 +3,10 @@
 
 import { getGraphQLEndpoint } from './graphql';
 
-// v2 document — untagged so graphql-eslint (v1 schema) skips it.
-// `forecast(uid:)` is the v2 lookup for an EAS forecast attestation; the
+// Untagged so graphql-eslint skips it.
+// `forecast(uid:)` is the GraphQL lookup for an EAS forecast attestation; the
 // condition relation re-keys `id` to the on-chain conditionId hash (numeric
-// Prisma row ids are not exposed in v2).
+// Prisma row ids are not exposed by the schema).
 export const FORECAST_BY_UID_QUERY = `
   query ForecastByUid($uid: String!) {
     forecast(uid: $uid) {
@@ -47,7 +47,7 @@ export interface AttestationCondition {
 }
 
 // Stable consumer shape (/forecast/<uid> SSR + OG route). Field names keep
-// the v1 vocabulary (`time`, `prediction`) — the v2 renames are undone in
+// the original vocabulary (`time`, `prediction`) — the GraphQL renames are undone in
 // `toAttestationData` so consumers stay unchanged. The numeric attestation
 // row id is gone; `uid` is the public domain id.
 export interface AttestationData {
@@ -60,7 +60,7 @@ export interface AttestationData {
   condition?: AttestationCondition | null;
 }
 
-/** Wire shape of the v2 `forecast(uid:)` node selected above. */
+/** Wire shape of the GraphQL `forecast(uid:)` node selected above. */
 interface ForecastByUidNode {
   uid: string;
   attester: string;
@@ -89,7 +89,7 @@ export function d18ToPercentage(d18Value: string): number {
   return Number(value) / 1e18;
 }
 
-// Fetch a forecast attestation by uid from the v2 GraphQL API.
+// Fetch a forecast attestation by uid from the GraphQL API.
 // Returns null if the forecast doesn't exist.
 // Throws on network/parse errors so callers can distinguish failure from not-found.
 export async function fetchAttestationByUid(

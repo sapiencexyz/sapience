@@ -23,7 +23,7 @@ interface SliceDatum {
 
 export default function OpenInterestByCategoryChart() {
   const { data: analytics, isLoading } = useProtocolAnalytics();
-  // v2 categories are slug-keyed (no numeric row id) — the chart already
+  // Categories are slug-keyed (no numeric row id) — the chart already
   // keys slices on `slug`, so the shape change is invisible here.
   const data = analytics?.openInterestByCategory;
 

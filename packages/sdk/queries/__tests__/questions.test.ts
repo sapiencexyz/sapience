@@ -4,7 +4,7 @@ import {
   buildQuestionsVariables,
   toQuestionType,
   fetchQuestionsSorted,
-  type QuestionItemV2,
+  type QuestionItem,
 } from '../questions';
 
 const mockGraphqlRequest = vi.fn();
@@ -21,7 +21,7 @@ const emptyConnection = {
 
 function makeConditionNode(
   overrides: Record<string, unknown> = {}
-): QuestionItemV2 {
+): QuestionItem {
   return {
     __typename: 'Condition',
     conditionId: '0xc1',
@@ -51,12 +51,10 @@ function makeConditionNode(
     similarMarket: { image: 'img.png', markets: ['https://pm.example'] },
     category: { name: 'Crypto', slug: 'crypto' },
     ...overrides,
-  } as QuestionItemV2;
+  } as QuestionItem;
 }
 
-function makeGroupNode(
-  overrides: Record<string, unknown> = {}
-): QuestionItemV2 {
+function makeGroupNode(overrides: Record<string, unknown> = {}): QuestionItem {
   return {
     __typename: 'ConditionGroup',
     id: 'Q29uZGl0aW9uR3JvdXA6MQ==',
@@ -97,7 +95,7 @@ function makeGroupNode(
       ],
     },
     ...overrides,
-  } as QuestionItemV2;
+  } as QuestionItem;
 }
 
 beforeEach(() => {
@@ -106,7 +104,7 @@ beforeEach(() => {
 });
 
 describe('GET_QUESTIONS document', () => {
-  test('targets the v2 questions connection with union branching', () => {
+  test('targets the questions connection with union branching', () => {
     expect(GET_QUESTIONS).toContain('questions(');
     expect(GET_QUESTIONS).toContain('$first: Int');
     expect(GET_QUESTIONS).toContain('$after: String');
@@ -172,8 +170,8 @@ describe('buildQuestionsVariables — orderBy', () => {
   });
 
   test('windowless volume sort falls back to the documented 7d proxy', () => {
-    // v1 sorted by all-time similarMarketVolume; v2 has no all-time sort
-    // variant, 7d is the closest window.
+    // There is no all-time similarMarketVolume sort variant; 7d is the
+    // closest window.
     const { orderBy } = buildQuestionsVariables({
       sortField: 'similarMarketVolume',
       sortDirection: 'desc',
@@ -222,7 +220,7 @@ describe('buildQuestionsVariables — filter', () => {
     ).toEqual({ endsAt: { gte: 1000 } });
   });
 
-  test('maps resolutionStatus values to v2 enum keys', () => {
+  test('maps resolutionStatus values to enum keys', () => {
     expect(
       buildQuestionsVariables({ ...base, resolutionStatus: 'resolvedYes' })
         .filter
@@ -252,7 +250,7 @@ describe('buildQuestionsVariables — filter', () => {
     ).toEqual({ estimatedPrice: { gte: 0.1, lte: 0.9 } });
   });
 
-  test('maps volume bounds + window to FloatFilter + v2 window enum', () => {
+  test('maps volume bounds + window to FloatFilter + window enum', () => {
     expect(
       buildQuestionsVariables({
         ...base,
@@ -345,7 +343,7 @@ describe('fetchQuestionsSorted', () => {
     sortDirection: 'desc' as const,
   };
 
-  test('requests the v2 document with explicit orderBy', async () => {
+  test('requests the document with explicit orderBy', async () => {
     await fetchQuestionsSorted(baseParams);
     expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
     const [doc, vars] = mockGraphqlRequest.mock.calls[0];
@@ -354,7 +352,7 @@ describe('fetchQuestionsSorted', () => {
     expect(vars.filter).toBeUndefined();
   });
 
-  test('emulates v1 offset paging: first = take + skip, sliced locally', async () => {
+  test('offset paging: first = take + skip, sliced locally', async () => {
     const edges = ['0xa', '0xb', '0xc', '0xd'].map((id) => ({
       cursor: `cur-${id}`,
       node: makeConditionNode({ conditionId: id }),
@@ -374,13 +372,13 @@ describe('fetchQuestionsSorted', () => {
     expect(result.map((q) => q.condition!.id)).toEqual(['0xb', '0xc']);
   });
 
-  test('caps first at the v2 maxTake of 100', async () => {
+  test('caps first at the max page size of 100', async () => {
     await fetchQuestionsSorted({ ...baseParams, take: 80, skip: 40 });
     const [, vars] = mockGraphqlRequest.mock.calls[0];
     expect(vars.first).toBe(100);
   });
 
-  test('uses cursors when take + skip exceeds the v2 page cap', async () => {
+  test('uses cursors when take + skip exceeds the page cap', async () => {
     const firstPage = Array.from({ length: 100 }, (_, i) => ({
       cursor: `cur-${i}`,
       node: makeConditionNode({ conditionId: `0x${i}` }),
@@ -441,7 +439,7 @@ describe('fetchQuestionsSorted', () => {
     });
   });
 
-  test('maps union edges into v1 QuestionType envelopes', async () => {
+  test('maps union edges into QuestionType envelopes', async () => {
     mockGraphqlRequest.mockResolvedValue({
       questions: {
         edges: [
@@ -472,7 +470,7 @@ describe('fetchQuestionsSorted', () => {
     );
   });
 
-  test('never touches the v1 transport', async () => {
+  test('issues its request against the GraphQL transport', async () => {
     await fetchQuestionsSorted(baseParams);
   });
 });

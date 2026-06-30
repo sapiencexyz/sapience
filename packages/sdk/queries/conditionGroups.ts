@@ -1,7 +1,7 @@
 import { graphqlRequest } from './client/graphqlClient';
 
 export interface ConditionGroupConditionType {
-  /** CTF on-chain condition id (lowercase 0x-hex) — v2 `conditionId`. */
+  /** CTF on-chain condition id (lowercase 0x-hex) — `conditionId`. */
   id: string;
   createdAt: string;
   question: string;
@@ -20,7 +20,7 @@ export interface ConditionGroupConditionType {
   openInterest: string;
   similarMarketVolume?: number;
   similarMarketImage?: string | null;
-  /** Opaque v2 ConditionGroup id of the parent group. */
+  /** Opaque ConditionGroup id of the parent group. */
   conditionGroupId?: string | null;
   displayOrder?: number | null;
   estimatedPrice?: number | null;
@@ -35,7 +35,7 @@ export interface ConditionGroupConditionType {
 }
 
 export interface ConditionGroupType {
-  /** Opaque v2 ConditionGroup id — grouping identity only, not a row id. */
+  /** Opaque ConditionGroup id — grouping identity only, not a row id. */
   id: string;
   createdAt: string;
   name: string;
@@ -151,13 +151,13 @@ const CONDITION_GROUP_CONDITIONS_PAGE = /* GraphQL */ `
   }
 `;
 
-/** v2 maxTake for the conditionGroups connection. */
-const V2_MAX_FIRST = 100;
+/** The conditionGroups connection's max page size. */
+const MAX_PAGE_SIZE = 100;
 
 /**
- * Builds the v2 `ConditionGroupFilter`. v2 only accepts `search` and a
+ * Builds the `ConditionGroupFilter`. The filter only accepts `search` and a
  * SINGLE `categorySlug`; multi-slug selection and the nested public/chainId
- * condition filters are applied client-side in the mapper (the v2 nested
+ * condition filters are applied client-side in the mapper (the nested
  * conditions connection has no filter argument).
  */
 function buildConditionGroupFilter(
@@ -176,7 +176,7 @@ function buildConditionGroupFilter(
   return filter;
 }
 
-type ConditionGroupConditionV2Node = {
+type ConditionGroupConditionNode = {
   conditionId: string;
   createdAt: string;
   question: string;
@@ -198,20 +198,20 @@ type ConditionGroupConditionV2Node = {
   category?: { name: string; slug: string } | null;
 };
 
-type ConditionGroupV2Node = {
+type ConditionGroupNode = {
   id: string;
   createdAt: string;
   name: string;
   category?: { name: string; slug: string } | null;
   conditions?: {
-    nodes?: ConditionGroupConditionV2Node[];
+    nodes?: ConditionGroupConditionNode[];
     pageInfo?: { hasNextPage: boolean; endCursor: string | null };
   } | null;
 };
 
-type ConditionGroupsV2Response = {
+type ConditionGroupsResponse = {
   conditionGroups: {
-    nodes: ConditionGroupV2Node[];
+    nodes: ConditionGroupNode[];
     pageInfo?: { hasNextPage: boolean; endCursor: string | null };
   };
 };
@@ -219,14 +219,14 @@ type ConditionGroupsV2Response = {
 type ConditionGroupConditionsPageResponse = {
   conditionGroup: {
     conditions: {
-      nodes: ConditionGroupConditionV2Node[];
+      nodes: ConditionGroupConditionNode[];
       pageInfo?: { hasNextPage: boolean; endCursor: string | null };
     };
   } | null;
 };
 
 function toGroupCondition(
-  node: ConditionGroupConditionV2Node,
+  node: ConditionGroupConditionNode,
   groupId: string
 ): ConditionGroupConditionType {
   return {
@@ -257,7 +257,7 @@ function toGroupCondition(
 }
 
 function toConditionGroupTypes(
-  nodes: ConditionGroupV2Node[],
+  nodes: ConditionGroupNode[],
   opts: {
     chainId?: number;
     filters?: ConditionGroupFilters;
@@ -271,7 +271,7 @@ function toConditionGroupTypes(
 
   return nodes
     .filter(
-      // v2's ConditionGroupFilter accepts a single slug; for multi-slug OR
+      // The ConditionGroupFilter accepts a single slug; for multi-slug OR
       // semantics we scan cursor pages and filter the accumulated rows here.
       (group) =>
         slugs.length < 2 ||
@@ -293,7 +293,7 @@ function toConditionGroupTypes(
         .map((c) => toGroupCondition(c, group.id)),
     }))
     .filter(
-      // v1 parity: a group must contain at least one condition matching the
+      // A group must contain at least one condition matching the
       // nested filters; truly empty groups survive only with
       // includeEmptyGroups and no nested filters.
       (group) =>
@@ -302,8 +302,8 @@ function toConditionGroupTypes(
 }
 
 async function hydrateAllGroupConditions(
-  group: ConditionGroupV2Node
-): Promise<ConditionGroupV2Node> {
+  group: ConditionGroupNode
+): Promise<ConditionGroupNode> {
   const conditions = group.conditions;
   const nodes = [...(conditions?.nodes ?? [])];
   let pageInfo = conditions?.pageInfo;
@@ -313,7 +313,7 @@ async function hydrateAllGroupConditions(
       CONDITION_GROUP_CONDITIONS_PAGE,
       {
         id: group.id,
-        first: V2_MAX_FIRST,
+        first: MAX_PAGE_SIZE,
         after: pageInfo.endCursor,
       }
     );
@@ -348,7 +348,7 @@ export async function fetchConditionGroups(opts?: {
   const filter = buildConditionGroupFilter(filters);
 
   const target = skip + take;
-  const nodes: ConditionGroupV2Node[] = [];
+  const nodes: ConditionGroupNode[] = [];
   let after: string | null = null;
 
   while (true) {
@@ -361,9 +361,9 @@ export async function fetchConditionGroups(opts?: {
       return mapped.slice(skip, skip + take);
     }
 
-    const data: ConditionGroupsV2Response =
-      await graphqlRequest<ConditionGroupsV2Response>(GET_CONDITION_GROUPS, {
-        first: Math.min(target - mapped.length, V2_MAX_FIRST),
+    const data: ConditionGroupsResponse =
+      await graphqlRequest<ConditionGroupsResponse>(GET_CONDITION_GROUPS, {
+        first: Math.min(target - mapped.length, MAX_PAGE_SIZE),
         after,
         filter: Object.keys(filter).length > 0 ? filter : undefined,
       });

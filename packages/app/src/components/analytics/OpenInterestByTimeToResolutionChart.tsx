@@ -23,7 +23,7 @@ const MONTH_SECONDS = 30 * DAY_SECONDS;
  * `(minSecondsFromNow, maxSecondsFromNow]` — left-EXCLUSIVE,
  * right-INCLUSIVE (server bug #13 fixed the orientation; do not re-derive
  * with `[min, max)`). For the current server buckets
- * (1d / 7d / 30d / 60d / 90d / 180d / beyond) this reproduces the v1
+ * (1d / 7d / 30d / 60d / 90d / 180d / beyond) this reproduces the original
  * labels exactly: "≤1 day", "2-7 days", "8-30 days", "1-2 mo.",
  * "2-3 mo.", "3-6 mo.", "6 mo.+".
  */

@@ -59,7 +59,7 @@ function makeSelection(overrides: Record<string, unknown> = {}) {
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('CreatePositionContext — settled-condition pruning (v2 contract)', () => {
+describe('CreatePositionContext — settled-condition pruning (GraphQL contract)', () => {
   const STORAGE_KEY_SELECTIONS = 'sapience:position-selections';
 
   function seedSelections(conditionIds: string[]) {
@@ -79,7 +79,7 @@ describe('CreatePositionContext — settled-condition pruning (v2 contract)', ()
     mockFetchConditionsByIds.mockResolvedValue([]);
   });
 
-  it('rehydrates with a v2 conditions-by-ids document', async () => {
+  it('rehydrates with a GraphQL conditions-by-ids document', async () => {
     seedSelections(['0xaaa', '0xbbb']);
 
     renderHook(() => useCreatePositionContext(), { wrapper });
@@ -87,8 +87,8 @@ describe('CreatePositionContext — settled-condition pruning (v2 contract)', ()
     await waitFor(() => expect(mockFetchConditionsByIds).toHaveBeenCalled());
     const [query, ids] = mockFetchConditionsByIds.mock.calls[0];
 
-    // v2 contract: $ids variable, conditionIds filter, hash aliased onto id,
-    // connection nodes, explicit orderBy. No v1 vocabulary.
+    // GraphQL contract: $ids variable, conditionIds filter, hash aliased onto id,
+    // connection nodes, explicit orderBy. No legacy vocabulary.
     expect(query).toContain('$ids: [Bytes!]!');
     expect(query).toContain('filter: { conditionIds: $ids }');
     expect(query).toContain('id: conditionId');

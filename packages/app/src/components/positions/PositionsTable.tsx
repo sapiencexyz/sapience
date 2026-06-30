@@ -125,9 +125,9 @@ function PositionRow({
     ((isPredictorToken && result === 'COUNTERPARTY_WINS') ||
       (!isPredictorToken && result === 'PREDICTOR_WINS'));
 
-  // v2 surfaces an explicit SOLD discriminator. (v1 encoded it in the id shape
-  // `${dbId}-sell-${tradeHash}`; the id fallback keeps any pre-migration row
-  // working.)
+  // The schema surfaces an explicit SOLD discriminator. (The legacy schema
+  // encoded it in the id shape `${dbId}-sell-${tradeHash}`; the id fallback
+  // keeps any pre-migration row working.)
   const isSoldRow =
     position.status === 'SOLD' || position.id.includes('-sell-');
   const isClosed = !isResolved && BigInt(position.balance) === 0n;

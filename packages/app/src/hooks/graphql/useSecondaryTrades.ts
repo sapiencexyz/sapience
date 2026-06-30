@@ -4,9 +4,9 @@ import { useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 
 /**
- * Secondary-market trade as consumed by the app. v2 drops the numeric
+ * Secondary-market trade as consumed by the app. There is no numeric
  * Prisma row id — trades are keyed by their canonical on-chain `tradeHash`.
- * `executedAt` is epoch seconds in both v1 and v2 (UnixSeconds).
+ * `executedAt` is epoch seconds (UnixSeconds).
  */
 export type SecondaryTrade = {
   tradeHash: string;
@@ -22,8 +22,8 @@ export type SecondaryTrade = {
   executedAt: number;
 };
 
-/** v2 wire shape of a Trade node (BigInt scalars may arrive as numbers). */
-type TradeV2Node = {
+/** Wire shape of a Trade node (BigInt scalars may arrive as numbers). */
+type TradeNode = {
   tradeHash: string;
   chainId: number;
   token: string;
@@ -52,9 +52,9 @@ const TRADE_FIELDS = `
 `;
 
 /**
- * v2 collapses v1's seller-query + buyer-query + client merge into a single
- * `participant` filter (either side). Explicit orderBy — v2 defaults can
- * differ from v1's.
+ * A single `participant` filter (either side) collapses what used to be a
+ * separate seller-query + buyer-query + client merge. Explicit orderBy —
+ * server defaults can differ from the previous query's.
  */
 export const TRADES_BY_PARTICIPANT_QUERY = `
   query TradesByParticipant(
@@ -97,11 +97,11 @@ export const TRADE_QUERY = `
 `;
 
 /**
- * Pure mapper: v2 Trade node → SecondaryTrade. Normalizes BigInt scalar
+ * Pure mapper: Trade node → SecondaryTrade. Normalizes BigInt scalar
  * fields via `String()` (the BigInt scalar can serialize small values as
  * numbers) and drops anything the app shape doesn't declare.
  */
-function toSecondaryTrade(node: TradeV2Node): SecondaryTrade {
+function toSecondaryTrade(node: TradeNode): SecondaryTrade {
   return {
     tradeHash: node.tradeHash,
     chainId: node.chainId,
@@ -117,15 +117,15 @@ function toSecondaryTrade(node: TradeV2Node): SecondaryTrade {
   };
 }
 
-type TradesV2Response = { trades: { nodes: TradeV2Node[] } | null };
+type TradesResponse = { trades: { nodes: TradeNode[] } | null };
 
 export function useSecondaryTradesByAddress(params: {
   address?: string;
   chainId?: number;
   take?: number;
-  /** v1 offset pagination; v2 is keyset-based, so only the first page
-   *  (skip = 0, the only value call sites use) is addressable. Kept for
-   *  signature stability. */
+  /** Legacy offset pagination; the connection is keyset-based, so only the
+   *  first page (skip = 0, the only value call sites use) is addressable. Kept
+   *  for signature stability. */
   skip?: number;
 }) {
   const { address, chainId, take = 50, skip = 0 } = params;
@@ -139,7 +139,7 @@ export function useSecondaryTradesByAddress(params: {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => {
-      const resp = await graphqlRequest<TradesV2Response>(
+      const resp = await graphqlRequest<TradesResponse>(
         TRADES_BY_PARTICIPANT_QUERY,
         {
           participant: address,
@@ -147,7 +147,7 @@ export function useSecondaryTradesByAddress(params: {
           first: take,
         }
       );
-      // Server-side EXECUTED_AT DESC replaces the v1 client merge + sort.
+      // Server-side EXECUTED_AT DESC replaces the old client merge + sort.
       return (resp?.trades?.nodes ?? []).map(toSecondaryTrade);
     },
   });
@@ -171,7 +171,7 @@ export function useSecondaryTrade(tradeHash?: string) {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => {
-      const resp = await graphqlRequest<{ trade: TradeV2Node | null }>(
+      const resp = await graphqlRequest<{ trade: TradeNode | null }>(
         TRADE_QUERY,
         { tradeHash }
       );
@@ -201,7 +201,7 @@ export function useSecondaryTrades(params: {
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     queryFn: async () => {
-      const resp = await graphqlRequest<TradesV2Response>(ALL_TRADES_QUERY, {
+      const resp = await graphqlRequest<TradesResponse>(ALL_TRADES_QUERY, {
         chainId: chainId ?? null,
         first: take,
       });

@@ -17,7 +17,7 @@ async function fetchQuestionTitle(
   resolverAddress?: string
 ): Promise<string | null> {
   try {
-    // v2: by-ids lookups skip the public-only listing default, and
+    // By-ids lookups skip the public-only listing default, and
     // `resolvers` composes with `conditionIds` for the multi-resolver
     // disambiguation (both matched case-insensitively server-side).
     const query = `

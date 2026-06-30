@@ -56,7 +56,7 @@ export async function GET(req: Request) {
     if (predictionId) {
       try {
         // Both legs run against /v2/graphql; the prediction node is mapped
-        // back to the v1-shaped PredictionData via the shared mapper.
+        // back to the legacy-shaped PredictionData via the shared mapper.
         const graphqlEndpoint = getGraphQLEndpoint();
         let prediction: PredictionData | null = null;
 
@@ -85,8 +85,8 @@ export async function GET(req: Request) {
             const conditionsMap = new Map<string, ConditionData>();
             if (conditionIds.length > 0) {
               try {
-                // v2 conditions connection: variables { ids }, nodes under
-                // data.conditions.nodes (the v1-era `where` variables made
+                // conditions connection: variables { ids }, nodes under
+                // data.conditions.nodes (the legacy `where` variables made
                 // this leg dead — it silently rendered no questions).
                 const condResp = await fetch(graphqlEndpoint, {
                   method: 'POST',

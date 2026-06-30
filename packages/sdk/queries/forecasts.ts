@@ -5,10 +5,10 @@ import { graphqlRequest } from './client/graphqlClient';
 const DEFAULT_SCHEMA_UID = FORECAST_SCHEMA_UID;
 
 /**
- * Wire shape of a v2 `Forecast` node (the subset selected by the documents
- * below). v2 renames: v1 `prediction` → `value` (a probability STRING, not a
- * binary outcome) and v1 `time` → `attestedAt` (epoch seconds). The numeric
- * Prisma row id is not exposed in v2 — identity is the EAS `uid`.
+ * Wire shape of a `Forecast` node (the subset selected by the documents
+ * below). The schema exposes `value` (a probability STRING, not a binary
+ * outcome) and `attestedAt` (epoch seconds). The numeric Prisma row id is
+ * not exposed — identity is the EAS `uid`.
  */
 export interface ForecastNode {
   uid: string;
@@ -20,7 +20,7 @@ export interface ForecastNode {
 }
 
 export type FormattedAttestation = {
-  /** EAS uid — v2 has no numeric attestation row id. */
+  /** EAS uid — there is no numeric attestation row id. */
   id: string;
   uid: string;
   attester: string;

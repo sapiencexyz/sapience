@@ -11,7 +11,7 @@ beforeEach(() => {
 });
 
 describe('fetchCategories', () => {
-  test('queries the v2 categories connection ordered by name', () => {
+  test('queries the categories connection ordered by name', () => {
     expect(GET_CATEGORIES).toContain(
       'categories(first: 100, orderBy: { field: NAME, direction: ASC })'
     );

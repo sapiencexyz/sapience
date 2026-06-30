@@ -48,11 +48,11 @@ const PAGES = [
 ] as const;
 
 /**
- * Lightweight v2 query — only fetches the fields the command palette
+ * Lightweight query — only fetches the fields the command palette
  * needs. `QuestionItem` is a union, so results branch on `__typename`;
- * v2 `QuestionFilter.search` also covers condition shortName server-side.
+ * `QuestionFilter.search` also covers condition shortName server-side.
  * (Untagged literal on purpose: app graphql-eslint validates tagged
- * documents against the v1 schema.)
+ * documents against the legacy schema.)
  */
 const SEARCH_QUESTIONS = `
   query CommandMenuSearch($first: Int, $chainId: Int, $search: String) {

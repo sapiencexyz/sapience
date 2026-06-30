@@ -36,7 +36,7 @@ const responseWith = (
 });
 
 describe('GET_VAULT_STATS document', () => {
-  test('queries vault(address, chainId).statsHistory with the v2 fields', () => {
+  test('queries vault(address, chainId).statsHistory with the expected fields', () => {
     expect(GET_VAULT_STATS).toContain(
       'vault(address: $address, chainId: $chainId)'
     );
@@ -54,7 +54,7 @@ describe('GET_VAULT_STATS document', () => {
     expect(GET_VAULT_STATS).toContain('undeployedCollateral');
     expect(GET_VAULT_STATS).toContain('cumulativePnl');
     expect(GET_VAULT_STATS).toContain('claimableCollateral');
-    // v1-only field names must not leak into the v2 query.
+    // Stale field names must not leak into the query.
     expect(GET_VAULT_STATS).not.toContain('vaultBalance');
     expect(GET_VAULT_STATS).not.toContain('escrowBalance');
     expect(GET_VAULT_STATS).not.toContain('vaultCumulativePnL');

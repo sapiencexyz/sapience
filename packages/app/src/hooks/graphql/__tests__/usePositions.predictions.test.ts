@@ -93,7 +93,7 @@ beforeEach(() => {
 
 // ─── Document shapes ─────────────────────────────────────────────────────────
 
-describe('v2 prediction documents', () => {
+describe('prediction documents', () => {
   it('predictions list query filters by participant with explicit orderBy', async () => {
     const mod = await getModule();
     const doc = mod.PREDICTIONS_QUERY as string;
@@ -133,9 +133,9 @@ describe('v2 prediction documents', () => {
     expect(doc).not.toContain('predictionCount');
   });
 
-  it('positions documents stay on v1 (wave 3)', async () => {
+  it('does not export a POSITION_BALANCES_QUERY document', async () => {
     const mod = await getModule();
-    // The v1 positions half is untouched: no v2 connection args.
+    // No standalone POSITION_BALANCES_QUERY export; positions go through POSITIONS_QUERY.
     expect(mod.POSITION_BALANCES_QUERY).toBeUndefined();
   });
 });
@@ -143,7 +143,7 @@ describe('v2 prediction documents', () => {
 // ─── Hooks ───────────────────────────────────────────────────────────────────
 
 describe('usePredictions', () => {
-  it('maps v2 nodes to the app Prediction shape via the shared adapter', async () => {
+  it('maps nodes to the app Prediction shape via the shared adapter', async () => {
     const mod = await getModule();
     mockGraphqlRequest.mockResolvedValue({
       predictions: { nodes: [makePredictionNode()] },
@@ -175,7 +175,7 @@ describe('usePredictions', () => {
     expect(p.isLegacy).toBe(false);
     expect(p.pickConfig?.id).toBe('0xpc1');
     expect(p.pickConfig?.marketAddress).toBe('0xescrow');
-    // v1 pickConfig.predictionId is backfilled from the parent prediction
+    // legacy pickConfig.predictionId is backfilled from the parent prediction
     expect(p.pickConfig?.predictionId).toBe('0xpred1');
     expect(p.pickConfig?.picks[0]?.conditionResolver).toBe('0xresolver');
     expect(p.pickConfig?.picks[0]?.predictedOutcome).toBe(1);

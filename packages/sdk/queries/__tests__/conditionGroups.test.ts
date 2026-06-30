@@ -6,8 +6,8 @@ vi.mock('../client/graphqlClient', () => ({
   graphqlRequest: (...args: unknown[]) => mockGraphqlRequest(...args),
 }));
 
-/** A v2 conditionGroups node with one public + one private condition. */
-const v2GroupNode = (overrides: Record<string, unknown> = {}) => ({
+/** A conditionGroups node with one public + one private condition. */
+const makeGroup = (overrides: Record<string, unknown> = {}) => ({
   id: 'cg-opaque-1',
   createdAt: '2026-01-02T00:00:00.000Z',
   name: 'Super Bowl winner',
@@ -67,11 +67,11 @@ beforeEach(() => {
 });
 
 // ============================================================================
-// GET_CONDITION_GROUPS document (v2)
+// GET_CONDITION_GROUPS document
 // ============================================================================
 
-describe('GET_CONDITION_GROUPS v2 document', () => {
-  test('orders explicitly by CREATED_AT DESC (v2 default is MAX_END_TIME ASC)', () => {
+describe('GET_CONDITION_GROUPS document', () => {
+  test('orders explicitly by CREATED_AT DESC (server default is MAX_END_TIME ASC)', () => {
     expect(GET_CONDITION_GROUPS).toContain(
       'orderBy: { field: CREATED_AT, direction: DESC }'
     );
@@ -82,7 +82,7 @@ describe('GET_CONDITION_GROUPS v2 document', () => {
     expect(GET_CONDITION_GROUPS).toContain('nodes');
   });
 
-  test('does not use v1 vocabulary or dropped fields', () => {
+  test('does not use stale vocabulary or dropped fields', () => {
     expect(GET_CONDITION_GROUPS).not.toContain('$where');
     expect(GET_CONDITION_GROUPS).not.toContain('$conditionsWhere');
     expect(GET_CONDITION_GROUPS).not.toContain('$take');
@@ -124,12 +124,12 @@ describe('fetchConditionGroups', () => {
     );
   });
 
-  test('multiple categorySlugs filter client-side (v2 filter only accepts one slug)', async () => {
+  test('multiple categorySlugs filter client-side (filter only accepts one slug)', async () => {
     mockGraphqlRequest
       .mockResolvedValueOnce({
         conditionGroups: {
           nodes: [
-            v2GroupNode({
+            makeGroup({
               id: 'cg-opaque-0',
               name: 'Crypto',
               category: { name: 'Crypto', slug: 'crypto' },
@@ -141,13 +141,13 @@ describe('fetchConditionGroups', () => {
       .mockResolvedValueOnce({
         conditionGroups: {
           nodes: [
-            v2GroupNode(),
-            v2GroupNode({
+            makeGroup(),
+            makeGroup({
               id: 'cg-opaque-2',
               name: 'Election winner',
               category: { name: 'Politics', slug: 'politics' },
             }),
-            v2GroupNode({
+            makeGroup({
               id: 'cg-opaque-3',
               name: 'Oscars',
               category: { name: 'Culture', slug: 'culture' },
@@ -174,12 +174,12 @@ describe('fetchConditionGroups', () => {
     expect(result.map((g) => g.id)).toEqual(['cg-opaque-1', 'cg-opaque-2']);
   });
 
-  test('uses cursors when take + skip exceeds the v2 page cap', async () => {
+  test('uses cursors when take + skip exceeds the page cap', async () => {
     const firstPage = Array.from({ length: 100 }, (_, i) =>
-      v2GroupNode({ id: `g${i}` })
+      makeGroup({ id: `g${i}` })
     );
     const secondPage = Array.from({ length: 50 }, (_, i) =>
-      v2GroupNode({ id: `g${i + 100}` })
+      makeGroup({ id: `g${i + 100}` })
     );
     mockGraphqlRequest
       .mockResolvedValueOnce({
@@ -214,11 +214,11 @@ describe('fetchConditionGroups', () => {
 
   test('fetches additional nested condition pages for large groups', async () => {
     const firstConditions = Array.from({ length: 100 }, (_, i) => ({
-      ...(v2GroupNode().conditions.nodes[0] as Record<string, unknown>),
+      ...(makeGroup().conditions.nodes[0] as Record<string, unknown>),
       conditionId: `0x${i}`,
     }));
     const secondConditions = Array.from({ length: 20 }, (_, i) => ({
-      ...(v2GroupNode().conditions.nodes[0] as Record<string, unknown>),
+      ...(makeGroup().conditions.nodes[0] as Record<string, unknown>),
       conditionId: `0x${i + 100}`,
     }));
 
@@ -226,7 +226,7 @@ describe('fetchConditionGroups', () => {
       .mockResolvedValueOnce({
         conditionGroups: {
           nodes: [
-            v2GroupNode({
+            makeGroup({
               id: 'big-group',
               conditions: {
                 nodes: firstConditions,
@@ -254,7 +254,7 @@ describe('fetchConditionGroups', () => {
 
   test('maps groups onto the stable shape with opaque string ids', async () => {
     mockGraphqlRequest.mockResolvedValue({
-      conditionGroups: { nodes: [v2GroupNode()] },
+      conditionGroups: { nodes: [makeGroup()] },
     });
     const [group] = await fetchConditionGroups();
     expect(group.id).toBe('cg-opaque-1');
@@ -293,9 +293,9 @@ describe('fetchConditionGroups', () => {
     expect(b.category).toBeNull();
   });
 
-  test('publicOnly filters nested conditions client-side (v2 nested connection has no filter)', async () => {
+  test('publicOnly filters nested conditions client-side (nested connection has no filter)', async () => {
     mockGraphqlRequest.mockResolvedValue({
-      conditionGroups: { nodes: [v2GroupNode()] },
+      conditionGroups: { nodes: [makeGroup()] },
     });
     const [group] = await fetchConditionGroups({
       filters: { publicOnly: true },
@@ -305,7 +305,7 @@ describe('fetchConditionGroups', () => {
 
   test('chainId filters nested conditions client-side', async () => {
     mockGraphqlRequest.mockResolvedValue({
-      conditionGroups: { nodes: [v2GroupNode()] },
+      conditionGroups: { nodes: [makeGroup()] },
     });
     const [group] = await fetchConditionGroups({ chainId: 8453 });
     expect(group.conditions.map((c) => c.id)).toEqual(['0xbbb']);
@@ -315,8 +315,8 @@ describe('fetchConditionGroups', () => {
     mockGraphqlRequest.mockResolvedValue({
       conditionGroups: {
         nodes: [
-          v2GroupNode(),
-          v2GroupNode({ id: 'cg-empty', conditions: { nodes: [] } }),
+          makeGroup(),
+          makeGroup({ id: 'cg-empty', conditions: { nodes: [] } }),
         ],
       },
     });
@@ -327,19 +327,19 @@ describe('fetchConditionGroups', () => {
   test('includeEmptyGroups keeps empty groups when no nested filters apply', async () => {
     mockGraphqlRequest.mockResolvedValue({
       conditionGroups: {
-        nodes: [v2GroupNode({ id: 'cg-empty', conditions: { nodes: [] } })],
+        nodes: [makeGroup({ id: 'cg-empty', conditions: { nodes: [] } })],
       },
     });
     const result = await fetchConditionGroups({ includeEmptyGroups: true });
     expect(result.map((g) => g.id)).toEqual(['cg-empty']);
   });
 
-  test('includeEmptyGroups still requires a match when nested filters apply (v1 parity)', async () => {
+  test('includeEmptyGroups still requires a match when nested filters apply', async () => {
     mockGraphqlRequest.mockResolvedValue({
-      conditionGroups: { nodes: [v2GroupNode()] },
+      conditionGroups: { nodes: [makeGroup()] },
     });
     // chainId 999 matches neither condition → group is dropped even though
-    // includeEmptyGroups is set, mirroring v1's conditions.some semantics.
+    // includeEmptyGroups is set, mirroring conditions.some semantics.
     const result = await fetchConditionGroups({
       chainId: 999,
       includeEmptyGroups: true,
@@ -347,13 +347,13 @@ describe('fetchConditionGroups', () => {
     expect(result).toEqual([]);
   });
 
-  test('emulates v1 skip by over-fetching and slicing', async () => {
+  test('pages the cursor connection then slices to the skip window', async () => {
     mockGraphqlRequest.mockResolvedValue({
       conditionGroups: {
         nodes: [
-          v2GroupNode({ id: 'g1' }),
-          v2GroupNode({ id: 'g2' }),
-          v2GroupNode({ id: 'g3' }),
+          makeGroup({ id: 'g1' }),
+          makeGroup({ id: 'g2' }),
+          makeGroup({ id: 'g3' }),
         ],
       },
     });

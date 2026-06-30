@@ -5,17 +5,17 @@ import type { Address } from 'viem';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import {
-  PREDICTION_V2_FIELDS,
+  PREDICTION_FIELDS,
   toPrediction,
   type Prediction,
-  type PredictionV2Node,
+  type PredictionNode,
   type PickConfigData,
 } from '~/hooks/graphql/usePositions';
 import type { SecondaryTrade } from '~/hooks/graphql/useSecondaryTrades';
 import {
-  PICK_CONFIGURATION_V2_FIELDS,
+  PICK_CONFIGURATION_FIELDS,
   toPickConfigData,
-  type PickConfigurationV2Node,
+  type PickConfigurationNode,
 } from '~/lib/adapters/pickConfig';
 
 export type PredictionActivity = {
@@ -36,11 +36,11 @@ export type TradeActivity = {
 
 export type ActivityItem = PredictionActivity | TradeActivity;
 
-// v2 returns the Prediction | Trade union directly under
-// `edges { node }` — v1's `accountActivity` envelope (with its
+// The endpoint returns the Prediction | Trade union directly under
+// `edges { node }` — the old `accountActivity` envelope (with its
 // per-type `prediction` / `trade` wrappers and double query) is gone.
 // `edges { timestamp }` (epoch seconds) is the interleave sort key for
-// BOTH types; using it as the single source of time kills the v1
+// BOTH types; using it as the single source of time kills the old
 // mixed-units bug (trades in seconds vs predictions in ISO strings).
 export const ACCOUNT_ACTIVITY_QUERY = `
   query AccountActivity(
@@ -73,7 +73,7 @@ export const ACCOUNT_ACTIVITY_QUERY = `
         node {
           __typename
           ... on Prediction {
-            ${PREDICTION_V2_FIELDS}
+            ${PREDICTION_FIELDS}
           }
           ... on Trade {
             tradeHash
@@ -88,7 +88,7 @@ export const ACCOUNT_ACTIVITY_QUERY = `
             blockNumber
             executedAt
             pickConfig {
-              ${PICK_CONFIGURATION_V2_FIELDS}
+              ${PICK_CONFIGURATION_FIELDS}
             }
           }
         }
@@ -97,9 +97,9 @@ export const ACCOUNT_ACTIVITY_QUERY = `
   }
 `;
 
-/** v2 wire shape of a Trade in the activity union (BigInt scalars may
+/** Wire shape of a Trade in the activity union (BigInt scalars may
  *  arrive as numbers). */
-type TradeV2ActivityNode = {
+type TradeActivityNode = {
   __typename: 'Trade';
   tradeHash: string;
   chainId: number;
@@ -112,39 +112,39 @@ type TradeV2ActivityNode = {
   txHash: string;
   blockNumber: number;
   executedAt: number;
-  pickConfig?: PickConfigurationV2Node | null;
+  pickConfig?: PickConfigurationNode | null;
 };
 
-type PredictionV2ActivityNode = PredictionV2Node & {
+type PredictionActivityNode = PredictionNode & {
   __typename: 'Prediction';
 };
 
-type ActivityEdgeV2 = {
+type ActivityEdge = {
   /** Interleave sort key: `Trade.executedAt` for trades, epoch seconds of
    *  `Prediction.createdAt` for predictions. */
   timestamp: number;
-  node: PredictionV2ActivityNode | TradeV2ActivityNode;
+  node: PredictionActivityNode | TradeActivityNode;
 };
 
-type ActivityConnectionV2 = {
+type ActivityConnection = {
   totalCount: number;
   pageInfo: { hasNextPage: boolean; endCursor: string | null };
-  edges: ActivityEdgeV2[];
+  edges: ActivityEdge[];
 };
 
-const EMPTY_ACTIVITY_PAGE: ActivityConnectionV2 = {
+const EMPTY_ACTIVITY_PAGE: ActivityConnection = {
   totalCount: 0,
   pageInfo: { hasNextPage: false, endCursor: null },
   edges: [],
 };
 
 /**
- * Pure mapper: one v2 activity edge → the hook's item envelope. The edge's
+ * Pure mapper: one activity edge → the hook's item envelope. The edge's
  * `timestamp` (epoch seconds) is THE time for every item type (×1000 for
  * ms); pickConfigs map through the shared adapter.
  */
 function toActivityItem(
-  edge: ActivityEdgeV2,
+  edge: ActivityEdge,
   account?: string
 ): ActivityItem | null {
   const timestampMs = edge.timestamp * 1000;
@@ -229,7 +229,7 @@ export function useAccountActivity({
 
   const typeFilter =
     activityType && activityType !== 'all' ? activityType : undefined;
-  // v2 ActivityFilter.types: null means "all"; [] would be a zero-result
+  // ActivityFilter.types: null means "all"; [] would be a zero-result
   // query, so the unfiltered case must send null.
   const types =
     typeFilter === 'prediction'
@@ -259,15 +259,15 @@ export function useAccountActivity({
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     // Forward-only cursor pagination: thread the previous page's endCursor
-    // in as `after` (v1 was skip/take with a length-based stop signal).
+    // in as `after` (the previous skip/take approach used a length-based stop signal).
     initialPageParam: null as string | null,
-    getNextPageParam: (lastPage: ActivityConnectionV2) =>
+    getNextPageParam: (lastPage: ActivityConnection) =>
       lastPage.pageInfo.hasNextPage
         ? (lastPage.pageInfo.endCursor ?? undefined)
         : undefined,
     queryFn: async ({ pageParam }) => {
       const resp = await graphqlRequest<{
-        activity: ActivityConnectionV2 | null;
+        activity: ActivityConnection | null;
       }>(ACCOUNT_ACTIVITY_QUERY, {
         account: account ?? null,
         conditionIds: conditionId ? [conditionId] : null,

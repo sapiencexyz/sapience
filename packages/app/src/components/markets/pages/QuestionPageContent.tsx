@@ -96,11 +96,11 @@ export default function QuestionPageContent({
     enabled: Boolean(conditionId),
     queryFn: async () => {
       if (!conditionId) return null;
-      // v2: by-ids lookups skip the public-only listing default, and
+      // By-ids lookups skip the public-only listing default, and
       // `resolvers` composes with `conditionIds` for the multi-resolver
       // disambiguation (both matched case-insensitively server-side).
       // Untagged literal on purpose: app graphql-eslint validates tagged
-      // documents against the v1 schema.
+      // documents against the legacy schema.
       const QUERY = `
         query ConditionByIdAndResolver($ids: [Bytes!]!, $resolvers: [Address!]) {
           conditions(

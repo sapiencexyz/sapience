@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { formatUnits } from 'viem';
 
-// v2: top-level `accountTotalVolume(address:)` became
+// The GraphQL schema exposes account total volume as
 // `account(address:) { stats { totalVolume } }`. `account` synthesizes a
 // record for addresses with no User row (G6), so this works for any address.
 const TRADING_VOLUME_QUERY = `

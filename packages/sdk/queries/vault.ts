@@ -1,9 +1,9 @@
 import { graphqlRequest } from './client/graphqlClient';
 
 /**
- * Per-vault economic snapshot series, fetched from the v2 `vault(address:,
+ * Per-vault economic snapshot series, fetched from the `vault(address:,
  * chainId:).statsHistory` surface. Backs the vault dashboard's TVL / PnL
- * charts (the migration off v1's `protocolStats(vaultAddress:)`).
+ * charts.
  *
  * Only the fields the dashboard plots are selected. `cumulativePnl` is the
  * PnL line; `balance + deployedCollateral + claimableCollateral` is the TVL line.
@@ -100,7 +100,7 @@ function toVaultStat(node: WireVaultStat): VaultStat {
  * normal vault this completes in a single request. The loop pages on
  * `pageInfo` only if a vault's series ever exceeds the cap, so the chart never
  * silently loses history. Returns an empty array when the address is not a
- * configured vault (the v2 `vault` field resolves null).
+ * configured vault (the `vault` field resolves null).
  *
  * `pageSize` (optional) forces an explicit per-page `first` — it must stay
  * <= the API's GRAPHQL_MAX_LIST_SIZE (100), since a larger literal is rejected

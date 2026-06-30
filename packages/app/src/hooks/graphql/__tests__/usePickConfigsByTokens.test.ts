@@ -77,7 +77,7 @@ beforeEach(() => {
 });
 
 describe('PICK_CONFIGS_BY_TOKENS_QUERY', () => {
-  it('targets the v2 pickConfigurations connection with explicit filter and orderBy', async () => {
+  it('targets the pickConfigurations connection with explicit filter and orderBy', async () => {
     const mod = await getModule();
     const doc = mod.PICK_CONFIGS_BY_TOKENS_QUERY as string;
     expect(doc).toContain('filter: { tokens: $tokens }');
@@ -93,7 +93,7 @@ describe('PICK_CONFIGS_BY_TOKENS_QUERY', () => {
 });
 
 describe('usePickConfigsByTokens', () => {
-  it('requests v2 with deduped, lowercased, sorted tokens', async () => {
+  it('requests with deduped, lowercased, sorted tokens', async () => {
     const mod = await getModule();
 
     renderHook(() => mod.usePickConfigsByTokens(['0xBBB', '0xAAA', '0xaaa']), {
@@ -156,7 +156,7 @@ describe('usePickConfigsByTokens', () => {
     expect(result.current.map.has('0xbbb')).toBe(false);
   });
 
-  it('adapts v2 nodes into the existing PickConfigData shape', async () => {
+  it('adapts nodes into the existing PickConfigData shape', async () => {
     const mod = await getModule();
     mockGraphqlRequest.mockResolvedValue({
       pickConfigurations: { nodes: [makeNode()] },

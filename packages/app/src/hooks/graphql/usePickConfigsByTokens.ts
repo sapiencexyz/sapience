@@ -4,17 +4,17 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import {
-  PICK_CONFIGURATION_V2_FIELDS,
+  PICK_CONFIGURATION_FIELDS,
   toPickConfigData,
   type AdaptedPickConfigData,
   type AdaptedPickData,
-  type PickConfigurationV2Node,
+  type PickConfigurationNode,
 } from '~/lib/adapters/pickConfig';
 
 // `picks.condition` is fetched inline so callers can build their
-// conditionsMap from a single round trip. v2: tokens move into `filter`,
-// `take` becomes `first`, and orderBy is explicit (v2 defaults can differ
-// from v1's). Node mapping (escrow → marketAddress, resolver →
+// conditionsMap from a single round trip. Tokens move into `filter`,
+// `take` becomes `first`, and orderBy is explicit (server defaults can differ
+// from the previous query's). Node mapping (escrow → marketAddress, resolver →
 // conditionResolver, YES/NO → 1/0, …) lives in the shared adapter.
 export const PICK_CONFIGS_BY_TOKENS_QUERY = `
   query PickConfigsByTokens($tokens: [Address!]) {
@@ -24,7 +24,7 @@ export const PICK_CONFIGS_BY_TOKENS_QUERY = `
       orderBy: { field: CREATED_AT, direction: DESC }
     ) {
       nodes {
-        ${PICK_CONFIGURATION_V2_FIELDS}
+        ${PICK_CONFIGURATION_FIELDS}
       }
     }
   }
@@ -51,7 +51,7 @@ export function usePickConfigsByTokens(tokens: string[]) {
     refetchOnWindowFocus: false,
     queryFn: async () => {
       const resp = await graphqlRequest<{
-        pickConfigurations: { nodes: PickConfigurationV2Node[] } | null;
+        pickConfigurations: { nodes: PickConfigurationNode[] } | null;
       }>(PICK_CONFIGS_BY_TOKENS_QUERY, { tokens: sorted });
       return (resp?.pickConfigurations?.nodes ?? []).map(toPickConfigData);
     },

@@ -49,7 +49,7 @@ export const GET_PICK_CONFIGURATIONS = /* GraphQL */ `
 `;
 
 export interface PickConfigurationCondition {
-  /** CTF on-chain condition id (lowercase 0x-hex) — v2 `conditionId`. */
+  /** CTF on-chain condition id (lowercase 0x-hex) — `conditionId`. */
   id: string;
   shortName?: string | null;
   optionName?: string | null;
@@ -65,7 +65,7 @@ export interface PickConfigurationCondition {
 }
 
 export interface PickConfigurationResult {
-  /** Deterministic on-chain pickConfigId hash — v2 `pickConfigId`. */
+  /** Deterministic on-chain pickConfigId hash — `pickConfigId`. */
   id: string;
   chainId: number;
   totalPredictorCollateral: string;
@@ -79,34 +79,34 @@ export interface PickConfigurationResult {
   }[];
 }
 
-/** v2 maxTake for the pickConfigurations connection. */
-const V2_MAX_FIRST = 100;
+/** The pickConfigurations connection's max page size. */
+const MAX_PAGE_SIZE = 100;
 
-type PickV2Node = {
+type PickNode = {
   conditionId: string;
   resolver: string;
   predictedOutcome: 'YES' | 'NO';
   condition?: PickConfigurationCondition | null;
 };
 
-type PickConfigurationV2Node = {
+type PickConfigurationNode = {
   pickConfigId: string;
   chainId: number;
   totalPredictorCollateral: string | number;
   totalCounterpartyCollateral: string | number;
   resolved: boolean;
-  picks: PickV2Node[];
+  picks: PickNode[];
 };
 
-type PickConfigurationsV2Response = {
+type PickConfigurationsResponse = {
   pickConfigurations: {
-    nodes: PickConfigurationV2Node[];
+    nodes: PickConfigurationNode[];
     pageInfo?: { hasNextPage: boolean; endCursor: string | null };
   };
 };
 
 function toPickConfigurationResult(
-  node: PickConfigurationV2Node
+  node: PickConfigurationNode
 ): PickConfigurationResult {
   return {
     id: node.pickConfigId,
@@ -139,13 +139,13 @@ export async function fetchPickConfigurations(opts?: {
   if (opts?.resolved !== undefined) filter.resolved = opts.resolved;
 
   const target = skip + take;
-  const nodes: PickConfigurationV2Node[] = [];
+  const nodes: PickConfigurationNode[] = [];
   let after: string | null = null;
 
   while (nodes.length < target) {
-    const first = Math.min(target - nodes.length, V2_MAX_FIRST);
-    const data: PickConfigurationsV2Response =
-      await graphqlRequest<PickConfigurationsV2Response>(
+    const first = Math.min(target - nodes.length, MAX_PAGE_SIZE);
+    const data: PickConfigurationsResponse =
+      await graphqlRequest<PickConfigurationsResponse>(
         GET_PICK_CONFIGURATIONS,
         {
           first,

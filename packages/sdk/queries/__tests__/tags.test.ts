@@ -11,7 +11,7 @@ beforeEach(() => {
 });
 
 describe('fetchPopularTags', () => {
-  test('queries the v2 tags connection ordered by condition count', () => {
+  test('queries the tags connection ordered by condition count', () => {
     expect(GET_POPULAR_TAGS).toContain(
       'tags(first: 20, orderBy: { field: CONDITION_COUNT, direction: DESC })'
     );

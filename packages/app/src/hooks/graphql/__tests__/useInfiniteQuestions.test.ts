@@ -111,7 +111,7 @@ describe('useInfiniteQuestions', () => {
     // defaults: openInterest desc, explicit
     expect(vars.orderBy).toEqual({ field: 'OPEN_INTEREST', direction: 'DESC' });
 
-    // mapped back into the v1 QuestionType envelope
+    // mapped back into the QuestionType envelope
     expect(result.current.data).toHaveLength(2);
     expect(result.current.data[0].questionType).toBe('condition');
     expect(result.current.data[0].condition?.id).toBe('0xa');
@@ -154,7 +154,7 @@ describe('useInfiniteQuestions', () => {
     ]);
   });
 
-  it('maps feed options into the v2 filter and drops non-finite minEndTime', async () => {
+  it('maps feed options into the filter and drops non-finite minEndTime', async () => {
     const { useInfiniteQuestions } = await getModule();
 
     const { result } = renderHook(
@@ -183,7 +183,7 @@ describe('useInfiniteQuestions', () => {
     });
   });
 
-  it('never touches the v1 transport', async () => {
+  it('loads through the GraphQL endpoint', async () => {
     const { useInfiniteQuestions } = await getModule();
     const { result } = renderHook(() => useInfiniteQuestions({}), {
       wrapper: createWrapper(),

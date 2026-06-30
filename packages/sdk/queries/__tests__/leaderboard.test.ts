@@ -20,11 +20,11 @@ beforeEach(() => {
 });
 
 // ============================================================================
-// fetchLeaderboard — v2 leaderboard(metric: PNL)
+// fetchLeaderboard — leaderboard(metric: PNL)
 // ============================================================================
 
 describe('fetchLeaderboard', () => {
-  test('queries the v2 PNL leaderboard connection', () => {
+  test('queries the PNL leaderboard connection', () => {
     expect(GET_PROFIT_LEADERBOARD).toContain(
       'leaderboard(metric: PNL, first: 100)'
     );
@@ -94,17 +94,17 @@ describe('fetchLeaderboard', () => {
 });
 
 // ============================================================================
-// fetchAccuracyLeaderboard — v2 leaderboard(metric: ACCURACY)
+// fetchAccuracyLeaderboard — leaderboard(metric: ACCURACY)
 // ============================================================================
 
 describe('fetchAccuracyLeaderboard', () => {
-  test('queries the v2 ACCURACY leaderboard connection', () => {
+  test('queries the ACCURACY leaderboard connection', () => {
     expect(GET_ACCURACY_LEADERBOARD).toContain(
       'leaderboard(metric: ACCURACY, first: $first)'
     );
     expect(GET_ACCURACY_LEADERBOARD).toContain('accuracy');
     expect(GET_ACCURACY_LEADERBOARD).not.toContain('accuracyLeaderboard');
-    // v1 Brier components are gone from the v2 surface.
+    // The Brier components are not part of this surface.
     expect(GET_ACCURACY_LEADERBOARD).not.toContain('numScored');
     expect(GET_ACCURACY_LEADERBOARD).not.toContain('sumErrorSquared');
   });
@@ -168,7 +168,7 @@ describe('fetchAccuracyLeaderboard', () => {
 });
 
 // ============================================================================
-// fetchForecasterRank — v2 account.ranking(ACCURACY) + count-only leaderboard
+// fetchForecasterRank — account.ranking(ACCURACY) + count-only leaderboard
 // ============================================================================
 
 describe('fetchForecasterRank', () => {
@@ -243,8 +243,8 @@ describe('fetchForecasterRank', () => {
 });
 
 // ============================================================================
-// fetchUserProfitRank — v2 account.ranking(PNL); rank is over the FULL
-// ranked population now, not the client-sorted top 100 of v1.
+// fetchUserProfitRank — account.ranking(PNL); rank is over the FULL
+// ranked population.
 // ============================================================================
 
 describe('fetchUserProfitRank', () => {
@@ -275,8 +275,8 @@ describe('fetchUserProfitRank', () => {
     });
 
     const result = await fetchUserProfitRank('0xalice');
-    // Rank 137 with 5000 participants was impossible under v1's
-    // client-side top-100 sort — the rank is now over the full population.
+    // The rank is over the full ranked population, so rank 137 with 5000
+    // participants is expected.
     expect(result).toEqual({
       totalPnL: '500.25',
       rank: 137,

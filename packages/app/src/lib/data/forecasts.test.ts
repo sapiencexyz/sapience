@@ -17,7 +17,7 @@ afterEach(() => {
   process.env = { ...ORIGINAL_ENV };
 });
 
-function v2Forecast(overrides: Record<string, unknown> = {}) {
+function makeForecast(overrides: Record<string, unknown> = {}) {
   return {
     uid: '0xabc123',
     attester: '0x1234567890abcdef1234567890abcdef12345678',
@@ -26,7 +26,7 @@ function v2Forecast(overrides: Record<string, unknown> = {}) {
     comment: 'I think yes',
     conditionId: '0xcond1',
     condition: {
-      id: '0xcond1', // aliased from conditionId in the v2 document
+      id: '0xcond1', // aliased from conditionId in the GraphQL document
       question: 'Will it happen?',
       shortName: 'It happens',
       endTime: 1800000000,
@@ -47,8 +47,8 @@ function okResponse(forecast: unknown) {
   };
 }
 
-describe('FORECAST_BY_UID_QUERY (v2 document)', () => {
-  test('targets the v2 forecast(uid:) lookup, not v1 attestations', async () => {
+describe('FORECAST_BY_UID_QUERY (GraphQL document)', () => {
+  test('targets the forecast(uid:) lookup, not the old attestations query', async () => {
     const { FORECAST_BY_UID_QUERY } = await import('./forecasts');
     expect(FORECAST_BY_UID_QUERY).toContain('forecast(uid: $uid)');
     expect(FORECAST_BY_UID_QUERY).not.toContain('attestations(');
@@ -56,7 +56,7 @@ describe('FORECAST_BY_UID_QUERY (v2 document)', () => {
     expect(FORECAST_BY_UID_QUERY).not.toContain('prediction');
   });
 
-  test('selects v2 field names and re-keys condition id to the hash', async () => {
+  test('selects the GraphQL field names and re-keys condition id to the hash', async () => {
     const { FORECAST_BY_UID_QUERY } = await import('./forecasts');
     expect(FORECAST_BY_UID_QUERY).toContain('attestedAt');
     expect(FORECAST_BY_UID_QUERY).toContain('value');
@@ -66,8 +66,8 @@ describe('FORECAST_BY_UID_QUERY (v2 document)', () => {
 });
 
 describe('fetchAttestationByUid', () => {
-  test('POSTs to the v2 endpoint with the uid variable', async () => {
-    mockFetch.mockResolvedValue(okResponse(v2Forecast()));
+  test('POSTs to the GraphQL endpoint with the uid variable', async () => {
+    mockFetch.mockResolvedValue(okResponse(makeForecast()));
     const { fetchAttestationByUid } = await import('./forecasts');
 
     await fetchAttestationByUid('0xabc123');
@@ -80,14 +80,14 @@ describe('fetchAttestationByUid', () => {
     expect(body.variables).toEqual({ uid: '0xabc123' });
   });
 
-  test('maps the v2 node onto the stable AttestationData shape', async () => {
-    mockFetch.mockResolvedValue(okResponse(v2Forecast()));
+  test('maps the GraphQL node onto the stable AttestationData shape', async () => {
+    mockFetch.mockResolvedValue(okResponse(makeForecast()));
     const { fetchAttestationByUid } = await import('./forecasts');
 
     const result = await fetchAttestationByUid('0xabc123');
 
     expect(result).not.toBeNull();
-    // v1 renames undone for consumers: attestedAt -> time, value -> prediction
+    // GraphQL renames undone for consumers: attestedAt -> time, value -> prediction
     expect(result?.time).toBe(1700000000);
     expect(result?.prediction).toBe('750000000000000000');
     expect(result?.uid).toBe('0xabc123');
@@ -99,7 +99,7 @@ describe('fetchAttestationByUid', () => {
     expect(result?.condition?.question).toBe('Will it happen?');
     expect(result?.condition?.endTime).toBe(1800000000);
     expect(result?.condition?.resolver).toBe('0xresolver');
-    // no numeric attestation row id on the v2 shape
+    // no numeric attestation row id on the GraphQL shape
     expect(result).not.toHaveProperty('id');
   });
 
@@ -117,7 +117,7 @@ describe('fetchAttestationByUid', () => {
 
   test('preserves a null condition relation', async () => {
     mockFetch.mockResolvedValue(
-      okResponse(v2Forecast({ condition: null, conditionId: null }))
+      okResponse(makeForecast({ condition: null, conditionId: null }))
     );
     const { fetchAttestationByUid } = await import('./forecasts');
     const result = await fetchAttestationByUid('0xabc123');

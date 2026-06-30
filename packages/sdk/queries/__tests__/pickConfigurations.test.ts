@@ -13,8 +13,8 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-/** A v2 pickConfigurations node as served by /v2/graphql. */
-const v2Node = (overrides: Record<string, unknown> = {}) => ({
+/** A pickConfigurations node as served by /v2/graphql. */
+const makeNode = (overrides: Record<string, unknown> = {}) => ({
   pickConfigId: '0xpickcfg1',
   chainId: 5064014,
   totalPredictorCollateral: '100',
@@ -51,11 +51,11 @@ const v2Node = (overrides: Record<string, unknown> = {}) => ({
 });
 
 // ============================================================================
-// GET_PICK_CONFIGURATIONS document (v2)
+// GET_PICK_CONFIGURATIONS document
 // ============================================================================
 
-describe('GET_PICK_CONFIGURATIONS v2 document', () => {
-  test('queries the v2 connection with explicit orderBy and filter', () => {
+describe('GET_PICK_CONFIGURATIONS document', () => {
+  test('queries the connection with explicit orderBy and filter', () => {
     expect(GET_PICK_CONFIGURATIONS).toContain(
       'orderBy: { field: CREATED_AT, direction: DESC }'
     );
@@ -65,8 +65,8 @@ describe('GET_PICK_CONFIGURATIONS v2 document', () => {
     expect(GET_PICK_CONFIGURATIONS).toContain('pickConfigId');
   });
 
-  test('uses v2 field names on picks and aliases the condition hash', () => {
-    // Pick.resolver replaces v1 conditionResolver on the wire
+  test('uses current field names on picks and aliases the condition hash', () => {
+    // Pick.resolver replaces conditionResolver on the wire
     expect(GET_PICK_CONFIGURATIONS).not.toContain('conditionResolver');
     expect(GET_PICK_CONFIGURATIONS).toContain('id: conditionId');
     expect(GET_PICK_CONFIGURATIONS).not.toContain('$take');
@@ -92,7 +92,7 @@ describe('fetchPickConfigurations', () => {
     });
   });
 
-  test('passes chainId and resolved through the v2 filter', async () => {
+  test('passes chainId and resolved through the filter', async () => {
     mockGraphqlRequest.mockResolvedValue({
       pickConfigurations: { nodes: [] },
     });
@@ -120,9 +120,9 @@ describe('fetchPickConfigurations', () => {
     });
   });
 
-  test('maps v2 nodes onto the stable PickConfigurationResult shape', async () => {
+  test('maps nodes onto the stable PickConfigurationResult shape', async () => {
     mockGraphqlRequest.mockResolvedValue({
-      pickConfigurations: { nodes: [v2Node()] },
+      pickConfigurations: { nodes: [makeNode()] },
     });
     const [pc] = await fetchPickConfigurations();
     expect(pc).toEqual({
@@ -165,7 +165,7 @@ describe('fetchPickConfigurations', () => {
     mockGraphqlRequest.mockResolvedValue({
       pickConfigurations: {
         nodes: [
-          v2Node({
+          makeNode({
             totalPredictorCollateral: 100,
             totalCounterpartyCollateral: 200,
           }),
@@ -177,13 +177,13 @@ describe('fetchPickConfigurations', () => {
     expect(pc.totalCounterpartyCollateral).toBe('200');
   });
 
-  test('emulates v1 skip by over-fetching and slicing', async () => {
+  test('pages the cursor connection then slices to the skip window', async () => {
     mockGraphqlRequest.mockResolvedValue({
       pickConfigurations: {
         nodes: [
-          v2Node({ pickConfigId: '0x1' }),
-          v2Node({ pickConfigId: '0x2' }),
-          v2Node({ pickConfigId: '0x3' }),
+          makeNode({ pickConfigId: '0x1' }),
+          makeNode({ pickConfigId: '0x2' }),
+          makeNode({ pickConfigId: '0x3' }),
         ],
       },
     });
@@ -195,12 +195,12 @@ describe('fetchPickConfigurations', () => {
     expect(result.map((pc) => pc.id)).toEqual(['0x2', '0x3']);
   });
 
-  test('uses cursors when take + skip exceeds the v2 page cap', async () => {
+  test('uses cursors when take + skip exceeds the page cap', async () => {
     const firstPage = Array.from({ length: 100 }, (_, i) =>
-      v2Node({ pickConfigId: `0x${i}` })
+      makeNode({ pickConfigId: `0x${i}` })
     );
     const secondPage = Array.from({ length: 50 }, (_, i) =>
-      v2Node({ pickConfigId: `0x${i + 100}` })
+      makeNode({ pickConfigId: `0x${i + 100}` })
     );
     mockGraphqlRequest
       .mockResolvedValueOnce({

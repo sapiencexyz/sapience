@@ -1,12 +1,12 @@
 import { describe, expect, test } from 'vitest';
 import {
-  PICK_CONFIGURATION_V2_FIELDS,
+  PICK_CONFIGURATION_FIELDS,
   toPickConfigData,
-  type PickConfigurationV2Node,
-  type PickV2Node,
+  type PickConfigurationNode,
+  type PickNode,
 } from './pickConfig';
 
-function makePick(overrides: Partial<PickV2Node> = {}): PickV2Node {
+function makePick(overrides: Partial<PickNode> = {}): PickNode {
   return {
     conditionId: '0xcond1',
     resolver: '0xresolver1',
@@ -30,8 +30,8 @@ function makePick(overrides: Partial<PickV2Node> = {}): PickV2Node {
 }
 
 function makeNode(
-  overrides: Partial<PickConfigurationV2Node> = {}
-): PickConfigurationV2Node {
+  overrides: Partial<PickConfigurationNode> = {}
+): PickConfigurationNode {
   return {
     pickConfigId: '0xpc1',
     chainId: 8453,
@@ -81,7 +81,7 @@ describe('toPickConfigData', () => {
     ).toBe('NON_DECISIVE');
   });
 
-  test('keeps v2-native resolved and isLegacy flags', () => {
+  test('keeps GraphQL-native resolved and isLegacy flags', () => {
     const result = toPickConfigData(
       makeNode({ resolved: true, isLegacy: true })
     );
@@ -130,7 +130,7 @@ describe('toPickConfigData', () => {
 
   test('returns empty picks when picks are missing', () => {
     const node = makeNode();
-    delete (node as Partial<PickConfigurationV2Node>).picks;
+    delete (node as Partial<PickConfigurationNode>).picks;
     expect(toPickConfigData(node).picks).toEqual([]);
   });
 
@@ -227,32 +227,32 @@ describe('toPickConfigData', () => {
     expect(result.picks[0].condition).not.toHaveProperty('createdAt');
   });
 
-  test('does not invent predictionId (absent from the v2 node)', () => {
+  test('does not invent predictionId (absent from the GraphQL node)', () => {
     const result = toPickConfigData(makeNode());
     expect('predictionId' in result).toBe(false);
   });
 });
 
-describe('PICK_CONFIGURATION_V2_FIELDS', () => {
-  test('selects v2 field names, not v1 aliases', () => {
-    expect(PICK_CONFIGURATION_V2_FIELDS).toContain('pickConfigId');
-    expect(PICK_CONFIGURATION_V2_FIELDS).toContain('escrow');
-    expect(PICK_CONFIGURATION_V2_FIELDS).toContain('isLegacy');
-    expect(PICK_CONFIGURATION_V2_FIELDS).toContain('predictedOutcome');
-    expect(PICK_CONFIGURATION_V2_FIELDS).not.toContain('marketAddress');
-    expect(PICK_CONFIGURATION_V2_FIELDS).not.toContain('conditionResolver');
+describe('PICK_CONFIGURATION_FIELDS', () => {
+  test('selects the GraphQL field names, not the old aliases', () => {
+    expect(PICK_CONFIGURATION_FIELDS).toContain('pickConfigId');
+    expect(PICK_CONFIGURATION_FIELDS).toContain('escrow');
+    expect(PICK_CONFIGURATION_FIELDS).toContain('isLegacy');
+    expect(PICK_CONFIGURATION_FIELDS).toContain('predictedOutcome');
+    expect(PICK_CONFIGURATION_FIELDS).not.toContain('marketAddress');
+    expect(PICK_CONFIGURATION_FIELDS).not.toContain('conditionResolver');
   });
 
-  test('selects no bare id field (numeric row ids are gone in v2 consumers)', () => {
-    expect(PICK_CONFIGURATION_V2_FIELDS).not.toMatch(/\bid\b/);
+  test('selects no bare id field (the GraphQL schema has no numeric row ids)', () => {
+    expect(PICK_CONFIGURATION_FIELDS).not.toMatch(/\bid\b/);
   });
 
   test('selects the embedded condition by CTF conditionId with convenience flags', () => {
-    expect(PICK_CONFIGURATION_V2_FIELDS).toContain('condition {');
-    expect(PICK_CONFIGURATION_V2_FIELDS).toContain('conditionId');
-    expect(PICK_CONFIGURATION_V2_FIELDS).toContain('settled');
-    expect(PICK_CONFIGURATION_V2_FIELDS).toContain('resolvedToYes');
-    expect(PICK_CONFIGURATION_V2_FIELDS).toContain('nonDecisive');
-    expect(PICK_CONFIGURATION_V2_FIELDS).toContain('estimatedPrice');
+    expect(PICK_CONFIGURATION_FIELDS).toContain('condition {');
+    expect(PICK_CONFIGURATION_FIELDS).toContain('conditionId');
+    expect(PICK_CONFIGURATION_FIELDS).toContain('settled');
+    expect(PICK_CONFIGURATION_FIELDS).toContain('resolvedToYes');
+    expect(PICK_CONFIGURATION_FIELDS).toContain('nonDecisive');
+    expect(PICK_CONFIGURATION_FIELDS).toContain('estimatedPrice');
   });
 });

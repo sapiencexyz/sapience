@@ -1,12 +1,12 @@
 import { describe, expect, test } from 'vitest';
 import {
-  POSITION_V2_FIELDS,
+  POSITION_FIELDS,
   toPositionBalance,
-  type PositionV2Node,
+  type PositionNode,
 } from './position';
-import { PICK_CONFIGURATION_V2_FIELDS } from './pickConfig';
+import { PICK_CONFIGURATION_FIELDS } from './pickConfig';
 
-function makeNode(overrides: Partial<PositionV2Node> = {}): PositionV2Node {
+function makeNode(overrides: Partial<PositionNode> = {}): PositionNode {
   return {
     id: 'cG9zaXRpb246MQ==',
     chainId: 8453,
@@ -71,7 +71,7 @@ describe('toPositionBalance', () => {
     ).toBe(false);
   });
 
-  test('surfaces the explicit OPEN/SOLD status (v1 encoded it in the id)', () => {
+  test('surfaces the explicit OPEN/SOLD status (previously encoded in the id)', () => {
     expect(toPositionBalance(makeNode({ status: 'OPEN' })).status).toBe('OPEN');
     expect(toPositionBalance(makeNode({ status: 'SOLD' })).status).toBe('SOLD');
   });
@@ -123,8 +123,8 @@ describe('toPositionBalance', () => {
   });
 });
 
-describe('POSITION_V2_FIELDS', () => {
-  test('selects the v2 names the mapper reads', () => {
+describe('POSITION_FIELDS', () => {
+  test('selects the GraphQL names the mapper reads', () => {
     for (const field of [
       'token',
       'side',
@@ -135,11 +135,11 @@ describe('POSITION_V2_FIELDS', () => {
       'totalPayout',
       'realizedPnl',
     ]) {
-      expect(POSITION_V2_FIELDS).toContain(field);
+      expect(POSITION_FIELDS).toContain(field);
     }
   });
 
   test('embeds the shared pickConfig selection set', () => {
-    expect(POSITION_V2_FIELDS).toContain(PICK_CONFIGURATION_V2_FIELDS.trim());
+    expect(POSITION_FIELDS).toContain(PICK_CONFIGURATION_FIELDS.trim());
   });
 });

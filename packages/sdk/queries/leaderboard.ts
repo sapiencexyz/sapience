@@ -4,28 +4,26 @@ export interface AggregatedLeaderboardEntry {
   address: string;
   /**
    * Net PnL as a human-readable decimal string (already `formatUnits`'d to
-   * 18 decimals server-side via `Ranking.pnlFormatted`). v1 carried the same
-   * units as a `toFixed(18)` string; only trailing zeros differ.
+   * 18 decimals server-side via `Ranking.pnlFormatted`).
    */
   totalPnL: string;
 }
 
 /**
- * One row of the accuracy leaderboard. Slimmed to what the v2 `Ranking`
- * surface provides — the v1 Brier components (`numScored`,
- * `sumErrorSquared`, `numTimeWeighted`, `sumTimeWeightedError`) no longer
- * exist in v2 and have been dropped. `accuracyScore` now carries the v2
- * 0-1 lifetime Brier-derived accuracy (v1 exposed a large scaled integer).
+ * One row of the accuracy leaderboard. Slimmed to what the `Ranking`
+ * surface provides — the Brier components (`numScored`, `sumErrorSquared`,
+ * `numTimeWeighted`, `sumTimeWeightedError`) do not exist on this surface.
+ * `accuracyScore` carries the 0-1 lifetime Brier-derived accuracy.
  */
 export type ForecasterScore = {
   address: string;
   rank: number;
-  /** Lifetime Brier-derived accuracy, 0-1 (v2 `Ranking.accuracy`). */
+  /** Lifetime Brier-derived accuracy, 0-1 (`Ranking.accuracy`). */
   accuracyScore: number;
 };
 
 export interface ForecasterRankResult {
-  /** 0-1 in v2 (was a large scaled integer in v1); null when unranked. */
+  /** 0-1 accuracy; null when unranked. */
   accuracyScore: number | null;
   rank: number | null;
   totalForecasters: number;
@@ -174,11 +172,9 @@ export async function fetchForecasterRank(
 }
 
 /**
- * v2 divergence (intended): v1 fetched the top-100 PnL leaderboard and
- * computed the rank client-side, so addresses outside the top 100 had a
- * null rank and `totalParticipants` was capped at 100. v2 asks the server
- * for `account.ranking(metric: PNL)`, which ranks over the FULL ranked
- * population, and `totalParticipants` is the leaderboard's `totalCount`.
+ * Asks the server for `account.ranking(metric: PNL)`, which ranks over the
+ * FULL ranked population, and `totalParticipants` is the leaderboard's
+ * `totalCount`.
  */
 export async function fetchUserProfitRank(
   ownerAddress: string

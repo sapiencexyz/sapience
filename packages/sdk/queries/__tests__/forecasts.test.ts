@@ -34,10 +34,10 @@ function makeNode(overrides: Record<string, unknown> = {}) {
 }
 
 // ============================================================================
-// v2 documents
+// forecast documents
 // ============================================================================
 
-describe('v2 forecast documents', () => {
+describe('forecast documents', () => {
   test('list query targets the forecasts connection with explicit ATTESTED_AT DESC', () => {
     expect(GET_FORECASTS_QUERY).toContain('forecasts(');
     expect(GET_FORECASTS_QUERY).toContain(
@@ -46,7 +46,7 @@ describe('v2 forecast documents', () => {
     expect(GET_FORECASTS_QUERY).toContain('first: $first');
     expect(GET_FORECASTS_QUERY).toContain('filter: $filter');
     expect(GET_FORECASTS_QUERY).toContain('nodes');
-    // v2 field names — not the v1 attestation row shape
+    // current field names — not the legacy attestation row shape
     expect(GET_FORECASTS_QUERY).toContain('attestedAt');
     expect(GET_FORECASTS_QUERY).toContain('value');
     expect(GET_FORECASTS_QUERY).not.toContain('prediction');
@@ -71,11 +71,11 @@ describe('v2 forecast documents', () => {
 // ============================================================================
 
 describe('formatAttestationData', () => {
-  test('maps v2 value straight through', () => {
+  test('maps value straight through', () => {
     expect(formatAttestationData(makeNode()).value).toBe('75');
   });
 
-  test('keys id on the EAS uid (no numeric row id in v2)', () => {
+  test('keys id on the EAS uid (no numeric row id)', () => {
     const result = formatAttestationData(makeNode());
     expect(result.id).toBe('0xabc123');
     expect(result.uid).toBe('0xabc123');
@@ -104,11 +104,11 @@ describe('formatAttestationData', () => {
     expect(result.conditionId).toBe('0xcond1');
   });
 
-  test('null comment becomes empty string (v2 comment is nullable)', () => {
+  test('null comment becomes empty string (comment is nullable)', () => {
     expect(formatAttestationData(makeNode({ comment: null })).comment).toBe('');
   });
 
-  test('null conditionId becomes undefined (v2 conditionId is nullable)', () => {
+  test('null conditionId becomes undefined (conditionId is nullable)', () => {
     expect(
       formatAttestationData(makeNode({ conditionId: null })).conditionId
     ).toBeUndefined();
@@ -177,7 +177,7 @@ describe('fetchForecasts', () => {
     expect(vars.filter.schemaId).toBe(DEFAULT_SCHEMA_UID);
   });
 
-  test('requests max 100 forecasts (v2 maxTake)', async () => {
+  test('requests max 100 forecasts (connection max page size)', async () => {
     mockGraphqlRequest.mockResolvedValue({ forecasts: { nodes: [] } });
     await fetchForecasts({});
     expect(mockGraphqlRequest.mock.calls[0][1].first).toBe(100);
@@ -201,7 +201,7 @@ describe('fetchForecasts', () => {
     );
   });
 
-  test('maps single conditionId onto the v2 conditionIds list filter', async () => {
+  test('maps single conditionId onto the conditionIds list filter', async () => {
     mockGraphqlRequest.mockResolvedValue({ forecasts: { nodes: [] } });
     await fetchForecasts({ conditionId: '0xcond1' });
     expect(mockGraphqlRequest.mock.calls[0][1].filter.conditionIds).toEqual([

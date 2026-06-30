@@ -73,10 +73,10 @@ describe('GET_PROTOCOL_ANALYTICS document', () => {
     expect(GET_PROTOCOL_ANALYTICS).toContain('openInterestByTimeToResolution');
   });
 
-  test('uses v2 field names: totalValueLocked + cumulativeTradeCount', () => {
+  test('uses field names: totalValueLocked + cumulativeTradeCount', () => {
     expect(GET_PROTOCOL_ANALYTICS).toContain('totalValueLocked');
     expect(GET_PROTOCOL_ANALYTICS).toContain('cumulativeTradeCount');
-    // v1-only fields must not appear.
+    // Stale fields must not appear.
     expect(GET_PROTOCOL_ANALYTICS).not.toContain('totalTradeCount');
     expect(GET_PROTOCOL_ANALYTICS).not.toContain('vaultAvailableAssets');
     expect(GET_PROTOCOL_ANALYTICS).not.toContain('vaultBalance');
@@ -88,7 +88,7 @@ describe('GET_PROTOCOL_ANALYTICS document', () => {
     expect(GET_PROTOCOL_ANALYTICS).toContain('predictionCount');
     expect(GET_PROTOCOL_ANALYTICS).toContain('slug');
     expect(GET_PROTOCOL_ANALYTICS).not.toMatch(/\bid\b/);
-    // v1 server-computed bucket label/index are gone.
+    // Server-computed bucket label/index are not present.
     expect(GET_PROTOCOL_ANALYTICS).not.toContain('label');
     expect(GET_PROTOCOL_ANALYTICS).not.toContain('bucket');
   });

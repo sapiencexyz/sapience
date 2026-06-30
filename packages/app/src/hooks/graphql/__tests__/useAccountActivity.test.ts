@@ -28,7 +28,7 @@ async function getModule() {
   return import('../useAccountActivity');
 }
 
-// ─── v2 wire fixtures ────────────────────────────────────────────────────────
+// ─── wire fixtures ───────────────────────────────────────────────────────────
 
 function makePickConfigNode(overrides: Record<string, unknown> = {}) {
   return {
@@ -144,8 +144,8 @@ beforeEach(() => {
 
 // ─── Document shape ──────────────────────────────────────────────────────────
 
-describe('v2 activity document', () => {
-  it('queries the v2 activity connection with edge timestamps and inline fragments', async () => {
+describe('activity document', () => {
+  it('queries the activity connection with edge timestamps and inline fragments', async () => {
     const mod = await getModule();
     const doc = mod.ACCOUNT_ACTIVITY_QUERY as string;
     expect(doc).toContain('activity(');
@@ -157,9 +157,9 @@ describe('v2 activity document', () => {
     expect(doc).toContain('... on Prediction');
     expect(doc).toContain('... on Trade');
     expect(doc).toContain('__typename');
-    // v1 envelope is gone
+    // old envelope is gone
     expect(doc).not.toContain('accountActivity');
-    // untagged document — app graphql-eslint validates tagged docs against v1
+    // untagged document — app graphql-eslint (pinned to the legacy schema) skips it
     expect(doc).not.toContain('GraphQL */');
   });
 });
@@ -167,7 +167,7 @@ describe('v2 activity document', () => {
 // ─── Hook behavior ───────────────────────────────────────────────────────────
 
 describe('useAccountActivity', () => {
-  it('runs the v2 query for the global feed with null filters', async () => {
+  it('runs the query for the global feed with null filters', async () => {
     const mod = await getModule();
 
     renderHook(() => mod.useAccountActivity({}), {
@@ -274,7 +274,7 @@ describe('useAccountActivity', () => {
     expect(mockGraphqlRequest).not.toHaveBeenCalled();
   });
 
-  it('maps the filter surface to v2 ActivityFilter variables', async () => {
+  it('maps the filter surface to ActivityFilter variables', async () => {
     const mod = await getModule();
 
     renderHook(

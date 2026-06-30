@@ -50,7 +50,7 @@ beforeEach(() => {
   mockGraphqlRequest.mockResolvedValue({ trades: { nodes: [] } });
 });
 
-describe('v2 trade documents', () => {
+describe('trade documents', () => {
   it('participant query collapses seller+buyer into one filter with explicit orderBy', async () => {
     const mod = await getModule();
     const doc = mod.TRADES_BY_PARTICIPANT_QUERY as string;
@@ -83,7 +83,7 @@ describe('v2 trade documents', () => {
 });
 
 describe('useSecondaryTradesByAddress', () => {
-  it('issues a single v2 request keyed on participant (no seller/buyer double query)', async () => {
+  it('issues a single request keyed on participant (no seller/buyer double query)', async () => {
     const mod = await getModule();
 
     renderHook(
@@ -171,7 +171,7 @@ describe('useSecondaryTradesByAddress', () => {
 });
 
 describe('useSecondaryTrades (all trades)', () => {
-  it('requests the v2 trades connection filtered by chainId', async () => {
+  it('requests the trades connection filtered by chainId', async () => {
     const mod = await getModule();
 
     renderHook(() => mod.useSecondaryTrades({ chainId: 8453 }), {
