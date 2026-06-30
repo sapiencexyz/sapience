@@ -10,7 +10,8 @@ import {
 } from '@sapience/ui/components/ui/dialog';
 import { Input } from '@sapience/ui/components/ui/input';
 import { useToast } from '@sapience/ui/hooks/use-toast';
-import { Copy, Plus, Settings } from 'lucide-react';
+import { Copy, ListOrdered, Plus, Settings } from 'lucide-react';
+import Link from 'next/link';
 import { useState } from 'react';
 import type { Address } from 'viem';
 
@@ -68,6 +69,12 @@ const Admin = () => {
       <header className="flex items-center justify-between mb-8">
         <h1 className="text-3xl">Admin</h1>
         <div className="flex items-center gap-2">
+          <Link href="/admin/question-ordering">
+            <Button variant="outline" size="sm">
+              <ListOrdered className="mr-1 h-4 w-4" />
+              Question Ordering
+            </Button>
+          </Link>
           <Dialog
             open={smartAccountLookupOpen}
             onOpenChange={(open) => {
@@ -213,7 +220,7 @@ const Admin = () => {
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <aside className="lg:col-span-1">
+        <aside className="lg:col-span-1 space-y-6">
           <div className="rounded-lg border p-4">
             <h2 className="text-lg font-medium mb-4">
               Backfill Protocol Stats
