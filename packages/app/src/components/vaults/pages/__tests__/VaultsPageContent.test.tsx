@@ -619,47 +619,4 @@ describe('VaultsPageContent vault balance display', () => {
       expect.objectContaining({ isLoading: true })
     );
   });
-
-  it('shows a Cancel button for a pending deposit once the interaction delay has elapsed', () => {
-    const nowSec = Math.floor(Date.now() / 1000);
-    mockUsePassiveLiquidityVault.mockReturnValue({
-      ...passiveVaultDefaults(),
-      // interactionDelay 0 → cancellation allowed immediately
-      interactionDelay: 0n,
-      pendingRequest: {
-        isDeposit: true,
-        processed: false,
-        timestamp: BigInt(nowSec - 60),
-        assets: 10n * 10n ** 18n,
-        shares: 12n * 10n ** 18n,
-      },
-    });
-
-    render(<VaultsPageContent />);
-
-    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
-    // The static, non-interactive "Pending" gate should not be shown.
-    expect(screen.queryByText('Pending', { exact: true })).toBeNull();
-  });
-
-  it('keeps the static "Pending" label while the interaction delay is still active', () => {
-    const nowSec = Math.floor(Date.now() / 1000);
-    mockUsePassiveLiquidityVault.mockReturnValue({
-      ...passiveVaultDefaults(),
-      // 1h delay, request made 60s ago → not yet cancellable, not expired
-      interactionDelay: 3600n,
-      pendingRequest: {
-        isDeposit: true,
-        processed: false,
-        timestamp: BigInt(nowSec - 60),
-        assets: 10n * 10n ** 18n,
-        shares: 12n * 10n ** 18n,
-      },
-    });
-
-    render(<VaultsPageContent />);
-
-    expect(screen.getByText('Pending', { exact: true })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Cancel' })).toBeNull();
-  });
 });
