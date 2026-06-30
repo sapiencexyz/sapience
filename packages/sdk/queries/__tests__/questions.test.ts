@@ -93,6 +93,7 @@ function makeGroupNode(overrides: Record<string, unknown> = {}): QuestionItem {
           category: null,
         },
       ],
+      pageInfo: { hasNextPage: true, endCursor: 'child-cursor' },
     },
     ...overrides,
   } as QuestionItem;
@@ -115,6 +116,8 @@ describe('GET_QUESTIONS document', () => {
     expect(GET_QUESTIONS).toContain('edges');
     expect(GET_QUESTIONS).toContain('hasNextPage');
     expect(GET_QUESTIONS).toContain('endCursor');
+    expect(GET_QUESTIONS).toContain('conditions(first: 50)');
+    expect(GET_QUESTIONS).toContain('pageInfo');
     expect(GET_QUESTIONS).not.toContain('totalCount');
   });
 });
@@ -320,6 +323,8 @@ describe('toQuestionType', () => {
     expect(g.name).toBe('Who wins?');
     expect(g.category).toEqual({ name: 'Sports', slug: 'sports' });
     expect(g.conditions).toHaveLength(1);
+    expect(g.hasMoreConditions).toBe(true);
+    expect(g.conditionsEndCursor).toBe('child-cursor');
     const gc = g.conditions[0];
     expect(gc.id).toBe('0xg1');
     expect(gc.optionName).toBe('Team A');

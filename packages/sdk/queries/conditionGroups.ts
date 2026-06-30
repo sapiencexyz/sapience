@@ -41,6 +41,8 @@ export interface ConditionGroupType {
   name: string;
   category?: { name: string; slug: string } | null;
   conditions: ConditionGroupConditionType[];
+  hasMoreConditions?: boolean;
+  conditionsEndCursor?: string | null;
 }
 
 export interface ConditionGroupFilters {

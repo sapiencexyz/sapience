@@ -249,6 +249,13 @@ export default function QuestionsGrid({
                               );
                             })}
                           </motion.div>
+                          {openGroupRow.hasMoreConditions ? (
+                            <p className="mt-4 text-xs text-white/70">
+                              Showing first {openGroupRow.conditions.length}{' '}
+                              options. More options are available in this market
+                              group.
+                            </p>
+                          ) : null}
                         </motion.div>
                       </motion.div>
                     )}

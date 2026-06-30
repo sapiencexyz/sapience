@@ -163,6 +163,10 @@ export const GET_QUESTIONS = `
                 ${QUESTION_CONDITION_FIELDS}
                 displayOrder
               }
+              pageInfo {
+                hasNextPage
+                endCursor
+              }
             }
           }
         }
@@ -324,7 +328,10 @@ export type QuestionItem =
       createdAt: string;
       name: string;
       category?: { name: string; slug: string } | null;
-      conditions?: { nodes?: QuestionConditionNode[] } | null;
+      conditions?: {
+        nodes?: QuestionConditionNode[];
+        pageInfo?: { hasNextPage: boolean; endCursor: string | null };
+      } | null;
     };
 
 type QuestionsResponse = {
@@ -392,6 +399,8 @@ export function toQuestionType(node: QuestionItem): QuestionType {
         conditions: (node.conditions?.nodes ?? []).map((c) =>
           toFeedCondition(c, node.id)
         ),
+        hasMoreConditions: Boolean(node.conditions?.pageInfo?.hasNextPage),
+        conditionsEndCursor: node.conditions?.pageInfo?.endCursor ?? null,
       },
       condition: null,
     };
