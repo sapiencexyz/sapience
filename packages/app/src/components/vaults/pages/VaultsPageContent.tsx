@@ -867,6 +867,17 @@ const VaultsPageContent = () => {
                               Number(expirationTime ?? 0n)) *
                             1000;
                           const isExpired = Date.now() >= expiresAt;
+                          // The contract gates cancellation on the interaction
+                          // delay elapsing relative to the request timestamp
+                          // (reverts InteractionDelayNotExpired otherwise). When
+                          // the delay is 0 the request can be cancelled right
+                          // away, so surface a Cancel button instead of a static
+                          // "Pending" label as soon as the delay has passed.
+                          const cancelAllowedAt =
+                            (Number(pendingRequest.timestamp) +
+                              Number(interactionDelay ?? 0n)) *
+                            1000;
+                          const canCancel = Date.now() >= cancelAllowedAt;
                           const actionType = pendingRequest.isDeposit
                             ? 'cancelDeposit'
                             : 'cancelWithdrawal';
@@ -913,7 +924,7 @@ const VaultsPageContent = () => {
                                     )}
                                   </span>
                                 </div>
-                                {isExpired ? (
+                                {isExpired || canCancel ? (
                                   <Button
                                     size="sm"
                                     disabled={
@@ -929,7 +940,9 @@ const VaultsPageContent = () => {
                                     {isVaultPending &&
                                     pendingAction === actionType
                                       ? 'Processing...'
-                                      : 'Reclaim'}
+                                      : isExpired
+                                        ? 'Reclaim'
+                                        : 'Cancel'}
                                   </Button>
                                 ) : (
                                   <span className="text-sm text-muted-foreground px-3 py-1.5">
