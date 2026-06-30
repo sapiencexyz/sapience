@@ -460,6 +460,20 @@ describe('buildVaultQuoteMessage', () => {
     expect(msg).toContain('Timestamp: 1700000000');
   });
 
+  test('uses MeridianPredict header on Robinhood chains', () => {
+    // testnet 46630 and mainnet 4663 sign with the rebranded header
+    for (const chainId of [46630, 4663]) {
+      const msg = buildVaultQuoteMessage({
+        vaultAddress: '0xABCD',
+        chainId,
+        vaultCollateralPerShare: '1',
+        timestamp: 1700000000,
+      });
+      expect(msg).toContain('MeridianPredict Vault Share Quote');
+      expect(msg).not.toContain('Sapience Vault Share Quote');
+    }
+  });
+
   test('lowercases vault address', () => {
     const msg = buildVaultQuoteMessage({
       vaultAddress: '0xABCD',

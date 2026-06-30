@@ -21,6 +21,30 @@ const BUILT_IN_TRADING_CHAIN_IDS = new Set<number>([
   CHAIN_ID_ROBINHOOD_MAINNET,
 ]);
 
+const ROBINHOOD_CHAIN_IDS = new Set<number>([
+  CHAIN_ID_ROBINHOOD_TESTNET,
+  CHAIN_ID_ROBINHOOD_MAINNET,
+]);
+
+/** True for Robinhood/Meridian chains (testnet 46630, mainnet 4663). */
+export function isRobinhoodChain(chainId: number | string): boolean {
+  return ROBINHOOD_CHAIN_IDS.has(Number(chainId));
+}
+
+/**
+ * Canonical first line of the vault-share-quote message that the quoter signs
+ * and the UI/relayer verify. Robinhood/Meridian chains use the "MeridianPredict"
+ * header (post @sapience → @meridian-predict rebrand); every other deployment
+ * keeps the legacy "Sapience" header. MUST stay byte-identical across the quoter
+ * (predict-vault `VAULT_QUOTE_CANONICAL_HEADER`), this SDK, and the relayer, or
+ * the recovered signer won't match `signedBy` and the quote fails verification.
+ */
+export function vaultQuoteCanonicalHeader(chainId: number | string): string {
+  return isRobinhoodChain(chainId)
+    ? 'MeridianPredict Vault Share Quote'
+    : 'Sapience Vault Share Quote';
+}
+
 /**
  * localStorage keys for the client-side custom-chain override. Shared with the
  * app (SettingsContext + providers) so the strings can never drift. When both

@@ -50,6 +50,7 @@ import { predictionMarketEscrowAbi } from '../abis';
 import { isNonceUsed } from '../onchain/escrow';
 import { validateCounterpartyFunds } from '../onchain/position';
 import { isValidAddress, isValidSignatureFormat } from './validationUtils';
+import { vaultQuoteCanonicalHeader } from '../constants/chain';
 
 // ─── Result Types ─────────────────────────────────────────────────────────────
 
@@ -967,7 +968,9 @@ export async function validateVaultQuote(
   // Signature verification — canonical message format must match relayer's buildVaultQuoteMessage
   try {
     const message = [
-      'Sapience Vault Share Quote',
+      // Robinhood chains use the "MeridianPredict" header; others keep "Sapience".
+      // Keep byte-identical to the quoter/relayer. See vaultQuoteCanonicalHeader.
+      vaultQuoteCanonicalHeader(quote.chainId),
       `Vault: ${quote.vaultAddress.toLowerCase()}`,
       `ChainId: ${quote.chainId}`,
       `CollateralPerShare: ${quote.vaultCollateralPerShare}`,

@@ -9,7 +9,10 @@ import {
 import type { Abi } from 'abitype';
 import type { Address } from 'viem';
 import { collateralToken } from '../contracts/addresses';
-import { CHAIN_ID_ETHEREAL } from '../constants/chain';
+import {
+  CHAIN_ID_ETHEREAL,
+  vaultQuoteCanonicalHeader,
+} from '../constants/chain';
 
 export const VAULT_WUSDE_ADDRESS: Address = collateralToken[CHAIN_ID_ETHEREAL]
   .address as Address;
@@ -262,7 +265,9 @@ export function buildVaultQuoteMessage(quote: {
   timestamp: string | number;
 }): string {
   return [
-    'Sapience Vault Share Quote',
+    // Robinhood chains sign with the "MeridianPredict" header; others keep the
+    // legacy "Sapience" header. Must stay byte-identical to the quoter/relayer.
+    vaultQuoteCanonicalHeader(quote.chainId),
     `Vault: ${quote.vaultAddress.toLowerCase()}`,
     `ChainId: ${quote.chainId}`,
     `CollateralPerShare: ${String(quote.vaultCollateralPerShare)}`,
