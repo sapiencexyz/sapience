@@ -402,8 +402,8 @@ export function toQuestionType(node: QuestionItemV2): QuestionType {
 }
 
 /**
- * v1-compatible offset fetch over the v2 cursor connection: over-fetch
- * `take + skip` (capped at the server's maxTake) and slice locally.
+ * v1-compatible offset fetch over the v2 cursor connection: page until
+ * `take + skip` rows are available, then slice locally.
  * Cursor-native consumers should drive `GET_QUESTIONS` directly with
  * `buildQuestionsVariables` + `toQuestionType` instead.
  */
@@ -413,19 +413,30 @@ export async function fetchQuestionsSorted(
   const { take, skip, ...feedParams } = params;
   const { filter, orderBy } = buildQuestionsVariables(feedParams);
 
-  const data = await graphqlRequest<QuestionsV2Response>(GET_QUESTIONS, {
-    first: Math.min(take + skip, V2_MAX_FIRST),
-    after: null,
-    filter,
-    orderBy,
-  });
+  const target = skip + take;
+  const items: QuestionItemV2[] = [];
+  let after: string | null = null;
 
-  const edges = data?.questions?.edges;
-  if (!Array.isArray(edges)) {
-    throw new Error('Failed to fetch questions: Invalid response structure');
+  while (items.length < target) {
+    const data: QuestionsV2Response = await graphqlRequest<QuestionsV2Response>(
+      GET_QUESTIONS,
+      {
+        first: Math.min(target - items.length, V2_MAX_FIRST),
+        after,
+        filter,
+        orderBy,
+      }
+    );
+
+    const edges = data?.questions?.edges;
+    if (!Array.isArray(edges)) {
+      throw new Error('Failed to fetch questions: Invalid response structure');
+    }
+    items.push(...edges.map((edge) => edge.node));
+    const pageInfo = data.questions.pageInfo;
+    if (!pageInfo?.hasNextPage || !pageInfo.endCursor) break;
+    after = pageInfo.endCursor;
   }
 
-  return edges
-    .map((edge) => toQuestionType(edge.node))
-    .slice(skip, skip + take);
+  return items.map(toQuestionType).slice(skip, skip + take);
 }

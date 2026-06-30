@@ -9,6 +9,7 @@ beforeEach(() => {
 
 afterEach(() => {
   process.env = { ...ORIGINAL_ENV };
+  vi.unstubAllGlobals();
 });
 
 describe('getGraphQLEndpoint', () => {
@@ -34,5 +35,21 @@ describe('getGraphQLEndpoint', () => {
     process.env.NEXT_PUBLIC_FOIL_API_URL = 'not a url';
     const { getGraphQLEndpoint } = await import('./graphql');
     expect(getGraphQLEndpoint()).toBe('https://api.sapience.xyz/v2/graphql');
+  });
+
+  test('prefers the Settings override in localStorage when running in the browser', async () => {
+    process.env.NEXT_PUBLIC_FOIL_API_URL = 'https://api.example.com';
+    const store: Record<string, string> = {
+      'sapience.settings.graphqlEndpoint':
+        'https://api.predict.meridian.xyz/graphql',
+    };
+    vi.stubGlobal('window', {
+      localStorage: { getItem: (key: string) => store[key] ?? null },
+    });
+
+    const { getGraphQLEndpoint } = await import('./graphql');
+    expect(getGraphQLEndpoint()).toBe(
+      'https://api.predict.meridian.xyz/graphql'
+    );
   });
 });

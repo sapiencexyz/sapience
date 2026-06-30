@@ -87,6 +87,7 @@ describe('fetchPickConfigurations', () => {
     await fetchPickConfigurations();
     expect(mockGraphqlRequest).toHaveBeenCalledWith(GET_PICK_CONFIGURATIONS, {
       first: 10,
+      after: null,
       filter: undefined,
     });
   });
@@ -102,6 +103,7 @@ describe('fetchPickConfigurations', () => {
     });
     expect(mockGraphqlRequest).toHaveBeenCalledWith(GET_PICK_CONFIGURATIONS, {
       first: 50,
+      after: null,
       filter: { chainId: 42161, resolved: false },
     });
   });
@@ -113,6 +115,7 @@ describe('fetchPickConfigurations', () => {
     await fetchPickConfigurations({ take: 5, resolved: true });
     expect(mockGraphqlRequest).toHaveBeenCalledWith(GET_PICK_CONFIGURATIONS, {
       first: 5,
+      after: null,
       filter: { resolved: true },
     });
   });
@@ -190,6 +193,44 @@ describe('fetchPickConfigurations', () => {
       expect.objectContaining({ first: 3 })
     );
     expect(result.map((pc) => pc.id)).toEqual(['0x2', '0x3']);
+  });
+
+  test('uses cursors when take + skip exceeds the v2 page cap', async () => {
+    const firstPage = Array.from({ length: 100 }, (_, i) =>
+      v2Node({ pickConfigId: `0x${i}` })
+    );
+    const secondPage = Array.from({ length: 50 }, (_, i) =>
+      v2Node({ pickConfigId: `0x${i + 100}` })
+    );
+    mockGraphqlRequest
+      .mockResolvedValueOnce({
+        pickConfigurations: {
+          nodes: firstPage,
+          pageInfo: { hasNextPage: true, endCursor: 'cursor-100' },
+        },
+      })
+      .mockResolvedValueOnce({
+        pickConfigurations: {
+          nodes: secondPage,
+          pageInfo: { hasNextPage: false, endCursor: null },
+        },
+      });
+
+    const result = await fetchPickConfigurations({ take: 100, skip: 50 });
+
+    expect(mockGraphqlRequest).toHaveBeenNthCalledWith(
+      1,
+      GET_PICK_CONFIGURATIONS,
+      expect.objectContaining({ first: 100, after: null })
+    );
+    expect(mockGraphqlRequest).toHaveBeenNthCalledWith(
+      2,
+      GET_PICK_CONFIGURATIONS,
+      expect.objectContaining({ first: 50, after: 'cursor-100' })
+    );
+    expect(result).toHaveLength(100);
+    expect(result[0].id).toBe('0x50');
+    expect(result[99].id).toBe('0x149');
   });
 
   test('throws on invalid response structure', async () => {

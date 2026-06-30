@@ -49,9 +49,10 @@ export interface ConditionFilters {
 const V2_MAX_FIRST = 100;
 
 export const GET_CONDITIONS = /* GraphQL */ `
-  query Conditions($first: Int, $filter: ConditionFilter) {
+  query Conditions($first: Int, $after: String, $filter: ConditionFilter) {
     conditions(
       first: $first
+      after: $after
       orderBy: { field: CREATED_AT, direction: DESC }
       filter: $filter
     ) {
@@ -84,6 +85,10 @@ export const GET_CONDITIONS = /* GraphQL */ `
           name
           slug
         }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
       }
     }
   }
@@ -167,7 +172,10 @@ type ConditionV2Node = {
 };
 
 type ConditionsV2Response = {
-  conditions: { nodes: ConditionV2Node[] };
+  conditions: {
+    nodes: ConditionV2Node[];
+    pageInfo?: { hasNextPage: boolean; endCursor: string | null };
+  };
 };
 
 function toConditionType(node: ConditionV2Node): ConditionType {
@@ -200,14 +208,6 @@ function toConditionType(node: ConditionV2Node): ConditionType {
   };
 }
 
-function toConditionTypes(data: ConditionsV2Response | null): ConditionType[] {
-  const nodes = data?.conditions?.nodes;
-  if (!Array.isArray(nodes)) {
-    throw new Error('Failed to fetch conditions: Invalid response structure');
-  }
-  return nodes.map(toConditionType);
-}
-
 export async function fetchConditions(opts?: {
   take?: number;
   skip?: number;
@@ -218,16 +218,29 @@ export async function fetchConditions(opts?: {
   const skip = opts?.skip ?? 0;
   const filter = buildConditionFilter(opts?.chainId, opts?.filters);
 
-  // v2 connections cursor-paginate; emulate the v1 offset contract by
-  // over-fetching (capped at the server's maxTake) and slicing locally.
-  const first = Math.min(take + skip, V2_MAX_FIRST);
+  const target = skip + take;
+  const nodes: ConditionV2Node[] = [];
+  let after: string | null = null;
 
-  const data = await graphqlRequest<ConditionsV2Response>(GET_CONDITIONS, {
-    first,
-    filter: Object.keys(filter).length > 0 ? filter : undefined,
-  });
+  while (nodes.length < target) {
+    const first = Math.min(target - nodes.length, V2_MAX_FIRST);
+    const data: ConditionsV2Response =
+      await graphqlRequest<ConditionsV2Response>(GET_CONDITIONS, {
+        first,
+        after,
+        filter: Object.keys(filter).length > 0 ? filter : undefined,
+      });
+    const pageNodes = data?.conditions?.nodes;
+    if (!Array.isArray(pageNodes)) {
+      throw new Error('Failed to fetch conditions: Invalid response structure');
+    }
+    nodes.push(...pageNodes);
+    const pageInfo = data.conditions.pageInfo;
+    if (!pageInfo?.hasNextPage || !pageInfo.endCursor) break;
+    after = pageInfo.endCursor;
+  }
 
-  return toConditionTypes(data).slice(skip, skip + take);
+  return nodes.map(toConditionType).slice(skip, skip + take);
 }
 
 // --- fetchConditionsByIds ---

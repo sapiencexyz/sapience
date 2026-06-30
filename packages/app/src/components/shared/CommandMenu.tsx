@@ -34,6 +34,7 @@ import { isAddress, getAddress } from 'viem';
 import { getDeterministicCategoryColor } from '~/lib/theme/categoryPalette';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import MarketBadge from '~/components/markets/MarketBadge';
+import { useSettings } from '~/lib/context/SettingsContext';
 
 const MAX_RESULTS = 10;
 
@@ -133,9 +134,13 @@ function getCategoryColor(categorySlug?: string | null): string {
   return getDeterministicCategoryColor(categorySlug);
 }
 
-function useCommandMenuSearch(search: string | undefined, enabled: boolean) {
+function useCommandMenuSearch(
+  search: string | undefined,
+  enabled: boolean,
+  chainId: number
+) {
   return useQuery<SearchConditionRow[]>({
-    queryKey: ['commandMenuSearch', search],
+    queryKey: ['commandMenuSearch', search, chainId],
     queryFn: async () => {
       const data = await graphqlRequest<{
         questions: { edges: Array<{ node: SearchQuestionNode }> };
@@ -143,7 +148,7 @@ function useCommandMenuSearch(search: string | undefined, enabled: boolean) {
         // Overfetch 3x: groups expand into multiple rows, and we re-sort
         // client-side to prefer future markets over expired ones
         first: MAX_RESULTS * 3,
-        chainId: DEFAULT_CHAIN_ID,
+        chainId,
         search: search?.trim() || null,
       });
 
@@ -191,6 +196,8 @@ export default function CommandMenu() {
   const [search, setSearch] = React.useState('');
   const [debouncedSearch, setDebouncedSearch] = React.useState('');
   const router = useRouter();
+  const { customChainId } = useSettings();
+  const searchChainId = customChainId ?? DEFAULT_CHAIN_ID;
 
   // Debounce search input
   React.useEffect(() => {
@@ -222,7 +229,7 @@ export default function CommandMenu() {
     data: conditionRows = [],
     isFetching,
     isError,
-  } = useCommandMenuSearch(debouncedSearch || undefined, open);
+  } = useCommandMenuSearch(debouncedSearch || undefined, open, searchChainId);
 
   // Filter pages client-side — use instant search for snappy UX
   const filteredPages = React.useMemo(() => {

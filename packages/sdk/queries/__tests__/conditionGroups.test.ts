@@ -78,7 +78,7 @@ describe('GET_CONDITION_GROUPS v2 document', () => {
   });
 
   test('pages the nested conditions connection explicitly', () => {
-    expect(GET_CONDITION_GROUPS).toContain('conditions(first: 50)');
+    expect(GET_CONDITION_GROUPS).toContain('conditions(first: 100)');
     expect(GET_CONDITION_GROUPS).toContain('nodes');
   });
 
@@ -103,6 +103,7 @@ describe('fetchConditionGroups', () => {
     await fetchConditionGroups();
     expect(mockGraphqlRequest).toHaveBeenCalledWith(GET_CONDITION_GROUPS, {
       first: 100,
+      after: null,
       filter: undefined,
     });
   });
@@ -124,32 +125,131 @@ describe('fetchConditionGroups', () => {
   });
 
   test('multiple categorySlugs filter client-side (v2 filter only accepts one slug)', async () => {
-    mockGraphqlRequest.mockResolvedValue({
-      conditionGroups: {
-        nodes: [
-          v2GroupNode(),
-          v2GroupNode({
-            id: 'cg-opaque-2',
-            name: 'Election winner',
-            category: { name: 'Politics', slug: 'politics' },
-          }),
-          v2GroupNode({
-            id: 'cg-opaque-3',
-            name: 'Oscars',
-            category: { name: 'Culture', slug: 'culture' },
-          }),
-        ],
-      },
-    });
+    mockGraphqlRequest
+      .mockResolvedValueOnce({
+        conditionGroups: {
+          nodes: [
+            v2GroupNode({
+              id: 'cg-opaque-0',
+              name: 'Crypto',
+              category: { name: 'Crypto', slug: 'crypto' },
+            }),
+          ],
+          pageInfo: { hasNextPage: true, endCursor: 'page-1' },
+        },
+      })
+      .mockResolvedValueOnce({
+        conditionGroups: {
+          nodes: [
+            v2GroupNode(),
+            v2GroupNode({
+              id: 'cg-opaque-2',
+              name: 'Election winner',
+              category: { name: 'Politics', slug: 'politics' },
+            }),
+            v2GroupNode({
+              id: 'cg-opaque-3',
+              name: 'Oscars',
+              category: { name: 'Culture', slug: 'culture' },
+            }),
+          ],
+          pageInfo: { hasNextPage: false, endCursor: null },
+        },
+      });
     const result = await fetchConditionGroups({
+      take: 2,
       filters: { categorySlugs: ['sports', 'politics'] },
     });
-    // no server-side categorySlug — applied client-side over the page
-    expect(mockGraphqlRequest).toHaveBeenCalledWith(
+    // no server-side categorySlug — applied client-side across cursor pages
+    expect(mockGraphqlRequest).toHaveBeenNthCalledWith(
+      1,
       GET_CONDITION_GROUPS,
-      expect.objectContaining({ filter: undefined })
+      expect.objectContaining({ filter: undefined, after: null })
+    );
+    expect(mockGraphqlRequest).toHaveBeenNthCalledWith(
+      2,
+      GET_CONDITION_GROUPS,
+      expect.objectContaining({ filter: undefined, after: 'page-1' })
     );
     expect(result.map((g) => g.id)).toEqual(['cg-opaque-1', 'cg-opaque-2']);
+  });
+
+  test('uses cursors when take + skip exceeds the v2 page cap', async () => {
+    const firstPage = Array.from({ length: 100 }, (_, i) =>
+      v2GroupNode({ id: `g${i}` })
+    );
+    const secondPage = Array.from({ length: 50 }, (_, i) =>
+      v2GroupNode({ id: `g${i + 100}` })
+    );
+    mockGraphqlRequest
+      .mockResolvedValueOnce({
+        conditionGroups: {
+          nodes: firstPage,
+          pageInfo: { hasNextPage: true, endCursor: 'cursor-100' },
+        },
+      })
+      .mockResolvedValueOnce({
+        conditionGroups: {
+          nodes: secondPage,
+          pageInfo: { hasNextPage: false, endCursor: null },
+        },
+      });
+
+    const result = await fetchConditionGroups({ take: 100, skip: 50 });
+
+    expect(mockGraphqlRequest).toHaveBeenNthCalledWith(
+      1,
+      GET_CONDITION_GROUPS,
+      expect.objectContaining({ first: 100, after: null })
+    );
+    expect(mockGraphqlRequest).toHaveBeenNthCalledWith(
+      2,
+      GET_CONDITION_GROUPS,
+      expect.objectContaining({ first: 50, after: 'cursor-100' })
+    );
+    expect(result).toHaveLength(100);
+    expect(result[0].id).toBe('g50');
+    expect(result[99].id).toBe('g149');
+  });
+
+  test('fetches additional nested condition pages for large groups', async () => {
+    const firstConditions = Array.from({ length: 100 }, (_, i) => ({
+      ...(v2GroupNode().conditions.nodes[0] as Record<string, unknown>),
+      conditionId: `0x${i}`,
+    }));
+    const secondConditions = Array.from({ length: 20 }, (_, i) => ({
+      ...(v2GroupNode().conditions.nodes[0] as Record<string, unknown>),
+      conditionId: `0x${i + 100}`,
+    }));
+
+    mockGraphqlRequest
+      .mockResolvedValueOnce({
+        conditionGroups: {
+          nodes: [
+            v2GroupNode({
+              id: 'big-group',
+              conditions: {
+                nodes: firstConditions,
+                pageInfo: { hasNextPage: true, endCursor: 'cond-100' },
+              },
+            }),
+          ],
+          pageInfo: { hasNextPage: false, endCursor: null },
+        },
+      })
+      .mockResolvedValueOnce({
+        conditionGroup: {
+          conditions: {
+            nodes: secondConditions,
+            pageInfo: { hasNextPage: false, endCursor: null },
+          },
+        },
+      });
+
+    const [group] = await fetchConditionGroups();
+
+    expect(group.conditions).toHaveLength(120);
+    expect(group.conditions[119].id).toBe('0x119');
   });
 
   test('maps groups onto the stable shape with opaque string ids', async () => {

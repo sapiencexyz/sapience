@@ -1,9 +1,14 @@
 import { graphqlRequest } from './client/graphqlClient';
 
 export const GET_PICK_CONFIGURATIONS = /* GraphQL */ `
-  query PickConfigurations($first: Int, $filter: PickConfigurationFilter) {
+  query PickConfigurations(
+    $first: Int
+    $after: String
+    $filter: PickConfigurationFilter
+  ) {
     pickConfigurations(
       first: $first
+      after: $after
       orderBy: { field: CREATED_AT, direction: DESC }
       filter: $filter
     ) {
@@ -34,6 +39,10 @@ export const GET_PICK_CONFIGURATIONS = /* GraphQL */ `
             }
           }
         }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
       }
     }
   }
@@ -90,7 +99,10 @@ type PickConfigurationV2Node = {
 };
 
 type PickConfigurationsV2Response = {
-  pickConfigurations: { nodes: PickConfigurationV2Node[] };
+  pickConfigurations: {
+    nodes: PickConfigurationV2Node[];
+    pageInfo?: { hasNextPage: boolean; endCursor: string | null };
+  };
 };
 
 function toPickConfigurationResult(
@@ -113,18 +125,6 @@ function toPickConfigurationResult(
   };
 }
 
-function toPickConfigurationResults(
-  data: PickConfigurationsV2Response | null
-): PickConfigurationResult[] {
-  const nodes = data?.pickConfigurations?.nodes;
-  if (!Array.isArray(nodes)) {
-    throw new Error(
-      'Failed to fetch pick configurations: Invalid response structure'
-    );
-  }
-  return nodes.map(toPickConfigurationResult);
-}
-
 export async function fetchPickConfigurations(opts?: {
   take?: number;
   skip?: number;
@@ -138,17 +138,32 @@ export async function fetchPickConfigurations(opts?: {
   if (opts?.chainId !== undefined) filter.chainId = opts.chainId;
   if (opts?.resolved !== undefined) filter.resolved = opts.resolved;
 
-  // v2 connections cursor-paginate; emulate the v1 offset contract by
-  // over-fetching (capped at the server's maxTake) and slicing locally.
-  const first = Math.min(take + skip, V2_MAX_FIRST);
+  const target = skip + take;
+  const nodes: PickConfigurationV2Node[] = [];
+  let after: string | null = null;
 
-  const data = await graphqlRequest<PickConfigurationsV2Response>(
-    GET_PICK_CONFIGURATIONS,
-    {
-      first,
-      filter: Object.keys(filter).length > 0 ? filter : undefined,
+  while (nodes.length < target) {
+    const first = Math.min(target - nodes.length, V2_MAX_FIRST);
+    const data: PickConfigurationsV2Response =
+      await graphqlRequest<PickConfigurationsV2Response>(
+        GET_PICK_CONFIGURATIONS,
+        {
+          first,
+          after,
+          filter: Object.keys(filter).length > 0 ? filter : undefined,
+        }
+      );
+    const pageNodes = data?.pickConfigurations?.nodes;
+    if (!Array.isArray(pageNodes)) {
+      throw new Error(
+        'Failed to fetch pick configurations: Invalid response structure'
+      );
     }
-  );
+    nodes.push(...pageNodes);
+    const pageInfo = data.pickConfigurations.pageInfo;
+    if (!pageInfo?.hasNextPage || !pageInfo.endCursor) break;
+    after = pageInfo.endCursor;
+  }
 
-  return toPickConfigurationResults(data).slice(skip, skip + take);
+  return nodes.map(toPickConfigurationResult).slice(skip, skip + take);
 }

@@ -225,6 +225,7 @@ describe('fetchConditions', () => {
     await fetchConditions();
     expect(mockGraphqlRequest).toHaveBeenCalledWith(GET_CONDITIONS, {
       first: 50,
+      after: null,
       filter: { public: true },
     });
   });
@@ -234,6 +235,7 @@ describe('fetchConditions', () => {
     await fetchConditions({ chainId: 5064014 });
     expect(mockGraphqlRequest).toHaveBeenCalledWith(GET_CONDITIONS, {
       first: 50,
+      after: null,
       filter: { chainId: 5064014, public: true },
     });
   });
@@ -327,6 +329,46 @@ describe('fetchConditions', () => {
       GET_CONDITIONS,
       expect.objectContaining({ first: 100 })
     );
+  });
+
+  test('uses cursors when take + skip exceeds the v2 page cap', async () => {
+    const firstPage = Array.from({ length: 100 }, (_, i) => ({
+      ...v2Node,
+      conditionId: `0x${i}`,
+    }));
+    const secondPage = Array.from({ length: 50 }, (_, i) => ({
+      ...v2Node,
+      conditionId: `0x${i + 100}`,
+    }));
+    mockGraphqlRequest
+      .mockResolvedValueOnce({
+        conditions: {
+          nodes: firstPage,
+          pageInfo: { hasNextPage: true, endCursor: 'cursor-100' },
+        },
+      })
+      .mockResolvedValueOnce({
+        conditions: {
+          nodes: secondPage,
+          pageInfo: { hasNextPage: false, endCursor: null },
+        },
+      });
+
+    const result = await fetchConditions({ take: 100, skip: 50 });
+
+    expect(mockGraphqlRequest).toHaveBeenNthCalledWith(
+      1,
+      GET_CONDITIONS,
+      expect.objectContaining({ first: 100, after: null })
+    );
+    expect(mockGraphqlRequest).toHaveBeenNthCalledWith(
+      2,
+      GET_CONDITIONS,
+      expect.objectContaining({ first: 50, after: 'cursor-100' })
+    );
+    expect(result).toHaveLength(100);
+    expect(result[0].id).toBe('0x50');
+    expect(result[99].id).toBe('0x149');
   });
 
   test('throws on invalid response structure', async () => {

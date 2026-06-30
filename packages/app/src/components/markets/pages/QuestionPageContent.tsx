@@ -131,7 +131,7 @@ export default function QuestionPageContent({
           }
         }
       `;
-      const resp = await graphqlRequest<{
+      type ConditionByIdResponse = {
         conditions: {
           nodes: Array<{
             id: string;
@@ -150,11 +150,24 @@ export default function QuestionPageContent({
             similarMarket?: { markets?: string[] } | null;
           }>;
         };
-      }>(QUERY, {
-        ids: [conditionId],
-        resolvers: resolverAddressFromUrl ? [resolverAddressFromUrl] : null,
-      });
-      const node = resp?.conditions?.nodes?.[0];
+      };
+
+      const fetchCondition = (resolvers: string[] | null) =>
+        graphqlRequest<ConditionByIdResponse>(QUERY, {
+          ids: [conditionId],
+          resolvers,
+        });
+
+      const resp = await fetchCondition(
+        resolverAddressFromUrl ? [resolverAddressFromUrl] : null
+      );
+      let node = resp?.conditions?.nodes?.[0];
+      if (!node && resolverAddressFromUrl) {
+        // Stale/wrong resolver URLs should still load the condition by id so
+        // the canonicalization effect below can repair the route.
+        const fallbackResp = await fetchCondition(null);
+        node = fallbackResp?.conditions?.nodes?.[0];
+      }
       if (!node) return null;
       const { similarMarket, ...rest } = node;
       return {
@@ -219,11 +232,11 @@ export default function QuestionPageContent({
     }
   }, [isPolymarketResolver, data?.similarMarkets]);
 
-  // If the resolver in the URL is wrong, immediately canonicalize to the computed resolver.
+  // Canonicalize legacy URLs and stale/wrong resolver URLs to the computed resolver.
   React.useEffect(() => {
-    if (!resolverAddressFromUrl) return;
     if (!resolverAddress) return;
     if (
+      resolverAddressFromUrl &&
       resolverAddressFromUrl.toLowerCase() === resolverAddress.toLowerCase()
     ) {
       return;
