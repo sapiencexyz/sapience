@@ -191,8 +191,11 @@ export type ReorderConditionGroupInput = {
   conditionIds: string[];
 };
 
-// The only signed call. Hits the reorder-only admin endpoint, which writes
-// nothing but `displayOrder` and never changes group membership.
+// The only signed call. Hits the admin endpoint that sets a group's conditions
+// in display order. We always send the group's full public condition set (the
+// UI's permutation guard enforces this), so it is a pure reorder. The endpoint
+// scopes its membership clear to public conditions, so any hidden conditions in
+// the group keep their group + displayOrder.
 export function useReorderConditionGroup(): UseMutationResult<
   AdminConditionGroup,
   Error,
@@ -202,7 +205,7 @@ export function useReorderConditionGroup(): UseMutationResult<
   const queryClient = useQueryClient();
   return useMutation<AdminConditionGroup, Error, ReorderConditionGroupInput>({
     mutationFn: ({ groupId, conditionIds }) =>
-      putJson<AdminConditionGroup>(`/conditionGroups/${groupId}/reorder`, {
+      putJson<AdminConditionGroup>(`/conditionGroups/${groupId}/conditions`, {
         conditionIds,
       }),
     onSuccess: () => {
