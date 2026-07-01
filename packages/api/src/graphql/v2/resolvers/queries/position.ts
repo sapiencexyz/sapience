@@ -373,7 +373,7 @@ export const positions: NonNullable<QueryResolvers['positions']> = async (
   _parent,
   args
 ) => {
-  const first = clampTake(args.first ?? 50, { defaultTake: 50, maxTake: 100 });
+  const first = clampTake(args.first ?? 25, { defaultTake: 25, maxTake: 25 });
   const orderField = FIELD_TO_PRISMA[args.orderBy?.field ?? 'UPDATED_AT'];
   const direction = normalizeDirection(args.orderBy?.direction, 'desc');
   // RESOLVED_AT orders by the related pickConfiguration.resolvedAt; the

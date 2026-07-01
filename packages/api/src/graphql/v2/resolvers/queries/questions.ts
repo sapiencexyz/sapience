@@ -211,7 +211,7 @@ type QuestionsArgs = {
 };
 
 const questionsImpl = async (_parent: unknown, args: QuestionsArgs) => {
-  const first = clampTake(args.first ?? 50, { defaultTake: 50, maxTake: 100 });
+  const first = clampTake(args.first ?? 25, { defaultTake: 25, maxTake: 25 });
   const afterCursor = decodeQuestionCursor(args.after);
   const baseArgs = toRunnerArgs(args.filter, args.orderBy, first);
   baseArgs.afterCursor = afterCursor;

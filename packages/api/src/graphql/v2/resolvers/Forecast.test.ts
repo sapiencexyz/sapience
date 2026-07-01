@@ -94,7 +94,7 @@ describe('Forecast (v2)', () => {
     expect(mockPrisma.attestation.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         orderBy: [{ time: 'desc' }, { uid: 'desc' }],
-        take: 51,
+        take: 26,
       })
     );
   });

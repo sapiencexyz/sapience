@@ -33,7 +33,7 @@ const FIELD_TO_PRISMA: Record<string, 'createdAt' | 'endsAt' | 'resolvedAt'> = {
 export const pickConfigurations: NonNullable<
   QueryResolvers['pickConfigurations']
 > = async (_parent, args) => {
-  const first = clampTake(args.first ?? 50, { defaultTake: 50, maxTake: 100 });
+  const first = clampTake(args.first ?? 25, { defaultTake: 25, maxTake: 25 });
   const field = FIELD_TO_PRISMA[args.orderBy?.field ?? 'CREATED_AT'];
   const direction = normalizeDirection(args.orderBy?.direction, 'desc');
 
