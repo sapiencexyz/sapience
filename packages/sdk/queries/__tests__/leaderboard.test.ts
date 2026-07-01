@@ -186,31 +186,75 @@ describe('fetchLeaderboard', () => {
 // ============================================================================
 
 describe('fetchAccuracyLeaderboard', () => {
-  test('queries the ACCURACY leaderboard connection', () => {
+  test('queries the ACCURACY leaderboard connection with cursor paging', () => {
     expect(GET_ACCURACY_LEADERBOARD).toContain(
-      'leaderboard(metric: ACCURACY, first: $first)'
+      'leaderboard(metric: ACCURACY, first: 25, after: $after)'
     );
     expect(GET_ACCURACY_LEADERBOARD).toContain('accuracy');
     expect(GET_ACCURACY_LEADERBOARD).not.toContain('accuracyLeaderboard');
+    expect(GET_ACCURACY_LEADERBOARD).toContain('hasNextPage');
+    expect(GET_ACCURACY_LEADERBOARD).toContain('endCursor');
     // The Brier components are not part of this surface.
     expect(GET_ACCURACY_LEADERBOARD).not.toContain('numScored');
     expect(GET_ACCURACY_LEADERBOARD).not.toContain('sumErrorSquared');
   });
 
-  test('uses default limit of 10', async () => {
-    mockGraphqlRequest.mockResolvedValue({ leaderboard: { edges: [] } });
+  test('uses default limit of 10 (single page)', async () => {
+    mockGraphqlRequest.mockResolvedValue({
+      leaderboard: {
+        edges: [
+          { node: { rank: 1, accuracy: 0.9, account: { address: '0xa' } } },
+        ],
+        pageInfo: { hasNextPage: false, endCursor: null },
+      },
+    });
     await fetchAccuracyLeaderboard();
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
     expect(mockGraphqlRequest).toHaveBeenCalledWith(GET_ACCURACY_LEADERBOARD, {
-      first: 10,
+      after: null,
     });
   });
 
-  test('passes custom limit', async () => {
-    mockGraphqlRequest.mockResolvedValue({ leaderboard: { edges: [] } });
-    await fetchAccuracyLeaderboard(25);
-    expect(mockGraphqlRequest).toHaveBeenCalledWith(GET_ACCURACY_LEADERBOARD, {
-      first: 25,
-    });
+  test('pages until the display limit is reached', async () => {
+    const pageEdges = (start: number) =>
+      Array.from({ length: 25 }, (_, i) => ({
+        node: {
+          rank: start + i + 1,
+          accuracy: 0.5,
+          account: { address: `0x${start + i}` },
+        },
+      }));
+    mockGraphqlRequest
+      .mockResolvedValueOnce({
+        leaderboard: {
+          edges: pageEdges(0),
+          pageInfo: { hasNextPage: true, endCursor: 'cursor-25' },
+        },
+      })
+      .mockResolvedValueOnce({
+        leaderboard: {
+          edges: pageEdges(25),
+          pageInfo: { hasNextPage: true, endCursor: 'cursor-50' },
+        },
+      })
+      .mockResolvedValueOnce({
+        leaderboard: {
+          edges: pageEdges(50),
+          pageInfo: { hasNextPage: true, endCursor: 'cursor-75' },
+        },
+      })
+      .mockResolvedValueOnce({
+        leaderboard: {
+          edges: pageEdges(75),
+          pageInfo: { hasNextPage: false, endCursor: null },
+        },
+      });
+
+    const result = await fetchAccuracyLeaderboard(100);
+    expect(result).toHaveLength(100);
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(4);
+    expect(mockGraphqlRequest.mock.calls[0][1]).toEqual({ after: null });
+    expect(mockGraphqlRequest.mock.calls[1][1]).toEqual({ after: 'cursor-25' });
   });
 
   test('maps edges to slim { address, rank, accuracyScore } rows (accuracy is 0-1)', async () => {
@@ -220,6 +264,7 @@ describe('fetchAccuracyLeaderboard', () => {
           { node: { rank: 1, accuracy: 0.92, account: { address: '0xa' } } },
           { node: { rank: 2, accuracy: 0.87, account: { address: '0xb' } } },
         ],
+        pageInfo: { hasNextPage: false, endCursor: null },
       },
     });
 
@@ -241,6 +286,7 @@ describe('fetchAccuracyLeaderboard', () => {
         edges: [
           { node: { rank: 1, accuracy: null, account: { address: '0xa' } } },
         ],
+        pageInfo: { hasNextPage: false, endCursor: null },
       },
     });
 

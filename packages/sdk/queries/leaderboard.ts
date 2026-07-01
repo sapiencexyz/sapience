@@ -57,8 +57,8 @@ export const GET_PROFIT_LEADERBOARD = /* GraphQL */ `
 `;
 
 export const GET_ACCURACY_LEADERBOARD = /* GraphQL */ `
-  query AccuracyLeaderboard($first: Int!) {
-    leaderboard(metric: ACCURACY, first: $first) {
+  query AccuracyLeaderboard($after: String) {
+    leaderboard(metric: ACCURACY, first: 25, after: $after) {
       edges {
         node {
           rank
@@ -67,6 +67,10 @@ export const GET_ACCURACY_LEADERBOARD = /* GraphQL */ `
             address
           }
         }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
       }
     }
   }
@@ -163,10 +167,18 @@ export async function fetchLeaderboard(): Promise<
 export async function fetchAccuracyLeaderboard(
   limit = 10
 ): Promise<ForecasterScore[]> {
-  const data = await graphqlRequest<{
-    leaderboard: RankingEdges<AccuracyRankingNode>;
-  }>(GET_ACCURACY_LEADERBOARD, { first: limit });
-  return toForecasterScores(data?.leaderboard);
+  return paginateConnection<ForecasterScore>({
+    maxNodes: limit,
+    fetchPage: async ({ after }) => {
+      const data = await graphqlRequest<{
+        leaderboard: RankingEdges<AccuracyRankingNode>;
+      }>(GET_ACCURACY_LEADERBOARD, { after });
+      return {
+        nodes: toForecasterScores(data?.leaderboard),
+        pageInfo: data?.leaderboard?.pageInfo,
+      };
+    },
+  });
 }
 
 export async function fetchForecasterRank(
