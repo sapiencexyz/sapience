@@ -236,10 +236,13 @@ const VaultsPageContent = () => {
   const requiresApproval = depositWei > 0n && (allowance ?? 0n) < depositWei;
 
   const shortWalletBalance = (() => {
-    const num = Number(
-      userAssetBalance ? formatAssetAmount(userAssetBalance) : '0'
-    );
-    return Number.isFinite(num) ? num.toFixed(2) : '0.00';
+    if (!userAssetBalance || !assetDecimals) return '0.00';
+    // Truncate (never round up) to 2 decimals so MAX never sets an amount
+    // greater than the real balance and trips the balance guard below.
+    const scale = 10n ** BigInt(assetDecimals);
+    const whole = userAssetBalance / scale;
+    const hundredths = ((userAssetBalance % scale) * 100n) / scale;
+    return `${whole.toString()}.${hundredths.toString().padStart(2, '0')}`;
   })();
 
   const estDepositShares = useMemo(() => {
@@ -420,7 +423,10 @@ const VaultsPageContent = () => {
               // still loading `tvlWei` reads 0, so `exceedsVaultCapacity`
               // understates the true total and a near-cap vault could let an
               // over-cap deposit through the client check.
-              (!!depositAmount && (!isBalanceReady || exceedsVaultCapacity)) ||
+              (!!depositAmount &&
+                (!isBalanceReady ||
+                  exceedsVaultCapacity ||
+                  depositExceedsBalance)) ||
               (isConnected && !isWhitelisted)
             }
             onClick={async () => {
@@ -442,6 +448,8 @@ const VaultsPageContent = () => {
               if (vaultData?.paused) return 'Vault Paused';
               if (isConnected && !isWhitelisted) return 'Request Early Access';
               if (isInteractionDelayActive) return 'Cooldown in progress';
+              if (depositAmount && depositExceedsBalance)
+                return 'Insufficient Balance';
               if (depositAmount && exceedsVaultCapacity)
                 return 'Exceeds Vault Capacity';
               if (depositAmount && quoteSignatureValid !== true)
@@ -646,6 +654,9 @@ const VaultsPageContent = () => {
     const newTotal = tvlWei + depositWei;
     return newTotal > VAULT_CAPACITY_WEI;
   }, [isRobinhood, tvlWei, depositWei, VAULT_CAPACITY_WEI]);
+
+  // Block deposits that exceed the connected wallet's collateral balance.
+  const depositExceedsBalance = depositWei > (userAssetBalance ?? 0n);
 
   const capPercentOfTvl = useMemo(() => {
     if (tvlWei <= 0n) return 100;
