@@ -21,7 +21,11 @@ import { isAddress, parseUnits } from 'viem';
 import { formatDuration, intervalToDuration } from 'date-fns';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
+import {
+  DEFAULT_CHAIN_ID,
+  COLLATERAL_SYMBOLS,
+  isRobinhoodChain,
+} from '@sapience/sdk/constants';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import { useCurrentAddress } from '~/hooks/blockchain/useCurrentAddress';
 import NumberDisplay from '~/components/shared/NumberDisplay';
@@ -66,6 +70,7 @@ const VaultsPageContent = () => {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const VAULT_CHAIN_ID = DEFAULT_CHAIN_ID;
+  const isRobinhood = isRobinhoodChain(VAULT_CHAIN_ID);
 
   const vaultOptions = useMemo<VaultOption[]>(() => {
     const entries: Array<[`0x${string}` | undefined, string]> = [
@@ -360,14 +365,16 @@ const VaultsPageContent = () => {
               <NumberDisplay value={Number(shortWalletBalance)} decimals={2} />{' '}
               {collateralSymbol}
             </span>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-6 px-2 text-xs"
-              onClick={() => setDepositAmount(shortWalletBalance)}
-            >
-              MAX
-            </Button>
+            {!isRobinhood && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-6 px-2 text-xs"
+                onClick={() => setDepositAmount(shortWalletBalance)}
+              >
+                MAX
+              </Button>
+            )}
           </div>
           <div
             className={`transition-opacity duration-300 ${
@@ -507,18 +514,20 @@ const VaultsPageContent = () => {
               />{' '}
               sapLP
             </span>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-6 px-2 text-xs"
-              onClick={() =>
-                setWithdrawAmount(
-                  userData ? formatSharesAmount(userData?.balance ?? 0n) : '0'
-                )
-              }
-            >
-              MAX
-            </Button>
+            {!isRobinhood && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-6 px-2 text-xs"
+                onClick={() =>
+                  setWithdrawAmount(
+                    userData ? formatSharesAmount(userData?.balance ?? 0n) : '0'
+                  )
+                }
+              >
+                MAX
+              </Button>
+            )}
           </div>
           {withdrawAmount &&
             estWithdrawAssets > 0n &&
