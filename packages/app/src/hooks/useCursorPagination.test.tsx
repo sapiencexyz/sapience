@@ -5,9 +5,9 @@ import React from 'react';
 
 const mockGraphqlRequest = vi.fn();
 
-// The hook uses the v2 transport (/v2/graphql) — mock that symbol, not v1.
+// The hook uses the GraphQL transport (/v2/graphql) — mock that symbol.
 vi.mock('@sapience/sdk/queries/client/graphqlClient', () => ({
-  graphqlRequestV2: (...args: unknown[]) => mockGraphqlRequest(...args),
+  graphqlRequest: (...args: unknown[]) => mockGraphqlRequest(...args),
 }));
 
 // One client per test, torn down in afterEach so an in-flight fetchNextPage
@@ -38,7 +38,7 @@ type Node = { id: string; name: string };
 
 const node = (id: string): Node => ({ id, name: `n${id}` });
 
-// A v2 forward-only Relay connection page, keyed under `things`.
+// A forward-only Relay connection page, keyed under `things`.
 const conn = (
   nodes: Node[],
   hasNextPage: boolean,

@@ -3,17 +3,14 @@
 import { WagmiProvider, createConfig, createStorage } from 'wagmi';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import type { HttpTransport } from 'viem';
-import { type Chain, arbitrum, base, bsc, mainnet } from 'viem/chains';
+import type { Chain } from 'viem/chains';
 import { injected, coinbaseWallet, walletConnect } from 'wagmi/connectors';
 
 import type React from 'react';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { hashFn } from 'wagmi/query';
-import {
-  etherealChain,
-  etherealTestnetChain,
-  hyperEvmChain,
-} from '@sapience/sdk/constants';
+import { readCustomChainOverride } from '@sapience/sdk/constants';
+import { resolveChainsAndRpcUrls } from './providers.chains';
 import { httpWithRetry } from '~/lib/utils/util';
 import { SapienceProvider } from '~/lib/context/SapienceProvider';
 import ThemeProvider from '~/lib/context/ThemeProvider';
@@ -36,39 +33,17 @@ const queryClient = new QueryClient({
 
 // Build chains and transports
 const buildChainsAndTransports = () => {
-  const transports: Record<number, HttpTransport> = {
-    [arbitrum.id]: httpWithRetry(
-      process.env.NEXT_PUBLIC_INFURA_API_KEY
-        ? `https://arbitrum-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
-        : 'https://arbitrum-rpc.publicnode.com'
-    ),
-    [mainnet.id]: httpWithRetry(
-      process.env.NEXT_PUBLIC_INFURA_API_KEY
-        ? `https://mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
-        : 'https://ethereum-rpc.publicnode.com'
-    ),
-    [base.id]: httpWithRetry(
-      process.env.NEXT_PUBLIC_INFURA_API_KEY
-        ? `https://base-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
-        : 'https://base-rpc.publicnode.com'
-    ),
-    [bsc.id]: httpWithRetry('https://bsc-rpc.publicnode.com'),
-    [hyperEvmChain.id]: httpWithRetry(hyperEvmChain.rpcUrls.default.http[0]),
-    [etherealChain.id]: httpWithRetry(etherealChain.rpcUrls.default.http[0]),
-    [etherealTestnetChain.id]: httpWithRetry(
-      etherealTestnetChain.rpcUrls.default.http[0]
-    ),
-  };
+  // Custom-chain override (client only): register the user-supplied chain so the
+  // app can read/transact on it and `switchChain` resolves instead of erroring.
+  // For a built-in chain (e.g. Robinhood/Meridian mainnet) the override repoints
+  // that chain's transport at the user-supplied RPC — see resolveChainsAndRpcUrls.
+  const override =
+    typeof window !== 'undefined' ? readCustomChainOverride() : null;
+  const { chains, rpcUrls } = resolveChainsAndRpcUrls(override);
 
-  const chains: Chain[] = [
-    arbitrum,
-    mainnet,
-    base,
-    bsc,
-    hyperEvmChain,
-    etherealChain,
-    etherealTestnetChain,
-  ];
+  const transports: Record<number, HttpTransport> = Object.fromEntries(
+    Object.entries(rpcUrls).map(([id, url]) => [Number(id), httpWithRetry(url)])
+  );
 
   return { chains, transports };
 };

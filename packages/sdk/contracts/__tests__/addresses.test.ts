@@ -6,10 +6,19 @@ import {
   pythConditionResolver,
   conditionalTokensConditionResolver,
   conditionalTokensReader,
+  collateralToken,
   manualConditionResolver,
   predictionMarketEscrow,
+  predictionMarketVault,
+  singleLegVault,
   secondaryMarketEscrow,
 } from '../addresses';
+import {
+  CHAIN_ID_ROBINHOOD_TESTNET,
+  CHAIN_ID_ROBINHOOD_MAINNET,
+  COLLATERAL_SYMBOLS,
+  getChainConfig,
+} from '../../constants/chain';
 
 describe('getResolverAddressesForChain', () => {
   const MAINNET = 5064014;
@@ -154,5 +163,72 @@ describe('getProtocolAddressesForChain', () => {
 
   it('returns empty array for unknown chain', () => {
     expect(getProtocolAddressesForChain(999999)).toEqual([]);
+  });
+});
+
+describe('Robinhood Chain Testnet deployment', () => {
+  it('has a first-class chain config and escrow deployments', () => {
+    expect(getChainConfig(CHAIN_ID_ROBINHOOD_TESTNET).id).toBe(
+      CHAIN_ID_ROBINHOOD_TESTNET
+    );
+    expect(COLLATERAL_SYMBOLS[CHAIN_ID_ROBINHOOD_TESTNET]).toBe('USDe');
+    expect(collateralToken[CHAIN_ID_ROBINHOOD_TESTNET]?.address).toBe(
+      '0xCc4225D5F36b26b211675E8d9B7f11511Ba58D2C'
+    );
+    expect(predictionMarketEscrow[CHAIN_ID_ROBINHOOD_TESTNET]?.address).toBe(
+      '0x2A97702591ACCbF330c6c813C46DE287653eb645'
+    );
+    expect(
+      predictionMarketEscrow[CHAIN_ID_ROBINHOOD_TESTNET]?.blockCreated
+    ).toBe(81639399);
+    expect(secondaryMarketEscrow[CHAIN_ID_ROBINHOOD_TESTNET]?.address).toBe(
+      '0x888e445F96515186B7b262d959FFF4AF14151ca9'
+    );
+    expect(
+      secondaryMarketEscrow[CHAIN_ID_ROBINHOOD_TESTNET]?.blockCreated
+    ).toBe(81643819);
+  });
+
+  it('includes Robinhood testnet escrow addresses in protocol addresses', () => {
+    expect(getProtocolAddressesForChain(CHAIN_ID_ROBINHOOD_TESTNET)).toEqual(
+      expect.arrayContaining([
+        '0xcc4225d5f36b26b211675e8d9b7f11511ba58d2c',
+        '0x2a97702591accbf330c6c813c46de287653eb645',
+        '0xf03efa8bf3271fe347bf750d72baaf2f9b6ffc29',
+        '0x1847e316e6e4302b23b5ab5be078926386d78e95',
+        '0x888e445f96515186b7b262d959fff4af14151ca9',
+        '0xc1525cf7d9b9ed81ce277c2bf96fb1e0e85e1e7e',
+      ])
+    );
+  });
+});
+
+describe('Robinhood Chain Mainnet collateral', () => {
+  it('expects USDe collateral at the mainnet token address', () => {
+    expect(COLLATERAL_SYMBOLS[CHAIN_ID_ROBINHOOD_MAINNET]).toBe('USDe');
+    expect(collateralToken[CHAIN_ID_ROBINHOOD_MAINNET]?.address).toBe(
+      '0x5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34'
+    );
+  });
+});
+
+describe('Robinhood Chain Mainnet vaults', () => {
+  it('registers the main (Core) and single-leg vaults so they show as tabs', () => {
+    expect(predictionMarketVault[CHAIN_ID_ROBINHOOD_MAINNET]?.address).toBe(
+      '0x79cB914f3F336426E89FaB55A9488AB25770552D'
+    );
+    expect(singleLegVault[CHAIN_ID_ROBINHOOD_MAINNET]?.address).toBe(
+      '0xdD9B39FFedf8602Ff86c3621f30Bbc598a2Df223'
+    );
+  });
+
+  it('has no legacy entries for the mainnet protocol contracts', () => {
+    expect(predictionMarketEscrow[CHAIN_ID_ROBINHOOD_MAINNET]?.legacy).toEqual(
+      []
+    );
+    expect(predictionMarketVault[CHAIN_ID_ROBINHOOD_MAINNET]?.legacy).toEqual(
+      []
+    );
+    expect(singleLegVault[CHAIN_ID_ROBINHOOD_MAINNET]?.legacy).toEqual([]);
   });
 });

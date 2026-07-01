@@ -1,9 +1,9 @@
-import { graphqlRequestV2 } from './client/graphqlClient';
+import { graphqlRequest } from './client/graphqlClient';
 
 /**
- * Per-vault economic snapshot series, fetched from the v2 `vault(address:,
+ * Per-vault economic snapshot series, fetched from the `vault(address:,
  * chainId:).statsHistory` surface. Backs the vault dashboard's TVL / PnL
- * charts (the migration off v1's `protocolStats(vaultAddress:)`).
+ * charts.
  *
  * Only the fields the dashboard plots are selected. `cumulativePnl` is the
  * PnL line; `balance + deployedCollateral + claimableCollateral` is the TVL line.
@@ -32,8 +32,8 @@ export interface VaultStat {
 // single request. The query still selects `pageInfo` and threads `after` so
 // fetchVaultStats can page forward if a vault ever exceeds that cap — the
 // series stays complete without re-introducing a fixed chain of round-trips.
-// A literal `first` above GRAPHQL_MAX_LIST_SIZE (100) is rejected
-// pre-execution, so an explicit `pageSize` must stay <= 100.
+// A literal `first` above GRAPHQL_MAX_LIST_SIZE (25) is rejected
+// pre-execution, so an explicit `pageSize` must stay <= 25.
 export const GET_VAULT_STATS = /* GraphQL */ `
   query VaultStats(
     $address: Address!
@@ -100,10 +100,10 @@ function toVaultStat(node: WireVaultStat): VaultStat {
  * normal vault this completes in a single request. The loop pages on
  * `pageInfo` only if a vault's series ever exceeds the cap, so the chart never
  * silently loses history. Returns an empty array when the address is not a
- * configured vault (the v2 `vault` field resolves null).
+ * configured vault (the `vault` field resolves null).
  *
  * `pageSize` (optional) forces an explicit per-page `first` — it must stay
- * <= the API's GRAPHQL_MAX_LIST_SIZE (100), since a larger literal is rejected
+ * <= the API's GRAPHQL_MAX_LIST_SIZE (25), since a larger literal is rejected
  * pre-execution. Omit it to use the resolver's single-page cap.
  */
 export async function fetchVaultStats(
@@ -116,7 +116,7 @@ export async function fetchVaultStats(
   // Bound the loop defensively against a non-progressing cursor; the daily
   // series can't realistically exceed a few thousand snapshots.
   for (let page = 0; page < 50; page += 1) {
-    const data: VaultStatsResponse = await graphqlRequestV2<VaultStatsResponse>(
+    const data: VaultStatsResponse = await graphqlRequest<VaultStatsResponse>(
       GET_VAULT_STATS,
       {
         address: address.toLowerCase(),
@@ -191,7 +191,7 @@ export async function fetchVaultAccountValue(
   address: string,
   chainId?: number
 ): Promise<VaultAccountValue> {
-  const data = await graphqlRequestV2<VaultAccountValueResponse>(
+  const data = await graphqlRequest<VaultAccountValueResponse>(
     GET_VAULT_ACCOUNT_VALUE,
     {
       address: address.toLowerCase(),

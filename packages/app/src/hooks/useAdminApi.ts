@@ -5,10 +5,10 @@ import { useSignMessage } from 'wagmi';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 
-export function useAdminApi() {
+export function useAdminApi(baseOverride?: string) {
   const { signMessageAsync } = useSignMessage();
   const { adminBaseUrl, defaults } = useSettings();
-  const base = adminBaseUrl ?? `${defaults.adminBaseUrl}`;
+  const base = baseOverride ?? adminBaseUrl ?? `${defaults.adminBaseUrl}`;
   const lastSignatureRef = useRef<{ sig: string; ts: number } | null>(null);
   const SIGN_TTL_SEC = 60; // reuse signature for 60s to prevent sign loops
 

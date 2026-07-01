@@ -4,11 +4,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 
 const mockGraphqlRequest = vi.fn();
-const mockGraphqlRequestV2 = vi.fn();
 
 vi.mock('@sapience/sdk/queries/client/graphqlClient', () => ({
   graphqlRequest: (...args: unknown[]) => mockGraphqlRequest(...args),
-  graphqlRequestV2: (...args: unknown[]) => mockGraphqlRequestV2(...args),
 }));
 
 function createWrapper() {
@@ -73,20 +71,20 @@ function makeNode(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockGraphqlRequest.mockRejectedValue(
-    new Error('v1 transport must not be used')
-  );
-  mockGraphqlRequestV2.mockResolvedValue({
+  mockGraphqlRequest.mockResolvedValue({
     pickConfigurations: { nodes: [] },
   });
 });
 
 describe('PICK_CONFIGS_BY_TOKENS_QUERY', () => {
-  it('targets the v2 pickConfigurations connection with explicit filter and orderBy', async () => {
+  it('targets the pickConfigurations connection with explicit filter and orderBy', async () => {
     const mod = await getModule();
     const doc = mod.PICK_CONFIGS_BY_TOKENS_QUERY as string;
     expect(doc).toContain('filter: { tokens: $tokens }');
-    expect(doc).toContain('first: 100');
+    expect(doc).toContain('first: $first');
+    expect(doc).toContain('after: $after');
+    expect(doc).toContain('hasNextPage');
+    expect(doc).toContain('endCursor');
     expect(doc).toContain('orderBy: { field: CREATED_AT, direction: DESC }');
     expect(doc).toContain('nodes');
     expect(doc).toContain('pickConfigId');
@@ -98,7 +96,7 @@ describe('PICK_CONFIGS_BY_TOKENS_QUERY', () => {
 });
 
 describe('usePickConfigsByTokens', () => {
-  it('requests v2 with deduped, lowercased, sorted tokens', async () => {
+  it('requests with deduped, lowercased, sorted tokens', async () => {
     const mod = await getModule();
 
     renderHook(() => mod.usePickConfigsByTokens(['0xBBB', '0xAAA', '0xaaa']), {
@@ -106,12 +104,17 @@ describe('usePickConfigsByTokens', () => {
     });
 
     await waitFor(() => {
-      expect(mockGraphqlRequestV2).toHaveBeenCalledTimes(1);
+      expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
     });
 
-    const [, variables] = mockGraphqlRequestV2.mock.calls[0];
-    expect(variables).toEqual({ tokens: ['0xaaa', '0xbbb'] });
-    expect(mockGraphqlRequest).not.toHaveBeenCalled();
+    const [, variables] = mockGraphqlRequest.mock.calls[0];
+    // First page of the cursor walk: deduped/sorted tokens plus the pagination
+    // vars (page size capped at the API's 25, no cursor yet).
+    expect(variables).toEqual({
+      tokens: ['0xaaa', '0xbbb'],
+      first: 25,
+      after: null,
+    });
   });
 
   it('does not fetch with an empty token list', async () => {
@@ -122,12 +125,12 @@ describe('usePickConfigsByTokens', () => {
     });
 
     await new Promise((r) => setTimeout(r, 50));
-    expect(mockGraphqlRequestV2).not.toHaveBeenCalled();
+    expect(mockGraphqlRequest).not.toHaveBeenCalled();
   });
 
   it('keys the map by both predictor and counterparty tokens with side flags', async () => {
     const mod = await getModule();
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       pickConfigurations: { nodes: [makeNode()] },
     });
 
@@ -146,7 +149,7 @@ describe('usePickConfigsByTokens', () => {
 
   it('omits configs whose tokens were not requested', async () => {
     const mod = await getModule();
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       pickConfigurations: { nodes: [makeNode()] },
     });
 
@@ -162,9 +165,9 @@ describe('usePickConfigsByTokens', () => {
     expect(result.current.map.has('0xbbb')).toBe(false);
   });
 
-  it('adapts v2 nodes into the existing PickConfigData shape', async () => {
+  it('adapts nodes into the existing PickConfigData shape', async () => {
     const mod = await getModule();
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       pickConfigurations: { nodes: [makeNode()] },
     });
 
@@ -186,5 +189,53 @@ describe('usePickConfigsByTokens', () => {
     expect(entry?.picks[0].predictedOutcome).toBe(1);
     expect(entry?.picks[0].pickConfigId).toBe('0xpc1');
     expect(entry?.picks[0].condition?.id).toBe('0xcond1'); // CTF hash
+  });
+
+  it('pages through the connection until exhausted, enriching every token match', async () => {
+    const mod = await getModule();
+    mockGraphqlRequest
+      .mockResolvedValueOnce({
+        pickConfigurations: {
+          nodes: Array.from({ length: 25 }, (_, i) =>
+            makeNode({
+              pickConfigId: `0xpc${i}`,
+              predictorToken: `0xtok${i}`,
+              counterpartyToken: `0xother${i}`,
+            })
+          ),
+          pageInfo: { hasNextPage: true, endCursor: 'cursor-25' },
+        },
+      })
+      .mockResolvedValueOnce({
+        pickConfigurations: {
+          nodes: [
+            makeNode({
+              pickConfigId: '0xpc25',
+              predictorToken: '0xtok25',
+              counterpartyToken: '0xother25',
+            }),
+          ],
+          pageInfo: { hasNextPage: false, endCursor: null },
+        },
+      });
+
+    const tokens = Array.from({ length: 26 }, (_, i) => `0xtok${i}`);
+    const { result } = renderHook(() => mod.usePickConfigsByTokens(tokens), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.map.size).toBe(26);
+    });
+
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(2);
+    expect(mockGraphqlRequest.mock.calls[0][1]).toMatchObject({
+      after: null,
+      first: 25,
+    });
+    expect(mockGraphqlRequest.mock.calls[1][1]).toMatchObject({
+      after: 'cursor-25',
+      first: 25,
+    });
   });
 });

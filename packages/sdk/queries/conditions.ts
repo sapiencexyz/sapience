@@ -1,7 +1,7 @@
-import { graphqlRequestV2 } from './client/graphqlClient';
+import { graphqlRequest } from './client/graphqlClient';
 
 export interface ConditionType {
-  /** CTF on-chain condition id (lowercase 0x-hex) — v2 `conditionId`. */
+  /** CTF on-chain condition id (lowercase 0x-hex) — `conditionId`. */
   id: string;
   createdAt: string;
   question: string;
@@ -21,7 +21,7 @@ export interface ConditionType {
   openInterest: string;
   similarMarketVolume?: number;
   similarMarketImage?: string | null;
-  /** Opaque v2 ConditionGroup id — grouping identity only, not a row id. */
+  /** Opaque ConditionGroup id — grouping identity only, not a row id. */
   conditionGroupId?: string | null;
   conditionGroup?: { name: string } | null;
   estimatedPrice?: number | null;
@@ -45,13 +45,14 @@ export interface ConditionFilters {
   visibility?: 'all' | 'public' | 'private';
 }
 
-/** v2 maxTake for the conditions / conditionGroups / pickConfigurations connections. */
-const V2_MAX_FIRST = 100;
+/** Max page size for the conditions / conditionGroups / pickConfigurations connections. */
+const MAX_PAGE_SIZE = 25;
 
 export const GET_CONDITIONS = /* GraphQL */ `
-  query Conditions($first: Int, $filter: ConditionFilter) {
+  query Conditions($first: Int, $after: String, $filter: ConditionFilter) {
     conditions(
       first: $first
+      after: $after
       orderBy: { field: CREATED_AT, direction: DESC }
       filter: $filter
     ) {
@@ -85,21 +86,25 @@ export const GET_CONDITIONS = /* GraphQL */ `
           slug
         }
       }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
     }
   }
 `;
 
 /**
- * Builds a v2 `ConditionFilter` from the stable {@link ConditionFilters}.
+ * Builds a `ConditionFilter` from the stable {@link ConditionFilters}.
  *
- * Visibility is emitted EXPLICITLY — v2 silently defaults to public-only when
- * `public` is omitted on listing surfaces, so we never rely on the default:
+ * Visibility is emitted EXPLICITLY — the server silently defaults to public-only
+ * when `public` is omitted on listing surfaces, so we never rely on the default:
  * - `'public'` / `publicOnly` / unset → `public: true`
  * - `'private'` → `public: false`
- * - `'all'` → v2's ConditionFilter has no both-visibilities representation on
+ * - `'all'` → the ConditionFilter has no both-visibilities representation on
  *   listing surfaces (omitting `public` makes the server force public-only
  *   unless `conditionIds` is present). The closest expressible mapping is to
- *   omit the key, which degrades to public-only under v2 — a documented gap
+ *   omit the key, which degrades to public-only — a documented gap
  *   with no live callers.
  */
 export function buildConditionFilter(
@@ -144,7 +149,7 @@ export function buildConditionFilter(
   return filter;
 }
 
-type ConditionV2Node = {
+type ConditionNode = {
   conditionId: string;
   createdAt: string;
   question: string;
@@ -166,11 +171,14 @@ type ConditionV2Node = {
   category?: { name: string; slug: string } | null;
 };
 
-type ConditionsV2Response = {
-  conditions: { nodes: ConditionV2Node[] };
+type ConditionsResponse = {
+  conditions: {
+    nodes: ConditionNode[];
+    pageInfo?: { hasNextPage: boolean; endCursor: string | null };
+  };
 };
 
-function toConditionType(node: ConditionV2Node): ConditionType {
+function toConditionType(node: ConditionNode): ConditionType {
   return {
     id: node.conditionId,
     createdAt: node.createdAt,
@@ -200,14 +208,6 @@ function toConditionType(node: ConditionV2Node): ConditionType {
   };
 }
 
-function toConditionTypes(data: ConditionsV2Response | null): ConditionType[] {
-  const nodes = data?.conditions?.nodes;
-  if (!Array.isArray(nodes)) {
-    throw new Error('Failed to fetch conditions: Invalid response structure');
-  }
-  return nodes.map(toConditionType);
-}
-
 export async function fetchConditions(opts?: {
   take?: number;
   skip?: number;
@@ -218,31 +218,45 @@ export async function fetchConditions(opts?: {
   const skip = opts?.skip ?? 0;
   const filter = buildConditionFilter(opts?.chainId, opts?.filters);
 
-  // v2 connections cursor-paginate; emulate the v1 offset contract by
-  // over-fetching (capped at the server's maxTake) and slicing locally.
-  const first = Math.min(take + skip, V2_MAX_FIRST);
+  const target = skip + take;
+  const nodes: ConditionNode[] = [];
+  let after: string | null = null;
 
-  const data = await graphqlRequestV2<ConditionsV2Response>(GET_CONDITIONS, {
-    first,
-    filter: Object.keys(filter).length > 0 ? filter : undefined,
-  });
+  while (nodes.length < target) {
+    const first = Math.min(target - nodes.length, MAX_PAGE_SIZE);
+    const data: ConditionsResponse = await graphqlRequest<ConditionsResponse>(
+      GET_CONDITIONS,
+      {
+        first,
+        after,
+        filter: Object.keys(filter).length > 0 ? filter : undefined,
+      }
+    );
+    const pageNodes = data?.conditions?.nodes;
+    if (!Array.isArray(pageNodes)) {
+      throw new Error('Failed to fetch conditions: Invalid response structure');
+    }
+    nodes.push(...pageNodes);
+    const pageInfo = data.conditions.pageInfo;
+    if (!pageInfo?.hasNextPage || !pageInfo.endCursor) break;
+    after = pageInfo.endCursor;
+  }
 
-  return toConditionTypes(data).slice(skip, skip + take);
+  return nodes.map(toConditionType).slice(skip, skip + take);
 }
 
 // --- fetchConditionsByIds ---
 
-const PAGE_SIZE = 100; // == v2 maxTake, so each chunk fits one page
+const PAGE_SIZE = 25; // == the connection's max page size, so each chunk fits one page
 const MAX_CONCURRENT_REQUESTS = 3;
 
 /**
- * Generic by-ids fetcher over the v2 transport.
+ * Generic by-ids fetcher over the GraphQL endpoint.
  *
  * The supplied document must accept a `$ids: [Bytes!]!` variable, filter via
  * `filter: { conditionIds: $ids }`, and select a connection under
- * `resultKey` (nodes are unwrapped here). Note that v2 returns BOTH public
- * and private conditions when `conditionIds` is present — same as v1's
- * `where: { id: { in } }` contract.
+ * `resultKey` (nodes are unwrapped here). Note that the server returns BOTH public
+ * and private conditions when `conditionIds` is present.
  */
 export async function fetchConditionsByIds<T>(
   query: string,
@@ -253,7 +267,7 @@ export async function fetchConditionsByIds<T>(
 
   type ByIdsResponse = Record<string, { nodes?: T[] } | null | undefined>;
   const requestChunk = async (chunk: string[]): Promise<T[]> => {
-    const resp = await graphqlRequestV2<ByIdsResponse>(query, { ids: chunk });
+    const resp = await graphqlRequest<ByIdsResponse>(query, { ids: chunk });
     return resp?.[resultKey]?.nodes ?? [];
   };
 
@@ -297,7 +311,7 @@ type ConditionById = {
 export const CONDITIONS_BY_IDS_QUERY = /* GraphQL */ `
   query ConditionsByIds($ids: [Bytes!]!) {
     conditions(
-      first: 100
+      first: 25
       orderBy: { field: CREATED_AT, direction: DESC }
       filter: { conditionIds: $ids }
     ) {

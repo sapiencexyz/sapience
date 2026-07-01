@@ -1,10 +1,10 @@
-import { graphqlRequestV2 } from './client/graphqlClient';
+import { graphqlRequest } from './client/graphqlClient';
 
 /**
- * Protocol-wide analytics, fetched from the v2 `protocol` singleton.
+ * Protocol-wide analytics, fetched from the `protocol` singleton.
  *
  * Vault analytics deliberately do NOT live here — `fetchVaultStats`
- * (v2, `vault.ts`) backs the vault pages via `vault(address:).statsHistory`.
+ * (`vault.ts`) backs the vault pages via `vault(address:).statsHistory`.
  * This module only backs the protocol analytics dashboard.
  */
 
@@ -13,7 +13,7 @@ export interface ProtocolAnalyticsStat {
   timestamp: number;
   /** Wei, decimal string. */
   cumulativeVolume: string;
-  /** v1 called this `totalTradeCount`. */
+  /** Cumulative count of trades. */
   cumulativeTradeCount: number;
   /** Wei, decimal string. */
   periodVolume: string;
@@ -24,16 +24,13 @@ export interface ProtocolAnalyticsStat {
   escrowBalance: string;
   /**
    * Server-computed protocol TVL, wei: escrow collateral + undeployed
-   * available assets across EVERY configured vault family. Numerically
-   * different from v1's client-side `escrowBalance + vaultAvailableAssets`
-   * sum, which under-counted by scoping to a single vault family — the
-   * difference is intended.
+   * available assets across EVERY configured vault family.
    */
   totalValueLocked: string;
 }
 
 export interface ProtocolCategoryOpenInterest {
-  /** Keyed by slug — v2 drops the numeric category row id. */
+  /** Keyed by slug — there is no numeric category row id. */
   category: { name: string; slug: string };
   /** Open interest in wei (decimal string). */
   openInterest: string;
@@ -83,7 +80,7 @@ const PROTOCOL_STAT_FIELDS = /* GraphQL */ `
 // in prod) snapshot series to one node per day — exactly what the charts render
 // — instead of returning thousands of raw rows. `first` is left null so the
 // server returns the whole bucketed series in one page (it ignores the
-// GRAPHQL_MAX_LIST_SIZE 100 cap only because no explicit `first` value is sent);
+// GRAPHQL_MAX_LIST_SIZE 25 cap only because no explicit `first` value is sent);
 // the daily series fits comfortably under the resolver's internal page cap.
 // `GET_PROTOCOL_STATS_HISTORY_PAGE` remains as a forward-pagination safety net
 // for the rare case the series ever exceeds one page.
@@ -175,7 +172,7 @@ type StatsHistoryPage = {
   pageInfo: { hasNextPage: boolean; endCursor: string | null };
 };
 
-type ProtocolAnalyticsV2Response = {
+type ProtocolAnalyticsResponse = {
   protocol: {
     stats: WireStat;
     statsHistory: StatsHistoryPage;
@@ -210,7 +207,7 @@ function toStat(node: WireStat): ProtocolAnalyticsStat {
 }
 
 function toProtocolAnalytics(
-  data: ProtocolAnalyticsV2Response | null,
+  data: ProtocolAnalyticsResponse | null,
   historyNodes: WireStat[]
 ): ProtocolAnalytics {
   const protocol = data?.protocol;
@@ -253,7 +250,7 @@ function toProtocolAnalytics(
 
 // Daily bucketing keeps the series to ~one node per day, so the whole history
 // comes back in the first page. `first: null` lets the server return the full
-// bucketed series without tripping the GRAPHQL_MAX_LIST_SIZE (100) pre-execution
+// bucketed series without tripping the GRAPHQL_MAX_LIST_SIZE (25) pre-execution
 // cap (which only inspects explicit `first` values). The pagination loop below
 // is a safety net — normally it never iterates — with MAX_PAGES guarding against
 // a non-progressing cursor.
@@ -262,7 +259,7 @@ const HISTORY_PAGE_SIZE = null;
 const MAX_HISTORY_PAGES = 50;
 
 export async function fetchProtocolStats(): Promise<ProtocolAnalyticsStat> {
-  const data = await graphqlRequestV2<{
+  const data = await graphqlRequest<{
     protocol: { stats: WireStat } | null;
   }>(GET_PROTOCOL_STATS);
   const stats = data?.protocol?.stats;
@@ -275,7 +272,7 @@ export async function fetchProtocolStats(): Promise<ProtocolAnalyticsStat> {
 }
 
 export async function fetchProtocolAnalytics(): Promise<ProtocolAnalytics> {
-  const data = await graphqlRequestV2<ProtocolAnalyticsV2Response>(
+  const data = await graphqlRequest<ProtocolAnalyticsResponse>(
     GET_PROTOCOL_ANALYTICS,
     { interval: HISTORY_INTERVAL, first: HISTORY_PAGE_SIZE, after: null }
   );
@@ -287,7 +284,7 @@ export async function fetchProtocolAnalytics(): Promise<ProtocolAnalytics> {
 
   for (let page = 1; page < MAX_HISTORY_PAGES; page += 1) {
     if (!pageInfo?.hasNextPage || !pageInfo.endCursor) break;
-    const next = await graphqlRequestV2<{
+    const next = await graphqlRequest<{
       protocol: { statsHistory: StatsHistoryPage } | null;
     }>(GET_PROTOCOL_STATS_HISTORY_PAGE, {
       interval: HISTORY_INTERVAL,

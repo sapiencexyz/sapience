@@ -17,11 +17,15 @@ import {
 } from '@sapience/ui/components/ui/tabs';
 import { Clock } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { parseUnits } from 'viem';
+import { isAddress, parseUnits } from 'viem';
 import { formatDuration, intervalToDuration } from 'date-fns';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
+import {
+  DEFAULT_CHAIN_ID,
+  COLLATERAL_SYMBOLS,
+  isRobinhoodChain,
+} from '@sapience/sdk/constants';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import { useCurrentAddress } from '~/hooks/blockchain/useCurrentAddress';
 import NumberDisplay from '~/components/shared/NumberDisplay';
@@ -66,6 +70,7 @@ const VaultsPageContent = () => {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const VAULT_CHAIN_ID = DEFAULT_CHAIN_ID;
+  const isRobinhood = isRobinhoodChain(VAULT_CHAIN_ID);
 
   const vaultOptions = useMemo<VaultOption[]>(() => {
     const entries: Array<[`0x${string}` | undefined, string]> = [
@@ -112,8 +117,30 @@ const VaultsPageContent = () => {
     const match = knownVaultOptions.find(
       (v) => normalizeAddress(v.address) === queryVault
     );
-    return match ?? vaultOptions[0];
+    if (match) return match;
+    // An unrecognized but well-formed address is treated as a custom vault so
+    // deposit/withdraw work against vaults not in the SDK registry (e.g. on a
+    // custom chain). `queryVault` is lowercased, so validate without checksum.
+    if (queryVault && isAddress(queryVault, { strict: false })) {
+      return {
+        address: queryVault,
+        label: 'Custom Vault',
+      };
+    }
+    return vaultOptions[0];
   }, [queryVault, knownVaultOptions, vaultOptions]);
+
+  const isCustomVault = useMemo(
+    () =>
+      !!selectedVault &&
+      !knownVaultOptions.some(
+        (v) =>
+          normalizeAddress(v.address) ===
+          normalizeAddress(selectedVault.address)
+      ),
+    [selectedVault, knownVaultOptions]
+  );
+  const [customVaultInput, setCustomVaultInput] = useState('');
 
   useEffect(() => {
     if (!selectedVault || !hasVaultQueryParam) return;
@@ -149,6 +176,7 @@ const VaultsPageContent = () => {
     vaultData,
     userData,
     pendingRequest,
+    vaultCollateralBalance,
     userAssetBalance,
     assetDecimals,
     isVaultPending,
@@ -181,9 +209,21 @@ const VaultsPageContent = () => {
 
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [activeTab, setActiveTab] = useState('deposit');
   const [pendingAction, setPendingAction] = useState<
     'deposit' | 'withdraw' | 'cancelDeposit' | 'cancelWithdrawal' | undefined
   >(undefined);
+
+  // Switching vaults keeps the same mounted form, so its inputs/tab/in-flight
+  // state would otherwise carry over and be applied against the newly selected
+  // vault's price, balances, and allowance. Reset everything when the vault
+  // address changes so the form always reflects the vault it's pointed at.
+  useEffect(() => {
+    setDepositAmount('');
+    setWithdrawAmount('');
+    setActiveTab('deposit');
+    setPendingAction(undefined);
+  }, [VAULT_ADDRESS]);
 
   const depositWei = (() => {
     if (!depositAmount) return 0n;
@@ -196,10 +236,13 @@ const VaultsPageContent = () => {
   const requiresApproval = depositWei > 0n && (allowance ?? 0n) < depositWei;
 
   const shortWalletBalance = (() => {
-    const num = Number(
-      userAssetBalance ? formatAssetAmount(userAssetBalance) : '0'
-    );
-    return Number.isFinite(num) ? num.toFixed(2) : '0.00';
+    if (!userAssetBalance || !assetDecimals) return '0.00';
+    // Truncate (never round up) to 2 decimals so MAX never sets an amount
+    // greater than the real balance and trips the balance guard below.
+    const scale = 10n ** BigInt(assetDecimals);
+    const whole = userAssetBalance / scale;
+    const hundredths = ((userAssetBalance % scale) * 100n) / scale;
+    return `${whole.toString()}.${hundredths.toString().padStart(2, '0')}`;
   })();
 
   const estDepositShares = useMemo(() => {
@@ -283,7 +326,7 @@ const VaultsPageContent = () => {
   }, []);
 
   const renderVaultForm = () => (
-    <Tabs defaultValue="deposit" className="w-full">
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
       <TabsList className="grid w-full grid-cols-2 mb-3">
         <TabsTrigger
           value="deposit"
@@ -380,7 +423,10 @@ const VaultsPageContent = () => {
               // still loading `tvlWei` reads 0, so `exceedsVaultCapacity`
               // understates the true total and a near-cap vault could let an
               // over-cap deposit through the client check.
-              (!!depositAmount && (!isBalanceReady || exceedsVaultCapacity)) ||
+              (!!depositAmount &&
+                (!isBalanceReady ||
+                  exceedsVaultCapacity ||
+                  depositExceedsBalance)) ||
               (isConnected && !isWhitelisted)
             }
             onClick={async () => {
@@ -402,9 +448,11 @@ const VaultsPageContent = () => {
               if (vaultData?.paused) return 'Vault Paused';
               if (isConnected && !isWhitelisted) return 'Request Early Access';
               if (isInteractionDelayActive) return 'Cooldown in progress';
+              if (depositAmount && depositExceedsBalance)
+                return 'Insufficient Balance';
               if (depositAmount && exceedsVaultCapacity)
                 return 'Exceeds Vault Capacity';
-              if (quoteSignatureValid === false)
+              if (depositAmount && quoteSignatureValid !== true)
                 return 'Waiting for Price Quote';
               if (!pricePerShare || pricePerShare === '0')
                 return 'Cannot connect to vault';
@@ -559,15 +607,27 @@ const VaultsPageContent = () => {
     ? BigInt(vaultAccountValue.deployedCollateral)
     : 0n;
 
-  // Vault AUM is computed from one indexed account view: current wallet
-  // collateral balance + collateral deployed in open positions + settled/won
-  // collateral owed but not yet claimed. Keeping all three terms on the same
-  // freshness boundary avoids the old live-contract + cached-snapshot drift.
-  const tvlWei = vaultAccountValue?.totalValue
-    ? BigInt(vaultAccountValue.totalValue)
+  const claimableWei = vaultAccountValue?.claimableCollateral
+    ? BigInt(vaultAccountValue.claimableCollateral)
     : 0n;
 
-  const isBalanceReady = !!vaultAccountValue;
+  // Vault AUM = collateral actually in the vault contract (liquid) + collateral
+  // deployed in open positions + settled/won collateral owed but not yet claimed.
+  // The liquid term is read live on-chain (`vaultCollateralBalance`, the asset's
+  // balanceOf(vault)) so a deposit/cancel/withdrawal is reflected immediately,
+  // rather than waiting on the periodic indexer snapshot. The escrow-held terms
+  // (deployed + claimable) still come from the indexer since they can't be read
+  // cheaply on-chain. Falls back to the indexer's totalValue until the on-chain
+  // read resolves.
+  const tvlWei =
+    vaultCollateralBalance !== undefined
+      ? vaultCollateralBalance + deployedWei + claimableWei
+      : vaultAccountValue?.totalValue
+        ? BigInt(vaultAccountValue.totalValue)
+        : 0n;
+
+  const isBalanceReady =
+    vaultCollateralBalance !== undefined || !!vaultAccountValue;
 
   const utilizationPercent = useMemo(() => {
     if (tvlWei <= 0n) return 0;
@@ -589,9 +649,14 @@ const VaultsPageContent = () => {
   const VAULT_CAPACITY_WEI = parseUnits(DEPOSIT_CAP.toString(), assetDecimals);
 
   const exceedsVaultCapacity = useMemo(() => {
+    // Robinhood chains have no deposit cap.
+    if (isRobinhood) return false;
     const newTotal = tvlWei + depositWei;
     return newTotal > VAULT_CAPACITY_WEI;
-  }, [tvlWei, depositWei, VAULT_CAPACITY_WEI]);
+  }, [isRobinhood, tvlWei, depositWei, VAULT_CAPACITY_WEI]);
+
+  // Block deposits that exceed the connected wallet's collateral balance.
+  const depositExceedsBalance = depositWei > (userAssetBalance ?? 0n);
 
   const capPercentOfTvl = useMemo(() => {
     if (tvlWei <= 0n) return 100;
@@ -667,19 +732,46 @@ const VaultsPageContent = () => {
           <h1 className="text-3xl md:text-5xl font-sans font-normal text-foreground">
             Vaults
           </h1>
-          <Tabs value={selectedVaultValue} onValueChange={handleVaultChange}>
-            <TabsList className="h-auto p-1">
-              {vaultOptions.map((option) => (
-                <TabsTrigger
-                  key={option.address}
-                  value={option.address}
-                  className="text-sm px-3 py-1.5 data-[state=active]:text-brand-white"
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+            {vaultOptions.length > 0 ? (
+              <Tabs
+                value={selectedVaultValue}
+                onValueChange={handleVaultChange}
+              >
+                <TabsList className="h-auto p-1">
+                  {vaultOptions.map((option) => (
+                    <TabsTrigger
+                      key={option.address}
+                      value={option.address}
+                      className="text-sm px-3 py-1.5 data-[state=active]:text-brand-white"
+                    >
+                      {option.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
+            ) : null}
+            {(vaultOptions.length === 0 || isCustomVault) && (
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+                <Input
+                  value={customVaultInput}
+                  onChange={(e) => setCustomVaultInput(e.target.value)}
+                  placeholder="Custom vault address (0x…)"
+                  className="sm:w-72 font-mono text-sm"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={
+                    !isAddress(customVaultInput.trim(), { strict: false })
+                  }
+                  onClick={() => handleVaultChange(customVaultInput.trim())}
                 >
-                  {option.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+                  Load Vault
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-8">
@@ -724,7 +816,7 @@ const VaultsPageContent = () => {
                         >
                           {isBalanceReady ? (
                             <>
-                              {tvlWei <= VAULT_CAPACITY_WEI && (
+                              {!isRobinhood && tvlWei <= VAULT_CAPACITY_WEI && (
                                 <div className="absolute -top-4 right-0 font-mono text-[10px] text-muted-foreground/50 uppercase">
                                   {depositCapDisplay} cap
                                 </div>
@@ -746,7 +838,7 @@ const VaultsPageContent = () => {
                                   }}
                                 />
                               </div>
-                              {tvlWei > VAULT_CAPACITY_WEI && (
+                              {!isRobinhood && tvlWei > VAULT_CAPACITY_WEI && (
                                 <>
                                   <div
                                     className="absolute top-0 h-3 vault-excess-rainbow rounded-r-sm"

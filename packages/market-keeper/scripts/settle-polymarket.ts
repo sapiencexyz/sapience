@@ -209,7 +209,7 @@ Examples:
 
 // ============ GraphQL Query ============
 
-const CONDITIONS_PAGE_SIZE = 30;
+const CONDITIONS_PAGE_SIZE = 25;
 
 const UNRESOLVED_CONDITIONS_QUERY = `
 query UnresolvedConditions($take: Int!, $skip: Int!, $resolver: String!) {
@@ -312,20 +312,17 @@ async function fetchUnresolvedConditions(
     const page = await fetchConditionsPage(
       apiUrl,
       resolver,
-      CONDITIONS_PAGE_SIZE + 1,
+      CONDITIONS_PAGE_SIZE,
       skip
     );
 
-    const hasMore = page.length > CONDITIONS_PAGE_SIZE;
-    const pageConditions = hasMore ? page.slice(0, CONDITIONS_PAGE_SIZE) : page;
+    allConditions.push(...page);
 
-    allConditions.push(...pageConditions);
-
-    if (pageConditions.length > 0) {
+    if (page.length > 0) {
       console.log(`  Fetched ${allConditions.length} conditions so far...`);
     }
 
-    if (!hasMore) break;
+    if (page.length < CONDITIONS_PAGE_SIZE) break;
 
     skip += CONDITIONS_PAGE_SIZE;
   }

@@ -350,9 +350,9 @@ const AccuracyLeaderboard = () => {
         accessorKey: 'accuracyScore',
         cell: ({ getValue }) => {
           const v = getValue<number>();
-          // v2 Ranking.accuracy carries the SAME raw avg(twError) scale as
-          // v1's accuracyScore (parity-verified identity; the SDL's old
-          // "0-1" doc was wrong) — render exactly as v1 did.
+          // Ranking.accuracy carries the SAME raw avg(twError) scale as
+          // the legacy accuracyScore (parity-verified identity; the SDL's old
+          // "0-1" doc was wrong) — render exactly as before.
           const formatted = Number.isFinite(v)
             ? v.toLocaleString('en-US', { maximumFractionDigits: 0 })
             : '-';

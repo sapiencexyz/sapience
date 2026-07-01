@@ -1,31 +1,30 @@
-import { graphqlRequestV2 } from './client/graphqlClient';
+import { graphqlRequest } from './client/graphqlClient';
+import { paginateConnection } from './pagination';
 
 export interface AggregatedLeaderboardEntry {
   address: string;
   /**
    * Net PnL as a human-readable decimal string (already `formatUnits`'d to
-   * 18 decimals server-side via `Ranking.pnlFormatted`). v1 carried the same
-   * units as a `toFixed(18)` string; only trailing zeros differ.
+   * 18 decimals server-side via `Ranking.pnlFormatted`).
    */
   totalPnL: string;
 }
 
 /**
- * One row of the accuracy leaderboard. Slimmed to what the v2 `Ranking`
- * surface provides — the v1 Brier components (`numScored`,
- * `sumErrorSquared`, `numTimeWeighted`, `sumTimeWeightedError`) no longer
- * exist in v2 and have been dropped. `accuracyScore` now carries the v2
- * 0-1 lifetime Brier-derived accuracy (v1 exposed a large scaled integer).
+ * One row of the accuracy leaderboard. Slimmed to what the `Ranking`
+ * surface provides — the Brier components (`numScored`, `sumErrorSquared`,
+ * `numTimeWeighted`, `sumTimeWeightedError`) do not exist on this surface.
+ * `accuracyScore` carries the 0-1 lifetime Brier-derived accuracy.
  */
 export type ForecasterScore = {
   address: string;
   rank: number;
-  /** Lifetime Brier-derived accuracy, 0-1 (v2 `Ranking.accuracy`). */
+  /** Lifetime Brier-derived accuracy, 0-1 (`Ranking.accuracy`). */
   accuracyScore: number;
 };
 
 export interface ForecasterRankResult {
-  /** 0-1 in v2 (was a large scaled integer in v1); null when unranked. */
+  /** 0-1 accuracy; null when unranked. */
   accuracyScore: number | null;
   rank: number | null;
   totalForecasters: number;
@@ -38,8 +37,8 @@ export interface UserProfitRankResult {
 }
 
 export const GET_PROFIT_LEADERBOARD = /* GraphQL */ `
-  query ProfitLeaderboard {
-    leaderboard(metric: PNL, first: 100) {
+  query ProfitLeaderboard($after: String) {
+    leaderboard(metric: PNL, first: 25, after: $after) {
       edges {
         node {
           rank
@@ -49,13 +48,17 @@ export const GET_PROFIT_LEADERBOARD = /* GraphQL */ `
           }
         }
       }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
     }
   }
 `;
 
 export const GET_ACCURACY_LEADERBOARD = /* GraphQL */ `
-  query AccuracyLeaderboard($first: Int!) {
-    leaderboard(metric: ACCURACY, first: $first) {
+  query AccuracyLeaderboard($after: String) {
+    leaderboard(metric: ACCURACY, first: 25, after: $after) {
       edges {
         node {
           rank
@@ -64,6 +67,10 @@ export const GET_ACCURACY_LEADERBOARD = /* GraphQL */ `
             address
           }
         }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
       }
     }
   }
@@ -97,7 +104,13 @@ export const GET_USER_PROFIT_RANK = /* GraphQL */ `
   }
 `;
 
-type RankingEdges<TNode> = { edges: Array<{ node: TNode }> } | null;
+type RankingEdges<TNode> = {
+  edges: Array<{ node: TNode }>;
+  pageInfo?: { hasNextPage: boolean; endCursor: string | null };
+} | null;
+
+/** Top-N rows the profit leaderboard renders — bounds the page loop. */
+const PROFIT_LEADERBOARD_DISPLAY_CAP = 100;
 
 type PnlRankingNode = {
   rank: number;
@@ -137,26 +150,42 @@ function toForecasterScores(
 export async function fetchLeaderboard(): Promise<
   AggregatedLeaderboardEntry[]
 > {
-  const data = await graphqlRequestV2<{
-    leaderboard: RankingEdges<PnlRankingNode>;
-  }>(GET_PROFIT_LEADERBOARD);
-  return toLeaderboardEntries(data?.leaderboard).slice(0, 100);
+  return paginateConnection<AggregatedLeaderboardEntry>({
+    maxNodes: PROFIT_LEADERBOARD_DISPLAY_CAP,
+    fetchPage: async ({ after }) => {
+      const data = await graphqlRequest<{
+        leaderboard: RankingEdges<PnlRankingNode>;
+      }>(GET_PROFIT_LEADERBOARD, { after });
+      return {
+        nodes: toLeaderboardEntries(data?.leaderboard),
+        pageInfo: data?.leaderboard?.pageInfo,
+      };
+    },
+  });
 }
 
 export async function fetchAccuracyLeaderboard(
   limit = 10
 ): Promise<ForecasterScore[]> {
-  const data = await graphqlRequestV2<{
-    leaderboard: RankingEdges<AccuracyRankingNode>;
-  }>(GET_ACCURACY_LEADERBOARD, { first: limit });
-  return toForecasterScores(data?.leaderboard);
+  return paginateConnection<ForecasterScore>({
+    maxNodes: limit,
+    fetchPage: async ({ after }) => {
+      const data = await graphqlRequest<{
+        leaderboard: RankingEdges<AccuracyRankingNode>;
+      }>(GET_ACCURACY_LEADERBOARD, { after });
+      return {
+        nodes: toForecasterScores(data?.leaderboard),
+        pageInfo: data?.leaderboard?.pageInfo,
+      };
+    },
+  });
 }
 
 export async function fetchForecasterRank(
   address: string
 ): Promise<ForecasterRankResult> {
   const a = address.toLowerCase();
-  const data = await graphqlRequestV2<{
+  const data = await graphqlRequest<{
     account: {
       ranking: { rank: number; accuracy: number | null } | null;
     } | null;
@@ -174,17 +203,15 @@ export async function fetchForecasterRank(
 }
 
 /**
- * v2 divergence (intended): v1 fetched the top-100 PnL leaderboard and
- * computed the rank client-side, so addresses outside the top 100 had a
- * null rank and `totalParticipants` was capped at 100. v2 asks the server
- * for `account.ranking(metric: PNL)`, which ranks over the FULL ranked
- * population, and `totalParticipants` is the leaderboard's `totalCount`.
+ * Asks the server for `account.ranking(metric: PNL)`, which ranks over the
+ * FULL ranked population, and `totalParticipants` is the leaderboard's
+ * `totalCount`.
  */
 export async function fetchUserProfitRank(
   ownerAddress: string
 ): Promise<UserProfitRankResult> {
   const addressLc = ownerAddress.toLowerCase();
-  const data = await graphqlRequestV2<{
+  const data = await graphqlRequest<{
     account: {
       ranking: { rank: number; pnlFormatted: string } | null;
     } | null;

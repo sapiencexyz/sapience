@@ -10,9 +10,9 @@ import {
   GET_USER_PROFIT_RANK,
 } from '../leaderboard';
 
-const mockGraphqlRequestV2 = vi.fn();
+const mockGraphqlRequest = vi.fn();
 vi.mock('../client/graphqlClient', () => ({
-  graphqlRequestV2: (...args: unknown[]) => mockGraphqlRequestV2(...args),
+  graphqlRequest: (...args: unknown[]) => mockGraphqlRequest(...args),
 }));
 
 beforeEach(() => {
@@ -20,22 +20,24 @@ beforeEach(() => {
 });
 
 // ============================================================================
-// fetchLeaderboard — v2 leaderboard(metric: PNL)
+// fetchLeaderboard — leaderboard(metric: PNL)
 // ============================================================================
 
 describe('fetchLeaderboard', () => {
-  test('queries the v2 PNL leaderboard connection', () => {
+  test('queries the PNL leaderboard connection with cursor paging', () => {
     expect(GET_PROFIT_LEADERBOARD).toContain(
-      'leaderboard(metric: PNL, first: 100)'
+      'leaderboard(metric: PNL, first: 25, after: $after)'
     );
     expect(GET_PROFIT_LEADERBOARD).toContain('pnlFormatted');
     expect(GET_PROFIT_LEADERBOARD).toContain('account');
     expect(GET_PROFIT_LEADERBOARD).toContain('address');
+    expect(GET_PROFIT_LEADERBOARD).toContain('hasNextPage');
+    expect(GET_PROFIT_LEADERBOARD).toContain('endCursor');
     expect(GET_PROFIT_LEADERBOARD).not.toContain('profitLeaderboard');
   });
 
   test('maps ranking edges to { address, totalPnL } with totalPnL := pnlFormatted', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       leaderboard: {
         edges: [
           {
@@ -63,17 +65,103 @@ describe('fetchLeaderboard', () => {
     ]);
     // No internal/extra fields leak (rank is derivable from order).
     expect(Object.keys(result[0])).toEqual(['address', 'totalPnL']);
-    expect(mockGraphqlRequestV2).toHaveBeenCalledWith(GET_PROFIT_LEADERBOARD);
+    expect(mockGraphqlRequest).toHaveBeenCalledWith(GET_PROFIT_LEADERBOARD, {
+      after: null,
+    });
+  });
+
+  test('loops over cursor pages until hasNextPage is false, concatenating edges', async () => {
+    mockGraphqlRequest
+      .mockResolvedValueOnce({
+        leaderboard: {
+          edges: [
+            {
+              node: {
+                rank: 1,
+                pnlFormatted: '10',
+                account: { address: '0xa' },
+              },
+            },
+          ],
+          pageInfo: { hasNextPage: true, endCursor: 'cursor-1' },
+        },
+      })
+      .mockResolvedValueOnce({
+        leaderboard: {
+          edges: [
+            {
+              node: { rank: 2, pnlFormatted: '5', account: { address: '0xb' } },
+            },
+          ],
+          pageInfo: { hasNextPage: false, endCursor: null },
+        },
+      });
+
+    const result = await fetchLeaderboard();
+    expect(result).toEqual([
+      { address: '0xa', totalPnL: '10' },
+      { address: '0xb', totalPnL: '5' },
+    ]);
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(2);
+    expect(mockGraphqlRequest.mock.calls[0][1]).toEqual({ after: null });
+    expect(mockGraphqlRequest.mock.calls[1][1]).toEqual({ after: 'cursor-1' });
+  });
+
+  test('stops paging once 100 entries are accumulated (bounded to display cap)', async () => {
+    const pageEdges = (start: number) =>
+      Array.from({ length: 25 }, (_, i) => ({
+        node: {
+          rank: start + i,
+          pnlFormatted: `${start + i}`,
+          account: {
+            address: `0x${(start + i).toString(16).padStart(40, '0')}`,
+          },
+        },
+      }));
+    // Every page reports another page is available; the loop must stop itself
+    // once it has >= 100 entries rather than paging unboundedly.
+    mockGraphqlRequest.mockImplementation(
+      (_doc: unknown, vars: { after: string | null }) => {
+        const start = vars.after ? Number(vars.after) : 0;
+        return Promise.resolve({
+          leaderboard: {
+            edges: pageEdges(start),
+            pageInfo: { hasNextPage: true, endCursor: String(start + 25) },
+          },
+        });
+      }
+    );
+
+    const result = await fetchLeaderboard();
+    expect(result).toHaveLength(100);
+    // 4 pages * 25 = 100 entries, then the cap stops the loop.
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(4);
+  });
+
+  test('stops after one page when hasNextPage is false even with an endCursor', async () => {
+    mockGraphqlRequest.mockResolvedValue({
+      leaderboard: {
+        edges: [
+          {
+            node: { rank: 1, pnlFormatted: '10', account: { address: '0xa' } },
+          },
+        ],
+        pageInfo: { hasNextPage: false, endCursor: 'cursor-1' },
+      },
+    });
+    const result = await fetchLeaderboard();
+    expect(result).toHaveLength(1);
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
   });
 
   test('returns empty array when connection has no edges', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({ leaderboard: { edges: [] } });
+    mockGraphqlRequest.mockResolvedValue({ leaderboard: { edges: [] } });
     const result = await fetchLeaderboard();
     expect(result).toEqual([]);
   });
 
   test('returns empty array when leaderboard is missing', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({ leaderboard: null });
+    mockGraphqlRequest.mockResolvedValue({ leaderboard: null });
     const result = await fetchLeaderboard();
     expect(result).toEqual([]);
   });
@@ -86,7 +174,7 @@ describe('fetchLeaderboard', () => {
         account: { address: `0x${i.toString(16).padStart(40, '0')}` },
       },
     }));
-    mockGraphqlRequestV2.mockResolvedValue({ leaderboard: { edges } });
+    mockGraphqlRequest.mockResolvedValue({ leaderboard: { edges } });
 
     const result = await fetchLeaderboard();
     expect(result).toHaveLength(100);
@@ -94,50 +182,89 @@ describe('fetchLeaderboard', () => {
 });
 
 // ============================================================================
-// fetchAccuracyLeaderboard — v2 leaderboard(metric: ACCURACY)
+// fetchAccuracyLeaderboard — leaderboard(metric: ACCURACY)
 // ============================================================================
 
 describe('fetchAccuracyLeaderboard', () => {
-  test('queries the v2 ACCURACY leaderboard connection', () => {
+  test('queries the ACCURACY leaderboard connection with cursor paging', () => {
     expect(GET_ACCURACY_LEADERBOARD).toContain(
-      'leaderboard(metric: ACCURACY, first: $first)'
+      'leaderboard(metric: ACCURACY, first: 25, after: $after)'
     );
     expect(GET_ACCURACY_LEADERBOARD).toContain('accuracy');
     expect(GET_ACCURACY_LEADERBOARD).not.toContain('accuracyLeaderboard');
-    // v1 Brier components are gone from the v2 surface.
+    expect(GET_ACCURACY_LEADERBOARD).toContain('hasNextPage');
+    expect(GET_ACCURACY_LEADERBOARD).toContain('endCursor');
+    // The Brier components are not part of this surface.
     expect(GET_ACCURACY_LEADERBOARD).not.toContain('numScored');
     expect(GET_ACCURACY_LEADERBOARD).not.toContain('sumErrorSquared');
   });
 
-  test('uses default limit of 10', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({ leaderboard: { edges: [] } });
+  test('uses default limit of 10 (single page)', async () => {
+    mockGraphqlRequest.mockResolvedValue({
+      leaderboard: {
+        edges: [
+          { node: { rank: 1, accuracy: 0.9, account: { address: '0xa' } } },
+        ],
+        pageInfo: { hasNextPage: false, endCursor: null },
+      },
+    });
     await fetchAccuracyLeaderboard();
-    expect(mockGraphqlRequestV2).toHaveBeenCalledWith(
-      GET_ACCURACY_LEADERBOARD,
-      {
-        first: 10,
-      }
-    );
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
+    expect(mockGraphqlRequest).toHaveBeenCalledWith(GET_ACCURACY_LEADERBOARD, {
+      after: null,
+    });
   });
 
-  test('passes custom limit', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({ leaderboard: { edges: [] } });
-    await fetchAccuracyLeaderboard(25);
-    expect(mockGraphqlRequestV2).toHaveBeenCalledWith(
-      GET_ACCURACY_LEADERBOARD,
-      {
-        first: 25,
-      }
-    );
+  test('pages until the display limit is reached', async () => {
+    const pageEdges = (start: number) =>
+      Array.from({ length: 25 }, (_, i) => ({
+        node: {
+          rank: start + i + 1,
+          accuracy: 0.5,
+          account: { address: `0x${start + i}` },
+        },
+      }));
+    mockGraphqlRequest
+      .mockResolvedValueOnce({
+        leaderboard: {
+          edges: pageEdges(0),
+          pageInfo: { hasNextPage: true, endCursor: 'cursor-25' },
+        },
+      })
+      .mockResolvedValueOnce({
+        leaderboard: {
+          edges: pageEdges(25),
+          pageInfo: { hasNextPage: true, endCursor: 'cursor-50' },
+        },
+      })
+      .mockResolvedValueOnce({
+        leaderboard: {
+          edges: pageEdges(50),
+          pageInfo: { hasNextPage: true, endCursor: 'cursor-75' },
+        },
+      })
+      .mockResolvedValueOnce({
+        leaderboard: {
+          edges: pageEdges(75),
+          pageInfo: { hasNextPage: false, endCursor: null },
+        },
+      });
+
+    const result = await fetchAccuracyLeaderboard(100);
+    expect(result).toHaveLength(100);
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(4);
+    expect(mockGraphqlRequest.mock.calls[0][1]).toEqual({ after: null });
+    expect(mockGraphqlRequest.mock.calls[1][1]).toEqual({ after: 'cursor-25' });
   });
 
   test('maps edges to slim { address, rank, accuracyScore } rows (accuracy is 0-1)', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       leaderboard: {
         edges: [
           { node: { rank: 1, accuracy: 0.92, account: { address: '0xa' } } },
           { node: { rank: 2, accuracy: 0.87, account: { address: '0xb' } } },
         ],
+        pageInfo: { hasNextPage: false, endCursor: null },
       },
     });
 
@@ -154,11 +281,12 @@ describe('fetchAccuracyLeaderboard', () => {
   });
 
   test('defaults accuracyScore to 0 when node accuracy is null', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       leaderboard: {
         edges: [
           { node: { rank: 1, accuracy: null, account: { address: '0xa' } } },
         ],
+        pageInfo: { hasNextPage: false, endCursor: null },
       },
     });
 
@@ -167,14 +295,14 @@ describe('fetchAccuracyLeaderboard', () => {
   });
 
   test('returns empty array when no data', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({ leaderboard: null });
+    mockGraphqlRequest.mockResolvedValue({ leaderboard: null });
     const result = await fetchAccuracyLeaderboard();
     expect(result).toEqual([]);
   });
 });
 
 // ============================================================================
-// fetchForecasterRank — v2 account.ranking(ACCURACY) + count-only leaderboard
+// fetchForecasterRank — account.ranking(ACCURACY) + count-only leaderboard
 // ============================================================================
 
 describe('fetchForecasterRank', () => {
@@ -188,18 +316,18 @@ describe('fetchForecasterRank', () => {
   });
 
   test('lowercases address before sending', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       account: { ranking: { rank: 5, accuracy: 0.85 } },
       leaderboard: { totalCount: 100 },
     });
 
     await fetchForecasterRank('0xAbCdEf1234567890');
-    const call = mockGraphqlRequestV2.mock.calls[0];
+    const call = mockGraphqlRequest.mock.calls[0];
     expect(call[1].address).toBe('0xabcdef1234567890');
   });
 
   test('returns rank data when ranked', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       account: { ranking: { rank: 5, accuracy: 0.85 } },
       leaderboard: { totalCount: 100 },
     });
@@ -213,7 +341,7 @@ describe('fetchForecasterRank', () => {
   });
 
   test('returns nulls when unranked (ranking is null)', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       account: { ranking: null },
       leaderboard: { totalCount: 42 },
     });
@@ -227,7 +355,7 @@ describe('fetchForecasterRank', () => {
   });
 
   test('defaults accuracyScore to 0 when ranked with null accuracy', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       account: { ranking: { rank: 3, accuracy: null } },
       leaderboard: { totalCount: 50 },
     });
@@ -238,7 +366,7 @@ describe('fetchForecasterRank', () => {
   });
 
   test('defaults totalForecasters to 0 when count is missing', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       account: { ranking: { rank: 1, accuracy: 0.5 } },
       leaderboard: null,
     });
@@ -249,8 +377,8 @@ describe('fetchForecasterRank', () => {
 });
 
 // ============================================================================
-// fetchUserProfitRank — v2 account.ranking(PNL); rank is over the FULL
-// ranked population now, not the client-sorted top 100 of v1.
+// fetchUserProfitRank — account.ranking(PNL); rank is over the FULL
+// ranked population.
 // ============================================================================
 
 describe('fetchUserProfitRank', () => {
@@ -264,25 +392,25 @@ describe('fetchUserProfitRank', () => {
   });
 
   test('lowercases address before sending', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       account: { ranking: { rank: 1, pnlFormatted: '10' } },
       leaderboard: { totalCount: 4 },
     });
 
     await fetchUserProfitRank('0xBoB');
-    const call = mockGraphqlRequestV2.mock.calls[0];
+    const call = mockGraphqlRequest.mock.calls[0];
     expect(call[1].address).toBe('0xbob');
   });
 
   test('returns server-computed rank, pnl and full participant count', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       account: { ranking: { rank: 137, pnlFormatted: '500.25' } },
       leaderboard: { totalCount: 5000 },
     });
 
     const result = await fetchUserProfitRank('0xalice');
-    // Rank 137 with 5000 participants was impossible under v1's
-    // client-side top-100 sort — the rank is now over the full population.
+    // The rank is over the full ranked population, so rank 137 with 5000
+    // participants is expected.
     expect(result).toEqual({
       totalPnL: '500.25',
       rank: 137,
@@ -291,7 +419,7 @@ describe('fetchUserProfitRank', () => {
   });
 
   test('returns null rank and zero pnl when unranked', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       account: { ranking: null },
       leaderboard: { totalCount: 4 },
     });
@@ -303,7 +431,7 @@ describe('fetchUserProfitRank', () => {
   });
 
   test('handles missing account and count gracefully', async () => {
-    mockGraphqlRequestV2.mockResolvedValue({
+    mockGraphqlRequest.mockResolvedValue({
       account: null,
       leaderboard: null,
     });

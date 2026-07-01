@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { graphqlRequestV2 } from '@sapience/sdk/queries/client/graphqlClient';
+import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import Image from 'next/image';
 import { PythOracleMark } from '@sapience/ui';
 import dynamic from 'next/dynamic';
@@ -96,11 +96,11 @@ export default function QuestionPageContent({
     enabled: Boolean(conditionId),
     queryFn: async () => {
       if (!conditionId) return null;
-      // v2: by-ids lookups skip the public-only listing default, and
+      // By-ids lookups skip the public-only listing default, and
       // `resolvers` composes with `conditionIds` for the multi-resolver
       // disambiguation (both matched case-insensitively server-side).
       // Untagged literal on purpose: app graphql-eslint validates tagged
-      // documents against the v1 schema.
+      // documents against the legacy schema.
       const QUERY = `
         query ConditionByIdAndResolver($ids: [Bytes!]!, $resolvers: [Address!]) {
           conditions(
@@ -131,7 +131,7 @@ export default function QuestionPageContent({
           }
         }
       `;
-      const resp = await graphqlRequestV2<{
+      type ConditionByIdResponse = {
         conditions: {
           nodes: Array<{
             id: string;
@@ -150,11 +150,24 @@ export default function QuestionPageContent({
             similarMarket?: { markets?: string[] } | null;
           }>;
         };
-      }>(QUERY, {
-        ids: [conditionId],
-        resolvers: resolverAddressFromUrl ? [resolverAddressFromUrl] : null,
-      });
-      const node = resp?.conditions?.nodes?.[0];
+      };
+
+      const fetchCondition = (resolvers: string[] | null) =>
+        graphqlRequest<ConditionByIdResponse>(QUERY, {
+          ids: [conditionId],
+          resolvers,
+        });
+
+      const resp = await fetchCondition(
+        resolverAddressFromUrl ? [resolverAddressFromUrl] : null
+      );
+      let node = resp?.conditions?.nodes?.[0];
+      if (!node && resolverAddressFromUrl) {
+        // Stale/wrong resolver URLs should still load the condition by id so
+        // the canonicalization effect below can repair the route.
+        const fallbackResp = await fetchCondition(null);
+        node = fallbackResp?.conditions?.nodes?.[0];
+      }
       if (!node) return null;
       const { similarMarket, ...rest } = node;
       return {
@@ -219,11 +232,11 @@ export default function QuestionPageContent({
     }
   }, [isPolymarketResolver, data?.similarMarkets]);
 
-  // If the resolver in the URL is wrong, immediately canonicalize to the computed resolver.
+  // Canonicalize legacy URLs and stale/wrong resolver URLs to the computed resolver.
   React.useEffect(() => {
-    if (!resolverAddressFromUrl) return;
     if (!resolverAddress) return;
     if (
+      resolverAddressFromUrl &&
       resolverAddressFromUrl.toLowerCase() === resolverAddress.toLowerCase()
     ) {
       return;
@@ -237,7 +250,7 @@ export default function QuestionPageContent({
   const { data: predictions, isLoading: isLoadingPredictions } =
     usePredictionsByConditionId({
       conditionId,
-      take: 100,
+      take: 25,
     });
 
   // Fetch forecasts for this condition

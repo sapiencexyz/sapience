@@ -23,6 +23,8 @@ vi.mock('@sapience/sdk/contracts', () => ({
 }));
 vi.mock('@sapience/sdk/constants', () => ({
   DEFAULT_CHAIN_ID: 5064014,
+  CHAIN_ID_ETHEREAL: 5064014,
+  CHAIN_ID_ETHEREAL_TESTNET: 13374202,
 }));
 vi.mock('@sapience/sdk/abis', () => ({
   predictionMarketVaultAbi: [],

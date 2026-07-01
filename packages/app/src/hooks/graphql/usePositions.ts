@@ -2,21 +2,22 @@
 
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { graphqlRequestV2 } from '@sapience/sdk/queries/client/graphqlClient';
+import { GRAPHQL_PAGE_SIZE, paginateConnection } from '@sapience/sdk/queries';
+import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import {
-  PICK_CONFIGURATION_V2_FIELDS,
+  PICK_CONFIGURATION_FIELDS,
   toPickConfigData,
-  type PickConfigurationV2Node,
+  type PickConfigurationNode,
 } from '~/lib/adapters/pickConfig';
 import {
-  POSITION_V2_FIELDS,
+  POSITION_FIELDS,
   toPositionBalance,
-  type PositionV2Node,
+  type PositionNode,
 } from '~/lib/adapters/position';
 import { useCursorPagination } from '~/hooks/useCursorPagination';
 
 /**
- * Prediction - individual prediction record. v2 drops the numeric Prisma
+ * Prediction - individual prediction record. There is no numeric Prisma
  * row id — predictions are keyed by their on-chain `predictionId`.
  */
 export type Prediction = {
@@ -68,9 +69,9 @@ export type PickConditionData = {
 
 /** Pick in a pick configuration.
  *
- *  `id` is transitional: v2 sources re-key it to the stable string
- *  `${pickConfigId}:${conditionId}` (the numeric Prisma row id is gone),
- *  while the v1 positions half still returns numbers until wave 3.
+ *  `id` is transitional: prediction-sourced rows re-key it to the stable
+ *  string `${pickConfigId}:${conditionId}` (the numeric Prisma row id is gone),
+ *  while position-sourced rows still return numbers until wave 3.
  *  Collapses to `string` once positions flip. */
 export type PickData = {
   id: number | string;
@@ -115,28 +116,28 @@ export type PositionBalance = {
   userCollateral?: string | null;
   totalPayout?: string | null;
   realizedPnL?: string | null;
-  /** v2 lifecycle discriminator. v1 encoded SOLD rows implicitly in the id
-   *  shape (`<rowId>-sell-<tradeHash>`); v2 surfaces it explicitly. Absent on
-   *  rows not produced by the positions synthesis. */
+  /** Lifecycle discriminator. SOLD rows used to be encoded implicitly in the id
+   *  shape (`<rowId>-sell-<tradeHash>`); now it is surfaced explicitly. Absent
+   *  on rows not produced by the positions synthesis. */
   status?: 'OPEN' | 'SOLD' | null;
   createdAt: string;
   updatedAt: string;
   pickConfig?: PickConfigData | null;
 };
 
-// ─── v2 prediction documents + mapper ────────────────────────────────────────
+// ─── prediction documents + mapper ───────────────────────────────────────────
 //
-// The prediction half of this module runs against /v2/graphql. Documents are
-// plain untagged template literals (the app's graphql-eslint validates tagged
-// docs against the v1 schema). The positions half below stays on v1 until
-// wave 3.
+// The whole module runs against the GraphQL endpoint (/v2/graphql). Documents
+// are plain untagged template literals so the app's graphql-eslint (which
+// validates tagged docs against the legacy schema) skips them. The positions
+// half below still returns numeric ids until wave 3.
 
 /**
- * Selection set for a v2 `Prediction` node, matching {@link PredictionV2Node}.
+ * Selection set for a `Prediction` node, matching {@link PredictionNode}.
  * Shared with the activity feed's `... on Prediction` inline fragment
  * (useAccountActivity).
  */
-export const PREDICTION_V2_FIELDS = `
+export const PREDICTION_FIELDS = `
   predictionId
   chainId
   escrow
@@ -159,12 +160,12 @@ export const PREDICTION_V2_FIELDS = `
   refCode
   isLegacy
   pickConfig {
-    ${PICK_CONFIGURATION_V2_FIELDS}
+    ${PICK_CONFIGURATION_FIELDS}
   }
 `;
 
-/** v2 wire shape of a Prediction node (BigInt scalars may arrive as numbers). */
-export type PredictionV2Node = {
+/** Wire shape of a Prediction node (BigInt scalars may arrive as numbers). */
+export type PredictionNode = {
   predictionId: string;
   chainId: number;
   escrow: string;
@@ -186,22 +187,22 @@ export type PredictionV2Node = {
   createdAt: string;
   refCode?: string | null;
   isLegacy: boolean;
-  pickConfig?: PickConfigurationV2Node | null;
+  pickConfig?: PickConfigurationNode | null;
 };
 
 /**
- * Pure mapper: v2 Prediction node → app `Prediction`.
+ * Pure mapper: Prediction node → app `Prediction`.
  *
  * - `marketAddress` := `escrow`
- * - `result` := `result ?? 'UNRESOLVED'` (v2 result is nullable)
+ * - `result` := `result ?? 'UNRESOLVED'` (result is nullable)
  * - BigInt scalars normalized via `String()`
- * - `pickConfig` via the shared adapter; its v1-only `predictionId` field is
- *   backfilled from the parent prediction (v2 dropped it — the parent is the
- *   prediction).
- * - v2's nullable tokens collapse to `''` to keep the v1 non-null field
+ * - `pickConfig` via the shared adapter; its legacy `predictionId` field is
+ *   backfilled from the parent prediction (the schema dropped it — the parent
+ *   is the prediction).
+ * - nullable tokens collapse to `''` to keep the non-null field
  *   shape (no consumer reads tokens off predictions today).
  */
-export function toPrediction(node: PredictionV2Node): Prediction {
+export function toPrediction(node: PredictionNode): Prediction {
   return {
     predictionId: node.predictionId,
     chainId: node.chainId,
@@ -248,7 +249,7 @@ export const PREDICTIONS_QUERY = `
       orderBy: { field: CREATED_AT, direction: DESC }
     ) {
       nodes {
-        ${PREDICTION_V2_FIELDS}
+        ${PREDICTION_FIELDS}
       }
     }
   }
@@ -256,13 +257,14 @@ export const PREDICTIONS_QUERY = `
 
 // Slim projection for the question page chart — only the fields scatterData
 // reads. Picks deliberately omit the embedded `condition` objects: the full
-// embed blew the server-side complexity budget at 100 rows (same reason v1
-// slimmed this doc), and the chart never reads them.
+// embed blew the server-side complexity budget at 100 rows (the same reason
+// this doc was slimmed before), and the chart never reads them.
 export const PREDICTIONS_BY_CONDITION_QUERY = `
-  query PredictionsByCondition($conditionId: Bytes!, $first: Int) {
+  query PredictionsByCondition($conditionId: Bytes!, $first: Int, $after: String) {
     predictions(
       filter: { conditionIds: [$conditionId] }
       first: $first
+      after: $after
       orderBy: { field: CREATED_AT, direction: DESC }
     ) {
       nodes {
@@ -297,6 +299,10 @@ export const PREDICTIONS_BY_CONDITION_QUERY = `
           }
         }
       }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
     }
   }
 `;
@@ -304,8 +310,8 @@ export const PREDICTIONS_BY_CONDITION_QUERY = `
 /** Wire shape of the slim by-condition projection. `pickConfig` carries the
  *  full scalar set (so the shared adapter maps it) but its picks have no
  *  embedded condition. */
-type PredictionByConditionV2Node = Pick<
-  PredictionV2Node,
+type PredictionByConditionNode = Pick<
+  PredictionNode,
   | 'predictionId'
   | 'chainId'
   | 'escrow'
@@ -318,9 +324,9 @@ type PredictionByConditionV2Node = Pick<
   | 'pickConfig'
 >;
 
-// The chart reads a subset of Prediction; v1 returned the same partial rows
-// under the full type, so the cast preserves the existing contract.
-function toScatterPrediction(node: PredictionByConditionV2Node): Prediction {
+// The chart reads a subset of Prediction; the previous query returned the same
+// partial rows under the full type, so the cast preserves the existing contract.
+function toScatterPrediction(node: PredictionByConditionNode): Prediction {
   const partial: Partial<Prediction> = {
     predictionId: node.predictionId,
     chainId: node.chainId,
@@ -357,19 +363,19 @@ export const PREDICTIONS_COUNT_QUERY = `
 export const PREDICTION_QUERY = `
   query Prediction($predictionId: Bytes32!) {
     prediction(predictionId: $predictionId) {
-      ${PREDICTION_V2_FIELDS}
+      ${PREDICTION_FIELDS}
     }
   }
 `;
 
-// v2 connection over synthesized position rows — replaces v1's skip/take
+// Cursor connection over synthesized position rows — replaces the old skip/take
 // `positionsPage`. Both the by-holder and by-condition hooks share this
 // document; only the `PositionFilter` differs (passed as a variable).
 //
 // `pageInfo.hasNextPage` is raw-row truth: a page whose rows all synthesized
 // away still reports `true` while more underlying rows exist, so always page
 // on `pageInfo` (which `useCursorPagination` does), never on node count.
-export const POSITIONS_V2_QUERY = `
+export const POSITIONS_QUERY = `
   query Positions(
     $filter: PositionFilter
     $first: Int!
@@ -379,7 +385,7 @@ export const POSITIONS_V2_QUERY = `
     positions(filter: $filter, first: $first, after: $after, orderBy: $orderBy) {
       edges {
         node {
-          ${POSITION_V2_FIELDS}
+          ${POSITION_FIELDS}
         }
         cursor
       }
@@ -405,7 +411,7 @@ export function usePredictionsCount(address?: string, chainId?: number) {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => {
-      const resp = await graphqlRequestV2<{
+      const resp = await graphqlRequest<{
         predictions: { totalCount: number } | null;
       }>(PREDICTIONS_COUNT_QUERY, {
         participant: address,
@@ -424,12 +430,12 @@ export function usePredictions(params: {
   address?: string;
   chainId?: number;
   take?: number;
-  /** v1 offset pagination; v2 is keyset-based, so only the first page
-   *  (skip = 0, the only value call sites use) is addressable. Kept for
-   *  signature stability. */
+  /** Legacy offset pagination; the connection is keyset-based, so only the
+   *  first page (skip = 0, the only value call sites use) is addressable. Kept
+   *  for signature stability. */
   skip?: number;
 }) {
-  const { address, chainId, take = 50, skip = 0 } = params;
+  const { address, chainId, take = 25, skip = 0 } = params;
   const enabled = Boolean(address);
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
@@ -440,8 +446,8 @@ export function usePredictions(params: {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => {
-      const resp = await graphqlRequestV2<{
-        predictions: { nodes: PredictionV2Node[] } | null;
+      const resp = await graphqlRequest<{
+        predictions: { nodes: PredictionNode[] } | null;
       }>(PREDICTIONS_QUERY, {
         participant: address,
         chainId: chainId ?? null,
@@ -506,7 +512,7 @@ export function usePositionBalances(params: {
     loadMore,
     error,
     refetch,
-  } = useCursorPagination<PositionV2Node>({
+  } = useCursorPagination<PositionNode>({
     // orderBy in the key so switching/toggling sort resets pagination.
     queryKey: [
       'positionBalances',
@@ -516,7 +522,7 @@ export function usePositionBalances(params: {
       orderBy?.field ?? null,
       orderBy?.direction ?? null,
     ],
-    query: POSITIONS_V2_QUERY,
+    query: POSITIONS_QUERY,
     connectionKey: 'positions',
     pageSize,
     variables: { filter, orderBy },
@@ -568,7 +574,7 @@ export function usePositionBalancesByConditionId(params: {
     loadMore,
     error,
     refetch,
-  } = useCursorPagination<PositionV2Node>({
+  } = useCursorPagination<PositionNode>({
     queryKey: [
       'positionBalancesByCondition',
       conditionId,
@@ -576,7 +582,7 @@ export function usePositionBalancesByConditionId(params: {
       orderBy?.field ?? null,
       orderBy?.direction ?? null,
     ],
-    query: POSITIONS_V2_QUERY,
+    query: POSITIONS_QUERY,
     connectionKey: 'positions',
     pageSize,
     variables: { filter, orderBy },
@@ -602,25 +608,43 @@ export function usePositionBalancesByConditionId(params: {
  */
 export function usePredictionsByConditionId(params: {
   conditionId?: string;
+  /** Cursor page size (server caps `first` at 25). */
   take?: number;
-  /** See `usePredictions` — kept for signature stability. */
-  skip?: number;
 }) {
-  const { conditionId, take = 50, skip = 0 } = params;
+  const { conditionId, take = GRAPHQL_PAGE_SIZE } = params;
   const enabled = Boolean(conditionId);
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ['predictionsByCondition', conditionId, take, skip],
+    queryKey: ['predictionsByCondition', conditionId, take],
     enabled,
     staleTime: 30_000,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => {
-      const resp = await graphqlRequestV2<{
-        predictions: { nodes: PredictionByConditionV2Node[] } | null;
-      }>(PREDICTIONS_BY_CONDITION_QUERY, { conditionId, first: take });
-      return (resp?.predictions?.nodes ?? []).map(toScatterPrediction);
+      // The connection caps `first` at 25 server-side, so loop over cursor
+      // pages until exhausted to accumulate every prediction for the condition
+      // (the chart needs the complete set, not a truncated first page).
+      const nodes = await paginateConnection<PredictionByConditionNode>({
+        pageSize: take,
+        fetchPage: async ({ first, after }) => {
+          const resp: {
+            predictions: {
+              nodes: PredictionByConditionNode[];
+              pageInfo?: { hasNextPage: boolean; endCursor: string | null };
+            } | null;
+          } = await graphqlRequest(PREDICTIONS_BY_CONDITION_QUERY, {
+            conditionId,
+            first,
+            after,
+          });
+          return {
+            nodes: resp?.predictions?.nodes ?? [],
+            pageInfo: resp?.predictions?.pageInfo,
+          };
+        },
+      });
+      return nodes.map(toScatterPrediction);
     },
   });
 
@@ -646,8 +670,8 @@ export function usePrediction(predictionId?: string) {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => {
-      const resp = await graphqlRequestV2<{
-        prediction: PredictionV2Node | null;
+      const resp = await graphqlRequest<{
+        prediction: PredictionNode | null;
       }>(PREDICTION_QUERY, { predictionId });
       return resp?.prediction ? toPrediction(resp.prediction) : null;
     },

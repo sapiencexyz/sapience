@@ -4,11 +4,14 @@ import { Label } from '@sapience/ui/components/ui/label';
 import { Input } from '@sapience/ui/components/ui/input';
 
 import { Card, CardContent } from '@sapience/ui/components/ui/card';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@sapience/ui/components/ui/button';
 import {
   DEFAULT_CHAIN_ID,
+  CHAIN_ID_ETHEREAL,
   CHAIN_ID_ETHEREAL_TESTNET,
+  CHAIN_ID_ROBINHOOD_TESTNET,
+  CHAIN_ID_ROBINHOOD_MAINNET,
 } from '@sapience/sdk/constants';
 import { useChat } from '~/lib/context/ChatContext';
 import {
@@ -22,6 +25,75 @@ import {
 } from '~/lib/ws/MeshAuctionClient';
 import Loader from '~/components/shared/Loader';
 
+// Endpoint presets applied via the buttons next to the Settings heading. Each
+// preset switches the chain and populates every endpoint field for a known
+// environment. The Robinhood/Meridian presets leave the signal and chat
+// endpoints blank, which disables the mesh and chat bubble; the Ethereal
+// (Sapience) presets keep them pointed at the matching Sapience backend.
+type EndpointPreset = {
+  // Display label shown on the preset button.
+  label: string;
+  // Static chain ID for the preset. Used as the fallback when the RPC can't be
+  // reached at apply time, so the preset still switches chains and populates the
+  // settings fields instead of erroring out.
+  chainId: number;
+  customRpcURL: string;
+  graphqlEndpoint: string;
+  relayerEndpoint: string;
+  // Blank disables the mesh; blank chat hides the chat bubble.
+  signalEndpoint: string;
+  chatBaseUrl: string;
+};
+
+const ETHEREAL_MAINNET_SETTINGS: EndpointPreset = {
+  label: 'Ethereal Mainnet',
+  chainId: CHAIN_ID_ETHEREAL,
+  customRpcURL: 'https://rpc.ethereal.trade',
+  graphqlEndpoint: 'https://api.sapience.xyz/v2/graphql',
+  relayerEndpoint: 'https://relayer.sapience.xyz/auction',
+  signalEndpoint: 'https://relayer.sapience.xyz/signal',
+  chatBaseUrl: 'https://api.sapience.xyz/chat',
+} as const;
+
+const ROBINHOOD_MAINNET_SETTINGS: EndpointPreset = {
+  label: 'Robinhood Mainnet',
+  chainId: CHAIN_ID_ROBINHOOD_MAINNET,
+  customRpcURL: 'https://rpc.mainnet.chain.robinhood.com',
+  graphqlEndpoint: 'https://api.predict.meridian.xyz/graphql',
+  relayerEndpoint: 'https://relayer.predict.meridian.xyz/auction',
+  signalEndpoint: '',
+  chatBaseUrl: '',
+} as const;
+
+const ETHEREAL_TESTNET_SETTINGS: EndpointPreset = {
+  label: 'Ethereal Testnet',
+  chainId: CHAIN_ID_ETHEREAL_TESTNET,
+  customRpcURL: 'https://rpc.etherealtest.net',
+  graphqlEndpoint: 'https://api.staging.sapience.xyz/v2/graphql',
+  relayerEndpoint: 'https://relayer.staging.sapience.xyz/auction',
+  signalEndpoint: 'https://relayer.staging.sapience.xyz/signal',
+  chatBaseUrl: 'https://api.staging.sapience.xyz/chat',
+} as const;
+
+const ROBINHOOD_TESTNET_SETTINGS: EndpointPreset = {
+  label: 'Robinhood Testnet',
+  chainId: CHAIN_ID_ROBINHOOD_TESTNET,
+  customRpcURL: 'https://rpc.testnet.chain.robinhood.com',
+  graphqlEndpoint: 'https://api.predict.meridiantest.net/graphql',
+  relayerEndpoint: 'https://relayer.predict.meridiantest.net/auction',
+  signalEndpoint: '',
+  chatBaseUrl: '',
+} as const;
+
+// Order shown next to the Settings heading. Robinhood is the default
+// environment, so its presets lead; Ethereal follows.
+const ENDPOINT_PRESETS: EndpointPreset[] = [
+  ROBINHOOD_MAINNET_SETTINGS,
+  ETHEREAL_MAINNET_SETTINGS,
+  ROBINHOOD_TESTNET_SETTINGS,
+  ETHEREAL_TESTNET_SETTINGS,
+];
+
 type SettingFieldProps = {
   id: string;
   value: string;
@@ -34,9 +106,15 @@ type SettingFieldProps = {
   type?: 'text' | 'password';
   placeholder?: string;
   clearOnEmpty?: boolean;
+  // What to persist when the field is cleared. Defaults to `null`, which
+  // removes the override and resets to the default value. Set to `''` to keep
+  // an explicit blank value (e.g. the signal endpoint, where blank disables the
+  // mesh) so the field is not repopulated with the default on blur.
+  emptyPersistValue?: string | null;
   maskAfterPersist?: boolean;
   disabled?: boolean;
   showResetButton?: boolean;
+  forceShowResetButton?: boolean;
 };
 
 const SettingField = ({
@@ -51,9 +129,11 @@ const SettingField = ({
   type = 'text',
   placeholder,
   clearOnEmpty = true,
+  emptyPersistValue = null,
   maskAfterPersist = false,
   disabled = false,
   showResetButton = true,
+  forceShowResetButton = false,
 }: SettingFieldProps) => {
   const [draft, setDraft] = useState<string>(value);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -86,8 +166,8 @@ const SettingField = ({
     setIsFocused(false);
     if (!draft) {
       if (clearOnEmpty) {
-        onPersist(null);
-        setValue('');
+        onPersist(emptyPersistValue);
+        setValue(emptyPersistValue ?? '');
       }
       return;
     }
@@ -107,7 +187,8 @@ const SettingField = ({
     }
   };
 
-  const showReset = showResetButton && draft !== defaultValue;
+  const showReset =
+    showResetButton && (draft !== defaultValue || forceShowResetButton);
 
   return (
     <div className="w-full">
@@ -156,6 +237,8 @@ const SettingsPageContent = () => {
     chatBaseUrl,
     etherealRpcURL,
     arbitrumRpcURL,
+    customChainId,
+    customRpcURL,
     connectionDurationHours,
     meshRateLimit,
     meshMaxPeers,
@@ -166,6 +249,8 @@ const SettingsPageContent = () => {
     setChatBaseUrl,
     setEtherealRpcUrl,
     setArbitrumRpcUrl,
+    detectAndSetCustomChain,
+    clearCustomChain,
     setConnectionDurationHours,
     setMeshRateLimit,
     setMeshMaxPeers,
@@ -179,6 +264,8 @@ const SettingsPageContent = () => {
   const [chatInput, setChatInput] = useState('');
   const [etherealRpcInput, setEtherealRpcInput] = useState('');
   const [arbitrumRpcInput, setArbitrumRpcInput] = useState('');
+  const [, setIsDetecting] = useState(false);
+  const [detectError, setDetectError] = useState<string | null>(null);
   const [connectionDurationInput, setConnectionDurationInput] =
     useState<string>(String(DEFAULT_CONNECTION_DURATION_HOURS));
   const [meshRateLimitInput, setMeshRateLimitInput] = useState<number>(100);
@@ -225,13 +312,138 @@ const SettingsPageContent = () => {
     return trimmed.endsWith('/') ? trimmed.slice(0, -1) : trimmed;
   };
 
+  const persistGraphqlEndpoint = (value: string | null) => {
+    setGraphqlEndpoint(value);
+  };
+
+  const persistPredictionMarketRpcEndpoint = (value: string | null) => {
+    if (!value) {
+      setEtherealRpcUrl(null);
+      clearCustomChain();
+      return;
+    }
+
+    const url = value.trim();
+    if (!isHttpUrl(url)) {
+      setDetectError('Must be an absolute http(s) URL');
+      return;
+    }
+    if (url === (etherealRpcURL ?? defaults.etherealRpcURL)) {
+      return;
+    }
+    setEtherealRpcUrl(url);
+    setIsDetecting(true);
+    setDetectError(null);
+    void detectAndSetCustomChain(url)
+      .then((result) => {
+        if ('error' in result) {
+          setDetectError(result.error);
+        }
+      })
+      .finally(() => setIsDetecting(false));
+  };
+
+  const hasCustomPredictionMarketChain =
+    customChainId != null || customRpcURL != null;
+  const needsChainReload =
+    customChainId != null &&
+    customRpcURL === etherealRpcInput.trim() &&
+    DEFAULT_CHAIN_ID !== customChainId;
+
+  const applyEndpointPreset = useCallback(
+    async (preset: EndpointPreset) => {
+      setIsDetecting(true);
+      setDetectError(null);
+      // Pass the preset's static chain ID as a fallback so an unreachable RPC
+      // still applies the override and populates the fields below, rather than
+      // bailing out (which left the mainnet preset doing nothing when its RPC
+      // was temporarily unreachable).
+      const result = await detectAndSetCustomChain(
+        preset.customRpcURL,
+        preset.chainId
+      );
+      setIsDetecting(false);
+      if ('error' in result) {
+        setDetectError(result.error);
+        return;
+      }
+
+      setGraphqlEndpoint(preset.graphqlEndpoint);
+      setApiBaseUrl(preset.relayerEndpoint);
+      // A blank signal endpoint disables the mesh; a blank chat endpoint hides
+      // the chat bubble. The Robinhood/Meridian presets blank both; the Ethereal
+      // presets point them at the matching Sapience backend.
+      setSignalEndpoint(preset.signalEndpoint);
+      setChatBaseUrl(preset.chatBaseUrl);
+      setEtherealRpcUrl(preset.customRpcURL);
+
+      setEtherealRpcInput(preset.customRpcURL);
+      setGqlInput(preset.graphqlEndpoint);
+      setApiInput(preset.relayerEndpoint);
+      setSignalInput(preset.signalEndpoint);
+      setChatInput(preset.chatBaseUrl);
+
+      if (typeof window !== 'undefined') {
+        window.location.reload();
+      }
+    },
+    [
+      detectAndSetCustomChain,
+      setApiBaseUrl,
+      setChatBaseUrl,
+      setGraphqlEndpoint,
+      setEtherealRpcUrl,
+      setSignalEndpoint,
+    ]
+  );
+
+  // Highlight the preset whose endpoints all match the current settings.
+  const activePresetLabel = useMemo(() => {
+    const effectiveChainId = customChainId ?? DEFAULT_CHAIN_ID;
+    const match = ENDPOINT_PRESETS.find(
+      (preset) =>
+        effectiveChainId === preset.chainId &&
+        etherealRpcURL === preset.customRpcURL &&
+        graphqlEndpoint === preset.graphqlEndpoint &&
+        apiBaseUrl === preset.relayerEndpoint &&
+        signalEndpoint === preset.signalEndpoint &&
+        chatBaseUrl === preset.chatBaseUrl
+    );
+    return match?.label ?? null;
+  }, [
+    customChainId,
+    etherealRpcURL,
+    graphqlEndpoint,
+    apiBaseUrl,
+    signalEndpoint,
+    chatBaseUrl,
+  ]);
+
   return (
     <div className="relative min-h-screen">
       {/* Main Content */}
       <div className="container max-w-[750px] mx-auto px-4 pt-10 md:pt-14 lg:pt-16 pb-12 relative z-10">
-        <h1 className="text-3xl md:text-5xl font-sans font-normal mb-6 text-foreground">
-          Settings
-        </h1>
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-3xl md:text-5xl font-sans font-normal text-foreground">
+            Settings
+          </h1>
+          <div className="flex flex-wrap gap-2">
+            {ENDPOINT_PRESETS.map((preset) => {
+              const isActive = preset.label === activePresetLabel;
+              return (
+                <Button
+                  key={preset.label}
+                  variant={isActive ? 'default' : 'outline'}
+                  size="xs"
+                  aria-pressed={isActive}
+                  onClick={() => void applyEndpointPreset(preset)}
+                >
+                  {preset.label}
+                </Button>
+              );
+            })}
+          </div>
+        </div>
 
         {!hydrated ? (
           <div className="h-[720px] flex items-center justify-center">
@@ -242,25 +454,37 @@ const SettingsPageContent = () => {
             <CardContent className="p-8">
               <div className="space-y-6">
                 <div className="grid gap-2">
-                  <Label htmlFor="ethereal-rpc-endpoint">
-                    {DEFAULT_CHAIN_ID === CHAIN_ID_ETHEREAL_TESTNET
-                      ? 'Ethereal Testnet'
-                      : 'Ethereal'}{' '}
-                    RPC Endpoint
+                  <Label htmlFor="prediction-market-rpc-endpoint">
+                    Prediction Market RPC Endpoint
                   </Label>
                   <SettingField
-                    id="ethereal-rpc-endpoint"
+                    id="prediction-market-rpc-endpoint"
                     value={etherealRpcInput}
                     setValue={setEtherealRpcInput}
                     defaultValue={defaults.etherealRpcURL}
-                    onPersist={setEtherealRpcUrl}
+                    onPersist={persistPredictionMarketRpcEndpoint}
                     validate={isHttpUrl}
                     normalizeOnChange={(s) => s.trim()}
                     invalidMessage="Must be an absolute http(s) URL"
+                    forceShowResetButton={hasCustomPredictionMarketChain}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    JSON-RPC URL for the Ethereal network (trading)
-                  </p>
+                  {detectError ? (
+                    <p className="text-xs text-red-500">{detectError}</p>
+                  ) : null}
+                  {needsChainReload ? (
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        className="h-9"
+                        onClick={() => {
+                          if (typeof window !== 'undefined')
+                            window.location.reload();
+                        }}
+                      >
+                        Apply &amp; Reload
+                      </Button>
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="grid gap-2">
@@ -307,13 +531,13 @@ const SettingsPageContent = () => {
                     value={gqlInput}
                     setValue={setGqlInput}
                     defaultValue={defaults.graphqlEndpoint}
-                    onPersist={setGraphqlEndpoint}
+                    onPersist={persistGraphqlEndpoint}
                     validate={isHttpUrl}
                     invalidMessage="Must be an absolute http(s) URL"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Used to fetch metadata, historical data, and onchain data
-                    via GraphQL
+                    Full GraphQL endpoint used by the app. Include the path
+                    required by the selected backend.
                   </p>
                 </div>
 
@@ -327,6 +551,7 @@ const SettingsPageContent = () => {
                     onPersist={setChatBaseUrl}
                     validate={isHttpUrl}
                     normalizeOnChange={normalizeBase}
+                    emptyPersistValue=""
                     invalidMessage="Must be an absolute http(s) base URL"
                   />
                   <p className="text-xs text-muted-foreground">
@@ -338,7 +563,8 @@ const SettingsPageContent = () => {
                     >
                       chat widget
                     </button>{' '}
-                    to send and receive signed messages
+                    to send and receive signed messages. Leave blank to disable
+                    chat and hide the chat bubble.
                   </p>
                 </div>
 
@@ -369,10 +595,13 @@ const SettingsPageContent = () => {
                     onPersist={setSignalEndpoint}
                     validate={isHttpUrl}
                     normalizeOnChange={normalizeBase}
+                    emptyPersistValue=""
                     invalidMessage="Must be an absolute http(s) base URL"
                   />
                   <p className="text-xs text-muted-foreground">
-                    WebRTC signaling server for mesh peer discovery
+                    WebRTC signaling server for mesh peer discovery. Leave blank
+                    to disable the mesh and route orders exclusively through the
+                    relayer.
                   </p>
                 </div>
 

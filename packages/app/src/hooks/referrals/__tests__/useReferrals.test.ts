@@ -51,7 +51,7 @@ describe('fetchUserReferralStatus', () => {
 
     expect(status).toEqual(STATUS);
     expect(mockFetch).toHaveBeenCalledWith(
-      'https://api.sapience.xyz/referrals/users/0xabc'
+      'https://api.predict.meridian.xyz/referrals/users/0xabc'
     );
   });
 

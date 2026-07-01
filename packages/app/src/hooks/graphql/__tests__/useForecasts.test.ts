@@ -5,7 +5,7 @@ import React from 'react';
 
 // ---- mocks ----
 // Fully mock the SDK queries module (no importActual) so a stale SDK dist
-// can't leak the old v1 implementations into these tests.
+// can't leak the old implementations into these tests.
 
 const mockFetchForecasts = vi.fn();
 const mockFetchForecastsPage = vi.fn();
@@ -48,7 +48,7 @@ function createWrapper() {
 
 function makeFormatted(uid: string, overrides: Record<string, unknown> = {}) {
   return {
-    id: uid, // v2 identity: EAS uid, no numeric row id
+    id: uid, // identity: EAS uid, no numeric row id
     uid,
     attester: '0x1234567890abcdef1234567890abcdef12345678',
     shortAttester: '0x1234...5678',

@@ -28,12 +28,13 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@sapience/ui/components/ui/dialog';
-import { graphqlRequestV2 } from '@sapience/sdk/queries/client/graphqlClient';
+import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { isAddress, getAddress } from 'viem';
 import { getDeterministicCategoryColor } from '~/lib/theme/categoryPalette';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import MarketBadge from '~/components/markets/MarketBadge';
+import { useSettings } from '~/lib/context/SettingsContext';
 
 const MAX_RESULTS = 10;
 
@@ -47,11 +48,11 @@ const PAGES = [
 ] as const;
 
 /**
- * Lightweight v2 query — only fetches the fields the command palette
+ * Lightweight query — only fetches the fields the command palette
  * needs. `QuestionItem` is a union, so results branch on `__typename`;
- * v2 `QuestionFilter.search` also covers condition shortName server-side.
+ * `QuestionFilter.search` also covers condition shortName server-side.
  * (Untagged literal on purpose: app graphql-eslint validates tagged
- * documents against the v1 schema.)
+ * documents against the legacy schema.)
  */
 const SEARCH_QUESTIONS = `
   query CommandMenuSearch($first: Int, $chainId: Int, $search: String) {
@@ -80,7 +81,7 @@ const SEARCH_QUESTIONS = `
               name
               slug
             }
-            conditions(first: 50) {
+            conditions(first: 25) {
               nodes {
                 conditionId
                 question
@@ -133,17 +134,21 @@ function getCategoryColor(categorySlug?: string | null): string {
   return getDeterministicCategoryColor(categorySlug);
 }
 
-function useCommandMenuSearch(search: string | undefined, enabled: boolean) {
+function useCommandMenuSearch(
+  search: string | undefined,
+  enabled: boolean,
+  chainId: number
+) {
   return useQuery<SearchConditionRow[]>({
-    queryKey: ['commandMenuSearch', search],
+    queryKey: ['commandMenuSearch', search, chainId],
     queryFn: async () => {
-      const data = await graphqlRequestV2<{
+      const data = await graphqlRequest<{
         questions: { edges: Array<{ node: SearchQuestionNode }> };
       }>(SEARCH_QUESTIONS, {
         // Overfetch 3x: groups expand into multiple rows, and we re-sort
         // client-side to prefer future markets over expired ones
-        first: MAX_RESULTS * 3,
-        chainId: DEFAULT_CHAIN_ID,
+        first: Math.min(MAX_RESULTS * 3, 25),
+        chainId,
         search: search?.trim() || null,
       });
 
@@ -191,6 +196,8 @@ export default function CommandMenu() {
   const [search, setSearch] = React.useState('');
   const [debouncedSearch, setDebouncedSearch] = React.useState('');
   const router = useRouter();
+  const { customChainId } = useSettings();
+  const searchChainId = customChainId ?? DEFAULT_CHAIN_ID;
 
   // Debounce search input
   React.useEffect(() => {
@@ -222,7 +229,7 @@ export default function CommandMenu() {
     data: conditionRows = [],
     isFetching,
     isError,
-  } = useCommandMenuSearch(debouncedSearch || undefined, open);
+  } = useCommandMenuSearch(debouncedSearch || undefined, open, searchChainId);
 
   // Filter pages client-side — use instant search for snappy UX
   const filteredPages = React.useMemo(() => {

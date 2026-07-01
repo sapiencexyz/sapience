@@ -58,7 +58,7 @@ export const useForecasts = ({
     refetchOnWindowFocus: options?.refetchOnWindowFocus ?? false,
   });
 
-  // The SDK already returns render-ready FormattedAttestation rows (v2).
+  // The SDK already returns render-ready FormattedAttestation rows.
   return { data: data ?? EMPTY_FORECASTS, isLoading, error, refetch };
 };
 
@@ -132,7 +132,7 @@ interface UseUserForecastsParams {
   conditionId?: string;
   /** Rows per page (`first`). */
   pageSize?: number;
-  /** Direction of the fixed v2 ATTESTED_AT ordering. */
+  /** Direction of the fixed ATTESTED_AT ordering. */
   orderDirection: 'asc' | 'desc';
 }
 

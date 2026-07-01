@@ -2,12 +2,12 @@
 
 import { isAddress } from 'viem';
 import { formatUnits } from './_prediction-helpers';
-import { getGraphQLEndpointV2 } from '~/lib/data/graphql';
+import { getGraphQLEndpoint } from '~/lib/data/graphql';
 import { mainnetClient } from '~/lib/utils/util';
 import { getEnsAvatarUrlForAddress } from '~/lib/ens/avatar.server';
 import { SCHEMA_UID } from '~/lib/constants';
 
-// ---------- GraphQL queries (v2 transport) ----------
+// ---------- GraphQL queries ----------
 
 const PROFIT_RANK_QUERY = `
   query ProfileProfitRank($address: Address!) {
@@ -76,7 +76,7 @@ export interface EnsInfo {
 // ---------- Helpers ----------
 
 async function gqlFetch<T>(query: string, variables?: object): Promise<T> {
-  const res = await fetch(getGraphQLEndpointV2(), {
+  const res = await fetch(getGraphQLEndpoint(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ query, variables }),
@@ -88,9 +88,9 @@ async function gqlFetch<T>(query: string, variables?: object): Promise<T> {
 
 // ---------- Data fetchers ----------
 
-// v2: server-side `account.ranking(metric: PNL)` ranks over the FULL
-// population (v1 sorted the fetched top-100 client-side, so ranks beyond
-// 100 were null and totalParticipants was capped at 100).
+// Server-side `account.ranking(metric: PNL)` ranks over the FULL
+// population (the legacy path sorted the fetched top-100 client-side, so
+// ranks beyond 100 were null and totalParticipants was capped at 100).
 async function fetchProfitRank(address: string): Promise<{
   totalPnL: number | null;
   rank: number | null;
@@ -127,7 +127,7 @@ async function fetchAccuracyRank(address: string): Promise<{
   const totalForecasters = data?.leaderboard?.totalCount ?? 0;
   if (!ranking) return { accuracyScore: null, rank: null, totalForecasters };
   return {
-    // v2 Ranking.accuracy carries the SAME raw avg(twError) scale as v1's
+    // Ranking.accuracy carries the SAME raw avg(twError) scale as the legacy
     // accuracyScore (parity-verified identity; the SDL's old "0-1" doc was
     // wrong) — pass through unscaled; the OG route Math.rounds it as before.
     accuracyScore: ranking.accuracy != null ? ranking.accuracy : 0,
@@ -152,8 +152,8 @@ async function fetchVolume(address: string): Promise<string | null> {
 }
 
 async function fetchForecastsCount(address: string): Promise<number | null> {
-  // v2 `forecasts` is a Relay connection; `first: 0` is a legal count-only
-  // query. Unlike the v1 `take: 100` page fetch, the count is exact (not
+  // `forecasts` is a Relay connection; `first: 0` is a legal count-only
+  // query. Unlike the legacy `take: 100` page fetch, the count is exact (not
   // capped at 100). The Address scalar canonicalizes to lowercase.
   const data = await gqlFetch<{
     forecasts: { totalCount: number } | null;

@@ -3,7 +3,7 @@ import {
   GET_QUESTIONS,
   buildQuestionsVariables,
   toQuestionType,
-  type QuestionItemV2,
+  type QuestionItem,
   type QuestionType,
   type SortField,
   type SortDirection,
@@ -39,13 +39,13 @@ export interface UseInfiniteQuestionsResult {
 }
 
 /**
- * Infinite questions feed over the v2 cursor connection.
+ * Infinite questions feed over the cursor connection.
  *
- * v1 emulated "has more" with a `take: pageSize + 1` over-fetch and a
- * skip-offset state machine; v2's `QuestionConnection` is forward-cursor
- * native (`pageInfo.hasNextPage` + `endCursor`), so paging is delegated
- * to the shared `useCursorPagination` adapter. Raw `QuestionItem` union
- * nodes are mapped back into the stable v1 `QuestionType` envelope for
+ * The previous implementation emulated "has more" with a `take: pageSize + 1`
+ * over-fetch and a skip-offset state machine; the `QuestionConnection` is
+ * forward-cursor native (`pageInfo.hasNextPage` + `endCursor`), so paging is
+ * delegated to the shared `useCursorPagination` adapter. Raw `QuestionItem`
+ * union nodes are mapped back into the stable `QuestionType` envelope for
  * MarketsPage / QuestionsTable.
  */
 export function useInfiniteQuestions(
@@ -95,7 +95,7 @@ export function useInfiniteQuestions(
     isFetchingMore,
     hasNextPage,
     loadMore,
-  } = useCursorPagination<QuestionItemV2>({
+  } = useCursorPagination<QuestionItem>({
     // Filters/sort ride in `variables`, which useCursorPagination folds
     // into the React Query key — any change resets to a fresh first page.
     queryKey: ['infiniteQuestions'],
@@ -105,7 +105,7 @@ export function useInfiniteQuestions(
     variables: { filter: filter ?? null, orderBy },
   });
 
-  // Map union nodes back into v1 envelopes and drop duplicates that can
+  // Map union nodes back into the stable envelopes and drop duplicates that can
   // appear when rows shift between cursor pages under volatile sorts.
   const data = useMemo(() => {
     const seen = new Set<string>();

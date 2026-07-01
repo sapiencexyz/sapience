@@ -65,13 +65,17 @@ class MeshAuctionClient {
 
   private ensureMesh(): MeshClient {
     if (!this.mesh) {
+      const signalUrl = getSignalUrl();
       this.mesh = new MeshClient({
-        signalUrl: getSignalUrl(),
+        signalUrl,
         rateLimitPerSec: readRateLimit(),
         maxPeers: readMaxPeers(),
         maxFanout: readFanout(),
       });
-      this.mesh.connect();
+      // An empty signal URL means the mesh is explicitly disabled in Settings:
+      // build the client (so listeners/getters keep working as no-ops) but never
+      // open the signaling WebSocket.
+      if (signalUrl) this.mesh.connect();
       this.transport = new MeshTransport(this.mesh);
     }
     return this.mesh;

@@ -2,15 +2,15 @@
 
 import { useCallback, useMemo } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { graphqlRequestV2 } from '@sapience/sdk/queries/client/graphqlClient';
+import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 
 /**
- * Forward-only cursor pagination for v2 GraphQL connections.
+ * Forward-only cursor pagination for GraphQL connections.
  *
- * v1 plural queries are skip/take with a `+1` over-fetch to detect "more"
- * (see `usePositions`, `useAccountActivity`). v2 is Relay forward-only:
+ * The old plural queries were skip/take with a `+1` over-fetch to detect "more"
+ * (see `usePositions`, `useAccountActivity`). Connections are Relay forward-only:
  * `first` / `after` in, `{ edges { node, cursor }, pageInfo, totalCount }`
- * out. This hook is the shared adapter for that shape so every v2 consumer
+ * out. This hook is the shared adapter for that shape so every consumer
  * gets the same loadMore / hasNextPage / accumulated-nodes contract instead
  * of reimplementing cursor threading per query.
  *
@@ -19,7 +19,7 @@ import { graphqlRequestV2 } from '@sapience/sdk/queries/client/graphqlClient';
  * `edges[].node` across all loaded pages into `data`.
  */
 
-/** The Relay connection shape v2 resolvers return under `connectionKey`. */
+/** The Relay connection shape resolvers return under `connectionKey`. */
 export type RelayPageInfo = {
   hasNextPage: boolean;
   endCursor: string | null;
@@ -48,7 +48,7 @@ export interface UseCursorPaginationParams {
   /** React Query cache key. The hook does not append page params — the
    *  cursor lives in `useInfiniteQuery`'s page list, not the key. */
   queryKey: readonly unknown[];
-  /** A v2 connection query exposing `first: Int!` and `after: String`. */
+  /** A connection query exposing `first: Int!` and `after: String`. */
   query: string;
   /** Top-level field name the connection is returned under (e.g. `questions`). */
   connectionKey: string;
@@ -80,7 +80,7 @@ export interface UseCursorPaginationResult<TNode> {
 }
 
 /**
- * Generic forward-cursor pagination over a v2 Relay connection.
+ * Generic forward-cursor pagination over a Relay connection.
  *
  * @example
  * const { data, loadMore, hasNextPage } = useCursorPagination<Question>({
@@ -127,13 +127,14 @@ export function useCursorPagination<TNode>(
         ? (lastPage.pageInfo.endCursor ?? undefined)
         : undefined,
     queryFn: async ({ pageParam }) => {
-      const resp = await graphqlRequestV2<
-        Record<string, RelayConnection<TNode>>
-      >(query, {
-        ...(variables ?? {}),
-        first: pageSize,
-        after: pageParam ?? null,
-      });
+      const resp = await graphqlRequest<Record<string, RelayConnection<TNode>>>(
+        query,
+        {
+          ...(variables ?? {}),
+          first: pageSize,
+          after: pageParam ?? null,
+        }
+      );
       return resp?.[connectionKey] ?? EMPTY_CONNECTION;
     },
   });
@@ -143,7 +144,7 @@ export function useCursorPagination<TNode>(
     [data]
   );
 
-  // totalCount is a page-invariant extent in v2; read it off the latest page.
+  // totalCount is a page-invariant extent; read it off the latest page.
   const totalCount = data?.pages.at(-1)?.totalCount ?? 0;
 
   const loadMore = useCallback(() => {

@@ -3,8 +3,11 @@
 import {
   DEFAULT_CHAIN_ID,
   CHAIN_ID_ETHEREAL_TESTNET,
+  CUSTOM_CHAIN_ID_KEY,
+  CUSTOM_RPC_URL_KEY,
   getRpcUrl,
 } from '@sapience/sdk/constants';
+import { createPublicClient, http } from 'viem';
 import type React from 'react';
 import {
   createContext,
@@ -16,9 +19,8 @@ import {
 } from 'react';
 
 type SettingsContextValue = {
+  /** GraphQL endpoint used by the app. The full path is stored as configured. */
   graphqlEndpoint: string | null;
-  /** v2 GraphQL transport endpoint (`/v2/graphql`). Resolves independently of v1. */
-  graphqlEndpointV2: string | null;
   /**
    * Auction relayer base URL (stored as http(s) and typically includes the `/auction` path).
    * This is used to construct the auction WebSocket URL via `toAuctionWsUrl(...)`.
@@ -28,6 +30,13 @@ type SettingsContextValue = {
   adminBaseUrl: string | null;
   etherealRpcURL: string | null;
   arbitrumRpcURL: string | null;
+  /**
+   * Custom-chain override. When both are set, the app runs against this chain
+   * after a reload (see `readCustomChainOverride` in the SDK). `customChainId`
+   * is auto-detected from `customRpcURL` via `detectAndSetCustomChain`.
+   */
+  customChainId: number | null;
+  customRpcURL: string | null;
   /** Signal server endpoint (http(s) — converted to ws(s) at connection time). */
   signalEndpoint: string | null;
   connectionDurationHours: number | null;
@@ -35,12 +44,26 @@ type SettingsContextValue = {
   meshMaxPeers: number | null;
   meshFanout: number | null;
   setGraphqlEndpoint: (value: string | null) => void;
-  setGraphqlEndpointV2: (value: string | null) => void;
   setApiBaseUrl: (value: string | null) => void;
   setChatBaseUrl: (value: string | null) => void;
   setAdminBaseUrl: (value: string | null) => void;
   setEtherealRpcUrl: (value: string | null) => void;
   setArbitrumRpcUrl: (value: string | null) => void;
+  /**
+   * Detect the chain ID from a custom RPC URL and persist both. Does NOT reload —
+   * the caller shows the detected id and offers an explicit "Apply & Reload".
+   *
+   * `fallbackChainId` is used for known presets where the chain ID is static: if
+   * the RPC can't be reached (or returns a bogus id), the override is still
+   * applied with the known id instead of failing, so the app switches chains and
+   * the settings fields populate even when the RPC is temporarily unreachable.
+   */
+  detectAndSetCustomChain: (
+    rpcUrl: string,
+    fallbackChainId?: number
+  ) => Promise<{ chainId: number } | { error: string }>;
+  /** Clear the custom-chain override and reload back to the default chain. */
+  clearCustomChain: () => void;
   setSignalEndpoint: (value: string | null) => void;
   setConnectionDurationHours: (value: number | null) => void;
   setMeshRateLimit: (value: number | null) => void;
@@ -48,7 +71,6 @@ type SettingsContextValue = {
   setMeshFanout: (value: number | null) => void;
   defaults: {
     graphqlEndpoint: string;
-    graphqlEndpointV2: string;
     apiBaseUrl: string;
     chatBaseUrl: string;
     adminBaseUrl: string;
@@ -64,12 +86,16 @@ type SettingsContextValue = {
 
 const STORAGE_KEYS = {
   graphql: 'sapience.settings.graphqlEndpoint',
-  graphqlV2: 'sapience.settings.graphqlEndpointV2',
+  // Legacy key, read once for migration into `graphql` then removed on save.
+  legacyGraphqlV2: 'sapience.settings.graphqlEndpointV2',
   api: 'sapience.settings.apiBaseUrl',
   chat: 'sapience.settings.chatBaseUrl',
   admin: 'sapience.settings.adminBaseUrl',
   etherealRpcURL: 'sapience.settings.etherealRpcURL',
   arbitrumRpcURL: 'sapience.settings.arbitrumRpcURL',
+  // Custom-chain override keys are owned by the SDK (single source of truth)
+  customChainId: CUSTOM_CHAIN_ID_KEY,
+  customRpcURL: CUSTOM_RPC_URL_KEY,
   connectionDurationHours: 'sapience.settings.connectionDurationHours',
   signalEndpoint: 'sapience.settings.signalEndpoint',
   meshRateLimit: 'sapience.settings.meshRateLimit',
@@ -104,76 +130,84 @@ function normalizeBaseUrlPreservePath(value: string): string {
 }
 
 function getDefaultSignalEndpoint(): string {
+  // Robinhood Mainnet (the default network) leaves the mesh signal blank, which
+  // disables the mesh. Only derive a signal endpoint when an explicit
+  // relayer/API env is configured (e.g. a Sapience/Ethereal deployment).
+  if (
+    !process.env.NEXT_PUBLIC_FOIL_RELAYER_URL &&
+    !process.env.NEXT_PUBLIC_FOIL_API_URL
+  ) {
+    return '';
+  }
   const relayerBase = getDefaultRelayerBase();
   try {
     const u = new URL(relayerBase);
     u.pathname = '/signal';
     return u.toString();
   } catch {
-    return 'https://relayer.sapience.xyz/signal';
+    return '';
   }
 }
 
 function getDefaultRelayerBase(): string {
-  // Auction relayer base. Prefer explicit relayer env, otherwise derive from API env
-  // but only swap `api.sapience.xyz` -> `relayer.sapience.xyz` for production.
+  // Auction relayer base. Prefer explicit relayer env, otherwise derive from API
+  // env but only swap `api.sapience.xyz` -> `relayer.sapience.xyz`. With nothing
+  // configured, default to Robinhood Mainnet's relayer.
   const explicitRelayer = process.env.NEXT_PUBLIC_FOIL_RELAYER_URL;
-  const apiRoot =
-    process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz';
+  const apiRoot = process.env.NEXT_PUBLIC_FOIL_API_URL;
+  if (!explicitRelayer && !apiRoot) {
+    return 'https://relayer.predict.meridian.xyz/auction';
+  }
   const root = explicitRelayer || apiRoot;
   try {
-    const u = new URL(root);
+    const u = new URL(root as string);
     if (!explicitRelayer && u.hostname === 'api.sapience.xyz') {
       u.hostname = 'relayer.sapience.xyz';
     }
     return `${u.origin}/auction`;
   } catch {
-    return 'https://relayer.sapience.xyz/auction';
+    return 'https://relayer.predict.meridian.xyz/auction';
   }
 }
 
+// Default app GraphQL endpoint. Sapience serves the schema at `/v2/graphql`;
+// Meridian exposes the same schema at `/graphql` and overrides the full URL.
 function getDefaultGraphqlEndpoint(): string {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz';
-  try {
-    const u = new URL(baseUrl);
-    return `${u.origin}/graphql`;
-  } catch {
-    return 'https://api.sapience.xyz/graphql';
-  }
-}
-
-// v2 transport default: same origin resolution as v1, but targets `/v2/graphql`.
-function getDefaultGraphqlEndpointV2(): string {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz';
+  // Sapience serves the schema at `/v2/graphql`; Meridian (Robinhood) exposes
+  // the same schema at `/graphql`. With no API env configured, default to
+  // Robinhood Mainnet.
+  const baseUrl = process.env.NEXT_PUBLIC_FOIL_API_URL;
+  if (!baseUrl) return 'https://api.predict.meridian.xyz/graphql';
   try {
     const u = new URL(baseUrl);
     return `${u.origin}/v2/graphql`;
   } catch {
-    return 'https://api.sapience.xyz/v2/graphql';
+    return 'https://api.predict.meridian.xyz/graphql';
   }
 }
 
 function getDefaultChatBase(): string {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz';
+  // Robinhood Mainnet (the default network) ships without chat — a blank base
+  // hides the chat bubble. Only derive a chat base from an explicit API env.
+  const baseUrl = process.env.NEXT_PUBLIC_FOIL_API_URL;
+  if (!baseUrl) return '';
   try {
     const u = new URL(baseUrl);
     return `${u.origin}/chat`;
   } catch {
-    return 'https://api.sapience.xyz/chat';
+    return '';
   }
 }
 
 function getDefaultAdminBase(): string {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz';
+  // Defaults to Robinhood Mainnet's admin base when no API env is configured.
+  const baseUrl = process.env.NEXT_PUBLIC_FOIL_API_URL;
+  if (!baseUrl) return 'https://api.predict.meridian.xyz/admin';
   try {
     const u = new URL(baseUrl);
     return `${u.origin}/admin`;
   } catch {
-    return 'https://api.sapience.xyz/admin';
+    return 'https://api.predict.meridian.xyz/admin';
   }
 }
 
@@ -205,9 +239,6 @@ export const SettingsProvider = ({
   children: React.ReactNode;
 }) => {
   const [graphqlOverride, setGraphqlOverride] = useState<string | null>(null);
-  const [graphqlV2Override, setGraphqlV2Override] = useState<string | null>(
-    null
-  );
   const [apiBaseOverride, setApiBaseOverride] = useState<string | null>(null);
   const [chatBaseOverride, setChatBaseOverride] = useState<string | null>(null);
   const [adminBaseOverride, setAdminBaseOverride] = useState<string | null>(
@@ -217,6 +248,12 @@ export const SettingsProvider = ({
     null
   );
   const [arbitrumRpcOverride, setArbitrumRpcOverride] = useState<string | null>(
+    null
+  );
+  const [customChainIdOverride, setCustomChainIdOverride] = useState<
+    number | null
+  >(null);
+  const [customRpcOverride, setCustomRpcOverride] = useState<string | null>(
     null
   );
   const [mounted, setMounted] = useState(false);
@@ -242,9 +279,10 @@ export const SettingsProvider = ({
         typeof window !== 'undefined'
           ? window.localStorage.getItem(STORAGE_KEYS.graphql)
           : null;
-      const gV2 =
+      // Migration: older sessions stored the endpoint under the legacy v2 key.
+      const gLegacy =
         typeof window !== 'undefined'
-          ? window.localStorage.getItem(STORAGE_KEYS.graphqlV2)
+          ? window.localStorage.getItem(STORAGE_KEYS.legacyGraphqlV2)
           : null;
       const a =
         typeof window !== 'undefined'
@@ -270,24 +308,46 @@ export const SettingsProvider = ({
         typeof window !== 'undefined'
           ? window.localStorage.getItem(STORAGE_KEYS.connectionDurationHours)
           : null;
-      if (g && isHttpUrl(g)) setGraphqlOverride(g);
-      if (gV2 && isHttpUrl(gV2)) setGraphqlV2Override(gV2);
+      const gResolved = g && isHttpUrl(g) ? g : gLegacy;
+      if (gResolved && isHttpUrl(gResolved)) setGraphqlOverride(gResolved);
       if (a && isHttpUrl(a))
         setApiBaseOverride(normalizeBaseUrlPreservePath(a));
-      if (c && isHttpUrl(c))
+      if (c !== null && c.trim() === '') {
+        // Explicit disable: chat is turned off and the bubble is hidden.
+        setChatBaseOverride('');
+      } else if (c && isHttpUrl(c)) {
         setChatBaseOverride(normalizeBaseUrlPreservePath(c));
+      }
       if (admin && isHttpUrl(admin))
         setAdminBaseOverride(normalizeBaseUrlPreservePath(admin));
       const sig =
         typeof window !== 'undefined'
           ? window.localStorage.getItem(STORAGE_KEYS.signalEndpoint)
           : null;
-      if (sig && isHttpUrl(sig))
+      if (sig !== null && sig.trim() === '') {
+        // Explicit disable: the mesh signal is turned off.
+        setSignalEndpointOverride('');
+      } else if (sig && isHttpUrl(sig)) {
         setSignalEndpointOverride(normalizeBaseUrlPreservePath(sig));
+      }
       if (etherealRpc && isHttpUrl(etherealRpc))
         setEtherealRpcOverride(etherealRpc);
       if (arbitrumRpc && isHttpUrl(arbitrumRpc))
         setArbitrumRpcOverride(arbitrumRpc);
+      const customRpc =
+        typeof window !== 'undefined'
+          ? window.localStorage.getItem(STORAGE_KEYS.customRpcURL)
+          : null;
+      const customId =
+        typeof window !== 'undefined'
+          ? window.localStorage.getItem(STORAGE_KEYS.customChainId)
+          : null;
+      if (customRpc && isHttpUrl(customRpc)) setCustomRpcOverride(customRpc);
+      if (customId) {
+        const parsed = Number(customId);
+        if (Number.isInteger(parsed) && parsed > 0)
+          setCustomChainIdOverride(parsed);
+      }
       if (cdh) {
         const parsed = parseInt(cdh, 10);
         if (Number.isFinite(parsed) && parsed >= 1)
@@ -328,7 +388,6 @@ export const SettingsProvider = ({
   const defaults = useMemo(
     () => ({
       graphqlEndpoint: getDefaultGraphqlEndpoint(),
-      graphqlEndpointV2: getDefaultGraphqlEndpointV2(),
       apiBaseUrl: getDefaultRelayerBase(),
       signalEndpoint: getDefaultSignalEndpoint(),
       chatBaseUrl: getDefaultChatBase(),
@@ -364,14 +423,21 @@ export const SettingsProvider = ({
   const graphqlEndpoint = mounted
     ? graphqlOverride || defaults.graphqlEndpoint
     : null;
-  const graphqlEndpointV2 = mounted
-    ? graphqlV2Override || defaults.graphqlEndpointV2
-    : null;
   const apiBaseUrl = mounted ? apiBaseOverride || defaults.apiBaseUrl : null;
   const signalEndpoint = mounted
-    ? signalEndpointOverride || defaults.signalEndpoint
+    ? // An empty (not null) override means the mesh is explicitly disabled, so
+      // keep it blank instead of falling back to the default endpoint.
+      signalEndpointOverride === ''
+      ? ''
+      : signalEndpointOverride || defaults.signalEndpoint
     : null;
-  const chatBaseUrl = mounted ? chatBaseOverride || defaults.chatBaseUrl : null;
+  const chatBaseUrl = mounted
+    ? // An empty (not null) override means chat is explicitly disabled, so keep
+      // it blank instead of falling back to the default endpoint.
+      chatBaseOverride === ''
+      ? ''
+      : chatBaseOverride || defaults.chatBaseUrl
+    : null;
   const adminBaseUrl = mounted
     ? adminBaseOverride || defaults.adminBaseUrl
     : null;
@@ -381,6 +447,8 @@ export const SettingsProvider = ({
   const arbitrumRpcURL = mounted
     ? arbitrumRpcOverride || defaults.arbitrumRpcURL
     : null;
+  const customChainId = mounted ? customChainIdOverride : null;
+  const customRpcURL = mounted ? customRpcOverride : null;
   const connectionDurationHours = mounted
     ? (connectionDurationHoursOverride ?? defaults.connectionDurationHours)
     : null;
@@ -397,6 +465,8 @@ export const SettingsProvider = ({
   const setGraphqlEndpoint = useCallback((value: string | null) => {
     try {
       if (typeof window === 'undefined') return;
+      // Always clear the legacy v2 key so a stale value can't resurface.
+      window.localStorage.removeItem(STORAGE_KEYS.legacyGraphqlV2);
       if (!value) {
         window.localStorage.removeItem(STORAGE_KEYS.graphql);
         setGraphqlOverride(null);
@@ -406,23 +476,6 @@ export const SettingsProvider = ({
       if (!isHttpUrl(v)) return;
       window.localStorage.setItem(STORAGE_KEYS.graphql, v);
       setGraphqlOverride(v);
-    } catch {
-      /* noop */
-    }
-  }, []);
-
-  const setGraphqlEndpointV2 = useCallback((value: string | null) => {
-    try {
-      if (typeof window === 'undefined') return;
-      if (!value) {
-        window.localStorage.removeItem(STORAGE_KEYS.graphqlV2);
-        setGraphqlV2Override(null);
-        return;
-      }
-      const v = value.trim();
-      if (!isHttpUrl(v)) return;
-      window.localStorage.setItem(STORAGE_KEYS.graphqlV2, v);
-      setGraphqlV2Override(v);
     } catch {
       /* noop */
     }
@@ -448,9 +501,17 @@ export const SettingsProvider = ({
   const setSignalEndpoint = useCallback((value: string | null) => {
     try {
       if (typeof window === 'undefined') return;
-      if (!value) {
+      // null resets to the default endpoint (removes the override entirely).
+      if (value === null) {
         window.localStorage.removeItem(STORAGE_KEYS.signalEndpoint);
         setSignalEndpointOverride(null);
+        return;
+      }
+      // An explicit empty string disables the mesh: persist a blank value so it
+      // is honored over the default endpoint and getSignalUrl() returns ''.
+      if (value.trim() === '') {
+        window.localStorage.setItem(STORAGE_KEYS.signalEndpoint, '');
+        setSignalEndpointOverride('');
         return;
       }
       const v = normalizeBaseUrlPreservePath(value);
@@ -465,9 +526,17 @@ export const SettingsProvider = ({
   const setChatBaseUrl = useCallback((value: string | null) => {
     try {
       if (typeof window === 'undefined') return;
-      if (!value) {
+      // null resets to the default endpoint (removes the override entirely).
+      if (value === null) {
         window.localStorage.removeItem(STORAGE_KEYS.chat);
         setChatBaseOverride(null);
+        return;
+      }
+      // An explicit empty string disables chat: persist a blank value so it is
+      // honored over the default endpoint and the chat bubble stays hidden.
+      if (value.trim() === '') {
+        window.localStorage.setItem(STORAGE_KEYS.chat, '');
+        setChatBaseOverride('');
         return;
       }
       const v = normalizeBaseUrlPreservePath(value);
@@ -525,6 +594,68 @@ export const SettingsProvider = ({
       if (!isHttpUrl(v)) return;
       window.localStorage.setItem(STORAGE_KEYS.arbitrumRpcURL, v);
       setArbitrumRpcOverride(v);
+    } catch {
+      /* noop */
+    }
+  }, []);
+
+  const detectAndSetCustomChain = useCallback(
+    async (
+      rpcUrl: string,
+      fallbackChainId?: number
+    ): Promise<{ chainId: number } | { error: string }> => {
+      const url = rpcUrl.trim();
+      if (!isHttpUrl(url)) {
+        return { error: 'Must be an absolute http(s) URL' };
+      }
+      const persist = (chainId: number) => {
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem(STORAGE_KEYS.customRpcURL, url);
+          window.localStorage.setItem(
+            STORAGE_KEYS.customChainId,
+            String(chainId)
+          );
+        }
+        setCustomRpcOverride(url);
+        setCustomChainIdOverride(chainId);
+      };
+      try {
+        const client = createPublicClient({ transport: http(url) });
+        const chainId = await client.getChainId();
+        if (!Number.isInteger(chainId) || chainId <= 0) {
+          // RPC reachable but returned a bogus id — fall back to the known id
+          // when the caller supplied one (presets), otherwise surface the error.
+          if (fallbackChainId != null) {
+            persist(fallbackChainId);
+            return { chainId: fallbackChainId };
+          }
+          return { error: 'RPC returned an invalid chain ID' };
+        }
+        persist(chainId);
+        return { chainId };
+      } catch {
+        // RPC unreachable. For known presets we still apply the override with the
+        // static id so the app switches chains and the fields populate; for a
+        // user-entered URL with no known id, surface the error as before.
+        if (fallbackChainId != null) {
+          persist(fallbackChainId);
+          return { chainId: fallbackChainId };
+        }
+        return { error: 'Could not reach RPC or read chain ID' };
+      }
+    },
+    []
+  );
+
+  const clearCustomChain = useCallback(() => {
+    try {
+      if (typeof window === 'undefined') return;
+      window.localStorage.removeItem(STORAGE_KEYS.customRpcURL);
+      window.localStorage.removeItem(STORAGE_KEYS.customChainId);
+      setCustomRpcOverride(null);
+      setCustomChainIdOverride(null);
+      // Reload so DEFAULT_CHAIN_ID and the wagmi config re-evaluate to defaults.
+      window.location.reload();
     } catch {
       /* noop */
     }
@@ -603,25 +734,27 @@ export const SettingsProvider = ({
 
   const value: SettingsContextValue = {
     graphqlEndpoint,
-    graphqlEndpointV2,
     apiBaseUrl,
     signalEndpoint,
     chatBaseUrl,
     adminBaseUrl,
     etherealRpcURL,
     arbitrumRpcURL,
+    customChainId,
+    customRpcURL,
     connectionDurationHours,
     meshRateLimit,
     meshMaxPeers,
     meshFanout,
     setGraphqlEndpoint,
-    setGraphqlEndpointV2,
     setApiBaseUrl,
     setSignalEndpoint,
     setChatBaseUrl,
     setAdminBaseUrl,
     setEtherealRpcUrl,
     setArbitrumRpcUrl,
+    detectAndSetCustomChain,
+    clearCustomChain,
     setConnectionDurationHours,
     setMeshRateLimit,
     setMeshMaxPeers,

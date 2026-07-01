@@ -4,11 +4,11 @@ import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { ToastAction } from '@sapience/ui/components/ui/toast';
 import { useRouter } from 'next/navigation';
-import { graphqlRequestV2 } from '@sapience/sdk/queries/client/graphqlClient';
+import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { useTerminalLogs } from '~/components/terminal/TerminalLogsContext';
 
-// v2: participant filter collapses v1's address arg; orderBy is explicit.
-// v2 drops the numeric row id — notifications key on `predictionId`.
+// The GraphQL participant filter replaces a separate address arg; orderBy is explicit.
+// The GraphQL schema has no numeric row id — notifications key on `predictionId`.
 const RECENT_PREDICTIONS_QUERY = `
   query RecentCounterpartyPredictions($participant: Address!, $first: Int) {
     predictions(
@@ -49,15 +49,15 @@ export function useTradeSettledNotifications() {
 
   // Only notify for predictions created after mount…
   const mountTsRef = useRef<number>(Math.floor(Date.now() / 1000));
-  // …and never twice for the same prediction. Keyed on predictionId — the
-  // v1 moving created-at cutoff silently dropped same-second predictions.
+  // …and never twice for the same prediction. Keyed on predictionId — a
+  // moving created-at cutoff would silently drop same-second predictions.
   const notifiedRef = useRef<Set<string>>(new Set());
 
   const { data: predictions } = useQuery({
     queryKey: ['recentCounterpartyPredictions', address],
     queryFn: async () => {
       if (!address) return [];
-      const result = await graphqlRequestV2<PredictionsQueryResponse>(
+      const result = await graphqlRequest<PredictionsQueryResponse>(
         RECENT_PREDICTIONS_QUERY,
         {
           participant: address.toLowerCase(),

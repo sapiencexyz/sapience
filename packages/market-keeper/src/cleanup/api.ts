@@ -4,6 +4,7 @@
 
 import { fetchWithRetry, getAdminAuthHeaders } from '../utils';
 import {
+  GRAPHQL_PAGE_SIZE,
   graphqlRequest,
   graphqlUrl,
   walkConnection,
@@ -87,7 +88,10 @@ type CandidateNode = {
 
 type ForecastNode = { conditionId: string | null };
 
-const CHUNK_SIZE = 50;
+/** Max condition ids per GraphQL `conditionIds` filter page (server caps `first` at 25). */
+const GRAPHQL_ID_CHUNK_SIZE = GRAPHQL_PAGE_SIZE;
+/** REST admin batch-private accepts larger id lists than the GraphQL page cap. */
+const ADMIN_BATCH_CHUNK_SIZE = 50;
 
 const isZero = (openInterest: string | number): boolean =>
   BigInt(String(openInterest)) === 0n;
@@ -147,8 +151,8 @@ export async function fetchNoEngagementConditions(
 
   // Drop candidates that carry forecasts — engagement the OI walk can't see.
   const withForecasts = new Set<string>();
-  for (let i = 0; i < candidates.length; i += CHUNK_SIZE) {
-    const chunk = candidates.slice(i, i + CHUNK_SIZE);
+  for (let i = 0; i < candidates.length; i += GRAPHQL_ID_CHUNK_SIZE) {
+    const chunk = candidates.slice(i, i + GRAPHQL_ID_CHUNK_SIZE);
     const engaged = await fetchForecastConditionIds(
       url,
       chunk.map((c) => c.conditionId)
@@ -178,8 +182,8 @@ export async function fetchConditionsWithEngagement(
   const url = graphqlUrl(apiUrl);
   const engaged = new Set<string>();
 
-  for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
-    const chunk = ids.slice(i, i + CHUNK_SIZE);
+  for (let i = 0; i < ids.length; i += GRAPHQL_ID_CHUNK_SIZE) {
+    const chunk = ids.slice(i, i + GRAPHQL_ID_CHUNK_SIZE);
 
     const data = await graphqlRequest<{
       conditions: {
@@ -217,8 +221,8 @@ async function batchUpdateConditions(
     const authHeaders = await getAdminAuthHeaders(privateKey);
     let totalUpdated = 0;
 
-    for (let i = 0; i < conditionIds.length; i += CHUNK_SIZE) {
-      const chunk = conditionIds.slice(i, i + CHUNK_SIZE);
+    for (let i = 0; i < conditionIds.length; i += ADMIN_BATCH_CHUNK_SIZE) {
+      const chunk = conditionIds.slice(i, i + ADMIN_BATCH_CHUNK_SIZE);
       const response = await fetchWithRetry(
         `${apiUrl}/admin/conditions/batch-private`,
         {

@@ -1,7 +1,7 @@
-import { graphqlRequestV2 } from './client/graphqlClient';
+import { graphqlRequest } from './client/graphqlClient';
 
 export interface ConditionGroupConditionType {
-  /** CTF on-chain condition id (lowercase 0x-hex) — v2 `conditionId`. */
+  /** CTF on-chain condition id (lowercase 0x-hex) — `conditionId`. */
   id: string;
   createdAt: string;
   question: string;
@@ -20,7 +20,7 @@ export interface ConditionGroupConditionType {
   openInterest: string;
   similarMarketVolume?: number;
   similarMarketImage?: string | null;
-  /** Opaque v2 ConditionGroup id of the parent group. */
+  /** Opaque ConditionGroup id of the parent group. */
   conditionGroupId?: string | null;
   displayOrder?: number | null;
   estimatedPrice?: number | null;
@@ -35,12 +35,14 @@ export interface ConditionGroupConditionType {
 }
 
 export interface ConditionGroupType {
-  /** Opaque v2 ConditionGroup id — grouping identity only, not a row id. */
+  /** Opaque ConditionGroup id — grouping identity only, not a row id. */
   id: string;
   createdAt: string;
   name: string;
   category?: { name: string; slug: string } | null;
   conditions: ConditionGroupConditionType[];
+  hasMoreConditions?: boolean;
+  conditionsEndCursor?: string | null;
 }
 
 export interface ConditionGroupFilters {
@@ -50,9 +52,14 @@ export interface ConditionGroupFilters {
 }
 
 export const GET_CONDITION_GROUPS = /* GraphQL */ `
-  query ConditionGroups($first: Int, $filter: ConditionGroupFilter) {
+  query ConditionGroups(
+    $first: Int
+    $after: String
+    $filter: ConditionGroupFilter
+  ) {
     conditionGroups(
       first: $first
+      after: $after
       orderBy: { field: CREATED_AT, direction: DESC }
       filter: $filter
     ) {
@@ -64,7 +71,7 @@ export const GET_CONDITION_GROUPS = /* GraphQL */ `
           name
           slug
         }
-        conditions(first: 50) {
+        conditions(first: 25) {
           nodes {
             conditionId
             createdAt
@@ -92,19 +99,67 @@ export const GET_CONDITION_GROUPS = /* GraphQL */ `
               slug
             }
           }
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+`;
+
+const CONDITION_GROUP_CONDITIONS_PAGE = /* GraphQL */ `
+  query ConditionGroupConditions($id: ID!, $first: Int, $after: String) {
+    conditionGroup(id: $id) {
+      conditions(first: $first, after: $after) {
+        nodes {
+          conditionId
+          createdAt
+          question
+          shortName
+          optionName
+          endTime
+          isPublic
+          description
+          chainId
+          resolver
+          settled
+          resolvedToYes
+          nonDecisive
+          openInterest
+          estimatedPrice
+          similarMarketVolume
+          similarMarket {
+            image
+            markets
+          }
+          displayOrder
+          category {
+            name
+            slug
+          }
+        }
+        pageInfo {
+          hasNextPage
+          endCursor
         }
       }
     }
   }
 `;
 
-/** v2 maxTake for the conditionGroups connection. */
-const V2_MAX_FIRST = 100;
+/** The conditionGroups connection's max page size. */
+const MAX_PAGE_SIZE = 25;
 
 /**
- * Builds the v2 `ConditionGroupFilter`. v2 only accepts `search` and a
+ * Builds the `ConditionGroupFilter`. The filter only accepts `search` and a
  * SINGLE `categorySlug`; multi-slug selection and the nested public/chainId
- * condition filters are applied client-side in the mapper (the v2 nested
+ * condition filters are applied client-side in the mapper (the nested
  * conditions connection has no filter argument).
  */
 function buildConditionGroupFilter(
@@ -123,7 +178,7 @@ function buildConditionGroupFilter(
   return filter;
 }
 
-type ConditionGroupConditionV2Node = {
+type ConditionGroupConditionNode = {
   conditionId: string;
   createdAt: string;
   question: string;
@@ -145,20 +200,35 @@ type ConditionGroupConditionV2Node = {
   category?: { name: string; slug: string } | null;
 };
 
-type ConditionGroupV2Node = {
+type ConditionGroupNode = {
   id: string;
   createdAt: string;
   name: string;
   category?: { name: string; slug: string } | null;
-  conditions?: { nodes?: ConditionGroupConditionV2Node[] } | null;
+  conditions?: {
+    nodes?: ConditionGroupConditionNode[];
+    pageInfo?: { hasNextPage: boolean; endCursor: string | null };
+  } | null;
 };
 
-type ConditionGroupsV2Response = {
-  conditionGroups: { nodes: ConditionGroupV2Node[] };
+type ConditionGroupsResponse = {
+  conditionGroups: {
+    nodes: ConditionGroupNode[];
+    pageInfo?: { hasNextPage: boolean; endCursor: string | null };
+  };
+};
+
+type ConditionGroupConditionsPageResponse = {
+  conditionGroup: {
+    conditions: {
+      nodes: ConditionGroupConditionNode[];
+      pageInfo?: { hasNextPage: boolean; endCursor: string | null };
+    };
+  } | null;
 };
 
 function toGroupCondition(
-  node: ConditionGroupConditionV2Node,
+  node: ConditionGroupConditionNode,
   groupId: string
 ): ConditionGroupConditionType {
   return {
@@ -189,20 +259,13 @@ function toGroupCondition(
 }
 
 function toConditionGroupTypes(
-  data: ConditionGroupsV2Response | null,
+  nodes: ConditionGroupNode[],
   opts: {
     chainId?: number;
     filters?: ConditionGroupFilters;
     includeEmptyGroups: boolean;
   }
 ): ConditionGroupType[] {
-  const nodes = data?.conditionGroups?.nodes;
-  if (!Array.isArray(nodes)) {
-    throw new Error(
-      'Failed to fetch condition groups: Invalid response structure'
-    );
-  }
-
   const { chainId, filters, includeEmptyGroups } = opts;
   const publicOnly = filters?.publicOnly ?? false;
   const slugs = filters?.categorySlugs ?? [];
@@ -210,8 +273,8 @@ function toConditionGroupTypes(
 
   return nodes
     .filter(
-      // v2's ConditionGroupFilter accepts a single slug; the multi-slug OR
-      // semantics from v1 are preserved client-side over the fetched page.
+      // The ConditionGroupFilter accepts a single slug; for multi-slug OR
+      // semantics we scan cursor pages and filter the accumulated rows here.
       (group) =>
         slugs.length < 2 ||
         (group.category != null && slugs.includes(group.category.slug))
@@ -232,12 +295,43 @@ function toConditionGroupTypes(
         .map((c) => toGroupCondition(c, group.id)),
     }))
     .filter(
-      // v1 parity: a group must contain at least one condition matching the
+      // A group must contain at least one condition matching the
       // nested filters; truly empty groups survive only with
       // includeEmptyGroups and no nested filters.
       (group) =>
         group.conditions.length > 0 || (includeEmptyGroups && !hasNestedFilter)
     );
+}
+
+async function hydrateAllGroupConditions(
+  group: ConditionGroupNode
+): Promise<ConditionGroupNode> {
+  const conditions = group.conditions;
+  const nodes = [...(conditions?.nodes ?? [])];
+  let pageInfo = conditions?.pageInfo;
+
+  while (pageInfo?.hasNextPage && pageInfo.endCursor) {
+    const data = await graphqlRequest<ConditionGroupConditionsPageResponse>(
+      CONDITION_GROUP_CONDITIONS_PAGE,
+      {
+        id: group.id,
+        first: MAX_PAGE_SIZE,
+        after: pageInfo.endCursor,
+      }
+    );
+    const page = data?.conditionGroup?.conditions;
+    if (!page || !Array.isArray(page.nodes)) break;
+    nodes.push(...page.nodes);
+    pageInfo = page.pageInfo;
+  }
+
+  return {
+    ...group,
+    conditions: {
+      nodes,
+      pageInfo,
+    },
+  };
 }
 
 export async function fetchConditionGroups(opts?: {
@@ -255,21 +349,46 @@ export async function fetchConditionGroups(opts?: {
 
   const filter = buildConditionGroupFilter(filters);
 
-  // v2 connections cursor-paginate; emulate the v1 offset contract by
-  // over-fetching (capped at the server's maxTake) and slicing locally.
-  const first = Math.min(take + skip, V2_MAX_FIRST);
+  const target = skip + take;
+  const nodes: ConditionGroupNode[] = [];
+  let after: string | null = null;
 
-  const data = await graphqlRequestV2<ConditionGroupsV2Response>(
-    GET_CONDITION_GROUPS,
-    {
-      first,
-      filter: Object.keys(filter).length > 0 ? filter : undefined,
+  while (true) {
+    const mapped = toConditionGroupTypes(nodes, {
+      chainId,
+      filters,
+      includeEmptyGroups,
+    });
+    if (mapped.length >= target) {
+      return mapped.slice(skip, skip + take);
     }
-  );
 
-  return toConditionGroupTypes(data, {
-    chainId,
-    filters,
-    includeEmptyGroups,
-  }).slice(skip, skip + take);
+    const data: ConditionGroupsResponse =
+      await graphqlRequest<ConditionGroupsResponse>(GET_CONDITION_GROUPS, {
+        first: Math.min(target - mapped.length, MAX_PAGE_SIZE),
+        after,
+        filter: Object.keys(filter).length > 0 ? filter : undefined,
+      });
+    const pageNodes = data?.conditionGroups?.nodes;
+    if (!Array.isArray(pageNodes)) {
+      throw new Error(
+        'Failed to fetch condition groups: Invalid response structure'
+      );
+    }
+
+    const hydrated = await Promise.all(
+      pageNodes.map(hydrateAllGroupConditions)
+    );
+    nodes.push(...hydrated);
+
+    const pageInfo = data.conditionGroups.pageInfo;
+    if (!pageInfo?.hasNextPage || !pageInfo.endCursor) {
+      return toConditionGroupTypes(nodes, {
+        chainId,
+        filters,
+        includeEmptyGroups,
+      }).slice(skip, skip + take);
+    }
+    after = pageInfo.endCursor;
+  }
 }

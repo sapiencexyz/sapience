@@ -10,16 +10,20 @@
  * openInterest-ascending scan).
  */
 
+import {
+  GRAPHQL_PAGE_SIZE,
+  walkConnection as sdkWalkConnection,
+  type PageInfo,
+} from '@sapience/sdk/queries';
+
 import { fetchWithRetry } from './fetch';
+
+export { GRAPHQL_PAGE_SIZE };
+export type { PageInfo };
 
 export function graphqlUrl(apiUrl: string): string {
   return apiUrl.replace(/\/+$/, '') + '/v2/graphql';
 }
-
-export type PageInfo = {
-  hasNextPage: boolean;
-  endCursor: string | null;
-};
 
 export type Connection<TNode> = {
   nodes: TNode[];
@@ -63,8 +67,6 @@ export async function graphqlRequest<TData>(
   return result.data;
 }
 
-export const GRAPHQL_PAGE_SIZE = 100; // server-side clamp (relay/pagination.ts MAX_TAKE)
-
 export async function walkConnection<TNode, TData>(opts: {
   graphqlUrl: string;
   query: string;
@@ -76,19 +78,15 @@ export async function walkConnection<TNode, TData>(opts: {
   /** Called per page; return `false` to stop paginating. */
   onPage: (nodes: TNode[]) => boolean | void;
 }): Promise<void> {
-  const pageSize = opts.pageSize ?? GRAPHQL_PAGE_SIZE;
-  let after: string | null = null;
-
-  while (true) {
-    const data = await graphqlRequest<TData>(
-      opts.graphqlUrl,
-      opts.query,
-      { ...opts.variables, first: pageSize, after },
-      opts.label
-    );
-    const { nodes, pageInfo } = opts.select(data);
-    if (opts.onPage(nodes) === false) return;
-    if (!pageInfo.hasNextPage || !pageInfo.endCursor) return;
-    after = pageInfo.endCursor;
-  }
+  return sdkWalkConnection({
+    pageSize: opts.pageSize,
+    fetchPage: ({ first, after }) =>
+      graphqlRequest<TData>(
+        opts.graphqlUrl,
+        opts.query,
+        { ...opts.variables, first, after },
+        opts.label
+      ).then(opts.select),
+    onPage: opts.onPage,
+  });
 }

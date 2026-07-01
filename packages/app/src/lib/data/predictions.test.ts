@@ -47,8 +47,8 @@ function makePredictionNode(overrides: Record<string, unknown> = {}) {
   };
 }
 
-describe('PREDICTION_BY_ID_QUERY (v2)', () => {
-  it('looks up by predictionId with v2 field names', () => {
+describe('PREDICTION_BY_ID_QUERY (GraphQL)', () => {
+  it('looks up by predictionId with the GraphQL field names', () => {
     expect(PREDICTION_BY_ID_QUERY).toContain(
       'prediction(predictionId: $predictionId)'
     );
@@ -61,7 +61,7 @@ describe('PREDICTION_BY_ID_QUERY (v2)', () => {
 });
 
 describe('toPredictionData', () => {
-  it('maps the v2 node to the SSR PredictionData shape', () => {
+  it('maps the GraphQL node to the SSR PredictionData shape', () => {
     const mapped = toPredictionData(
       makePredictionNode() as Parameters<typeof toPredictionData>[0]
     );
@@ -105,7 +105,7 @@ describe('fetchPredictionWithConditions', () => {
     vi.unstubAllGlobals();
   });
 
-  it('posts both legs to the v2 endpoint and maps the prediction', async () => {
+  it('posts both legs to the GraphQL endpoint and maps the prediction', async () => {
     fetchMock
       .mockResolvedValueOnce({
         ok: true,
@@ -133,13 +133,13 @@ describe('fetchPredictionWithConditions', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
 
     const [predUrl, predInit] = fetchMock.mock.calls[0];
-    expect(String(predUrl)).toContain('/v2/graphql');
+    expect(String(predUrl)).toContain('/graphql');
     expect(JSON.parse(predInit.body).variables).toEqual({
       predictionId: '0xpred1',
     });
 
     const [condUrl, condInit] = fetchMock.mock.calls[1];
-    expect(String(condUrl)).toContain('/v2/graphql');
+    expect(String(condUrl)).toContain('/graphql');
     expect(JSON.parse(condInit.body).variables).toEqual({
       ids: ['0xcond1'],
     });
@@ -149,6 +149,69 @@ describe('fetchPredictionWithConditions', () => {
     expect(result.conditions).toEqual([
       { id: '0xcond1', question: 'Will ETH hit 5k?', settled: false },
     ]);
+  });
+
+  it('chunks the conditions leg into <=25-id requests and merges them', async () => {
+    // 30 picks → one full page of 25 + a second page of 5.
+    const picks = Array.from({ length: 30 }, (_, i) => ({
+      conditionId: `0xcond${i}`,
+      resolver: '0xresolver',
+      predictedOutcome: 'YES',
+    }));
+    const node = makePredictionNode({
+      pickConfig: {
+        ...makePredictionNode().pickConfig,
+        picks,
+      },
+    });
+
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ data: { prediction: node } }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            conditions: {
+              nodes: picks
+                .slice(0, 25)
+                .map((p) => ({ id: p.conditionId, settled: false })),
+            },
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            conditions: {
+              nodes: picks
+                .slice(25)
+                .map((p) => ({ id: p.conditionId, settled: false })),
+            },
+          },
+        }),
+      });
+
+    const result = await fetchPredictionWithConditions('0xpred1');
+
+    // 1 prediction leg + 2 chunked conditions legs.
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+
+    const firstChunkIds = JSON.parse(fetchMock.mock.calls[1][1].body).variables
+      .ids;
+    const secondChunkIds = JSON.parse(fetchMock.mock.calls[2][1].body).variables
+      .ids;
+    expect(firstChunkIds).toHaveLength(25);
+    expect(secondChunkIds).toHaveLength(5);
+
+    // Every returned condition is preserved (nothing truncated at the 25 cap).
+    expect(result.conditions).toHaveLength(30);
+    expect(result.conditions.map((c) => c.id)).toEqual(
+      picks.map((p) => p.conditionId)
+    );
   });
 
   it('returns null prediction without a conditions round trip when not found', async () => {

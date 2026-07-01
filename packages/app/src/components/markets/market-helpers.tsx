@@ -53,6 +53,7 @@ export type TopLevelRow =
       name: string;
       category?: { name: string; slug: string } | null;
       conditions: ConditionGroupConditionType[];
+      hasMoreConditions?: boolean;
       openInterestWei: bigint;
       maxEndTime: number;
     }
@@ -612,6 +613,7 @@ export function buildTopLevelRows(questions: QuestionType[]): TopLevelRow[] {
           name: group.name,
           category: group.category,
           conditions: group.conditions,
+          hasMoreConditions: group.hasMoreConditions,
           openInterestWei,
           maxEndTime,
         },

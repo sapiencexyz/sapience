@@ -83,10 +83,10 @@ describe('getSignalUrl', () => {
     expect(getSignalUrl()).toBe('wss://api.staging.example.com/signal');
   });
 
-  it('returns hardcoded default when nothing is configured', async () => {
+  it('returns empty (mesh disabled) when nothing is configured', async () => {
     const getSignalUrl = await loadGetSignalUrl();
-    // Default API URL is https://api.sapience.xyz → swapped to relayer.sapience.xyz
-    expect(getSignalUrl()).toBe('wss://relayer.sapience.xyz/signal');
+    // Default network is Robinhood Mainnet, which ships with the mesh disabled.
+    expect(getSignalUrl()).toBe('');
   });
 
   it('signal localStorage takes priority over relayer localStorage', async () => {
@@ -102,5 +102,26 @@ describe('getSignalUrl', () => {
     store[RELAYER_KEY] = 'https://stored-relayer.example.com/auction';
     const getSignalUrl = await loadGetSignalUrl();
     expect(getSignalUrl()).toBe('wss://env-signal.example.com');
+  });
+
+  it('returns empty string (mesh disabled) when signal endpoint is explicitly blank', async () => {
+    store[SIGNAL_KEY] = '';
+    const getSignalUrl = await loadGetSignalUrl();
+    expect(getSignalUrl()).toBe('');
+  });
+
+  it('explicit blank signal disable wins over NEXT_PUBLIC_SIGNAL_URL env', async () => {
+    process.env.NEXT_PUBLIC_SIGNAL_URL = 'wss://env-signal.example.com';
+    store[SIGNAL_KEY] = '';
+    const getSignalUrl = await loadGetSignalUrl();
+    expect(getSignalUrl()).toBe('');
+  });
+
+  it('does not disable when signal key is absent (derives from configured env)', async () => {
+    // An absent key must not trigger the explicit-disable branch: with an API
+    // env configured, it still derives a signal URL rather than returning ''.
+    process.env.NEXT_PUBLIC_FOIL_API_URL = 'https://api.sapience.xyz';
+    const getSignalUrl = await loadGetSignalUrl();
+    expect(getSignalUrl()).toBe('wss://relayer.sapience.xyz/signal');
   });
 });

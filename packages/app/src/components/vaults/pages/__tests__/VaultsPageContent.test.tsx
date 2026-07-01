@@ -77,6 +77,8 @@ vi.mock('@sapience/sdk/contracts', () => ({
 vi.mock('@sapience/sdk/constants', () => ({
   DEFAULT_CHAIN_ID: 42161,
   COLLATERAL_SYMBOLS: { 42161: 'USDe' },
+  isRobinhoodChain: (chainId: number | string) =>
+    Number(chainId) === 46630 || Number(chainId) === 4663,
 }));
 
 // UI component mocks
@@ -172,6 +174,7 @@ vi.mock('viem', () => ({
     if (!Number.isFinite(n)) return 0n;
     return BigInt(Math.floor(n)) * 10n ** BigInt(decimals);
   },
+  isAddress: (value: string) => /^0x[0-9a-fA-F]{40}$/.test(value),
 }));
 
 vi.mock('date-fns', () => ({
@@ -366,6 +369,40 @@ describe('VaultsPageContent geofence', () => {
     expect(depositBtn).not.toBeDisabled();
   });
 
+  it('does not show "Waiting for Price Quote" before an amount is entered', () => {
+    mockUsePassiveLiquidityVault.mockReturnValue({
+      ...passiveVaultDefaults(),
+      quoteSignatureValid: false,
+    });
+
+    render(<VaultsPageContent />);
+
+    // With no deposit amount entered, the button should fall back to its
+    // default label instead of nagging about a missing price quote.
+    expect(
+      screen.queryByRole('button', { name: /Waiting for Price Quote/ })
+    ).toBeNull();
+    expect(
+      screen.getByRole('button', { name: /Submit Deposit/ })
+    ).toBeInTheDocument();
+  });
+
+  it('shows "Waiting for Price Quote" once an amount is entered but the quote is not yet valid', () => {
+    mockUsePassiveLiquidityVault.mockReturnValue({
+      ...passiveVaultDefaults(),
+      quoteSignatureValid: false,
+    });
+
+    render(<VaultsPageContent />);
+
+    const inputs = screen.getAllByPlaceholderText('0.0');
+    fireEvent.change(inputs[0], { target: { value: '10' } });
+
+    expect(
+      screen.getByRole('button', { name: /Waiting for Price Quote/ })
+    ).toBeInTheDocument();
+  });
+
   it('shows the singles vault tab while keeping options hidden', () => {
     mockUseRestrictedJurisdiction.mockReturnValue({
       isRestricted: false,
@@ -457,7 +494,7 @@ describe('VaultsPageContent geofence', () => {
     expect(mockUseVaultStats).toHaveBeenCalledWith(optionsVault);
   });
 
-  it('rewrites an unknown vault address to the default vault', () => {
+  it('treats an unknown but valid vault address as a Custom Vault without rewriting', () => {
     const unknownVault = '0x0000000000000000000000000000000000000abc';
     mockSearchParamsToString.mockReturnValue(`address=${unknownVault}`);
     mockUseRestrictedJurisdiction.mockReturnValue({
@@ -469,10 +506,11 @@ describe('VaultsPageContent geofence', () => {
 
     render(<VaultsPageContent />);
 
-    expect(screen.queryByText('Custom Vault')).not.toBeInTheDocument();
-    expect(mockRouterReplace).toHaveBeenCalledWith('/vaults?address=0xvault', {
-      scroll: false,
-    });
+    // The address drives a synthetic "Custom Vault" rather than falling back to
+    // the first known vault, so deposit/withdraw work against unregistered vaults.
+    expect(screen.getByText('Custom Vault')).toBeInTheDocument();
+    expect(mockRouterReplace).not.toHaveBeenCalled();
+    expect(mockUseVaultStats).toHaveBeenCalledWith(unknownVault);
   });
 
   it('defaults to the first vault tab without rewriting the URL when no address query param is present', () => {
@@ -486,6 +524,39 @@ describe('VaultsPageContent geofence', () => {
     render(<VaultsPageContent />);
 
     expect(mockRouterReplace).not.toHaveBeenCalled();
+  });
+});
+
+describe('VaultsPageContent vault switch reset', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setDefaults();
+    mockUseRestrictedJurisdiction.mockReturnValue({
+      isRestricted: false,
+      isPermitLoading: false,
+      permitData: { permitted: true },
+      permitError: null,
+    });
+  });
+
+  it('clears the deposit and withdraw amounts when the selected vault changes', () => {
+    mockSearchParamsToString.mockReturnValue('address=0xVault');
+    const { rerender } = render(<VaultsPageContent />);
+
+    // Enter amounts on the current vault (inputs[0] = deposit, inputs[1] = withdraw).
+    const inputs = screen.getAllByPlaceholderText('0.0');
+    fireEvent.change(inputs[0], { target: { value: '50' } });
+    fireEvent.change(inputs[1], { target: { value: '25' } });
+    expect((inputs[0] as HTMLInputElement).value).toBe('50');
+    expect((inputs[1] as HTMLInputElement).value).toBe('25');
+
+    // Switch to a different vault.
+    mockSearchParamsToString.mockReturnValue('address=0xStrategyBVault');
+    rerender(<VaultsPageContent />);
+
+    const inputsAfter = screen.getAllByPlaceholderText('0.0');
+    expect((inputsAfter[0] as HTMLInputElement).value).toBe('');
+    expect((inputsAfter[1] as HTMLInputElement).value).toBe('');
   });
 });
 
@@ -582,5 +653,29 @@ describe('VaultsPageContent vault balance display', () => {
     expect(mockVaultPnlChart).toHaveBeenCalledWith(
       expect.objectContaining({ isLoading: true })
     );
+  });
+
+  it('drives TVL from the live on-chain vault balance plus indexer escrow terms', () => {
+    // Indexer reports a stale liquid/total; the live on-chain balance must win.
+    mockUsePassiveLiquidityVault.mockReturnValue({
+      ...passiveVaultDefaults(),
+      vaultCollateralBalance: 30n * 10n ** 18n, // live on-chain liquid
+    });
+    mockUseVaultAccountValue.mockReturnValue({
+      data: {
+        collateralBalance: (999n * 10n ** 18n).toString(), // stale, must be ignored
+        deployedCollateral: (10n * 10n ** 18n).toString(),
+        claimableCollateral: (5n * 10n ** 18n).toString(),
+        totalValue: (999n * 10n ** 18n).toString(), // stale, must be ignored
+        timestamp: 1,
+      },
+      isLoading: false,
+    });
+
+    render(<VaultsPageContent />);
+
+    // TVL = live 30 + deployed 10 + claimable 5 = 45.00 (not the stale 999.00)
+    expect(screen.getAllByText(/45\.00 USDe/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/999\.00 USDe/)).toBeNull();
   });
 });

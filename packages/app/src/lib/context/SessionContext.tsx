@@ -14,11 +14,22 @@ import { useAccount, useSwitchChain, useWriteContract } from 'wagmi';
 import type { Address, EIP1193Provider, Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import type { KernelAccountClient } from '@zerodev/sdk';
-import { DEFAULT_CHAIN_ID, CHAIN_ID_ARBITRUM } from '@sapience/sdk/constants';
+import {
+  DEFAULT_CHAIN_ID,
+  CHAIN_ID_ARBITRUM,
+  isBuiltInTradingChain,
+} from '@sapience/sdk/constants';
 import {
   predictionMarketEscrow,
   secondaryMarketEscrow,
 } from '@sapience/sdk/contracts/addresses';
+
+/**
+ * Smart-account / session-key infrastructure is only configured for the
+ * built-in Ethereal trading chains. Custom deployments may provide contract
+ * addresses, but still need plain EOA transactions unless explicitly supported.
+ */
+const IS_CUSTOM_CHAIN = !isBuiltInTradingChain(DEFAULT_CHAIN_ID);
 import {
   createSession,
   createArbitrumSession,
@@ -299,6 +310,11 @@ export function SessionProvider({ children }: SessionProviderProps) {
   // Sync account mode from localStorage after mount (client-side only)
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    // Custom chains have no smart-account infra — always use EOA.
+    if (IS_CUSTOM_CHAIN) {
+      setAccountModeInternal('eoa');
+      return;
+    }
     try {
       const stored = window.localStorage.getItem(
         'sapience:accountMode'
@@ -323,7 +339,9 @@ export function SessionProvider({ children }: SessionProviderProps) {
   // Derived flags - these are what the rest of the app should use
   // isUsingSmartAccount = mode is smart-account AND smart account address is available
   const isUsingSmartAccount =
-    accountMode === 'smart-account' && !!smartAccountAddress;
+    !IS_CUSTOM_CHAIN &&
+    accountMode === 'smart-account' &&
+    !!smartAccountAddress;
   // isUsingSession = using smart account AND session is active (can auto-sign)
   const isUsingSession = isUsingSmartAccount && isSessionActive;
 
@@ -518,7 +536,8 @@ export function SessionProvider({ children }: SessionProviderProps) {
       }
     };
 
-    if (walletAddress) {
+    // No smart-account/session infra on a custom chain — skip restore entirely.
+    if (walletAddress && !IS_CUSTOM_CHAIN) {
       void restore();
     }
   }, [walletAddress, extractSessionApprovalData]);

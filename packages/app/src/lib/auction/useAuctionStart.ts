@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useAccount, useSignTypedData } from 'wagmi';
+import { useAccount, useSignTypedData, useSwitchChain } from 'wagmi';
 import { zeroAddress as ZERO_ADDRESS, type Hex } from 'viem';
 import type { Pick } from '@sapience/sdk/types';
 import {
@@ -9,6 +9,7 @@ import {
   type SignableTypedData,
 } from '@sapience/sdk/auction/initiate';
 import { canonicalizePicks } from '@sapience/sdk/auction/escrowEncoding';
+import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
 import { toAuctionWsUrl } from '~/lib/ws/auctionUrl';
@@ -123,7 +124,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
   const inflightRef = useRef<string>('');
   // `apiBaseUrl` is the auction relayer base URL (http(s), typically includes `/auction`)
   const { apiBaseUrl } = useSettings();
-  const { address: walletAddress } = useAccount();
+  const { address: walletAddress, chainId: walletChainId } = useAccount();
   const {
     signMessage: sessionSignMessage,
     signTypedData: sessionSignTypedData,
@@ -132,6 +133,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
     isUsingSession,
   } = useSession();
   const { signTypedDataAsync } = useSignTypedData();
+  const { switchChainAsync } = useSwitchChain();
 
   // Stable refs for session state — read at call time, don't trigger requestQuotes recreation
   const effectiveAddressRef = useRef(effectiveAddress);
@@ -139,7 +141,12 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
   const sessionSignTypedDataRef = useRef(sessionSignTypedData);
   const isUsingSmartAccountRef = useRef(isUsingSmartAccount);
   const isUsingSessionRef = useRef(isUsingSession);
+  // Wallet's currently-selected chain — read at sign time to switch if needed
+  const walletChainIdRef = useRef(walletChainId);
 
+  useEffect(() => {
+    walletChainIdRef.current = walletChainId;
+  }, [walletChainId]);
   useEffect(() => {
     effectiveAddressRef.current = effectiveAddress;
   }, [effectiveAddress]);
@@ -159,9 +166,12 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
   const relayerBase = useMemo(() => {
     if (apiBaseUrl && apiBaseUrl.length > 0) return apiBaseUrl;
     const explicitRelayer = process.env.NEXT_PUBLIC_FOIL_RELAYER_URL;
-    const apiRoot =
-      process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz';
-    const root = explicitRelayer || apiRoot;
+    const apiRoot = process.env.NEXT_PUBLIC_FOIL_API_URL;
+    // Default network is Robinhood Mainnet (Meridian relayer).
+    if (!explicitRelayer && !apiRoot) {
+      return 'https://relayer.predict.meridian.xyz/auction';
+    }
+    const root = explicitRelayer || (apiRoot as string);
     try {
       const u = new URL(root);
       if (!explicitRelayer && u.hostname === 'api.sapience.xyz') {
@@ -431,6 +441,12 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
 
       const chainId = canonicalizedParams.chainId;
 
+      // Resolve the escrow (verifying) contract from the SDK registry and pass
+      // it explicitly so prepareAuctionRFQ never has to fall back to its own
+      // lookup. This keeps custom/non-Ethereal chains (e.g. Robinhood testnet)
+      // working as long as the SDK has an address for the chain.
+      const verifyingContract = predictionMarketEscrow[chainId]?.address;
+
       // Build the signed auction payload via SDK
       // prepareAuctionRFQ handles: pick canonicalization, deadline computation,
       // EIP-712 typed data building, signing, payload assembly, self-validation.
@@ -477,6 +493,13 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
                 message: typedData.message,
               });
             }
+            // The EIP-712 domain is bound to the auction chain. Wallets reject
+            // eth_signTypedData_v4 when the domain.chainId differs from the
+            // wallet's active network ("chainId should be same as current
+            // chainId"), so make sure the wallet is on the target chain first.
+            if (walletChainIdRef.current !== chainId) {
+              await switchChainAsync({ chainId });
+            }
             log('[auction] Signing intent with wallet');
             return signTypedDataAsync({
               domain: typedData.domain,
@@ -487,6 +510,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
           },
           options: {
             deadlineSeconds: 30,
+            verifyingContract,
             skipIntentSigning: skipSigning,
             predictorSponsor: canonicalizedParams.predictorSponsor,
             predictorSponsorData: canonicalizedParams.predictorSponsorData,
@@ -507,8 +531,12 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
           );
         }
       } catch (e) {
-        log(
-          `[auction] Auction preparation failed: ${e instanceof Error ? e.message : String(e)}`
+        // Surface prep failures: previously this only went to the (often
+        // disabled) auction logger, so a thrown prepareAuctionRFQ — e.g. no
+        // escrow address for the chain — produced no sign prompt and no error,
+        // making the auction look like it silently did nothing.
+        console.error(
+          `[auction] Auction preparation failed (chainId=${chainId}, escrow=${verifyingContract ?? 'none'}): ${e instanceof Error ? e.message : String(e)}`
         );
         inflightRef.current = '';
         return;
@@ -554,7 +582,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
       }, 10_000);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [wsUrl, walletAddress, signTypedDataAsync]
+    [wsUrl, walletAddress, signTypedDataAsync, switchChainAsync]
   );
 
   const acceptBid = useCallback(

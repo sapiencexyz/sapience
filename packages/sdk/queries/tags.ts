@@ -1,6 +1,6 @@
-import { graphqlRequestV2 } from './client/graphqlClient';
+import { graphqlRequest } from './client/graphqlClient';
 
-type PopularTagsV2Response = {
+type PopularTagsResponse = {
   tags: {
     nodes: Array<{ name: string }>;
   };
@@ -16,11 +16,11 @@ export const GET_POPULAR_TAGS = /* GraphQL */ `
   }
 `;
 
-function toTagNames(data: PopularTagsV2Response | null): string[] {
+function toTagNames(data: PopularTagsResponse | null): string[] {
   return (data?.tags?.nodes ?? []).map((node) => node.name);
 }
 
 export async function fetchPopularTags(): Promise<string[]> {
-  const data = await graphqlRequestV2<PopularTagsV2Response>(GET_POPULAR_TAGS);
+  const data = await graphqlRequest<PopularTagsResponse>(GET_POPULAR_TAGS);
   return toTagNames(data);
 }

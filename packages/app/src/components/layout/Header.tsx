@@ -40,17 +40,11 @@ import { SiSubstack } from 'react-icons/si';
 
 import { useEffect, useRef, useState } from 'react';
 import { useDisconnect } from 'wagmi';
-import {
-  CHAIN_ID_ETHEREAL_TESTNET,
-  DEFAULT_CHAIN_ID,
-} from '@sapience/sdk/constants';
 import CollateralBalanceButton from './CollateralBalanceButton';
-import { fetchUserReferralStatus } from '~/hooks/referrals/useReferrals';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import GetAccessDialog from '~/components/shared/GetAccessDialog';
 import ReferralsDialog from '~/components/shared/ReferralsDialog';
-import RequiredReferralCodeDialog from '~/components/shared/RequiredReferralCodeDialog';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import { useAuth } from '~/lib/context/AuthContext';
 import { useSession } from '~/lib/context/SessionContext';
@@ -59,9 +53,6 @@ import {
   DEFAULT_CONNECTION_DURATION_HOURS,
 } from '~/lib/context/SettingsContext';
 import { StatusIndicators } from '~/components/layout/StatusIndicators';
-
-// On staging (Ethereal Testnet) we don't gate access behind an invite code.
-const IS_STAGING = DEFAULT_CHAIN_ID === CHAIN_ID_ETHEREAL_TESTNET;
 
 const isActive = (path: string, pathname: string) => {
   if (path === '/') {
@@ -207,7 +198,7 @@ const NavLinks = ({ onClose }: NavLinksProps) => {
 
 const Header = () => {
   const { ready, hasConnectedWallet, connectedWallet } = useConnectedWallet();
-  const { openConnectDialog, openAndStartSession } = useConnectDialog();
+  const { openConnectDialog } = useConnectDialog();
   const { setLoggedOut } = useAuth();
   const { disconnect } = useDisconnect();
   const { toast } = useToast();
@@ -216,8 +207,6 @@ const Header = () => {
   const headerRef = useRef<HTMLElement | null>(null);
   const [isGetAccessOpen, setIsGetAccessOpen] = useState(false);
   const [isReferralsOpen, setIsReferralsOpen] = useState(false);
-  const [isReferralRequiredOpen, setIsReferralRequiredOpen] = useState(false);
-  const lastWalletAddressRef = useRef<string | null>(null);
 
   // Session context for smart account sessions
   const {
@@ -303,79 +292,6 @@ const Header = () => {
       document.documentElement.style.setProperty('--header-height', '0px');
     };
   }, []);
-
-  // When a wallet connects (or the active wallet changes), check with the
-  // backend whether this address has an associated referral relationship
-  // (either as a referee or a referrer). If not, open a blocking dialog
-  // that requires the user to either enter a code or disconnect.
-  useEffect(() => {
-    let cancelled = false;
-
-    const run = async () => {
-      // Staging skips the invite-code gate entirely.
-      if (IS_STAGING) {
-        setIsReferralRequiredOpen(false);
-        return;
-      }
-
-      if (!ready || !hasConnectedWallet || !connectedWallet?.address) {
-        setIsReferralRequiredOpen(false);
-        lastWalletAddressRef.current = null;
-        return;
-      }
-
-      const currentAddress = connectedWallet.address.toLowerCase();
-      const previousAddress = lastWalletAddressRef.current;
-
-      // Only re-check when the address actually changes.
-      if (previousAddress === currentAddress) {
-        return;
-      }
-
-      try {
-        const status = await fetchUserReferralStatus(currentAddress);
-
-        if (cancelled) return;
-
-        const hasServerReferral = !!(
-          status.refCodeHash ||
-          status.referredBy ||
-          status.referredByCode
-        );
-
-        // Update ref only after successful check to avoid race conditions
-        lastWalletAddressRef.current = currentAddress;
-
-        if (hasServerReferral) {
-          setIsReferralRequiredOpen(false);
-          return;
-        }
-
-        // No referral relationship on the backend: require a code.
-        setIsReferralRequiredOpen(true);
-      } catch {
-        // On network or GraphQL errors, fall back to localStorage so we don't
-        // accidentally lock out users who have previously provided a code.
-        // Update ref here too so we don't keep retrying on persistent errors
-        lastWalletAddressRef.current = currentAddress;
-        try {
-          if (typeof window === 'undefined') return;
-          const key = `sapience:referralCode:${currentAddress}`;
-          const existing = window.localStorage.getItem(key);
-          setIsReferralRequiredOpen(!existing);
-        } catch {
-          // If localStorage is unavailable, err on the side of not gating.
-          setIsReferralRequiredOpen(false);
-        }
-      }
-    };
-
-    void run();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [ready, hasConnectedWallet, connectedWallet?.address]);
 
   // Handle start session
   const handleStartSession = async () => {
@@ -719,22 +635,6 @@ const Header = () => {
           </div>
         </div>
       </header>
-
-      {ready && hasConnectedWallet && connectedWallet?.address && (
-        <RequiredReferralCodeDialog
-          open={isReferralRequiredOpen}
-          onOpenChange={setIsReferralRequiredOpen}
-          walletAddress={connectedWallet.address}
-          onCodeSet={() => {
-            setIsReferralRequiredOpen(false);
-            // Open ConnectDialog and start session creation with progress overlay
-            if (!isSessionActive && !isStartingSession) {
-              openAndStartSession();
-            }
-          }}
-          onLogout={handleLogout}
-        />
-      )}
 
       {/* Mobile Sidebar only */}
       <Sidebar

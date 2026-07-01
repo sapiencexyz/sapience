@@ -1,4 +1,8 @@
 import type { Address } from 'viem';
+import {
+  CHAIN_ID_ROBINHOOD_TESTNET,
+  CHAIN_ID_ROBINHOOD_MAINNET,
+} from '../constants/chain';
 
 export type ChainId = 42161 | 5064014 | number;
 
@@ -27,6 +31,15 @@ export const collateralToken: ChainAddressMap = {
   },
   13374202: {
     address: '0xb7ae43711d85c23dc862c85b9c95a64dc6351f90',
+    legacy: [] as const,
+  },
+  [CHAIN_ID_ROBINHOOD_TESTNET]: {
+    address: '0xCc4225D5F36b26b211675E8d9B7f11511Ba58D2C',
+    legacy: [] as const,
+  },
+  [CHAIN_ID_ROBINHOOD_MAINNET]: {
+    // USDe on Robinhood/Meridian mainnet
+    address: '0x5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34',
     legacy: [] as const,
   },
 } as const;
@@ -117,6 +130,27 @@ export const predictionMarketEscrow: ChainAddressMap = {
       },
     ] as const,
   },
+  [CHAIN_ID_ROBINHOOD_TESTNET]: {
+    // Robinhood Chain Testnet / Meridian testnet
+    address: '0x2A97702591ACCbF330c6c813C46DE287653eb645',
+    blockCreated: 81639399,
+    legacy: [
+      {
+        address: '0xf03eFa8bF3271Fe347bF750D72baAF2F9b6Ffc29',
+        blockCreated: 76353587,
+      },
+      {
+        address: '0x1847e316e6e4302b23B5Ab5BE078926386D78E95',
+        blockCreated: 72253766,
+      },
+    ] as const,
+  },
+  [CHAIN_ID_ROBINHOOD_MAINNET]: {
+    // Robinhood Chain Mainnet / Meridian mainnet
+    address: '0xE4cea507b19796362A5a28Fa7cb705A3F1866213',
+    blockCreated: 203484,
+    legacy: [] as const,
+  },
 } as const;
 
 /**
@@ -149,6 +183,27 @@ export const predictionMarketVault: ChainAddressMap = {
         blockCreated: 2265901,
       },
     ] as const,
+  },
+  [CHAIN_ID_ROBINHOOD_TESTNET]: {
+    // Robinhood Chain Testnet / Meridian testnet
+    address: '0x223d17cd3E6d99b932a723640bAD04626e3Bb6ac',
+    blockCreated: 81643593,
+    legacy: [
+      {
+        address: '0x02cB04155cdDBFb0Ee894f8D352395785130f3Ad',
+        blockCreated: 76353815,
+      },
+      {
+        address: '0x887aB0a9e185795A4279D136EcEc208146a915E3',
+        blockCreated: 72253813,
+      },
+    ] as const,
+  },
+  [CHAIN_ID_ROBINHOOD_MAINNET]: {
+    // Robinhood Chain Mainnet / Meridian mainnet — main (Core) vault
+    address: '0x79cB914f3F336426E89FaB55A9488AB25770552D',
+    blockCreated: 203489,
+    legacy: [] as const,
   },
 } as const;
 
@@ -192,6 +247,12 @@ export const singleLegVault: ChainAddressMap = {
     // Ethereal mainnet — deployed 2026-03-26
     address: '0x1b03b3f20caa6fc8cc7f6d9ae73d634804fe7f59',
     blockCreated: 3915329,
+    legacy: [] as const,
+  },
+  [CHAIN_ID_ROBINHOOD_MAINNET]: {
+    // Robinhood Chain Mainnet / Meridian mainnet — single-leg vault
+    address: '0xdD9B39FFedf8602Ff86c3621f30Bbc598a2Df223',
+    blockCreated: 309431,
     legacy: [] as const,
   },
 } as const;
@@ -282,6 +343,12 @@ export const conditionalTokensConditionResolver: ChainAddressMap = {
       },
     ] as const,
   },
+  [CHAIN_ID_ROBINHOOD_MAINNET]: {
+    // Robinhood Chain Mainnet / Meridian mainnet
+    address: '0xE42847eE3feE1B29065F14D39EcF664A04d70475',
+    blockCreated: 203467,
+    legacy: [] as const,
+  },
 } as const;
 
 /**
@@ -369,6 +436,23 @@ export const manualConditionResolver: ChainAddressMap = {
       },
     ] as const,
   },
+  [CHAIN_ID_ROBINHOOD_TESTNET]: {
+    // Robinhood Chain Testnet / Meridian testnet
+    address: '0x92674372C76248507913F392eDe7251742A56D2F',
+    blockCreated: 81639185,
+    legacy: [
+      {
+        address: '0xf596e96dCc7C1E84017F15B1A884EAA5DbC9A046',
+        blockCreated: 72253661,
+      },
+    ] as const,
+  },
+  [CHAIN_ID_ROBINHOOD_MAINNET]: {
+    // Robinhood Chain Mainnet / Meridian mainnet
+    address: '0xdC1Fa830aD1de01f1EF603749f48bD73384286BE',
+    blockCreated: 203472,
+    legacy: [] as const,
+  },
 } as const;
 
 /**
@@ -441,6 +525,12 @@ export const predictionMarketBridge: ChainAddressMap = {
         blockCreated: 2107823,
       },
     ] as const,
+  },
+  [CHAIN_ID_ROBINHOOD_MAINNET]: {
+    // Robinhood Chain Mainnet / Meridian mainnet
+    address: '0xE538DA0b97e288A1A4C311fdEB1E68F3F87fDE01',
+    blockCreated: 203480,
+    legacy: [] as const,
   },
 } as const;
 
@@ -650,6 +740,27 @@ export const predictionMarketTokenFactory: ChainAddressMap = {
       },
     ] as const,
   },
+  [CHAIN_ID_ROBINHOOD_TESTNET]: {
+    // Robinhood Chain Testnet / Meridian testnet
+    address: '0x522D7BB70D5F77088B373b6f4335380070dC455f',
+    blockCreated: 81639290,
+    legacy: [
+      {
+        address: '0x4bAab8C9212b3670285640d262279bce500aE408',
+        blockCreated: 76353392,
+      },
+      {
+        address: '0xb1c97B09B62F398296481f9Df65eea0c6b78A441',
+        blockCreated: 72253717,
+      },
+    ] as const,
+  },
+  [CHAIN_ID_ROBINHOOD_MAINNET]: {
+    // Robinhood Chain Mainnet / Meridian mainnet
+    address: '0xa3261443CB7730BfD6dC93C9b95A71f85Fb00c6F',
+    blockCreated: 203477,
+    legacy: [] as const,
+  },
 } as const;
 
 /**
@@ -695,6 +806,23 @@ export const secondaryMarketEscrow: ChainAddressMap = {
       },
     ] as const,
   },
+  [CHAIN_ID_ROBINHOOD_TESTNET]: {
+    // Robinhood Chain Testnet / Meridian testnet
+    address: '0x888e445F96515186B7b262d959FFF4AF14151ca9',
+    blockCreated: 81643819,
+    legacy: [
+      {
+        address: '0xc1525CF7d9b9ed81Ce277c2Bf96fb1E0e85E1e7E',
+        blockCreated: 72253917,
+      },
+    ] as const,
+  },
+  [CHAIN_ID_ROBINHOOD_MAINNET]: {
+    // Robinhood Chain Mainnet / Meridian mainnet
+    address: '0x7E318ef37c3bC3d0cBA205Af2D1Fc9F9CeFEB5df',
+    blockCreated: 203508,
+    legacy: [] as const,
+  },
 } as const;
 
 /**
@@ -733,6 +861,27 @@ export const onboardingSponsor: ChainAddressMap = {
         blockCreated: 2585875,
       },
     ] as const,
+  },
+  [CHAIN_ID_ROBINHOOD_TESTNET]: {
+    // Robinhood Chain Testnet / Meridian testnet
+    address: '0x4Ee80ce5E7D11C1d1eC2812604a882ac01735D26',
+    blockCreated: 81643714,
+    legacy: [
+      {
+        address: '0x14B6B27B9Bb95BA772A99bb265Eb8860491A0A08',
+        blockCreated: 76354062,
+      },
+      {
+        address: '0x4252a5dc77997ED60b4D33741867cDAe7a4A7c54',
+        blockCreated: 72253863,
+      },
+    ] as const,
+  },
+  [CHAIN_ID_ROBINHOOD_MAINNET]: {
+    // Robinhood Chain Mainnet / Meridian mainnet
+    address: '0xd8d656427A8D4d65ecc83c34E5e7685251D9ba7C',
+    blockCreated: 203502,
+    legacy: [] as const,
   },
 } as const;
 

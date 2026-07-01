@@ -3,7 +3,10 @@
 import { useMutation, type UseMutationResult } from '@tanstack/react-query';
 
 function getPublicApiBaseUrl(): string {
-  return process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz';
+  // Default network is Robinhood Mainnet (Meridian API).
+  return (
+    process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.predict.meridian.xyz'
+  );
 }
 
 export class MarketRequestApiError extends Error {

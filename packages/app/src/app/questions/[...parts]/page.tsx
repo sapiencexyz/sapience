@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import QuestionPageClient from './QuestionPageClient';
-import { getGraphQLEndpointV2 } from '~/lib/data/graphql';
+import { getGraphQLEndpoint } from '~/lib/data/graphql';
 
 const APP_URL = 'https://sapience.xyz';
 
@@ -17,7 +17,7 @@ async function fetchQuestionTitle(
   resolverAddress?: string
 ): Promise<string | null> {
   try {
-    // v2: by-ids lookups skip the public-only listing default, and
+    // By-ids lookups skip the public-only listing default, and
     // `resolvers` composes with `conditionIds` for the multi-resolver
     // disambiguation (both matched case-insensitively server-side).
     const query = `
@@ -40,7 +40,7 @@ async function fetchQuestionTitle(
       resolvers: resolverAddress ? [resolverAddress] : null,
     };
 
-    const response = await fetch(getGraphQLEndpointV2(), {
+    const response = await fetch(getGraphQLEndpoint(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query, variables }),

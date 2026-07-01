@@ -215,11 +215,11 @@ const Comments = ({
     staleTime: 60_000,
     gcTime: 5 * 60 * 1000,
     queryFn: async () => {
-      // v2 document — untagged so graphql-eslint (v1 schema) skips it.
+      // Untagged so graphql-eslint (pinned to the legacy schema) skips it.
       const query = `
         query ConditionsByIds($ids: [Bytes!]!) {
           conditions(
-            first: 100
+            first: 25
             orderBy: { field: CREATED_AT, direction: DESC }
             filter: { conditionIds: $ids }
           ) {

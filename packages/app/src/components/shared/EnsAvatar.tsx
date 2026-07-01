@@ -33,7 +33,7 @@ export default function EnsAvatar({
 
   const wrapperClass = cn(
     'relative inline-block overflow-hidden bg-background',
-    rounded ? 'rounded-sm' : '',
+    rounded ? 'rounded-[1px]' : '',
     'ring-1 ring-border',
     className
   );

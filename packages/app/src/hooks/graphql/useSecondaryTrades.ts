@@ -1,12 +1,13 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { graphqlRequestV2 } from '@sapience/sdk/queries/client/graphqlClient';
+import { paginateConnection } from '@sapience/sdk/queries';
+import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 
 /**
- * Secondary-market trade as consumed by the app. v2 drops the numeric
+ * Secondary-market trade as consumed by the app. There is no numeric
  * Prisma row id — trades are keyed by their canonical on-chain `tradeHash`.
- * `executedAt` is epoch seconds in both v1 and v2 (UnixSeconds).
+ * `executedAt` is epoch seconds (UnixSeconds).
  */
 export type SecondaryTrade = {
   tradeHash: string;
@@ -22,8 +23,8 @@ export type SecondaryTrade = {
   executedAt: number;
 };
 
-/** v2 wire shape of a Trade node (BigInt scalars may arrive as numbers). */
-type TradeV2Node = {
+/** Wire shape of a Trade node (BigInt scalars may arrive as numbers). */
+type TradeNode = {
   tradeHash: string;
   chainId: number;
   token: string;
@@ -52,37 +53,48 @@ const TRADE_FIELDS = `
 `;
 
 /**
- * v2 collapses v1's seller-query + buyer-query + client merge into a single
- * `participant` filter (either side). Explicit orderBy — v2 defaults can
- * differ from v1's.
+ * A single `participant` filter (either side) collapses what used to be a
+ * separate seller-query + buyer-query + client merge. Explicit orderBy —
+ * server defaults can differ from the previous query's.
  */
 export const TRADES_BY_PARTICIPANT_QUERY = `
   query TradesByParticipant(
     $participant: Address!
     $chainId: Int
     $first: Int
+    $after: String
   ) {
     trades(
       filter: { participant: $participant, chainId: $chainId }
       first: $first
+      after: $after
       orderBy: { field: EXECUTED_AT, direction: DESC }
     ) {
       nodes {
         ${TRADE_FIELDS}
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
       }
     }
   }
 `;
 
 export const ALL_TRADES_QUERY = `
-  query AllTrades($chainId: Int, $first: Int) {
+  query AllTrades($chainId: Int, $first: Int, $after: String) {
     trades(
       filter: { chainId: $chainId }
       first: $first
+      after: $after
       orderBy: { field: EXECUTED_AT, direction: DESC }
     ) {
       nodes {
         ${TRADE_FIELDS}
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
       }
     }
   }
@@ -97,11 +109,11 @@ export const TRADE_QUERY = `
 `;
 
 /**
- * Pure mapper: v2 Trade node → SecondaryTrade. Normalizes BigInt scalar
+ * Pure mapper: Trade node → SecondaryTrade. Normalizes BigInt scalar
  * fields via `String()` (the BigInt scalar can serialize small values as
  * numbers) and drops anything the app shape doesn't declare.
  */
-function toSecondaryTrade(node: TradeV2Node): SecondaryTrade {
+function toSecondaryTrade(node: TradeNode): SecondaryTrade {
   return {
     tradeHash: node.tradeHash,
     chainId: node.chainId,
@@ -117,39 +129,59 @@ function toSecondaryTrade(node: TradeV2Node): SecondaryTrade {
   };
 }
 
-type TradesV2Response = { trades: { nodes: TradeV2Node[] } | null };
+type TradesResponse = {
+  trades: {
+    nodes: TradeNode[];
+    pageInfo?: { hasNextPage: boolean; endCursor: string | null };
+  } | null;
+};
+
+/**
+ * Walks the keyset-paginated `trades` connection to exhaustion, accumulating
+ * every node. The connection has no load-more UI, so we resolve the COMPLETE
+ * set here rather than rendering a single truncated page.
+ */
+async function fetchAllTrades(
+  query: string,
+  variables: Record<string, unknown>
+): Promise<SecondaryTrade[]> {
+  const nodes = await paginateConnection<TradeNode>({
+    fetchPage: async ({ first, after }) => {
+      const resp: TradesResponse = await graphqlRequest(query, {
+        ...variables,
+        first,
+        after,
+      });
+      return {
+        nodes: resp?.trades?.nodes ?? [],
+        pageInfo: resp?.trades?.pageInfo,
+      };
+    },
+  });
+
+  // Server-side EXECUTED_AT DESC replaces the old client merge + sort.
+  return nodes.map(toSecondaryTrade);
+}
 
 export function useSecondaryTradesByAddress(params: {
   address?: string;
   chainId?: number;
-  take?: number;
-  /** v1 offset pagination; v2 is keyset-based, so only the first page
-   *  (skip = 0, the only value call sites use) is addressable. Kept for
-   *  signature stability. */
-  skip?: number;
 }) {
-  const { address, chainId, take = 50, skip = 0 } = params;
+  const { address, chainId } = params;
   const enabled = Boolean(address);
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ['secondaryTrades', address, chainId, take, skip],
+    queryKey: ['secondaryTrades', address, chainId],
     enabled,
     staleTime: 30_000,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
-    queryFn: async () => {
-      const resp = await graphqlRequestV2<TradesV2Response>(
-        TRADES_BY_PARTICIPANT_QUERY,
-        {
-          participant: address,
-          chainId: chainId ?? null,
-          first: take,
-        }
-      );
-      // Server-side EXECUTED_AT DESC replaces the v1 client merge + sort.
-      return (resp?.trades?.nodes ?? []).map(toSecondaryTrade);
-    },
+    queryFn: () =>
+      fetchAllTrades(TRADES_BY_PARTICIPANT_QUERY, {
+        participant: address,
+        chainId: chainId ?? null,
+      }),
   });
 
   return {
@@ -171,7 +203,7 @@ export function useSecondaryTrade(tradeHash?: string) {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => {
-      const resp = await graphqlRequestV2<{ trade: TradeV2Node | null }>(
+      const resp = await graphqlRequest<{ trade: TradeNode | null }>(
         TRADE_QUERY,
         { tradeHash }
       );
@@ -187,26 +219,18 @@ export function useSecondaryTrade(tradeHash?: string) {
   };
 }
 
-export function useSecondaryTrades(params: {
-  chainId?: number;
-  take?: number;
-  /** See useSecondaryTradesByAddress — kept for signature stability. */
-  skip?: number;
-}) {
-  const { chainId, take = 50, skip = 0 } = params;
+export function useSecondaryTrades(params: { chainId?: number }) {
+  const { chainId } = params;
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ['secondaryTradesAll', chainId, take, skip],
+    queryKey: ['secondaryTradesAll', chainId],
     staleTime: 30_000,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
-    queryFn: async () => {
-      const resp = await graphqlRequestV2<TradesV2Response>(ALL_TRADES_QUERY, {
+    queryFn: () =>
+      fetchAllTrades(ALL_TRADES_QUERY, {
         chainId: chainId ?? null,
-        first: take,
-      });
-      return (resp?.trades?.nodes ?? []).map(toSecondaryTrade);
-    },
+      }),
   });
 
   return {

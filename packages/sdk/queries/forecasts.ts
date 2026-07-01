@@ -1,14 +1,15 @@
 import { getAddress } from 'viem';
 import { FORECAST_SCHEMA_UID } from '../constants/resolver';
-import { graphqlRequestV2 } from './client/graphqlClient';
+import { graphqlRequest } from './client/graphqlClient';
+import { paginateConnection } from './pagination';
 
 const DEFAULT_SCHEMA_UID = FORECAST_SCHEMA_UID;
 
 /**
- * Wire shape of a v2 `Forecast` node (the subset selected by the documents
- * below). v2 renames: v1 `prediction` → `value` (a probability STRING, not a
- * binary outcome) and v1 `time` → `attestedAt` (epoch seconds). The numeric
- * Prisma row id is not exposed in v2 — identity is the EAS `uid`.
+ * Wire shape of a `Forecast` node (the subset selected by the documents
+ * below). The schema exposes `value` (a probability STRING, not a binary
+ * outcome) and `attestedAt` (epoch seconds). The numeric Prisma row id is
+ * not exposed — identity is the EAS `uid`.
  */
 export interface ForecastNode {
   uid: string;
@@ -20,7 +21,7 @@ export interface ForecastNode {
 }
 
 export type FormattedAttestation = {
-  /** EAS uid — v2 has no numeric attestation row id. */
+  /** EAS uid — there is no numeric attestation row id. */
   id: string;
   uid: string;
   attester: string;
@@ -50,9 +51,10 @@ type ForecastsConnectionResponse = {
 };
 
 export const GET_FORECASTS_QUERY = `
-  query ForecastsList($filter: ForecastFilter, $first: Int!) {
+  query ForecastsList($filter: ForecastFilter, $first: Int!, $after: String) {
     forecasts(
       first: $first
+      after: $after
       filter: $filter
       orderBy: { field: ATTESTED_AT, direction: DESC }
     ) {
@@ -63,6 +65,10 @@ export const GET_FORECASTS_QUERY = `
         value
         comment
         conditionId
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
       }
     }
   }
@@ -151,14 +157,20 @@ function buildForecastFilter(
   return filter;
 }
 
-function toFormattedAttestations(
+function extractForecastNodes(
   data: ForecastsConnectionResponse | null
-): FormattedAttestation[] {
+): ForecastNode[] {
   const nodes = data?.forecasts?.nodes;
   if (!Array.isArray(nodes)) {
     throw new Error('Failed to fetch forecasts: Invalid response structure');
   }
-  return nodes.map(formatAttestationData);
+  return nodes;
+}
+
+function toFormattedAttestations(
+  data: ForecastsConnectionResponse | null
+): FormattedAttestation[] {
+  return extractForecastNodes(data).map(formatAttestationData);
 }
 
 function toForecastPage(
@@ -178,11 +190,29 @@ function toForecastPage(
 export async function fetchForecasts(
   params: FetchForecastsParams
 ): Promise<FormattedAttestation[]> {
-  const data = await graphqlRequestV2<ForecastsConnectionResponse>(
-    GET_FORECASTS_QUERY,
-    { filter: buildForecastFilter(params), first: 100 }
-  );
-  return toFormattedAttestations(data);
+  const filter = buildForecastFilter(params);
+  const nodes = await paginateConnection<ForecastNode>({
+    fetchPage: async ({ first, after }) => {
+      const data: ForecastsConnectionResponse =
+        await graphqlRequest<ForecastsConnectionResponse>(GET_FORECASTS_QUERY, {
+          filter,
+          first,
+          after,
+        });
+      const pageInfo = data?.forecasts?.pageInfo;
+      return {
+        nodes: extractForecastNodes(data),
+        pageInfo: pageInfo
+          ? {
+              hasNextPage: Boolean(pageInfo.hasNextPage),
+              endCursor: pageInfo.endCursor ?? null,
+            }
+          : undefined,
+      };
+    },
+  });
+
+  return nodes.map(formatAttestationData);
 }
 
 export interface ForecastPageArgs {
@@ -196,7 +226,7 @@ export async function fetchForecastsPage(
   params: FetchForecastsParams,
   page: ForecastPageArgs
 ): Promise<ForecastPage> {
-  const data = await graphqlRequestV2<ForecastsConnectionResponse>(
+  const data = await graphqlRequest<ForecastsConnectionResponse>(
     GET_FORECASTS_PAGINATED_QUERY,
     {
       filter: buildForecastFilter(params),

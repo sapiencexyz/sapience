@@ -56,8 +56,11 @@ import {
   DEFAULT_CHAIN_ID,
   CHAIN_ID_ETHEREAL_TESTNET,
   CHAIN_ID_ARBITRUM,
+  CHAIN_ID_ROBINHOOD_TESTNET,
+  CHAIN_ID_ROBINHOOD_MAINNET,
   etherealChain,
   etherealTestnetChain,
+  getChainConfig,
 } from '@sapience/sdk/constants';
 import { computeSmartAccountAddress } from '@sapience/sdk/session';
 import { httpWithRetry, withRetry } from '../utils/util';
@@ -83,12 +86,15 @@ function getEtherealContractAddresses(chainId: number) {
     secondaryEscrowAddress &&
     secondaryEscrowAddress !== '0x0000000000000000000000000000000000000000';
   return {
-    wusde: collateralTokenAddresses[effectiveChainId].address,
+    // Guard with optional-chaining: a custom chain has no SDK registry entry,
+    // so these are undefined there. The smart-account/session path is not used
+    // on custom chains (EOA writes instead) — see SessionContext gating.
+    wusde: collateralTokenAddresses[effectiveChainId]?.address,
     predictionMarketEscrow: isEscrowDeployed ? escrowAddress : undefined,
     secondaryMarketEscrow: isSecondaryEscrowDeployed
       ? secondaryEscrowAddress
       : undefined,
-    vault: vaultAddresses[effectiveChainId].address,
+    vault: vaultAddresses[effectiveChainId]?.address,
   };
 }
 
@@ -189,6 +195,15 @@ function getZeroDevUrls(chainId: number): {
       bundler: process.env.NEXT_PUBLIC_ZERODEV_BUNDLER_URL_ARBITRUM,
       paymaster: process.env.NEXT_PUBLIC_ZERODEV_PAYMASTER_URL_ARBITRUM,
     },
+    [CHAIN_ID_ROBINHOOD_TESTNET]: {
+      bundler: process.env.NEXT_PUBLIC_ZERODEV_BUNDLER_URL_ROBINHOOD,
+      paymaster: process.env.NEXT_PUBLIC_ZERODEV_PAYMASTER_URL_ROBINHOOD,
+    },
+    [CHAIN_ID_ROBINHOOD_MAINNET]: {
+      bundler: process.env.NEXT_PUBLIC_ZERODEV_BUNDLER_URL_ROBINHOOD_MAINNET,
+      paymaster:
+        process.env.NEXT_PUBLIC_ZERODEV_PAYMASTER_URL_ROBINHOOD_MAINNET,
+    },
   };
 
   const chainUrls = envUrls[chainId];
@@ -196,6 +211,9 @@ function getZeroDevUrls(chainId: number): {
     throw new Error(`Unsupported chain ID: ${chainId}`);
   }
 
+  // When no chain-specific override env var is set, fall back to the generic
+  // ZeroDev v3 project URL (https://rpc.zerodev.app/api/v3/{projectId}/chain/{chainId}),
+  // which works for any chain enabled on the ZeroDev project.
   return {
     bundlerUrl: chainUrls.bundler || baseUrl,
     paymasterUrl: chainUrls.paymaster || baseUrl,
@@ -619,12 +637,19 @@ export async function verifyAccountFactoryMapping(
 }
 
 /**
- * Get the Ethereal chain config based on chainId.
+ * Get the chain config used for a session on the given chainId.
+ *
+ * Must return the chain that actually matches the wallet's network: the EIP-712
+ * session-approval domain and the smart-account client are built from this, so
+ * returning the wrong chain makes the wallet reject signing with "chainId
+ * should be same as current chainId". Non-Ethereal session-capable chains (e.g.
+ * Robinhood/Meridian testnet) resolve via the SDK rather than falling back to
+ * Ethereal mainnet.
  */
 function getEtherealChain(chainId: number): Chain {
-  return chainId === CHAIN_ID_ETHEREAL_TESTNET
-    ? etherealTestnetChain
-    : etherealChain;
+  if (chainId === CHAIN_ID_ETHEREAL_TESTNET) return etherealTestnetChain;
+  if (chainId === CHAIN_ID_ETHEREAL) return etherealChain;
+  return getChainConfig(chainId);
 }
 
 // Public clients - Arbitrum is static, Ethereal is created based on chainId

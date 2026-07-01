@@ -202,7 +202,7 @@ function AnalyticsPageContent(): React.ReactElement {
   const [oiPeriod, setOiPeriod] = useState<Period>('1M');
   const [tvlPeriod, setTvlPeriod] = useState<Period>('1M');
 
-  // Fetch protocol-wide analytics (v2): live stats + recorded snapshot series
+  // Fetch protocol-wide analytics: live stats + recorded snapshot series
   const { data: analytics, isLoading: statsLoading } = useProtocolAnalytics();
   const protocolStats = analytics?.statsHistory;
 
@@ -230,7 +230,7 @@ function AnalyticsPageContent(): React.ReactElement {
     return protocolStats.map((point) => {
       const openInterest = parseFloat(point.openInterest) / 1e18;
       // Server-computed TVL: escrow + undeployed assets across EVERY vault
-      // family. Numerically different from v1's client-side
+      // family. Numerically different from the legacy client-side
       // escrow + single-family vaultAvailableAssets sum — intended.
       const protocolTvl = parseFloat(point.totalValueLocked) / 1e18;
       return {
@@ -418,7 +418,7 @@ function AnalyticsPageContent(): React.ReactElement {
                   </div>
                 ) : (
                   <span className="transition-opacity duration-300">
-                    {/* v1 `totalTradeCount` → v2 `cumulativeTradeCount` */}
+                    {/* legacy `totalTradeCount` → `cumulativeTradeCount` */}
                     {formatCount(summary?.cumulativeTradeCount ?? 0)}
                   </span>
                 )}

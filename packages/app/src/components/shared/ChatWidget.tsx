@@ -16,9 +16,13 @@ import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { useChat } from '~/lib/context/ChatContext';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import { useSession } from '~/lib/context/SessionContext';
+import { useSettings } from '~/lib/context/SettingsContext';
 
 const ChatWidget = () => {
   const { isOpen, closeChat } = useChat();
+  const { chatBaseUrl } = useSettings();
+  // An empty chat endpoint disables chat: don't open a connection or render.
+  const chatEnabled = !!chatBaseUrl;
   const { openConnectDialog } = useConnectDialog();
   const { ready, connectedWallet, hasConnectedWallet } = useConnectedWallet();
   const {
@@ -37,7 +41,7 @@ const ChatWidget = () => {
     state: { messages, pendingText, setPendingText, canChat, canType },
     actions: { sendMessage, loginNow },
   } = useChatConnection({
-    isOpen,
+    isOpen: isOpen && chatEnabled,
     addressOverride,
     sessionApproval: etherealSessionApproval,
     signMessageWithSession: signMessage,
@@ -77,6 +81,10 @@ const ChatWidget = () => {
     },
     [dragControls]
   );
+
+  // Chat disabled (empty endpoint, e.g. Robinhood/Meridian presets): render
+  // nothing so the panel can't be opened against a disabled endpoint.
+  if (!chatEnabled) return null;
 
   return (
     <AnimatePresence initial={false}>
