@@ -13,13 +13,7 @@ afterEach(() => {
 });
 
 describe('getGraphQLEndpoint', () => {
-  test('derives /v2/graphql from the API base URL', async () => {
-    process.env.NEXT_PUBLIC_FOIL_API_URL = 'https://api.example.com';
-    const { getGraphQLEndpoint } = await import('./graphql');
-    expect(getGraphQLEndpoint()).toBe('https://api.example.com/v2/graphql');
-  });
-
-  test('falls back to the Robinhood Mainnet endpoint when base URL is unset', async () => {
+  test('defaults to the Robinhood Mainnet endpoint (the app default network)', async () => {
     delete process.env.NEXT_PUBLIC_FOIL_API_URL;
     const { getGraphQLEndpoint } = await import('./graphql');
     expect(getGraphQLEndpoint()).toBe(
@@ -27,14 +21,10 @@ describe('getGraphQLEndpoint', () => {
     );
   });
 
-  test('keeps only origin + /v2/graphql, dropping any base path', async () => {
-    process.env.NEXT_PUBLIC_FOIL_API_URL = 'https://api.example.com/nested';
-    const { getGraphQLEndpoint } = await import('./graphql');
-    expect(getGraphQLEndpoint()).toBe('https://api.example.com/v2/graphql');
-  });
-
-  test('falls back to the Robinhood Mainnet endpoint for an unparseable base URL', async () => {
-    process.env.NEXT_PUBLIC_FOIL_API_URL = 'not a url';
+  test('ignores NEXT_PUBLIC_FOIL_API_URL — the endpoint follows the network, not env', async () => {
+    // The default endpoint must not be poisoned by a stray API env var; an
+    // incognito session on the Robinhood default network stays on Meridian.
+    process.env.NEXT_PUBLIC_FOIL_API_URL = 'https://api.sapience.xyz';
     const { getGraphQLEndpoint } = await import('./graphql');
     expect(getGraphQLEndpoint()).toBe(
       'https://api.predict.meridian.xyz/graphql'
@@ -42,10 +32,23 @@ describe('getGraphQLEndpoint', () => {
   });
 
   test('prefers the Settings override in localStorage when running in the browser', async () => {
-    process.env.NEXT_PUBLIC_FOIL_API_URL = 'https://api.example.com';
+    process.env.NEXT_PUBLIC_FOIL_API_URL = 'https://api.sapience.xyz';
     const store: Record<string, string> = {
       'sapience.settings.graphqlEndpoint':
-        'https://api.predict.meridian.xyz/graphql',
+        'https://api.sapience.xyz/v2/graphql',
+    };
+    vi.stubGlobal('window', {
+      localStorage: { getItem: (key: string) => store[key] ?? null },
+    });
+
+    const { getGraphQLEndpoint } = await import('./graphql');
+    expect(getGraphQLEndpoint()).toBe('https://api.sapience.xyz/v2/graphql');
+  });
+
+  test('migrates from the legacy graphqlEndpointV2 override key', async () => {
+    const store: Record<string, string> = {
+      'sapience.settings.graphqlEndpointV2':
+        'https://api.staging.sapience.xyz/v2/graphql',
     };
     vi.stubGlobal('window', {
       localStorage: { getItem: (key: string) => store[key] ?? null },
@@ -53,7 +56,7 @@ describe('getGraphQLEndpoint', () => {
 
     const { getGraphQLEndpoint } = await import('./graphql');
     expect(getGraphQLEndpoint()).toBe(
-      'https://api.predict.meridian.xyz/graphql'
+      'https://api.staging.sapience.xyz/v2/graphql'
     );
   });
 });
