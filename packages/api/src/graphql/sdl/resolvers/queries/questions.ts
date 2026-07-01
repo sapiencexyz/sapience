@@ -268,7 +268,7 @@ const normalizeArgs = (args: RunQuestionsInput): NormalizedArgs => {
     args.maxSimilarMarketVolume != null;
 
   return {
-    take: clampTake(args.take, { defaultTake: 25, maxTake: 25 }),
+    take: clampTake(args.take, { defaultTake: 50, maxTake: 100 }),
     skip: clampSkip(args.skip, { maxSkip: args.maxSkip ?? undefined }),
     search: args.search?.slice(0, 200) ?? null,
     categorySlugs: args.categorySlugs?.slice(0, 50) ?? null,

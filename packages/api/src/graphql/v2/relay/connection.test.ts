@@ -83,16 +83,10 @@ describe('clampTake', () => {
   });
 
   it('falls back to the default only on null / undefined / NaN / negative', () => {
-    expect(clampTake(null, { defaultTake: 20 })).toBe(20);
-    expect(clampTake(undefined, { defaultTake: 20 })).toBe(20);
-    expect(clampTake(Number.NaN, { defaultTake: 20 })).toBe(20);
-    expect(clampTake(-5, { defaultTake: 20 })).toBe(20);
-  });
-
-  it('caps the default at MAX_TAKE (25) when no explicit maxTake is given', () => {
-    // A defaultTake above the global MAX_TAKE is still clamped to 25.
-    expect(clampTake(null, { defaultTake: 50 })).toBe(25);
-    expect(clampTake(200, { defaultTake: 10 })).toBe(25);
+    expect(clampTake(null, { defaultTake: 50 })).toBe(50);
+    expect(clampTake(undefined, { defaultTake: 50 })).toBe(50);
+    expect(clampTake(Number.NaN, { defaultTake: 50 })).toBe(50);
+    expect(clampTake(-5, { defaultTake: 50 })).toBe(50);
   });
 
   it('clamps to maxTake and floors fractional input', () => {

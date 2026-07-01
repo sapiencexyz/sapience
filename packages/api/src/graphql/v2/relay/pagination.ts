@@ -2,8 +2,8 @@
  * Forward-only Relay pagination primitives for v2 resolvers.
  *
  * Limits:
- *   - `take` capped at 25 (server-side fan-out budget). Per-resolver
- *     defaults vary (25 leaderboards, 25 list pages, 25 collateral
+ *   - `take` capped at 100 (server-side fan-out budget). Per-resolver
+ *     defaults vary (25 leaderboards, 50 list pages, 100 collateral
  *     transfers); pass them via `defaultTake` so the clamp can fall
  *     back when callers send invalid input.
  *
@@ -14,7 +14,7 @@
 
 import { decodeCursor } from './cursor';
 
-export const MAX_TAKE = 25;
+export const MAX_TAKE = 100;
 
 export const clampTake = (
   take: number | null | undefined,

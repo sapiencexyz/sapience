@@ -109,7 +109,7 @@ export const accounts: NonNullable<QueryResolvers['accounts']> = async (
   _parent,
   args
 ) => {
-  const first = clampTake(args.first ?? 25, { defaultTake: 25, maxTake: 25 });
+  const first = clampTake(args.first ?? 50, { defaultTake: 50, maxTake: 100 });
   const direction = normalizeDirection(args.orderBy?.direction, 'desc');
   const search = args.filter?.search?.trim();
   // User rows are chain-agnostic; chainId only scopes the returned

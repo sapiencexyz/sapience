@@ -79,9 +79,9 @@ export const ConditionGroup: ConditionGroupResolvers = {
   }),
 
   conditions: async (parent, args, ctx) => {
-    const first = clampTake(args.first ?? 25, {
-      defaultTake: 25,
-      maxTake: 25,
+    const first = clampTake(args.first ?? 50, {
+      defaultTake: 50,
+      maxTake: 100,
     });
     // Guard against a foreign/garbage `k`: offsetFromCursor resets to 0
     // rather than NaN (which would slice to an empty page and emit "NaN").

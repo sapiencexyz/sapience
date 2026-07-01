@@ -43,7 +43,7 @@ export const claims: NonNullable<QueryResolvers['claims']> = async (
   _parent,
   args
 ) => {
-  const first = clampTake(args.first ?? 25, { defaultTake: 25, maxTake: 25 });
+  const first = clampTake(args.first ?? 50, { defaultTake: 50, maxTake: 100 });
   const direction = normalizeDirection(args.orderBy?.direction, 'desc');
 
   const where: Prisma.ClaimWhereInput = {};
@@ -106,7 +106,7 @@ export const closes: NonNullable<QueryResolvers['closes']> = async (
   _parent,
   args
 ) => {
-  const first = clampTake(args.first ?? 25, { defaultTake: 25, maxTake: 25 });
+  const first = clampTake(args.first ?? 50, { defaultTake: 50, maxTake: 100 });
   const direction = normalizeDirection(args.orderBy?.direction, 'desc');
 
   const where: Prisma.CloseWhereInput = {};

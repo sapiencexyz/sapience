@@ -42,7 +42,7 @@ const FIELD_TO_PRISMA: Record<string, string> = {
 export const conditionGroups: NonNullable<
   QueryResolvers['conditionGroups']
 > = async (_parent, args) => {
-  const first = clampTake(args.first ?? 25, { defaultTake: 25, maxTake: 25 });
+  const first = clampTake(args.first ?? 50, { defaultTake: 50, maxTake: 100 });
   const field = FIELD_TO_PRISMA[args.orderBy?.field ?? 'MAX_END_TIME'];
   const direction = normalizeDirection(args.orderBy?.direction, 'asc');
 

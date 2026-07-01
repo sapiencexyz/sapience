@@ -36,7 +36,7 @@ const validators = {
     desc: 'TTL (ms) for entries in the v2 Automatic Persisted Queries cache. After this window an unrecognized hash forces clients to resend the full query. Setting too low defeats the purpose of APQ; setting too high lets unused queries linger in memory.',
   }),
   GRAPHQL_MAX_LIST_SIZE: num({
-    default: 25,
+    default: 100,
     desc: 'Maximum allowed take/first/limit argument value',
   }),
   GRAPHQL_MAX_FIELD_ALIASES: num({

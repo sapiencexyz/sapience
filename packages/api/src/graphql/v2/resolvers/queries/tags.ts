@@ -32,7 +32,7 @@ export const tags: NonNullable<QueryResolvers['tags']> = async (
 
   const first = clampTake(args.first ?? 20, {
     defaultTake: 20,
-    maxTake: 25,
+    maxTake: 100,
   });
   const field = args.orderBy?.field ?? 'CONDITION_COUNT';
   const direction =

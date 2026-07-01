@@ -2,15 +2,15 @@
  * Shared pagination helpers for `*Page` resolvers.
  *
  * Standard limits across the surface:
- *   - `take` capped at 25 (server-side fan-out budget). Per-resolver
- *     defaults vary (25 for leaderboards, 25 for list pages, 20 for the
+ *   - `take` capped at 100 (server-side fan-out budget). Per-resolver
+ *     defaults vary (25 for leaderboards, 50 for list pages, 20 for the
  *     activity feed); pass them via `defaultTake` so the clamp can fall
  *     back when callers send invalid input.
  *   - `skip` capped at 1000 by default. `MAX_SKIP` exists to bound
  *     offset-style pagination: a `skip` of e.g. 50_000 forces Postgres
  *     to scan and discard every preceding row, even with the right
  *     index. 1_000 covers every realistic infinite-scroll use case
- *     (max take is 25, so 40 pages deep) while making accidental
+ *     (max take is 100, so 11 pages deep) while making accidental
  *     deep-skip queries fail-fast rather than silently expensive.
  *     Resolvers with a different access pattern can opt into a higher
  *     ceiling by passing `maxSkip`.
@@ -23,7 +23,7 @@
 
 import { decodeCursor } from '../../../relay/cursor';
 
-export const MAX_TAKE = 25;
+export const MAX_TAKE = 100;
 export const MAX_SKIP = 1000;
 
 export const clampTake = (

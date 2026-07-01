@@ -77,10 +77,10 @@ describe('questions (v2)', () => {
     expect(result.pageInfo.hasNextPage).toBe(true);
   });
 
-  it('caps first at 25', async () => {
+  it('caps first at 100', async () => {
     await callResolver(questions)(null, { first: 9999 }, {}, null);
     expect(mockRunQuestionsData).toHaveBeenCalledWith(
-      expect.objectContaining({ take: 25 })
+      expect.objectContaining({ take: 100 })
     );
   });
 
