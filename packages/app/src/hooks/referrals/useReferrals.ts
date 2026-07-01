@@ -6,12 +6,11 @@ import {
   type UseMutationResult,
   type UseQueryResult,
 } from '@tanstack/react-query';
+import { getNetworkEndpointDefaults } from '~/lib/config/networkDefaults';
 
 function getPublicApiBaseUrl(): string {
-  // Default network is Robinhood Mainnet (Meridian API).
-  return (
-    process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.predict.meridian.xyz'
-  );
+  // Follows the app's active network (Robinhood → Meridian API), not env.
+  return getNetworkEndpointDefaults().apiOrigin;
 }
 
 /**

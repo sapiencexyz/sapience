@@ -1,5 +1,10 @@
-// Shared GraphQL endpoint resolution. Sapience serves the schema at
-// `/v2/graphql`; Meridian exposes the same schema at `/graphql`.
+// Shared GraphQL endpoint resolution. A Settings override in localStorage wins;
+// otherwise the endpoint follows the app's active network (see networkDefaults)
+// rather than any `NEXT_PUBLIC_FOIL_*` env var. Sapience serves the schema at
+// `/v2/graphql`; Meridian (Robinhood, the default network) exposes it at
+// `/graphql`.
+
+import { getNetworkEndpointDefaults } from '~/lib/config/networkDefaults';
 
 const GRAPHQL_ENDPOINT_KEY = 'sapience.settings.graphqlEndpoint';
 const LEGACY_GRAPHQL_ENDPOINT_KEY = 'sapience.settings.graphqlEndpointV2';
@@ -16,14 +21,5 @@ export function getGraphQLEndpoint(): string {
     /* noop */
   }
 
-  // Default network is Robinhood Mainnet: Meridian serves the schema at
-  // `/graphql`. A configured API env keeps the Sapience `/v2/graphql` shape.
-  const baseUrl = process.env.NEXT_PUBLIC_FOIL_API_URL;
-  if (!baseUrl) return 'https://api.predict.meridian.xyz/graphql';
-  try {
-    const u = new URL(baseUrl);
-    return `${u.origin}/v2/graphql`;
-  } catch {
-    return 'https://api.predict.meridian.xyz/graphql';
-  }
+  return getNetworkEndpointDefaults().graphqlEndpoint;
 }

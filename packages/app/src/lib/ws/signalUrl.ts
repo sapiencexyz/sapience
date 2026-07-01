@@ -17,8 +17,11 @@ const SIGNAL_KEY = 'sapience.settings.signalEndpoint';
  * 2. localStorage signal endpoint (sapience.settings.signalEndpoint)
  * 3. localStorage relayer base (sapience.settings.apiBaseUrl) with /signal path
  * 4. NEXT_PUBLIC_FOIL_RELAYER_URL env with /signal path
- * 5. NEXT_PUBLIC_FOIL_API_URL with hostname swap + /signal path
- * 6. Nothing configured → '' (Robinhood Mainnet default disables the mesh)
+ * 5. Nothing configured → the active network default (Robinhood disables the mesh)
+ *
+ * The signal endpoint intentionally does NOT derive from NEXT_PUBLIC_FOIL_API_URL:
+ * an incognito session on the Robinhood default network keeps the mesh off unless
+ * a relayer/signal endpoint is explicitly configured.
  */
 export function getSignalUrl(): string {
   // Explicit disable wins over everything: an empty (but present) signal
@@ -49,25 +52,20 @@ export function getSignalUrl(): string {
       return u.toString();
     }
 
-    // Fall back: derive from relayer base (same logic as SettingsContext)
+    // Fall back: derive from the relayer base (a localStorage override set via
+    // Settings, or an explicit relayer env). Not derived from FOIL_API_URL — the
+    // active network default governs whether the mesh is on.
     const relayerStored =
       typeof window !== 'undefined'
         ? window.localStorage.getItem('sapience.settings.apiBaseUrl')
         : null;
     const explicitRelayer = process.env.NEXT_PUBLIC_FOIL_RELAYER_URL;
-    const apiRoot = process.env.NEXT_PUBLIC_FOIL_API_URL;
-    const base = relayerStored || explicitRelayer || apiRoot;
-    // Nothing configured → Robinhood Mainnet default, which disables the mesh.
+    const base = relayerStored || explicitRelayer;
+    // Nothing configured → the active network default disables the mesh
+    // (Robinhood ships the mesh off).
     if (!base) return '';
 
     const u = new URL(base);
-    if (
-      !relayerStored &&
-      !explicitRelayer &&
-      u.hostname === 'api.sapience.xyz'
-    ) {
-      u.hostname = 'relayer.sapience.xyz';
-    }
     u.protocol = u.protocol === 'https:' ? 'wss:' : 'ws:';
     u.pathname = '/signal';
     u.search = '';
