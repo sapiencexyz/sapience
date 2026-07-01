@@ -1,4 +1,5 @@
 export * from './client/graphqlClient';
+export * from './pagination';
 export * from './conditions';
 export * from './conditionGroups';
 export * from './categories';

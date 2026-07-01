@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { GRAPHQL_PAGE_SIZE, paginateConnection } from '@sapience/sdk/queries';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import {
   PICK_CONFIGURATION_FIELDS,
@@ -607,15 +608,14 @@ export function usePositionBalancesByConditionId(params: {
  */
 export function usePredictionsByConditionId(params: {
   conditionId?: string;
+  /** Cursor page size (server caps `first` at 25). */
   take?: number;
-  /** See `usePredictions` — kept for signature stability. */
-  skip?: number;
 }) {
-  const { conditionId, take = 25, skip = 0 } = params;
+  const { conditionId, take = GRAPHQL_PAGE_SIZE } = params;
   const enabled = Boolean(conditionId);
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ['predictionsByCondition', conditionId, take, skip],
+    queryKey: ['predictionsByCondition', conditionId, take],
     enabled,
     staleTime: 30_000,
     gcTime: 5 * 60 * 1000,
@@ -625,24 +625,25 @@ export function usePredictionsByConditionId(params: {
       // The connection caps `first` at 25 server-side, so loop over cursor
       // pages until exhausted to accumulate every prediction for the condition
       // (the chart needs the complete set, not a truncated first page).
-      const nodes: PredictionByConditionNode[] = [];
-      let after: string | null = null;
-      while (true) {
-        const resp: {
-          predictions: {
-            nodes: PredictionByConditionNode[];
-            pageInfo?: { hasNextPage: boolean; endCursor: string | null };
-          } | null;
-        } = await graphqlRequest(PREDICTIONS_BY_CONDITION_QUERY, {
-          conditionId,
-          first: take,
-          after,
-        });
-        nodes.push(...(resp?.predictions?.nodes ?? []));
-        const pageInfo = resp?.predictions?.pageInfo;
-        if (!pageInfo?.hasNextPage || !pageInfo.endCursor) break;
-        after = pageInfo.endCursor;
-      }
+      const nodes = await paginateConnection<PredictionByConditionNode>({
+        pageSize: take,
+        fetchPage: async ({ first, after }) => {
+          const resp: {
+            predictions: {
+              nodes: PredictionByConditionNode[];
+              pageInfo?: { hasNextPage: boolean; endCursor: string | null };
+            } | null;
+          } = await graphqlRequest(PREDICTIONS_BY_CONDITION_QUERY, {
+            conditionId,
+            first,
+            after,
+          });
+          return {
+            nodes: resp?.predictions?.nodes ?? [],
+            pageInfo: resp?.predictions?.pageInfo,
+          };
+        },
+      });
       return nodes.map(toScatterPrediction);
     },
   });

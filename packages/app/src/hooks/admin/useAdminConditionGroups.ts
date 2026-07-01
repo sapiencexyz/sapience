@@ -148,10 +148,10 @@ type AdminGroupConditionsResponse = {
   errors?: { message?: string }[];
 };
 
-// Safety cap on pagination: 20 * 100 = 2000 groups. Well above the real count.
+// Safety cap on pagination: 20 * 25 = 500 groups. Well above the real count.
 const MAX_GROUP_PAGES = 20;
 const MAX_CONDITION_PAGE_SIZE = 25;
-// 50 * 100 = 5000 public conditions per group — admin safety cap.
+// 50 * 25 = 1250 public conditions per group — admin safety cap.
 const MAX_CONDITION_PAGES = 50;
 
 function mapConditionNode(

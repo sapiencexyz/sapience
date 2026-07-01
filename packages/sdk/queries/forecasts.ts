@@ -1,6 +1,7 @@
 import { getAddress } from 'viem';
 import { FORECAST_SCHEMA_UID } from '../constants/resolver';
 import { graphqlRequest } from './client/graphqlClient';
+import { paginateConnection } from './pagination';
 
 const DEFAULT_SCHEMA_UID = FORECAST_SCHEMA_UID;
 
@@ -190,23 +191,26 @@ export async function fetchForecasts(
   params: FetchForecastsParams
 ): Promise<FormattedAttestation[]> {
   const filter = buildForecastFilter(params);
-  const nodes: ForecastNode[] = [];
-  let after: string | null = null;
-
-  // Loop over 25-row cursor pages until the server reports no more, so we
-  // return the COMPLETE forecast set instead of truncating at the page cap.
-  while (true) {
-    const data: ForecastsConnectionResponse =
-      await graphqlRequest<ForecastsConnectionResponse>(GET_FORECASTS_QUERY, {
-        filter,
-        first: 25,
-        after,
-      });
-    nodes.push(...extractForecastNodes(data));
-    const pageInfo = data?.forecasts?.pageInfo;
-    if (!pageInfo?.hasNextPage || !pageInfo.endCursor) break;
-    after = pageInfo.endCursor;
-  }
+  const nodes = await paginateConnection<ForecastNode>({
+    fetchPage: async ({ first, after }) => {
+      const data: ForecastsConnectionResponse =
+        await graphqlRequest<ForecastsConnectionResponse>(GET_FORECASTS_QUERY, {
+          filter,
+          first,
+          after,
+        });
+      const pageInfo = data?.forecasts?.pageInfo;
+      return {
+        nodes: extractForecastNodes(data),
+        pageInfo: pageInfo
+          ? {
+              hasNextPage: Boolean(pageInfo.hasNextPage),
+              endCursor: pageInfo.endCursor ?? null,
+            }
+          : undefined,
+      };
+    },
+  });
 
   return nodes.map(formatAttestationData);
 }

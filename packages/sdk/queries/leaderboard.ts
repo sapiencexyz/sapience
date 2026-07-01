@@ -1,4 +1,5 @@
 import { graphqlRequest } from './client/graphqlClient';
+import { paginateConnection } from './pagination';
 
 export interface AggregatedLeaderboardEntry {
   address: string;
@@ -145,23 +146,18 @@ function toForecasterScores(
 export async function fetchLeaderboard(): Promise<
   AggregatedLeaderboardEntry[]
 > {
-  const entries: AggregatedLeaderboardEntry[] = [];
-  let after: string | null = null;
-
-  // Loop over 25-row cursor pages, accumulating edges until we hit the
-  // top-100 display cap OR the server reports no more pages (whichever first).
-  while (entries.length < PROFIT_LEADERBOARD_DISPLAY_CAP) {
-    const data: { leaderboard: RankingEdges<PnlRankingNode> } =
-      await graphqlRequest<{
+  return paginateConnection<AggregatedLeaderboardEntry>({
+    maxNodes: PROFIT_LEADERBOARD_DISPLAY_CAP,
+    fetchPage: async ({ after }) => {
+      const data = await graphqlRequest<{
         leaderboard: RankingEdges<PnlRankingNode>;
       }>(GET_PROFIT_LEADERBOARD, { after });
-    entries.push(...toLeaderboardEntries(data?.leaderboard));
-    const pageInfo = data?.leaderboard?.pageInfo;
-    if (!pageInfo?.hasNextPage || !pageInfo.endCursor) break;
-    after = pageInfo.endCursor;
-  }
-
-  return entries.slice(0, PROFIT_LEADERBOARD_DISPLAY_CAP);
+      return {
+        nodes: toLeaderboardEntries(data?.leaderboard),
+        pageInfo: data?.leaderboard?.pageInfo,
+      };
+    },
+  });
 }
 
 export async function fetchAccuracyLeaderboard(

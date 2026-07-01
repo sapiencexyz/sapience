@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { paginateConnection } from '@sapience/sdk/queries';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 
 /**
@@ -135,9 +136,6 @@ type TradesResponse = {
   } | null;
 };
 
-/** Max page size for the `trades` connection (server caps `first` at 25). */
-const TRADES_PAGE_SIZE = 25;
-
 /**
  * Walks the keyset-paginated `trades` connection to exhaustion, accumulating
  * every node. The connection has no load-more UI, so we resolve the COMPLETE
@@ -147,20 +145,19 @@ async function fetchAllTrades(
   query: string,
   variables: Record<string, unknown>
 ): Promise<SecondaryTrade[]> {
-  const nodes: TradeNode[] = [];
-  let after: string | null = null;
-
-  while (true) {
-    const resp: TradesResponse = await graphqlRequest(query, {
-      ...variables,
-      first: TRADES_PAGE_SIZE,
-      after,
-    });
-    nodes.push(...(resp?.trades?.nodes ?? []));
-    const pageInfo = resp?.trades?.pageInfo;
-    if (!pageInfo?.hasNextPage || !pageInfo.endCursor) break;
-    after = pageInfo.endCursor;
-  }
+  const nodes = await paginateConnection<TradeNode>({
+    fetchPage: async ({ first, after }) => {
+      const resp: TradesResponse = await graphqlRequest(query, {
+        ...variables,
+        first,
+        after,
+      });
+      return {
+        nodes: resp?.trades?.nodes ?? [],
+        pageInfo: resp?.trades?.pageInfo,
+      };
+    },
+  });
 
   // Server-side EXECUTED_AT DESC replaces the old client merge + sort.
   return nodes.map(toSecondaryTrade);
@@ -169,17 +166,12 @@ async function fetchAllTrades(
 export function useSecondaryTradesByAddress(params: {
   address?: string;
   chainId?: number;
-  take?: number;
-  /** Legacy offset pagination; the connection is keyset-based, so only the
-   *  first page (skip = 0, the only value call sites use) is addressable. Kept
-   *  for signature stability. */
-  skip?: number;
 }) {
-  const { address, chainId, take = 25, skip = 0 } = params;
+  const { address, chainId } = params;
   const enabled = Boolean(address);
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ['secondaryTrades', address, chainId, take, skip],
+    queryKey: ['secondaryTrades', address, chainId],
     enabled,
     staleTime: 30_000,
     gcTime: 5 * 60 * 1000,
@@ -227,16 +219,11 @@ export function useSecondaryTrade(tradeHash?: string) {
   };
 }
 
-export function useSecondaryTrades(params: {
-  chainId?: number;
-  take?: number;
-  /** See useSecondaryTradesByAddress — kept for signature stability. */
-  skip?: number;
-}) {
-  const { chainId, take = 25, skip = 0 } = params;
+export function useSecondaryTrades(params: { chainId?: number }) {
+  const { chainId } = params;
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ['secondaryTradesAll', chainId, take, skip],
+    queryKey: ['secondaryTradesAll', chainId],
     staleTime: 30_000,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,

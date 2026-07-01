@@ -1,4 +1,5 @@
 import { graphqlRequest } from './client/graphqlClient';
+import { paginateConnection } from './pagination';
 
 export type CategoryQueryResult = {
   name: string;
@@ -42,21 +43,16 @@ function toCategoryNodes(
 }
 
 export async function fetchCategories(): Promise<CategoryQueryResult[]> {
-  const nodes: Array<{ name: string; slug: string }> = [];
-  let after: string | null = null;
-
-  // Loop over 25-row cursor pages until the server reports no more, so we
-  // never drop categories under the server-side page cap.
-  while (true) {
-    const data: CategoriesResponse | null =
-      await graphqlRequest<CategoriesResponse>(GET_CATEGORIES, { after });
-    nodes.push(...toCategoryNodes(data));
-    const pageInfo:
-      | { hasNextPage: boolean; endCursor: string | null }
-      | undefined = data?.categories?.pageInfo;
-    if (!pageInfo?.hasNextPage || !pageInfo.endCursor) break;
-    after = pageInfo.endCursor;
-  }
+  const nodes = await paginateConnection<{ name: string; slug: string }>({
+    fetchPage: async ({ after }) => {
+      const data: CategoriesResponse | null =
+        await graphqlRequest<CategoriesResponse>(GET_CATEGORIES, { after });
+      return {
+        nodes: toCategoryNodes(data),
+        pageInfo: data?.categories?.pageInfo,
+      };
+    },
+  });
 
   return nodes.map(({ name, slug }) => ({ name, slug }));
 }

@@ -209,7 +209,7 @@ Examples:
 
 // ============ GraphQL Query ============
 
-const CONDITIONS_PAGE_SIZE = 24;
+const CONDITIONS_PAGE_SIZE = 25;
 
 const UNRESOLVED_CONDITIONS_QUERY = `
 query UnresolvedConditions($take: Int!, $skip: Int!, $resolver: String!) {
