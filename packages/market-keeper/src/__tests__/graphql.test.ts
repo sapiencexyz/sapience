@@ -128,6 +128,8 @@ describe('walkConnection', () => {
     expect(fetchCalls).toHaveLength(2);
     const first = JSON.parse(fetchCalls[0].init!.body as string);
     const second = JSON.parse(fetchCalls[1].init!.body as string);
+    expect(first.variables.first).toBe(25);
+    expect(second.variables.first).toBe(25);
     expect(first.variables.after).toBeNull();
     expect(second.variables.after).toBe('c1');
   });

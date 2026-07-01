@@ -236,6 +236,8 @@ Examples:
 
 // ============ GraphQL ============
 
+const CONDITIONS_PAGE_SIZE = 25;
+
 const CONDITIONS_QUERY = /* GraphQL */ `
   query ResolverConditions(
     $where: ConditionWhereInput
@@ -544,8 +546,15 @@ async function main() {
 
   console.log('[settle-pyth] Fetching unsettled Pyth conditions...');
 
-  for (let skip = 0; conditions.length < MAX_CONDITIONS; skip += 50) {
-    const take = Math.min(50, MAX_CONDITIONS - conditions.length);
+  for (
+    let skip = 0;
+    conditions.length < MAX_CONDITIONS;
+    skip += CONDITIONS_PAGE_SIZE
+  ) {
+    const take = Math.min(
+      CONDITIONS_PAGE_SIZE,
+      MAX_CONDITIONS - conditions.length
+    );
     const data = await gql<{ conditions: ConditionRow[] }>(
       sapienceApiUrl,
       CONDITIONS_QUERY,
@@ -565,6 +574,7 @@ async function main() {
     );
     if (data.conditions.length === 0) break;
     conditions.push(...data.conditions);
+    if (data.conditions.length < take) break;
   }
 
   console.log(
