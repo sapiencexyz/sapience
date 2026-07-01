@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import QuestionPageClient from './QuestionPageClient';
-import { getGraphQLEndpoint } from '~/lib/data/graphql';
+import { buildGraphQLGetUrl } from '~/lib/data/graphql';
 
 const APP_URL = 'https://sapience.xyz';
 
@@ -40,10 +40,7 @@ async function fetchQuestionTitle(
       resolvers: resolverAddress ? [resolverAddress] : null,
     };
 
-    const response = await fetch(getGraphQLEndpoint(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, variables }),
+    const response = await fetch(buildGraphQLGetUrl(query, variables), {
       next: { revalidate: 60 },
     });
 

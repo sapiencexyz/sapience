@@ -60,3 +60,40 @@ describe('getGraphQLEndpoint', () => {
     );
   });
 });
+
+describe('buildGraphQLGetUrl', () => {
+  test('encodes the query as a GET param against the endpoint', async () => {
+    delete process.env.NEXT_PUBLIC_FOIL_API_URL;
+    const { buildGraphQLGetUrl } = await import('./graphql');
+
+    const url = new URL(buildGraphQLGetUrl('{ ping }'));
+    expect(url.origin + url.pathname).toBe(
+      'https://api.predict.meridian.xyz/graphql'
+    );
+    expect(url.searchParams.get('query')).toBe('{ ping }');
+    // no variables → no variables param
+    expect(url.searchParams.has('variables')).toBe(false);
+  });
+
+  test('JSON-encodes non-empty variables', async () => {
+    delete process.env.NEXT_PUBLIC_FOIL_API_URL;
+    const { buildGraphQLGetUrl } = await import('./graphql');
+
+    const url = new URL(
+      buildGraphQLGetUrl('query Q($id: ID!) { node(id: $id) { id } }', {
+        id: '0xabc',
+      })
+    );
+    expect(url.searchParams.get('variables')).toBe(
+      JSON.stringify({ id: '0xabc' })
+    );
+  });
+
+  test('omits an empty variables object', async () => {
+    delete process.env.NEXT_PUBLIC_FOIL_API_URL;
+    const { buildGraphQLGetUrl } = await import('./graphql');
+
+    const url = new URL(buildGraphQLGetUrl('{ ping }', {}));
+    expect(url.searchParams.has('variables')).toBe(false);
+  });
+});

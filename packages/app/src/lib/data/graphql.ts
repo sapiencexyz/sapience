@@ -23,3 +23,19 @@ export function getGraphQLEndpoint(): string {
 
   return getNetworkEndpointDefaults().graphqlEndpoint;
 }
+
+/**
+ * Build a GET URL for a GraphQL query. Apollo (csrfPrevention off) serves
+ * queries — not mutations — over GET, which lets the CDN cache the OG/SSR
+ * responses that call this. The `query` and JSON-encoded `variables` ride in
+ * the query string; callers `fetch()` the result with the default GET method.
+ */
+export function buildGraphQLGetUrl(query: string, variables?: object): string {
+  const endpoint = getGraphQLEndpoint();
+  const params = new URLSearchParams({ query });
+  if (variables && Object.keys(variables).length > 0) {
+    params.set('variables', JSON.stringify(variables));
+  }
+  const separator = endpoint.includes('?') ? '&' : '?';
+  return `${endpoint}${separator}${params.toString()}`;
+}
