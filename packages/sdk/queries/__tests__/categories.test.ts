@@ -11,14 +11,17 @@ beforeEach(() => {
 });
 
 describe('fetchCategories', () => {
-  test('queries the categories connection ordered by name', () => {
+  test('queries the categories connection ordered by name with cursor paging', () => {
+    expect(GET_CATEGORIES).toContain('first: 25');
+    expect(GET_CATEGORIES).toContain('after: $after');
     expect(GET_CATEGORIES).toContain(
-      'categories(first: 25, orderBy: { field: NAME, direction: ASC })'
+      'orderBy: { field: NAME, direction: ASC }'
     );
     expect(GET_CATEGORIES).toContain('nodes');
     expect(GET_CATEGORIES).toContain('name');
     expect(GET_CATEGORIES).toContain('slug');
-    expect(GET_CATEGORIES).not.toContain('id');
+    expect(GET_CATEGORIES).toContain('hasNextPage');
+    expect(GET_CATEGORIES).toContain('endCursor');
   });
 
   test('unwraps connection nodes into id-less categories', async () => {
@@ -28,6 +31,7 @@ describe('fetchCategories', () => {
           { name: 'Crypto', slug: 'crypto' },
           { name: 'Politics', slug: 'politics' },
         ],
+        pageInfo: { hasNextPage: false, endCursor: null },
       },
     });
 
@@ -36,7 +40,52 @@ describe('fetchCategories', () => {
       { name: 'Crypto', slug: 'crypto' },
       { name: 'Politics', slug: 'politics' },
     ]);
-    expect(mockGraphqlRequest).toHaveBeenCalledWith(GET_CATEGORIES);
+    expect(mockGraphqlRequest).toHaveBeenCalledWith(GET_CATEGORIES, {
+      after: null,
+    });
+  });
+
+  test('loops over cursor pages until hasNextPage is false, concatenating nodes', async () => {
+    mockGraphqlRequest
+      .mockResolvedValueOnce({
+        categories: {
+          nodes: [{ name: 'Crypto', slug: 'crypto' }],
+          pageInfo: { hasNextPage: true, endCursor: 'cursor-1' },
+        },
+      })
+      .mockResolvedValueOnce({
+        categories: {
+          nodes: [{ name: 'Politics', slug: 'politics' }],
+          pageInfo: { hasNextPage: false, endCursor: null },
+        },
+      });
+
+    const result = await fetchCategories();
+
+    expect(result).toEqual([
+      { name: 'Crypto', slug: 'crypto' },
+      { name: 'Politics', slug: 'politics' },
+    ]);
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(2);
+    expect(mockGraphqlRequest).toHaveBeenNthCalledWith(1, GET_CATEGORIES, {
+      after: null,
+    });
+    expect(mockGraphqlRequest).toHaveBeenNthCalledWith(2, GET_CATEGORIES, {
+      after: 'cursor-1',
+    });
+  });
+
+  test('stops after one page when hasNextPage is false even with an endCursor', async () => {
+    mockGraphqlRequest.mockResolvedValue({
+      categories: {
+        nodes: [{ name: 'Crypto', slug: 'crypto' }],
+        pageInfo: { hasNextPage: false, endCursor: 'cursor-1' },
+      },
+    });
+
+    const result = await fetchCategories();
+    expect(result).toEqual([{ name: 'Crypto', slug: 'crypto' }]);
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
   });
 
   test('drops extra node fields so consumers cannot key on row ids', async () => {

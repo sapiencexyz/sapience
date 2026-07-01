@@ -36,8 +36,8 @@ export interface UserProfitRankResult {
 }
 
 export const GET_PROFIT_LEADERBOARD = /* GraphQL */ `
-  query ProfitLeaderboard {
-    leaderboard(metric: PNL, first: 25) {
+  query ProfitLeaderboard($after: String) {
+    leaderboard(metric: PNL, first: 25, after: $after) {
       edges {
         node {
           rank
@@ -46,6 +46,10 @@ export const GET_PROFIT_LEADERBOARD = /* GraphQL */ `
             address
           }
         }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
       }
     }
   }
@@ -95,7 +99,13 @@ export const GET_USER_PROFIT_RANK = /* GraphQL */ `
   }
 `;
 
-type RankingEdges<TNode> = { edges: Array<{ node: TNode }> } | null;
+type RankingEdges<TNode> = {
+  edges: Array<{ node: TNode }>;
+  pageInfo?: { hasNextPage: boolean; endCursor: string | null };
+} | null;
+
+/** Top-N rows the profit leaderboard renders — bounds the page loop. */
+const PROFIT_LEADERBOARD_DISPLAY_CAP = 100;
 
 type PnlRankingNode = {
   rank: number;
@@ -135,10 +145,23 @@ function toForecasterScores(
 export async function fetchLeaderboard(): Promise<
   AggregatedLeaderboardEntry[]
 > {
-  const data = await graphqlRequest<{
-    leaderboard: RankingEdges<PnlRankingNode>;
-  }>(GET_PROFIT_LEADERBOARD);
-  return toLeaderboardEntries(data?.leaderboard).slice(0, 100);
+  const entries: AggregatedLeaderboardEntry[] = [];
+  let after: string | null = null;
+
+  // Loop over 25-row cursor pages, accumulating edges until we hit the
+  // top-100 display cap OR the server reports no more pages (whichever first).
+  while (entries.length < PROFIT_LEADERBOARD_DISPLAY_CAP) {
+    const data: { leaderboard: RankingEdges<PnlRankingNode> } =
+      await graphqlRequest<{
+        leaderboard: RankingEdges<PnlRankingNode>;
+      }>(GET_PROFIT_LEADERBOARD, { after });
+    entries.push(...toLeaderboardEntries(data?.leaderboard));
+    const pageInfo = data?.leaderboard?.pageInfo;
+    if (!pageInfo?.hasNextPage || !pageInfo.endCursor) break;
+    after = pageInfo.endCursor;
+  }
+
+  return entries.slice(0, PROFIT_LEADERBOARD_DISPLAY_CAP);
 }
 
 export async function fetchAccuracyLeaderboard(

@@ -50,9 +50,10 @@ type ForecastsConnectionResponse = {
 };
 
 export const GET_FORECASTS_QUERY = `
-  query ForecastsList($filter: ForecastFilter, $first: Int!) {
+  query ForecastsList($filter: ForecastFilter, $first: Int!, $after: String) {
     forecasts(
       first: $first
+      after: $after
       filter: $filter
       orderBy: { field: ATTESTED_AT, direction: DESC }
     ) {
@@ -63,6 +64,10 @@ export const GET_FORECASTS_QUERY = `
         value
         comment
         conditionId
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
       }
     }
   }
@@ -151,14 +156,20 @@ function buildForecastFilter(
   return filter;
 }
 
-function toFormattedAttestations(
+function extractForecastNodes(
   data: ForecastsConnectionResponse | null
-): FormattedAttestation[] {
+): ForecastNode[] {
   const nodes = data?.forecasts?.nodes;
   if (!Array.isArray(nodes)) {
     throw new Error('Failed to fetch forecasts: Invalid response structure');
   }
-  return nodes.map(formatAttestationData);
+  return nodes;
+}
+
+function toFormattedAttestations(
+  data: ForecastsConnectionResponse | null
+): FormattedAttestation[] {
+  return extractForecastNodes(data).map(formatAttestationData);
 }
 
 function toForecastPage(
@@ -178,11 +189,26 @@ function toForecastPage(
 export async function fetchForecasts(
   params: FetchForecastsParams
 ): Promise<FormattedAttestation[]> {
-  const data = await graphqlRequest<ForecastsConnectionResponse>(
-    GET_FORECASTS_QUERY,
-    { filter: buildForecastFilter(params), first: 25 }
-  );
-  return toFormattedAttestations(data);
+  const filter = buildForecastFilter(params);
+  const nodes: ForecastNode[] = [];
+  let after: string | null = null;
+
+  // Loop over 25-row cursor pages until the server reports no more, so we
+  // return the COMPLETE forecast set instead of truncating at the page cap.
+  while (true) {
+    const data: ForecastsConnectionResponse =
+      await graphqlRequest<ForecastsConnectionResponse>(GET_FORECASTS_QUERY, {
+        filter,
+        first: 25,
+        after,
+      });
+    nodes.push(...extractForecastNodes(data));
+    const pageInfo = data?.forecasts?.pageInfo;
+    if (!pageInfo?.hasNextPage || !pageInfo.endCursor) break;
+    after = pageInfo.endCursor;
+  }
+
+  return nodes.map(formatAttestationData);
 }
 
 export interface ForecastPageArgs {

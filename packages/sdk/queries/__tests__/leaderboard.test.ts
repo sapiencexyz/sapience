@@ -24,13 +24,15 @@ beforeEach(() => {
 // ============================================================================
 
 describe('fetchLeaderboard', () => {
-  test('queries the PNL leaderboard connection', () => {
+  test('queries the PNL leaderboard connection with cursor paging', () => {
     expect(GET_PROFIT_LEADERBOARD).toContain(
-      'leaderboard(metric: PNL, first: 25)'
+      'leaderboard(metric: PNL, first: 25, after: $after)'
     );
     expect(GET_PROFIT_LEADERBOARD).toContain('pnlFormatted');
     expect(GET_PROFIT_LEADERBOARD).toContain('account');
     expect(GET_PROFIT_LEADERBOARD).toContain('address');
+    expect(GET_PROFIT_LEADERBOARD).toContain('hasNextPage');
+    expect(GET_PROFIT_LEADERBOARD).toContain('endCursor');
     expect(GET_PROFIT_LEADERBOARD).not.toContain('profitLeaderboard');
   });
 
@@ -63,7 +65,93 @@ describe('fetchLeaderboard', () => {
     ]);
     // No internal/extra fields leak (rank is derivable from order).
     expect(Object.keys(result[0])).toEqual(['address', 'totalPnL']);
-    expect(mockGraphqlRequest).toHaveBeenCalledWith(GET_PROFIT_LEADERBOARD);
+    expect(mockGraphqlRequest).toHaveBeenCalledWith(GET_PROFIT_LEADERBOARD, {
+      after: null,
+    });
+  });
+
+  test('loops over cursor pages until hasNextPage is false, concatenating edges', async () => {
+    mockGraphqlRequest
+      .mockResolvedValueOnce({
+        leaderboard: {
+          edges: [
+            {
+              node: {
+                rank: 1,
+                pnlFormatted: '10',
+                account: { address: '0xa' },
+              },
+            },
+          ],
+          pageInfo: { hasNextPage: true, endCursor: 'cursor-1' },
+        },
+      })
+      .mockResolvedValueOnce({
+        leaderboard: {
+          edges: [
+            {
+              node: { rank: 2, pnlFormatted: '5', account: { address: '0xb' } },
+            },
+          ],
+          pageInfo: { hasNextPage: false, endCursor: null },
+        },
+      });
+
+    const result = await fetchLeaderboard();
+    expect(result).toEqual([
+      { address: '0xa', totalPnL: '10' },
+      { address: '0xb', totalPnL: '5' },
+    ]);
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(2);
+    expect(mockGraphqlRequest.mock.calls[0][1]).toEqual({ after: null });
+    expect(mockGraphqlRequest.mock.calls[1][1]).toEqual({ after: 'cursor-1' });
+  });
+
+  test('stops paging once 100 entries are accumulated (bounded to display cap)', async () => {
+    const pageEdges = (start: number) =>
+      Array.from({ length: 25 }, (_, i) => ({
+        node: {
+          rank: start + i,
+          pnlFormatted: `${start + i}`,
+          account: {
+            address: `0x${(start + i).toString(16).padStart(40, '0')}`,
+          },
+        },
+      }));
+    // Every page reports another page is available; the loop must stop itself
+    // once it has >= 100 entries rather than paging unboundedly.
+    mockGraphqlRequest.mockImplementation(
+      (_doc: unknown, vars: { after: string | null }) => {
+        const start = vars.after ? Number(vars.after) : 0;
+        return Promise.resolve({
+          leaderboard: {
+            edges: pageEdges(start),
+            pageInfo: { hasNextPage: true, endCursor: String(start + 25) },
+          },
+        });
+      }
+    );
+
+    const result = await fetchLeaderboard();
+    expect(result).toHaveLength(100);
+    // 4 pages * 25 = 100 entries, then the cap stops the loop.
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(4);
+  });
+
+  test('stops after one page when hasNextPage is false even with an endCursor', async () => {
+    mockGraphqlRequest.mockResolvedValue({
+      leaderboard: {
+        edges: [
+          {
+            node: { rank: 1, pnlFormatted: '10', account: { address: '0xa' } },
+          },
+        ],
+        pageInfo: { hasNextPage: false, endCursor: 'cursor-1' },
+      },
+    });
+    const result = await fetchLeaderboard();
+    expect(result).toHaveLength(1);
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
   });
 
   test('returns empty array when connection has no edges', async () => {
