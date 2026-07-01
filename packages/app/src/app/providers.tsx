@@ -15,6 +15,8 @@ import {
   etherealTestnetChain,
   hyperEvmChain,
   readCustomChainOverride,
+  robinhoodMainnetChain,
+  robinhoodTestnetChain,
 } from '@sapience/sdk/constants';
 import { httpWithRetry } from '~/lib/utils/util';
 import { SapienceProvider } from '~/lib/context/SapienceProvider';
@@ -60,6 +62,12 @@ const buildChainsAndTransports = () => {
     [etherealTestnetChain.id]: httpWithRetry(
       etherealTestnetChain.rpcUrls.default.http[0]
     ),
+    [robinhoodMainnetChain.id]: httpWithRetry(
+      robinhoodMainnetChain.rpcUrls.default.http[0]
+    ),
+    [robinhoodTestnetChain.id]: httpWithRetry(
+      robinhoodTestnetChain.rpcUrls.default.http[0]
+    ),
   };
 
   const chains: Chain[] = [
@@ -70,6 +78,8 @@ const buildChainsAndTransports = () => {
     hyperEvmChain,
     etherealChain,
     etherealTestnetChain,
+    robinhoodMainnetChain,
+    robinhoodTestnetChain,
   ];
 
   // Custom-chain override (client only): register the user-supplied chain so the
