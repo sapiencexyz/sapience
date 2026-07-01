@@ -303,188 +303,186 @@ const QuestionOrdering = () => {
         </Button>
       </div>
 
-      {groupsQuery.isLoading ? (
-        <p className="text-sm text-muted-foreground">
-          Loading condition groups…
-        </p>
-      ) : groupsQuery.isError ? (
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="space-y-2">
-          <p className="text-sm text-red-500">
-            {groupsQuery.error instanceof Error
-              ? groupsQuery.error.message
-              : 'Failed to load condition groups.'}
-          </p>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => groupsQuery.refetch()}
-          >
-            Retry
-          </Button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <div className="space-y-2">
-            <Input
-              placeholder="Search by name or id (e.g. 1017)"
-              value={groupFilter}
-              onChange={(event) => setGroupFilter(event.target.value)}
-            />
-            <div className="max-h-96 space-y-1 overflow-y-auto">
-              {groupsQuery.isFetching && filteredGroups.length === 0 ? (
-                <p className="px-1 py-2 text-sm text-muted-foreground">
-                  Searching…
-                </p>
-              ) : filteredGroups.length === 0 ? (
-                <p className="px-1 py-2 text-sm text-muted-foreground">
-                  {debouncedFilter
-                    ? `No groups match “${debouncedFilter}”.`
-                    : 'No condition groups found.'}
-                </p>
-              ) : (
-                filteredGroups.map((group) => (
-                  <button
-                    key={group.id}
-                    type="button"
-                    onClick={() => setSelectedGroupId(group.id)}
-                    className={cn(
-                      'flex w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-left text-sm hover:bg-muted',
-                      selectedGroupId === group.id && 'border-primary bg-muted'
-                    )}
-                  >
-                    <span className="min-w-0 truncate">{group.name}</span>
-                    <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-                      #{group.id} ·{' '}
-                      {group.hasMoreConditions
-                        ? `${group.condition.length}+`
-                        : group.condition.length}
-                    </span>
-                  </button>
-                ))
-              )}
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            {selectedGroup === null ? (
-              <p className="text-sm text-muted-foreground">
-                Select a group to reorder its questions.
-              </p>
-            ) : conditionsQuery.isLoading || conditionsQuery.isFetching ? (
-              <p className="text-sm text-muted-foreground">
-                Loading all public conditions…
-              </p>
-            ) : conditionsQuery.isError ? (
-              <div className="space-y-2">
+          {/* The search box stays mounted through every load/error state so it
+              never disappears (and never loses focus) while groups fetch. */}
+          <Input
+            placeholder="Search by name or id (e.g. 1017)"
+            value={groupFilter}
+            onChange={(event) => setGroupFilter(event.target.value)}
+          />
+          <div className="max-h-96 space-y-1 overflow-y-auto">
+            {groupsQuery.isError ? (
+              <div className="space-y-2 px-1 py-2">
                 <p className="text-sm text-red-500">
-                  {conditionsQuery.error instanceof Error
-                    ? conditionsQuery.error.message
-                    : 'Failed to load conditions for this group.'}
+                  {groupsQuery.error instanceof Error
+                    ? groupsQuery.error.message
+                    : 'Failed to load condition groups.'}
                 </p>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => void conditionsQuery.refetch()}
+                  onClick={() => groupsQuery.refetch()}
                 >
                   Retry
                 </Button>
               </div>
-            ) : activeConditions.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                This group has no public conditions.
+            ) : groupsQuery.isLoading ? (
+              <p className="px-1 py-2 text-sm text-muted-foreground">
+                Loading condition groups…
+              </p>
+            ) : groupsQuery.isFetching && filteredGroups.length === 0 ? (
+              <p className="px-1 py-2 text-sm text-muted-foreground">
+                Searching…
+              </p>
+            ) : filteredGroups.length === 0 ? (
+              <p className="px-1 py-2 text-sm text-muted-foreground">
+                {debouncedFilter
+                  ? `No groups match “${debouncedFilter}”.`
+                  : 'No condition groups found.'}
               </p>
             ) : (
-              <>
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleDragEnd}
+              filteredGroups.map((group) => (
+                <button
+                  key={group.id}
+                  type="button"
+                  onClick={() => setSelectedGroupId(group.id)}
+                  className={cn(
+                    'flex w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-left text-sm hover:bg-muted',
+                    selectedGroupId === group.id && 'border-primary bg-muted'
+                  )}
                 >
-                  <SortableContext
-                    items={order}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    <div className="space-y-1">
-                      {order.map((conditionId, index) => {
-                        const condition = conditionsById.get(conditionId);
-                        if (!condition) return null;
-                        return (
-                          <SortableConditionRow
-                            key={conditionId}
-                            condition={condition}
-                            position={index + 1}
-                            baselinePosition={
-                              (baselineIndexById.get(conditionId) ?? index) + 1
-                            }
-                          />
-                        );
-                      })}
-                    </div>
-                  </SortableContext>
-                </DndContext>
-
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5 text-xs">
-                    {isDirty ? (
-                      <>
-                        <span className="h-2 w-2 rounded-full bg-amber-500" />
-                        <span className="font-medium text-amber-600">
-                          {movedCount}{' '}
-                          {movedCount === 1 ? 'question' : 'questions'} moved ·
-                          unsaved
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <Check className="h-3.5 w-3.5 text-emerald-600" />
-                        <span className="text-muted-foreground">
-                          All changes saved
-                        </span>
-                      </>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={
-                        !conditionsReady ||
-                        !isDirty ||
-                        reorderMutation.isPending
-                      }
-                      onClick={() => setOrder(baselineIds)}
-                    >
-                      Reset
-                    </Button>
-                    <Button
-                      size="sm"
-                      disabled={
-                        !conditionsReady ||
-                        !isDirty ||
-                        !isConnected ||
-                        reorderMutation.isPending
-                      }
-                      onClick={handleSave}
-                    >
-                      {reorderMutation.isPending ? 'Saving…' : 'Save order'}
-                    </Button>
-                  </div>
-                </div>
-                {!isConnected ? (
-                  <p className="text-right text-xs text-muted-foreground">
-                    Connect an admin wallet to save.
-                  </p>
-                ) : isDirty ? (
-                  <p className="text-right text-xs text-muted-foreground">
-                    Saving prompts a one-time wallet signature and updates only
-                    display order.
-                  </p>
-                ) : null}
-              </>
+                  <span className="min-w-0 truncate">{group.name}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                    #{group.id} ·{' '}
+                    {group.hasMoreConditions
+                      ? `${group.condition.length}+`
+                      : group.condition.length}
+                  </span>
+                </button>
+              ))
             )}
           </div>
         </div>
-      )}
+
+        <div className="space-y-3">
+          {selectedGroup === null ? (
+            <p className="text-sm text-muted-foreground">
+              Select a group to reorder its questions.
+            </p>
+          ) : conditionsQuery.isLoading || conditionsQuery.isFetching ? (
+            <p className="text-sm text-muted-foreground">
+              Loading all public conditions…
+            </p>
+          ) : conditionsQuery.isError ? (
+            <div className="space-y-2">
+              <p className="text-sm text-red-500">
+                {conditionsQuery.error instanceof Error
+                  ? conditionsQuery.error.message
+                  : 'Failed to load conditions for this group.'}
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void conditionsQuery.refetch()}
+              >
+                Retry
+              </Button>
+            </div>
+          ) : activeConditions.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              This group has no public conditions.
+            </p>
+          ) : (
+            <>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={order}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-1">
+                    {order.map((conditionId, index) => {
+                      const condition = conditionsById.get(conditionId);
+                      if (!condition) return null;
+                      return (
+                        <SortableConditionRow
+                          key={conditionId}
+                          condition={condition}
+                          position={index + 1}
+                          baselinePosition={
+                            (baselineIndexById.get(conditionId) ?? index) + 1
+                          }
+                        />
+                      );
+                    })}
+                  </div>
+                </SortableContext>
+              </DndContext>
+
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 text-xs">
+                  {isDirty ? (
+                    <>
+                      <span className="h-2 w-2 rounded-full bg-amber-500" />
+                      <span className="font-medium text-amber-600">
+                        {movedCount}{' '}
+                        {movedCount === 1 ? 'question' : 'questions'} moved ·
+                        unsaved
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="h-3.5 w-3.5 text-emerald-600" />
+                      <span className="text-muted-foreground">
+                        All changes saved
+                      </span>
+                    </>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={
+                      !conditionsReady || !isDirty || reorderMutation.isPending
+                    }
+                    onClick={() => setOrder(baselineIds)}
+                  >
+                    Reset
+                  </Button>
+                  <Button
+                    size="sm"
+                    disabled={
+                      !conditionsReady ||
+                      !isDirty ||
+                      !isConnected ||
+                      reorderMutation.isPending
+                    }
+                    onClick={handleSave}
+                  >
+                    {reorderMutation.isPending ? 'Saving…' : 'Save order'}
+                  </Button>
+                </div>
+              </div>
+              {!isConnected ? (
+                <p className="text-right text-xs text-muted-foreground">
+                  Connect an admin wallet to save.
+                </p>
+              ) : isDirty ? (
+                <p className="text-right text-xs text-muted-foreground">
+                  Saving prompts a one-time wallet signature and updates only
+                  display order.
+                </p>
+              ) : null}
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

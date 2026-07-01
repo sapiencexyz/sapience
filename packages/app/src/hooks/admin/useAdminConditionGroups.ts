@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  keepPreviousData,
   useMutation,
   useQuery,
   useQueryClient,
@@ -310,6 +311,10 @@ export function useAdminConditionGroups(
     queryKey: [...ADMIN_CONDITION_GROUPS_QUERY_KEY, graphqlEndpoint, search],
     queryFn: () => fetchAllConditionGroups(graphqlEndpoint as string, search),
     enabled: enabled && Boolean(graphqlEndpoint),
+    // Each search term is a fresh query key; keep the prior results on screen
+    // while the next set loads so the list (and the search box) never blanks
+    // out mid-type. `isFetching` still drives the inline "Searching…" hint.
+    placeholderData: keepPreviousData,
   });
 }
 
