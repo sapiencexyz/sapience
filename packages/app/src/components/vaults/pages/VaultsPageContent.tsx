@@ -365,16 +365,14 @@ const VaultsPageContent = () => {
               <NumberDisplay value={Number(shortWalletBalance)} decimals={2} />{' '}
               {collateralSymbol}
             </span>
-            {!isRobinhood && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-6 px-2 text-xs"
-                onClick={() => setDepositAmount(shortWalletBalance)}
-              >
-                MAX
-              </Button>
-            )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-6 px-2 text-xs"
+              onClick={() => setDepositAmount(shortWalletBalance)}
+            >
+              MAX
+            </Button>
           </div>
           <div
             className={`transition-opacity duration-300 ${
@@ -514,20 +512,18 @@ const VaultsPageContent = () => {
               />{' '}
               sapLP
             </span>
-            {!isRobinhood && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-6 px-2 text-xs"
-                onClick={() =>
-                  setWithdrawAmount(
-                    userData ? formatSharesAmount(userData?.balance ?? 0n) : '0'
-                  )
-                }
-              >
-                MAX
-              </Button>
-            )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-6 px-2 text-xs"
+              onClick={() =>
+                setWithdrawAmount(
+                  userData ? formatSharesAmount(userData?.balance ?? 0n) : '0'
+                )
+              }
+            >
+              MAX
+            </Button>
           </div>
           {withdrawAmount &&
             estWithdrawAssets > 0n &&
@@ -645,9 +641,11 @@ const VaultsPageContent = () => {
   const VAULT_CAPACITY_WEI = parseUnits(DEPOSIT_CAP.toString(), assetDecimals);
 
   const exceedsVaultCapacity = useMemo(() => {
+    // Robinhood chains have no deposit cap.
+    if (isRobinhood) return false;
     const newTotal = tvlWei + depositWei;
     return newTotal > VAULT_CAPACITY_WEI;
-  }, [tvlWei, depositWei, VAULT_CAPACITY_WEI]);
+  }, [isRobinhood, tvlWei, depositWei, VAULT_CAPACITY_WEI]);
 
   const capPercentOfTvl = useMemo(() => {
     if (tvlWei <= 0n) return 100;
@@ -807,7 +805,7 @@ const VaultsPageContent = () => {
                         >
                           {isBalanceReady ? (
                             <>
-                              {tvlWei <= VAULT_CAPACITY_WEI && (
+                              {!isRobinhood && tvlWei <= VAULT_CAPACITY_WEI && (
                                 <div className="absolute -top-4 right-0 font-mono text-[10px] text-muted-foreground/50 uppercase">
                                   {depositCapDisplay} cap
                                 </div>
@@ -829,7 +827,7 @@ const VaultsPageContent = () => {
                                   }}
                                 />
                               </div>
-                              {tvlWei > VAULT_CAPACITY_WEI && (
+                              {!isRobinhood && tvlWei > VAULT_CAPACITY_WEI && (
                                 <>
                                   <div
                                     className="absolute top-0 h-3 vault-excess-rainbow rounded-r-sm"
