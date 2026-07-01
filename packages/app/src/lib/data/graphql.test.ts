@@ -19,10 +19,12 @@ describe('getGraphQLEndpoint', () => {
     expect(getGraphQLEndpoint()).toBe('https://api.example.com/v2/graphql');
   });
 
-  test('falls back to the production endpoint when base URL is unset', async () => {
+  test('falls back to the Robinhood Mainnet endpoint when base URL is unset', async () => {
     delete process.env.NEXT_PUBLIC_FOIL_API_URL;
     const { getGraphQLEndpoint } = await import('./graphql');
-    expect(getGraphQLEndpoint()).toBe('https://api.sapience.xyz/v2/graphql');
+    expect(getGraphQLEndpoint()).toBe(
+      'https://api.predict.meridian.xyz/graphql'
+    );
   });
 
   test('keeps only origin + /v2/graphql, dropping any base path', async () => {
@@ -31,10 +33,12 @@ describe('getGraphQLEndpoint', () => {
     expect(getGraphQLEndpoint()).toBe('https://api.example.com/v2/graphql');
   });
 
-  test('falls back to the production endpoint for an unparseable base URL', async () => {
+  test('falls back to the Robinhood Mainnet endpoint for an unparseable base URL', async () => {
     process.env.NEXT_PUBLIC_FOIL_API_URL = 'not a url';
     const { getGraphQLEndpoint } = await import('./graphql');
-    expect(getGraphQLEndpoint()).toBe('https://api.sapience.xyz/v2/graphql');
+    expect(getGraphQLEndpoint()).toBe(
+      'https://api.predict.meridian.xyz/graphql'
+    );
   });
 
   test('prefers the Settings override in localStorage when running in the browser', async () => {

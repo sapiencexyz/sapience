@@ -103,7 +103,7 @@ beforeEach(() => {
 });
 
 describe('SettingsContext GraphQL endpoint', () => {
-  test('defaults the endpoint to the /v2/graphql path of the API origin', async () => {
+  test('defaults the endpoint to Robinhood Mainnet (Meridian /graphql)', async () => {
     render(
       <SettingsProvider>
         <Probe />
@@ -111,11 +111,13 @@ describe('SettingsContext GraphQL endpoint', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('endpoint').textContent).toMatch(
-        /\/v2\/graphql$/
+      expect(screen.getByTestId('endpoint').textContent).toBe(
+        'https://api.predict.meridian.xyz/graphql'
       );
     });
-    expect(screen.getByTestId('default').textContent).toMatch(/\/v2\/graphql$/);
+    expect(screen.getByTestId('default').textContent).toBe(
+      'https://api.predict.meridian.xyz/graphql'
+    );
   });
 
   test('hydrates the endpoint from its localStorage key', async () => {
@@ -207,24 +209,26 @@ describe('SettingsContext GraphQL endpoint', () => {
     await waitFor(() => {
       expect(window.localStorage.getItem(KEY)).toBeNull();
     });
-    expect(screen.getByTestId('endpoint').textContent).toMatch(
-      /\/v2\/graphql$/
+    expect(screen.getByTestId('endpoint').textContent).toBe(
+      'https://api.predict.meridian.xyz/graphql'
     );
   });
 });
 
 describe('SettingsContext chat endpoint disable', () => {
-  test('defaults to a non-empty chat endpoint so the bubble shows', async () => {
+  test('defaults to a blank chat endpoint (Robinhood Mainnet ships chat off)', async () => {
     render(
       <SettingsProvider>
         <ChatProbe />
       </SettingsProvider>
     );
 
+    // Robinhood Mainnet is the default network and ships without chat, so the
+    // default chat base is blank and the bubble stays hidden.
     await waitFor(() => {
-      expect(screen.getByTestId('chat').textContent).not.toBe('');
+      expect(screen.getByTestId('chat').textContent).toBe('<empty>');
     });
-    expect(screen.getByTestId('chat').textContent).not.toBe('<empty>');
+    expect(screen.getByTestId('default-chat').textContent).toBe('');
   });
 
   test('hydrates an explicit blank override as disabled (empty string)', async () => {
@@ -264,8 +268,10 @@ describe('SettingsContext chat endpoint disable', () => {
     expect(window.localStorage.getItem(CHAT_KEY)).toBe('');
   });
 
-  test('setChatBaseUrl(null) removes the override and re-enables the default', async () => {
-    window.localStorage.setItem(CHAT_KEY, '');
+  test('setChatBaseUrl(null) removes the override and falls back to the default', async () => {
+    // Seed a non-blank override so the reset has something to clear (an explicit
+    // blank and the default are both blank now that Robinhood is the default).
+    window.localStorage.setItem(CHAT_KEY, 'https://chat.example.com/chat');
 
     render(
       <SettingsProvider>
@@ -274,7 +280,9 @@ describe('SettingsContext chat endpoint disable', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('chat').textContent).toBe('<empty>');
+      const text = screen.getByTestId('chat').textContent;
+      expect(text).not.toBe('');
+      expect(text).not.toBe('<empty>');
     });
 
     act(() => {
@@ -284,6 +292,7 @@ describe('SettingsContext chat endpoint disable', () => {
     await waitFor(() => {
       expect(window.localStorage.getItem(CHAT_KEY)).toBeNull();
     });
-    expect(screen.getByTestId('chat').textContent).not.toBe('<empty>');
+    // Reset falls back to the default, which for Robinhood Mainnet is blank.
+    expect(screen.getByTestId('chat').textContent).toBe('<empty>');
   });
 });

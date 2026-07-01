@@ -133,13 +133,13 @@ describe('fetchPredictionWithConditions', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
 
     const [predUrl, predInit] = fetchMock.mock.calls[0];
-    expect(String(predUrl)).toContain('/v2/graphql');
+    expect(String(predUrl)).toContain('/graphql');
     expect(JSON.parse(predInit.body).variables).toEqual({
       predictionId: '0xpred1',
     });
 
     const [condUrl, condInit] = fetchMock.mock.calls[1];
-    expect(String(condUrl)).toContain('/v2/graphql');
+    expect(String(condUrl)).toContain('/graphql');
     expect(JSON.parse(condInit.body).variables).toEqual({
       ids: ['0xcond1'],
     });

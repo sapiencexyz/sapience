@@ -16,12 +16,14 @@ export function getGraphQLEndpoint(): string {
     /* noop */
   }
 
-  const baseUrl =
-    process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz';
+  // Default network is Robinhood Mainnet: Meridian serves the schema at
+  // `/graphql`. A configured API env keeps the Sapience `/v2/graphql` shape.
+  const baseUrl = process.env.NEXT_PUBLIC_FOIL_API_URL;
+  if (!baseUrl) return 'https://api.predict.meridian.xyz/graphql';
   try {
     const u = new URL(baseUrl);
     return `${u.origin}/v2/graphql`;
   } catch {
-    return 'https://api.sapience.xyz/v2/graphql';
+    return 'https://api.predict.meridian.xyz/graphql';
   }
 }

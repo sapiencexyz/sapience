@@ -166,9 +166,12 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
   const relayerBase = useMemo(() => {
     if (apiBaseUrl && apiBaseUrl.length > 0) return apiBaseUrl;
     const explicitRelayer = process.env.NEXT_PUBLIC_FOIL_RELAYER_URL;
-    const apiRoot =
-      process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz';
-    const root = explicitRelayer || apiRoot;
+    const apiRoot = process.env.NEXT_PUBLIC_FOIL_API_URL;
+    // Default network is Robinhood Mainnet (Meridian relayer).
+    if (!explicitRelayer && !apiRoot) {
+      return 'https://relayer.predict.meridian.xyz/auction';
+    }
+    const root = explicitRelayer || (apiRoot as string);
     try {
       const u = new URL(root);
       if (!explicitRelayer && u.hostname === 'api.sapience.xyz') {

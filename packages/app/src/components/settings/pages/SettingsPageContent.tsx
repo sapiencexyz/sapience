@@ -85,12 +85,13 @@ const ROBINHOOD_TESTNET_SETTINGS: EndpointPreset = {
   chatBaseUrl: '',
 } as const;
 
-// Order shown next to the Settings heading.
+// Order shown next to the Settings heading. Robinhood is the default
+// environment, so its presets lead; Ethereal follows.
 const ENDPOINT_PRESETS: EndpointPreset[] = [
-  ETHEREAL_MAINNET_SETTINGS,
   ROBINHOOD_MAINNET_SETTINGS,
-  ETHEREAL_TESTNET_SETTINGS,
+  ETHEREAL_MAINNET_SETTINGS,
   ROBINHOOD_TESTNET_SETTINGS,
+  ETHEREAL_TESTNET_SETTINGS,
 ];
 
 type SettingFieldProps = {

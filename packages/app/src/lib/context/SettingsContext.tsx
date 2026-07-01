@@ -130,66 +130,84 @@ function normalizeBaseUrlPreservePath(value: string): string {
 }
 
 function getDefaultSignalEndpoint(): string {
+  // Robinhood Mainnet (the default network) leaves the mesh signal blank, which
+  // disables the mesh. Only derive a signal endpoint when an explicit
+  // relayer/API env is configured (e.g. a Sapience/Ethereal deployment).
+  if (
+    !process.env.NEXT_PUBLIC_FOIL_RELAYER_URL &&
+    !process.env.NEXT_PUBLIC_FOIL_API_URL
+  ) {
+    return '';
+  }
   const relayerBase = getDefaultRelayerBase();
   try {
     const u = new URL(relayerBase);
     u.pathname = '/signal';
     return u.toString();
   } catch {
-    return 'https://relayer.sapience.xyz/signal';
+    return '';
   }
 }
 
 function getDefaultRelayerBase(): string {
-  // Auction relayer base. Prefer explicit relayer env, otherwise derive from API env
-  // but only swap `api.sapience.xyz` -> `relayer.sapience.xyz` for production.
+  // Auction relayer base. Prefer explicit relayer env, otherwise derive from API
+  // env but only swap `api.sapience.xyz` -> `relayer.sapience.xyz`. With nothing
+  // configured, default to Robinhood Mainnet's relayer.
   const explicitRelayer = process.env.NEXT_PUBLIC_FOIL_RELAYER_URL;
-  const apiRoot =
-    process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz';
+  const apiRoot = process.env.NEXT_PUBLIC_FOIL_API_URL;
+  if (!explicitRelayer && !apiRoot) {
+    return 'https://relayer.predict.meridian.xyz/auction';
+  }
   const root = explicitRelayer || apiRoot;
   try {
-    const u = new URL(root);
+    const u = new URL(root as string);
     if (!explicitRelayer && u.hostname === 'api.sapience.xyz') {
       u.hostname = 'relayer.sapience.xyz';
     }
     return `${u.origin}/auction`;
   } catch {
-    return 'https://relayer.sapience.xyz/auction';
+    return 'https://relayer.predict.meridian.xyz/auction';
   }
 }
 
 // Default app GraphQL endpoint. Sapience serves the schema at `/v2/graphql`;
 // Meridian exposes the same schema at `/graphql` and overrides the full URL.
 function getDefaultGraphqlEndpoint(): string {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz';
+  // Sapience serves the schema at `/v2/graphql`; Meridian (Robinhood) exposes
+  // the same schema at `/graphql`. With no API env configured, default to
+  // Robinhood Mainnet.
+  const baseUrl = process.env.NEXT_PUBLIC_FOIL_API_URL;
+  if (!baseUrl) return 'https://api.predict.meridian.xyz/graphql';
   try {
     const u = new URL(baseUrl);
     return `${u.origin}/v2/graphql`;
   } catch {
-    return 'https://api.sapience.xyz/v2/graphql';
+    return 'https://api.predict.meridian.xyz/graphql';
   }
 }
 
 function getDefaultChatBase(): string {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz';
+  // Robinhood Mainnet (the default network) ships without chat — a blank base
+  // hides the chat bubble. Only derive a chat base from an explicit API env.
+  const baseUrl = process.env.NEXT_PUBLIC_FOIL_API_URL;
+  if (!baseUrl) return '';
   try {
     const u = new URL(baseUrl);
     return `${u.origin}/chat`;
   } catch {
-    return 'https://api.sapience.xyz/chat';
+    return '';
   }
 }
 
 function getDefaultAdminBase(): string {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz';
+  // Defaults to Robinhood Mainnet's admin base when no API env is configured.
+  const baseUrl = process.env.NEXT_PUBLIC_FOIL_API_URL;
+  if (!baseUrl) return 'https://api.predict.meridian.xyz/admin';
   try {
     const u = new URL(baseUrl);
     return `${u.origin}/admin`;
   } catch {
-    return 'https://api.sapience.xyz/admin';
+    return 'https://api.predict.meridian.xyz/admin';
   }
 }
 
