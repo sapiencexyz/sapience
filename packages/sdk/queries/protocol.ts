@@ -80,7 +80,7 @@ const PROTOCOL_STAT_FIELDS = /* GraphQL */ `
 // in prod) snapshot series to one node per day — exactly what the charts render
 // — instead of returning thousands of raw rows. `first` is left null so the
 // server returns the whole bucketed series in one page (it ignores the
-// GRAPHQL_MAX_LIST_SIZE 100 cap only because no explicit `first` value is sent);
+// GRAPHQL_MAX_LIST_SIZE 25 cap only because no explicit `first` value is sent);
 // the daily series fits comfortably under the resolver's internal page cap.
 // `GET_PROTOCOL_STATS_HISTORY_PAGE` remains as a forward-pagination safety net
 // for the rare case the series ever exceeds one page.
@@ -250,7 +250,7 @@ function toProtocolAnalytics(
 
 // Daily bucketing keeps the series to ~one node per day, so the whole history
 // comes back in the first page. `first: null` lets the server return the full
-// bucketed series without tripping the GRAPHQL_MAX_LIST_SIZE (100) pre-execution
+// bucketed series without tripping the GRAPHQL_MAX_LIST_SIZE (25) pre-execution
 // cap (which only inspects explicit `first` values). The pagination loop below
 // is a safety net — normally it never iterates — with MAX_PAGES guarding against
 // a non-progressing cursor.

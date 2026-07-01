@@ -46,7 +46,7 @@ export interface ConditionFilters {
 }
 
 /** Max page size for the conditions / conditionGroups / pickConfigurations connections. */
-const MAX_PAGE_SIZE = 100;
+const MAX_PAGE_SIZE = 25;
 
 export const GET_CONDITIONS = /* GraphQL */ `
   query Conditions($first: Int, $after: String, $filter: ConditionFilter) {
@@ -247,7 +247,7 @@ export async function fetchConditions(opts?: {
 
 // --- fetchConditionsByIds ---
 
-const PAGE_SIZE = 100; // == the connection's max page size, so each chunk fits one page
+const PAGE_SIZE = 25; // == the connection's max page size, so each chunk fits one page
 const MAX_CONCURRENT_REQUESTS = 3;
 
 /**
@@ -311,7 +311,7 @@ type ConditionById = {
 export const CONDITIONS_BY_IDS_QUERY = /* GraphQL */ `
   query ConditionsByIds($ids: [Bytes!]!) {
     conditions(
-      first: 100
+      first: 25
       orderBy: { field: CREATED_AT, direction: DESC }
       filter: { conditionIds: $ids }
     ) {

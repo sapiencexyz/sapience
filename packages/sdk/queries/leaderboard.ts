@@ -37,7 +37,7 @@ export interface UserProfitRankResult {
 
 export const GET_PROFIT_LEADERBOARD = /* GraphQL */ `
   query ProfitLeaderboard {
-    leaderboard(metric: PNL, first: 100) {
+    leaderboard(metric: PNL, first: 25) {
       edges {
         node {
           rank

@@ -71,7 +71,7 @@ export const GET_CONDITION_GROUPS = /* GraphQL */ `
           name
           slug
         }
-        conditions(first: 100) {
+        conditions(first: 25) {
           nodes {
             conditionId
             createdAt
@@ -154,7 +154,7 @@ const CONDITION_GROUP_CONDITIONS_PAGE = /* GraphQL */ `
 `;
 
 /** The conditionGroups connection's max page size. */
-const MAX_PAGE_SIZE = 100;
+const MAX_PAGE_SIZE = 25;
 
 /**
  * Builds the `ConditionGroupFilter`. The filter only accepts `search` and a

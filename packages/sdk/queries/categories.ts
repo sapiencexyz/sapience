@@ -13,7 +13,7 @@ type CategoriesResponse = {
 
 export const GET_CATEGORIES = /* GraphQL */ `
   query Categories {
-    categories(first: 100, orderBy: { field: NAME, direction: ASC }) {
+    categories(first: 25, orderBy: { field: NAME, direction: ASC }) {
       nodes {
         name
         slug

@@ -26,7 +26,7 @@ beforeEach(() => {
 describe('fetchLeaderboard', () => {
   test('queries the PNL leaderboard connection', () => {
     expect(GET_PROFIT_LEADERBOARD).toContain(
-      'leaderboard(metric: PNL, first: 100)'
+      'leaderboard(metric: PNL, first: 25)'
     );
     expect(GET_PROFIT_LEADERBOARD).toContain('pnlFormatted');
     expect(GET_PROFIT_LEADERBOARD).toContain('account');

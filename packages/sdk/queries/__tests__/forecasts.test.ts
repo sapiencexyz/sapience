@@ -177,10 +177,10 @@ describe('fetchForecasts', () => {
     expect(vars.filter.schemaId).toBe(DEFAULT_SCHEMA_UID);
   });
 
-  test('requests max 100 forecasts (connection max page size)', async () => {
+  test('requests max 25 forecasts (connection max page size)', async () => {
     mockGraphqlRequest.mockResolvedValue({ forecasts: { nodes: [] } });
     await fetchForecasts({});
-    expect(mockGraphqlRequest.mock.calls[0][1].first).toBe(100);
+    expect(mockGraphqlRequest.mock.calls[0][1].first).toBe(25);
   });
 
   test('normalizes attester address with EIP-55 checksum', async () => {

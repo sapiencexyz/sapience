@@ -13,7 +13,7 @@ beforeEach(() => {
 describe('fetchCategories', () => {
   test('queries the categories connection ordered by name', () => {
     expect(GET_CATEGORIES).toContain(
-      'categories(first: 100, orderBy: { field: NAME, direction: ASC })'
+      'categories(first: 25, orderBy: { field: NAME, direction: ASC })'
     );
     expect(GET_CATEGORIES).toContain('nodes');
     expect(GET_CATEGORIES).toContain('name');

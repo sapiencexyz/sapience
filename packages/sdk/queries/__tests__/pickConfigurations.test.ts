@@ -102,7 +102,7 @@ describe('fetchPickConfigurations', () => {
       resolved: false,
     });
     expect(mockGraphqlRequest).toHaveBeenCalledWith(GET_PICK_CONFIGURATIONS, {
-      first: 50,
+      first: 25,
       after: null,
       filter: { chainId: 42161, resolved: false },
     });
@@ -196,17 +196,17 @@ describe('fetchPickConfigurations', () => {
   });
 
   test('uses cursors when take + skip exceeds the page cap', async () => {
-    const firstPage = Array.from({ length: 100 }, (_, i) =>
+    const firstPage = Array.from({ length: 25 }, (_, i) =>
       makeNode({ pickConfigId: `0x${i}` })
     );
-    const secondPage = Array.from({ length: 50 }, (_, i) =>
-      makeNode({ pickConfigId: `0x${i + 100}` })
+    const secondPage = Array.from({ length: 15 }, (_, i) =>
+      makeNode({ pickConfigId: `0x${i + 25}` })
     );
     mockGraphqlRequest
       .mockResolvedValueOnce({
         pickConfigurations: {
           nodes: firstPage,
-          pageInfo: { hasNextPage: true, endCursor: 'cursor-100' },
+          pageInfo: { hasNextPage: true, endCursor: 'cursor-25' },
         },
       })
       .mockResolvedValueOnce({
@@ -216,21 +216,21 @@ describe('fetchPickConfigurations', () => {
         },
       });
 
-    const result = await fetchPickConfigurations({ take: 100, skip: 50 });
+    const result = await fetchPickConfigurations({ take: 30, skip: 10 });
 
     expect(mockGraphqlRequest).toHaveBeenNthCalledWith(
       1,
       GET_PICK_CONFIGURATIONS,
-      expect.objectContaining({ first: 100, after: null })
+      expect.objectContaining({ first: 25, after: null })
     );
     expect(mockGraphqlRequest).toHaveBeenNthCalledWith(
       2,
       GET_PICK_CONFIGURATIONS,
-      expect.objectContaining({ first: 50, after: 'cursor-100' })
+      expect.objectContaining({ first: 15, after: 'cursor-25' })
     );
-    expect(result).toHaveLength(100);
-    expect(result[0].id).toBe('0x50');
-    expect(result[99].id).toBe('0x149');
+    expect(result).toHaveLength(30);
+    expect(result[0].id).toBe('0x10');
+    expect(result[29].id).toBe('0x39');
   });
 
   test('throws on invalid response structure', async () => {

@@ -180,7 +180,7 @@ export async function fetchForecasts(
 ): Promise<FormattedAttestation[]> {
   const data = await graphqlRequest<ForecastsConnectionResponse>(
     GET_FORECASTS_QUERY,
-    { filter: buildForecastFilter(params), first: 100 }
+    { filter: buildForecastFilter(params), first: 25 }
   );
   return toFormattedAttestations(data);
 }
