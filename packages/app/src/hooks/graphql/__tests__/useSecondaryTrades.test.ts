@@ -59,6 +59,9 @@ describe('trade documents', () => {
     );
     expect(doc).toContain('orderBy: { field: EXECUTED_AT, direction: DESC }');
     expect(doc).toContain('first: $first');
+    expect(doc).toContain('after: $after');
+    expect(doc).toContain('hasNextPage');
+    expect(doc).toContain('endCursor');
     expect(doc).toContain('nodes');
     expect(doc).not.toMatch(/\bid\b/);
     expect(doc).not.toContain('seller:');
@@ -71,6 +74,9 @@ describe('trade documents', () => {
     expect(doc).toContain('filter: { chainId: $chainId }');
     expect(doc).toContain('orderBy: { field: EXECUTED_AT, direction: DESC }');
     expect(doc).toContain('first: $first');
+    expect(doc).toContain('after: $after');
+    expect(doc).toContain('hasNextPage');
+    expect(doc).toContain('endCursor');
     expect(doc).not.toMatch(/\bid\b/);
   });
 
@@ -100,6 +106,7 @@ describe('useSecondaryTradesByAddress', () => {
       participant: '0xme',
       chainId: 8453,
       first: 25,
+      after: null,
     });
   });
 
@@ -119,6 +126,7 @@ describe('useSecondaryTradesByAddress', () => {
       participant: '0xme',
       chainId: null,
       first: 25,
+      after: null,
     });
   });
 
@@ -158,6 +166,49 @@ describe('useSecondaryTradesByAddress', () => {
     expect(trade.executedAt).toBe(1750000000); // epoch seconds, unchanged
   });
 
+  it('pages through the connection until hasNextPage is false, accumulating all trades', async () => {
+    const mod = await getModule();
+    mockGraphqlRequest
+      .mockResolvedValueOnce({
+        trades: {
+          nodes: [makeTradeNode({ tradeHash: '0xa' })],
+          pageInfo: { hasNextPage: true, endCursor: 'cursor-1' },
+        },
+      })
+      .mockResolvedValueOnce({
+        trades: {
+          nodes: [makeTradeNode({ tradeHash: '0xb' })],
+          pageInfo: { hasNextPage: false, endCursor: 'cursor-2' },
+        },
+      });
+
+    const { result } = renderHook(
+      () => mod.useSecondaryTradesByAddress({ address: '0xme', chainId: 8453 }),
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => {
+      expect(result.current.data.length).toBe(2);
+    });
+
+    // Two pages, then it stops (hasNextPage: false on page 2).
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(2);
+    expect(mockGraphqlRequest.mock.calls[0][1]).toEqual({
+      participant: '0xme',
+      chainId: 8453,
+      first: 25,
+      after: null,
+    });
+    // Second page threads the previous endCursor.
+    expect(mockGraphqlRequest.mock.calls[1][1]).toEqual({
+      participant: '0xme',
+      chainId: 8453,
+      first: 25,
+      after: 'cursor-1',
+    });
+    expect(result.current.data.map((t) => t.tradeHash)).toEqual(['0xa', '0xb']);
+  });
+
   it('does not fetch without an address', async () => {
     const mod = await getModule();
 
@@ -183,7 +234,7 @@ describe('useSecondaryTrades (all trades)', () => {
     });
 
     const [, variables] = mockGraphqlRequest.mock.calls[0];
-    expect(variables).toEqual({ chainId: 8453, first: 25 });
+    expect(variables).toEqual({ chainId: 8453, first: 25, after: null });
   });
 
   it('normalizes BigInt wire values to strings', async () => {
@@ -202,6 +253,64 @@ describe('useSecondaryTrades (all trades)', () => {
 
     expect(result.current.data[0].tokenAmount).toBe('5');
     expect(result.current.data[0].price).toBe('7');
+  });
+
+  it('pages through the connection until exhausted, accumulating all trades', async () => {
+    const mod = await getModule();
+    mockGraphqlRequest
+      .mockResolvedValueOnce({
+        trades: {
+          nodes: [makeTradeNode({ tradeHash: '0xa' })],
+          pageInfo: { hasNextPage: true, endCursor: 'cursor-1' },
+        },
+      })
+      .mockResolvedValueOnce({
+        trades: {
+          nodes: [makeTradeNode({ tradeHash: '0xb' })],
+          pageInfo: { hasNextPage: false, endCursor: 'cursor-2' },
+        },
+      });
+
+    const { result } = renderHook(() => mod.useSecondaryTrades({}), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.data.length).toBe(2);
+    });
+
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(2);
+    expect(mockGraphqlRequest.mock.calls[0][1]).toEqual({
+      chainId: null,
+      first: 25,
+      after: null,
+    });
+    expect(mockGraphqlRequest.mock.calls[1][1]).toEqual({
+      chainId: null,
+      first: 25,
+      after: 'cursor-1',
+    });
+    expect(result.current.data.map((t) => t.tradeHash)).toEqual(['0xa', '0xb']);
+  });
+
+  it('stops after one page when hasNextPage is false', async () => {
+    const mod = await getModule();
+    mockGraphqlRequest.mockResolvedValueOnce({
+      trades: {
+        nodes: [makeTradeNode()],
+        pageInfo: { hasNextPage: false, endCursor: 'cursor-1' },
+      },
+    });
+
+    const { result } = renderHook(() => mod.useSecondaryTrades({}), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.data.length).toBe(1);
+    });
+
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
   });
 });
 

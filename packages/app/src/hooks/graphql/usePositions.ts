@@ -259,10 +259,11 @@ export const PREDICTIONS_QUERY = `
 // embed blew the server-side complexity budget at 100 rows (the same reason
 // this doc was slimmed before), and the chart never reads them.
 export const PREDICTIONS_BY_CONDITION_QUERY = `
-  query PredictionsByCondition($conditionId: Bytes!, $first: Int) {
+  query PredictionsByCondition($conditionId: Bytes!, $first: Int, $after: String) {
     predictions(
       filter: { conditionIds: [$conditionId] }
       first: $first
+      after: $after
       orderBy: { field: CREATED_AT, direction: DESC }
     ) {
       nodes {
@@ -296,6 +297,10 @@ export const PREDICTIONS_BY_CONDITION_QUERY = `
             predictedOutcome
           }
         }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
       }
     }
   }
@@ -617,10 +622,28 @@ export function usePredictionsByConditionId(params: {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => {
-      const resp = await graphqlRequest<{
-        predictions: { nodes: PredictionByConditionNode[] } | null;
-      }>(PREDICTIONS_BY_CONDITION_QUERY, { conditionId, first: take });
-      return (resp?.predictions?.nodes ?? []).map(toScatterPrediction);
+      // The connection caps `first` at 25 server-side, so loop over cursor
+      // pages until exhausted to accumulate every prediction for the condition
+      // (the chart needs the complete set, not a truncated first page).
+      const nodes: PredictionByConditionNode[] = [];
+      let after: string | null = null;
+      while (true) {
+        const resp: {
+          predictions: {
+            nodes: PredictionByConditionNode[];
+            pageInfo?: { hasNextPage: boolean; endCursor: string | null };
+          } | null;
+        } = await graphqlRequest(PREDICTIONS_BY_CONDITION_QUERY, {
+          conditionId,
+          first: take,
+          after,
+        });
+        nodes.push(...(resp?.predictions?.nodes ?? []));
+        const pageInfo = resp?.predictions?.pageInfo;
+        if (!pageInfo?.hasNextPage || !pageInfo.endCursor) break;
+        after = pageInfo.endCursor;
+      }
+      return nodes.map(toScatterPrediction);
     },
   });
 

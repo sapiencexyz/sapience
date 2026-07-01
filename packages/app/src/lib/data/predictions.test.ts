@@ -151,6 +151,69 @@ describe('fetchPredictionWithConditions', () => {
     ]);
   });
 
+  it('chunks the conditions leg into <=25-id requests and merges them', async () => {
+    // 30 picks → one full page of 25 + a second page of 5.
+    const picks = Array.from({ length: 30 }, (_, i) => ({
+      conditionId: `0xcond${i}`,
+      resolver: '0xresolver',
+      predictedOutcome: 'YES',
+    }));
+    const node = makePredictionNode({
+      pickConfig: {
+        ...makePredictionNode().pickConfig,
+        picks,
+      },
+    });
+
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ data: { prediction: node } }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            conditions: {
+              nodes: picks
+                .slice(0, 25)
+                .map((p) => ({ id: p.conditionId, settled: false })),
+            },
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            conditions: {
+              nodes: picks
+                .slice(25)
+                .map((p) => ({ id: p.conditionId, settled: false })),
+            },
+          },
+        }),
+      });
+
+    const result = await fetchPredictionWithConditions('0xpred1');
+
+    // 1 prediction leg + 2 chunked conditions legs.
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+
+    const firstChunkIds = JSON.parse(fetchMock.mock.calls[1][1].body).variables
+      .ids;
+    const secondChunkIds = JSON.parse(fetchMock.mock.calls[2][1].body).variables
+      .ids;
+    expect(firstChunkIds).toHaveLength(25);
+    expect(secondChunkIds).toHaveLength(5);
+
+    // Every returned condition is preserved (nothing truncated at the 25 cap).
+    expect(result.conditions).toHaveLength(30);
+    expect(result.conditions.map((c) => c.id)).toEqual(
+      picks.map((p) => p.conditionId)
+    );
+  });
+
   it('returns null prediction without a conditions round trip when not found', async () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,

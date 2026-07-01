@@ -115,6 +115,10 @@ describe('prediction documents', () => {
     expect(doc).toContain('conditionIds: [$conditionId]');
     expect(doc).toContain('orderBy: { field: CREATED_AT, direction: DESC }');
     expect(doc).toContain('first: $first');
+    // cursor pagination: after + pageInfo so the hook can loop to exhaustion
+    expect(doc).toContain('after: $after');
+    expect(doc).toContain('hasNextPage');
+    expect(doc).toContain('endCursor');
     // slim projection: no embedded condition objects (complexity budget)
     expect(doc).not.toContain('condition {');
   });
@@ -324,5 +328,81 @@ describe('usePredictionsByConditionId', () => {
     expect(p.counterpartyCollateral).toBe('2000');
     expect(p.pickConfig?.picks[0]?.conditionResolver).toBe('0xresolver');
     expect(p.pickConfig?.picks[0]?.predictedOutcome).toBe(0); // NO → 0
+  });
+
+  it('loops over 25-row cursor pages until exhausted, accumulating every prediction', async () => {
+    const mod = await getModule();
+    const slimNode = (predictionId: string) => ({
+      predictionId,
+      chainId: 8453,
+      escrow: '0xescrow',
+      predictor: '0xaaa',
+      counterparty: '0xbbb',
+      predictorCollateral: '1000',
+      counterpartyCollateral: '2000',
+      collateralDepositedAt: 1700000000,
+      createdAt: '2026-06-01T00:00:00.000Z',
+      pickConfig: null,
+    });
+
+    // Page 1: 25 nodes + hasNextPage → hook must request page 2.
+    // Page 2: 5 nodes, hasNextPage false → hook stops.
+    mockGraphqlRequest
+      .mockResolvedValueOnce({
+        predictions: {
+          nodes: Array.from({ length: 25 }, (_, i) => slimNode(`0xp1_${i}`)),
+          pageInfo: { hasNextPage: true, endCursor: 'CURSOR_25' },
+        },
+      })
+      .mockResolvedValueOnce({
+        predictions: {
+          nodes: Array.from({ length: 5 }, (_, i) => slimNode(`0xp2_${i}`)),
+          pageInfo: { hasNextPage: false, endCursor: 'CURSOR_30' },
+        },
+      });
+
+    const { result } = renderHook(
+      () => mod.usePredictionsByConditionId({ conditionId: '0xcond1' }),
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => {
+      expect(result.current.data.length).toBe(30);
+    });
+
+    // Exactly two requests: first with after: null, second with the endCursor.
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(2);
+    expect(mockGraphqlRequest.mock.calls[0][1]).toMatchObject({
+      conditionId: '0xcond1',
+      first: 25,
+      after: null,
+    });
+    expect(mockGraphqlRequest.mock.calls[1][1]).toMatchObject({
+      conditionId: '0xcond1',
+      first: 25,
+      after: 'CURSOR_25',
+    });
+  });
+
+  it('stops after one page when the server reports no more', async () => {
+    const mod = await getModule();
+    mockGraphqlRequest.mockResolvedValue({
+      predictions: {
+        nodes: [],
+        pageInfo: { hasNextPage: false, endCursor: null },
+      },
+    });
+
+    const { result } = renderHook(
+      () => mod.usePredictionsByConditionId({ conditionId: '0xcond1' }),
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
+    expect(result.current.data.length).toBe(0);
   });
 });

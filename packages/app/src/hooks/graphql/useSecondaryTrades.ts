@@ -61,28 +61,39 @@ export const TRADES_BY_PARTICIPANT_QUERY = `
     $participant: Address!
     $chainId: Int
     $first: Int
+    $after: String
   ) {
     trades(
       filter: { participant: $participant, chainId: $chainId }
       first: $first
+      after: $after
       orderBy: { field: EXECUTED_AT, direction: DESC }
     ) {
       nodes {
         ${TRADE_FIELDS}
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
       }
     }
   }
 `;
 
 export const ALL_TRADES_QUERY = `
-  query AllTrades($chainId: Int, $first: Int) {
+  query AllTrades($chainId: Int, $first: Int, $after: String) {
     trades(
       filter: { chainId: $chainId }
       first: $first
+      after: $after
       orderBy: { field: EXECUTED_AT, direction: DESC }
     ) {
       nodes {
         ${TRADE_FIELDS}
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
       }
     }
   }
@@ -117,7 +128,43 @@ function toSecondaryTrade(node: TradeNode): SecondaryTrade {
   };
 }
 
-type TradesResponse = { trades: { nodes: TradeNode[] } | null };
+type TradesResponse = {
+  trades: {
+    nodes: TradeNode[];
+    pageInfo?: { hasNextPage: boolean; endCursor: string | null };
+  } | null;
+};
+
+/** Max page size for the `trades` connection (server caps `first` at 25). */
+const TRADES_PAGE_SIZE = 25;
+
+/**
+ * Walks the keyset-paginated `trades` connection to exhaustion, accumulating
+ * every node. The connection has no load-more UI, so we resolve the COMPLETE
+ * set here rather than rendering a single truncated page.
+ */
+async function fetchAllTrades(
+  query: string,
+  variables: Record<string, unknown>
+): Promise<SecondaryTrade[]> {
+  const nodes: TradeNode[] = [];
+  let after: string | null = null;
+
+  while (true) {
+    const resp: TradesResponse = await graphqlRequest(query, {
+      ...variables,
+      first: TRADES_PAGE_SIZE,
+      after,
+    });
+    nodes.push(...(resp?.trades?.nodes ?? []));
+    const pageInfo = resp?.trades?.pageInfo;
+    if (!pageInfo?.hasNextPage || !pageInfo.endCursor) break;
+    after = pageInfo.endCursor;
+  }
+
+  // Server-side EXECUTED_AT DESC replaces the old client merge + sort.
+  return nodes.map(toSecondaryTrade);
+}
 
 export function useSecondaryTradesByAddress(params: {
   address?: string;
@@ -138,18 +185,11 @@ export function useSecondaryTradesByAddress(params: {
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
-    queryFn: async () => {
-      const resp = await graphqlRequest<TradesResponse>(
-        TRADES_BY_PARTICIPANT_QUERY,
-        {
-          participant: address,
-          chainId: chainId ?? null,
-          first: take,
-        }
-      );
-      // Server-side EXECUTED_AT DESC replaces the old client merge + sort.
-      return (resp?.trades?.nodes ?? []).map(toSecondaryTrade);
-    },
+    queryFn: () =>
+      fetchAllTrades(TRADES_BY_PARTICIPANT_QUERY, {
+        participant: address,
+        chainId: chainId ?? null,
+      }),
   });
 
   return {
@@ -200,13 +240,10 @@ export function useSecondaryTrades(params: {
     staleTime: 30_000,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
-    queryFn: async () => {
-      const resp = await graphqlRequest<TradesResponse>(ALL_TRADES_QUERY, {
+    queryFn: () =>
+      fetchAllTrades(ALL_TRADES_QUERY, {
         chainId: chainId ?? null,
-        first: take,
-      });
-      return (resp?.trades?.nodes ?? []).map(toSecondaryTrade);
-    },
+      }),
   });
 
   return {
