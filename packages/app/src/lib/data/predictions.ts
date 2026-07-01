@@ -57,7 +57,7 @@ export const PREDICTION_BY_ID_QUERY = `
 export const CONDITIONS_BY_IDS_QUERY = `
   query ConditionsByIds($ids: [Bytes!]!) {
     conditions(
-      first: 100
+      first: 25
       orderBy: { field: CREATED_AT, direction: DESC }
       filter: { conditionIds: $ids }
     ) {

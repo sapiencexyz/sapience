@@ -20,7 +20,7 @@ export const PICK_CONFIGS_BY_TOKENS_QUERY = `
   query PickConfigsByTokens($tokens: [Address!]) {
     pickConfigurations(
       filter: { tokens: $tokens }
-      first: 100
+      first: 25
       orderBy: { field: CREATED_AT, direction: DESC }
     ) {
       nodes {

@@ -81,7 +81,7 @@ const SEARCH_QUESTIONS = `
               name
               slug
             }
-            conditions(first: 50) {
+            conditions(first: 25) {
               nodes {
                 conditionId
                 question
@@ -147,7 +147,7 @@ function useCommandMenuSearch(
       }>(SEARCH_QUESTIONS, {
         // Overfetch 3x: groups expand into multiple rows, and we re-sort
         // client-side to prefer future markets over expired ones
-        first: MAX_RESULTS * 3,
+        first: Math.min(MAX_RESULTS * 3, 25),
         chainId,
         search: search?.trim() || null,
       });

@@ -81,7 +81,7 @@ describe('PICK_CONFIGS_BY_TOKENS_QUERY', () => {
     const mod = await getModule();
     const doc = mod.PICK_CONFIGS_BY_TOKENS_QUERY as string;
     expect(doc).toContain('filter: { tokens: $tokens }');
-    expect(doc).toContain('first: 100');
+    expect(doc).toContain('first: 25');
     expect(doc).toContain('orderBy: { field: CREATED_AT, direction: DESC }');
     expect(doc).toContain('nodes');
     expect(doc).toContain('pickConfigId');

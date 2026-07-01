@@ -317,7 +317,7 @@ describe('usePredictionsByConditionId', () => {
     });
 
     const [, variables] = mockGraphqlRequest.mock.calls[0];
-    expect(variables).toMatchObject({ conditionId: '0xcond1', first: 50 });
+    expect(variables).toMatchObject({ conditionId: '0xcond1', first: 25 });
 
     const p = result.current.data[0];
     expect(p.marketAddress).toBe('0xescrow');

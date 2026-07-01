@@ -99,7 +99,7 @@ describe('useSecondaryTradesByAddress', () => {
     expect(variables).toEqual({
       participant: '0xme',
       chainId: 8453,
-      first: 50,
+      first: 25,
     });
   });
 
@@ -118,7 +118,7 @@ describe('useSecondaryTradesByAddress', () => {
     expect(variables).toEqual({
       participant: '0xme',
       chainId: null,
-      first: 50,
+      first: 25,
     });
   });
 
@@ -183,7 +183,7 @@ describe('useSecondaryTrades (all trades)', () => {
     });
 
     const [, variables] = mockGraphqlRequest.mock.calls[0];
-    expect(variables).toEqual({ chainId: 8453, first: 50 });
+    expect(variables).toEqual({ chainId: 8453, first: 25 });
   });
 
   it('normalizes BigInt wire values to strings', async () => {

@@ -63,7 +63,7 @@ const ADMIN_CONDITION_GROUPS_QUERY = `
         groupId
         name
         negRisk
-        conditions(first: 100) {
+        conditions(first: 25) {
           nodes {
             conditionId
             question
@@ -150,7 +150,7 @@ type AdminGroupConditionsResponse = {
 
 // Safety cap on pagination: 20 * 100 = 2000 groups. Well above the real count.
 const MAX_GROUP_PAGES = 20;
-const MAX_CONDITION_PAGE_SIZE = 100;
+const MAX_CONDITION_PAGE_SIZE = 25;
 // 50 * 100 = 5000 public conditions per group — admin safety cap.
 const MAX_CONDITION_PAGES = 50;
 
@@ -244,7 +244,7 @@ async function fetchAllConditionGroups(
       await graphqlPost<AdminConditionGroupsResponse>(
         endpoint,
         ADMIN_CONDITION_GROUPS_QUERY,
-        { first: 100, after }
+        { first: 25, after }
       );
     const connection = json.data?.conditionGroups;
     const nodes: GqlGroupNode[] = connection?.nodes ?? [];

@@ -128,7 +128,7 @@ export function useSecondaryTradesByAddress(params: {
    *  for signature stability. */
   skip?: number;
 }) {
-  const { address, chainId, take = 50, skip = 0 } = params;
+  const { address, chainId, take = 25, skip = 0 } = params;
   const enabled = Boolean(address);
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
@@ -193,7 +193,7 @@ export function useSecondaryTrades(params: {
   /** See useSecondaryTradesByAddress — kept for signature stability. */
   skip?: number;
 }) {
-  const { chainId, take = 50, skip = 0 } = params;
+  const { chainId, take = 25, skip = 0 } = params;
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ['secondaryTradesAll', chainId, take, skip],

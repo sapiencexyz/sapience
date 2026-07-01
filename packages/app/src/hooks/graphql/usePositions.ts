@@ -429,7 +429,7 @@ export function usePredictions(params: {
    *  for signature stability. */
   skip?: number;
 }) {
-  const { address, chainId, take = 50, skip = 0 } = params;
+  const { address, chainId, take = 25, skip = 0 } = params;
   const enabled = Boolean(address);
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
@@ -606,7 +606,7 @@ export function usePredictionsByConditionId(params: {
   /** See `usePredictions` — kept for signature stability. */
   skip?: number;
 }) {
-  const { conditionId, take = 50, skip = 0 } = params;
+  const { conditionId, take = 25, skip = 0 } = params;
   const enabled = Boolean(conditionId);
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
