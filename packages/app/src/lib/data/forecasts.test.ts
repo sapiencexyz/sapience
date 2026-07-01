@@ -74,7 +74,9 @@ describe('fetchAttestationByUid', () => {
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
     const [url, init] = mockFetch.mock.calls[0];
-    expect(url).toBe('https://api.example.com/v2/graphql');
+    // The endpoint follows the app's default network (Robinhood → Meridian),
+    // not NEXT_PUBLIC_FOIL_API_URL (set above but intentionally ignored).
+    expect(url).toBe('https://api.predict.meridian.xyz/graphql');
     expect(init.method).toBe('POST');
     const body = JSON.parse(init.body);
     expect(body.variables).toEqual({ uid: '0xabc123' });

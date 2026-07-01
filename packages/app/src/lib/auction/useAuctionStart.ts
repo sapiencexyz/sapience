@@ -12,6 +12,7 @@ import { canonicalizePicks } from '@sapience/sdk/auction/escrowEncoding';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
+import { getNetworkEndpointDefaults } from '~/lib/config/networkDefaults';
 import { toAuctionWsUrl } from '~/lib/ws/auctionUrl';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 import { logAuction, formatBidForLog } from '~/lib/auction/bidLogger';
@@ -165,22 +166,17 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
 
   const relayerBase = useMemo(() => {
     if (apiBaseUrl && apiBaseUrl.length > 0) return apiBaseUrl;
+    // Before the Settings context mounts, fall back to an explicit relayer env
+    // override, then to the active network default (Robinhood → Meridian relayer).
     const explicitRelayer = process.env.NEXT_PUBLIC_FOIL_RELAYER_URL;
-    const apiRoot = process.env.NEXT_PUBLIC_FOIL_API_URL;
-    // Default network is Robinhood Mainnet (Meridian relayer).
-    if (!explicitRelayer && !apiRoot) {
-      return 'https://relayer.predict.meridian.xyz/auction';
-    }
-    const root = explicitRelayer || (apiRoot as string);
-    try {
-      const u = new URL(root);
-      if (!explicitRelayer && u.hostname === 'api.sapience.xyz') {
-        u.hostname = 'relayer.sapience.xyz';
+    if (explicitRelayer) {
+      try {
+        return `${new URL(explicitRelayer).origin}/auction`;
+      } catch {
+        return `${explicitRelayer}/auction`;
       }
-      return `${u.origin}/auction`;
-    } catch {
-      return `${root}/auction`;
     }
+    return getNetworkEndpointDefaults().relayerBase;
   }, [apiBaseUrl]);
   const wsUrl = useMemo(
     () => toAuctionWsUrl(relayerBase || undefined),

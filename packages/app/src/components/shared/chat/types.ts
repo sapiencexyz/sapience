@@ -1,5 +1,7 @@
 'use client';
 
+import { getNetworkEndpointDefaults } from '~/lib/config/networkDefaults';
+
 type ChatAuthor = 'me' | 'server' | 'system';
 
 export type ChatMessage = {
@@ -24,15 +26,10 @@ const getBase = (): string => {
   } catch {
     /* noop */
   }
-  const env =
-    (process.env.NEXT_PUBLIC_FOIL_API_URL as string) ||
-    'https://api.sapience.xyz';
-  try {
-    const u = new URL(env);
-    return `${u.origin}${WEBSOCKET_PATH}`;
-  } catch {
-    return `https://api.sapience.xyz${WEBSOCKET_PATH}`;
-  }
+  // No Settings override → follow the active network default. Robinhood ships
+  // chat off (blank), so the chat bubble is hidden and this base is never used
+  // to open a socket; only an explicit override (Ethereal presets) enables chat.
+  return getNetworkEndpointDefaults().chatBase;
 };
 
 export const buildWebSocketUrl = () => {

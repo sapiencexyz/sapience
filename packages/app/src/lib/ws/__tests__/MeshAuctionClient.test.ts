@@ -71,16 +71,12 @@ describe('getSignalUrl', () => {
     expect(getSignalUrl()).toBe('wss://staging-relayer.example.com/signal');
   });
 
-  it('falls back to NEXT_PUBLIC_FOIL_API_URL with hostname swap', async () => {
+  it('does NOT derive the signal URL from NEXT_PUBLIC_FOIL_API_URL', async () => {
+    // The mesh must not turn itself on just because an API base is configured;
+    // an incognito session on the Robinhood default network keeps it off.
     process.env.NEXT_PUBLIC_FOIL_API_URL = 'https://api.sapience.xyz';
     const getSignalUrl = await loadGetSignalUrl();
-    expect(getSignalUrl()).toBe('wss://relayer.sapience.xyz/signal');
-  });
-
-  it('does not swap hostname for non-production API URLs', async () => {
-    process.env.NEXT_PUBLIC_FOIL_API_URL = 'https://api.staging.example.com';
-    const getSignalUrl = await loadGetSignalUrl();
-    expect(getSignalUrl()).toBe('wss://api.staging.example.com/signal');
+    expect(getSignalUrl()).toBe('');
   });
 
   it('returns empty (mesh disabled) when nothing is configured', async () => {
@@ -117,10 +113,11 @@ describe('getSignalUrl', () => {
     expect(getSignalUrl()).toBe('');
   });
 
-  it('does not disable when signal key is absent (derives from configured env)', async () => {
-    // An absent key must not trigger the explicit-disable branch: with an API
-    // env configured, it still derives a signal URL rather than returning ''.
-    process.env.NEXT_PUBLIC_FOIL_API_URL = 'https://api.sapience.xyz';
+  it('does not disable when signal key is absent (falls through to the network default)', async () => {
+    // An absent key must not trigger the explicit-disable branch. With a relayer
+    // base configured it derives a signal URL; with nothing configured it falls
+    // through to the network default (Robinhood → mesh off → '').
+    process.env.NEXT_PUBLIC_FOIL_RELAYER_URL = 'https://relayer.sapience.xyz';
     const getSignalUrl = await loadGetSignalUrl();
     expect(getSignalUrl()).toBe('wss://relayer.sapience.xyz/signal');
   });
