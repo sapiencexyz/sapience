@@ -4,10 +4,11 @@ import { Label } from '@sapience/ui/components/ui/label';
 import { Input } from '@sapience/ui/components/ui/input';
 
 import { Card, CardContent } from '@sapience/ui/components/ui/card';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@sapience/ui/components/ui/button';
 import {
   DEFAULT_CHAIN_ID,
+  CHAIN_ID_ETHEREAL,
   CHAIN_ID_ETHEREAL_TESTNET,
   CHAIN_ID_ROBINHOOD_TESTNET,
   CHAIN_ID_ROBINHOOD_MAINNET,
@@ -24,12 +25,14 @@ import {
 } from '~/lib/ws/MeshAuctionClient';
 import Loader from '~/components/shared/Loader';
 
-// Endpoint presets applied via keyboard shortcuts on the Settings page:
-//   r → h → t  applies the Meridian testnet (Robinhood testnet) preset
-//   r → h → m  applies the Meridian production (Robinhood mainnet) preset
-// Both presets leave the signal endpoint blank, which disables the mesh so the
-// app never attempts to connect to a signaling server.
+// Endpoint presets applied via the buttons next to the Settings heading. Each
+// preset switches the chain and populates every endpoint field for a known
+// environment. The Robinhood/Meridian presets leave the signal and chat
+// endpoints blank, which disables the mesh and chat bubble; the Ethereal
+// (Sapience) presets keep them pointed at the matching Sapience backend.
 type EndpointPreset = {
+  // Display label shown on the preset button.
+  label: string;
   // Static chain ID for the preset. Used as the fallback when the RPC can't be
   // reached at apply time, so the preset still switches chains and populates the
   // settings fields instead of erroring out.
@@ -37,21 +40,58 @@ type EndpointPreset = {
   customRpcURL: string;
   graphqlEndpoint: string;
   relayerEndpoint: string;
+  // Blank disables the mesh; blank chat hides the chat bubble.
+  signalEndpoint: string;
+  chatBaseUrl: string;
 };
 
-const MERIDIAN_TESTNET_SETTINGS: EndpointPreset = {
+const ETHEREAL_MAINNET_SETTINGS: EndpointPreset = {
+  label: 'Ethereal Mainnet',
+  chainId: CHAIN_ID_ETHEREAL,
+  customRpcURL: 'https://rpc.ethereal.trade',
+  graphqlEndpoint: 'https://api.sapience.xyz/v2/graphql',
+  relayerEndpoint: 'https://relayer.sapience.xyz/auction',
+  signalEndpoint: 'https://relayer.sapience.xyz/signal',
+  chatBaseUrl: 'https://api.sapience.xyz/chat',
+} as const;
+
+const ROBINHOOD_MAINNET_SETTINGS: EndpointPreset = {
+  label: 'Robinhood Mainnet',
+  chainId: CHAIN_ID_ROBINHOOD_MAINNET,
+  customRpcURL: 'https://rpc.mainnet.chain.robinhood.com',
+  graphqlEndpoint: 'https://api.predict.meridian.xyz/graphql',
+  relayerEndpoint: 'https://relayer.predict.meridian.xyz/auction',
+  signalEndpoint: '',
+  chatBaseUrl: '',
+} as const;
+
+const ETHEREAL_TESTNET_SETTINGS: EndpointPreset = {
+  label: 'Ethereal Testnet',
+  chainId: CHAIN_ID_ETHEREAL_TESTNET,
+  customRpcURL: 'https://rpc.etherealtest.net',
+  graphqlEndpoint: 'https://api.staging.sapience.xyz/v2/graphql',
+  relayerEndpoint: 'https://relayer.staging.sapience.xyz/auction',
+  signalEndpoint: 'https://relayer.staging.sapience.xyz/signal',
+  chatBaseUrl: 'https://api.staging.sapience.xyz/chat',
+} as const;
+
+const ROBINHOOD_TESTNET_SETTINGS: EndpointPreset = {
+  label: 'Robinhood Testnet',
   chainId: CHAIN_ID_ROBINHOOD_TESTNET,
   customRpcURL: 'https://rpc.testnet.chain.robinhood.com',
   graphqlEndpoint: 'https://api.predict.meridiantest.net/graphql',
   relayerEndpoint: 'https://relayer.predict.meridiantest.net/auction',
+  signalEndpoint: '',
+  chatBaseUrl: '',
 } as const;
 
-const MERIDIAN_MAINNET_SETTINGS: EndpointPreset = {
-  chainId: CHAIN_ID_ROBINHOOD_MAINNET,
-  customRpcURL: 'https://rpc.chain.robinhood.com',
-  graphqlEndpoint: 'https://api.predict.meridian.xyz/graphql',
-  relayerEndpoint: 'https://relayer.predict.meridian.xyz/auction',
-} as const;
+// Order shown next to the Settings heading.
+const ENDPOINT_PRESETS: EndpointPreset[] = [
+  ETHEREAL_MAINNET_SETTINGS,
+  ROBINHOOD_MAINNET_SETTINGS,
+  ETHEREAL_TESTNET_SETTINGS,
+  ROBINHOOD_TESTNET_SETTINGS,
+];
 
 type SettingFieldProps = {
   id: string;
@@ -233,7 +273,6 @@ const SettingsPageContent = () => {
 
   // Validation hints handled within SettingField to avoid parent re-renders breaking focus
   const [hydrated, setHydrated] = useState(false);
-  const lastPresetKeyRef = useRef<{ key: string; at: number } | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -330,19 +369,18 @@ const SettingsPageContent = () => {
 
       setGraphqlEndpoint(preset.graphqlEndpoint);
       setApiBaseUrl(preset.relayerEndpoint);
-      // Blank signal endpoint disables the mesh: the app won't connect to a
-      // signaling server for either preset.
-      setSignalEndpoint('');
-      // Blank chat endpoint disables chat and hides the chat bubble for the
-      // Robinhood/Meridian presets.
-      setChatBaseUrl('');
+      // A blank signal endpoint disables the mesh; a blank chat endpoint hides
+      // the chat bubble. The Robinhood/Meridian presets blank both; the Ethereal
+      // presets point them at the matching Sapience backend.
+      setSignalEndpoint(preset.signalEndpoint);
+      setChatBaseUrl(preset.chatBaseUrl);
       setEtherealRpcUrl(preset.customRpcURL);
 
       setEtherealRpcInput(preset.customRpcURL);
       setGqlInput(preset.graphqlEndpoint);
       setApiInput(preset.relayerEndpoint);
-      setSignalInput('');
-      setChatInput('');
+      setSignalInput(preset.signalEndpoint);
+      setChatInput(preset.chatBaseUrl);
 
       if (typeof window !== 'undefined') {
         window.location.reload();
@@ -358,48 +396,53 @@ const SettingsPageContent = () => {
     ]
   );
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.metaKey || event.ctrlKey || event.altKey) return;
-      const target = event.target;
-      if (
-        target instanceof HTMLElement &&
-        (target.isContentEditable ||
-          ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
-      ) {
-        return;
-      }
-
-      const key = event.key.toLowerCase();
-      if (!/^[a-z]$/.test(key)) return;
-      const now = Date.now();
-      const prev = lastPresetKeyRef.current;
-      // Build a rolling buffer of the last few keys typed within the window so
-      // "r h t" and "r h m" can be detected as ordered sequences.
-      const buffer =
-        prev && now - prev.at < 1500 ? `${prev.key}${key}`.slice(-3) : key;
-      lastPresetKeyRef.current = { key: buffer, at: now };
-
-      if (buffer.endsWith('rht')) {
-        lastPresetKeyRef.current = null;
-        void applyEndpointPreset(MERIDIAN_TESTNET_SETTINGS);
-      } else if (buffer.endsWith('rhm')) {
-        lastPresetKeyRef.current = null;
-        void applyEndpointPreset(MERIDIAN_MAINNET_SETTINGS);
-      }
-    };
-
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [applyEndpointPreset]);
+  // Highlight the preset whose endpoints all match the current settings.
+  const activePresetLabel = useMemo(() => {
+    const effectiveChainId = customChainId ?? DEFAULT_CHAIN_ID;
+    const match = ENDPOINT_PRESETS.find(
+      (preset) =>
+        effectiveChainId === preset.chainId &&
+        etherealRpcURL === preset.customRpcURL &&
+        graphqlEndpoint === preset.graphqlEndpoint &&
+        apiBaseUrl === preset.relayerEndpoint &&
+        signalEndpoint === preset.signalEndpoint &&
+        chatBaseUrl === preset.chatBaseUrl
+    );
+    return match?.label ?? null;
+  }, [
+    customChainId,
+    etherealRpcURL,
+    graphqlEndpoint,
+    apiBaseUrl,
+    signalEndpoint,
+    chatBaseUrl,
+  ]);
 
   return (
     <div className="relative min-h-screen">
       {/* Main Content */}
       <div className="container max-w-[750px] mx-auto px-4 pt-10 md:pt-14 lg:pt-16 pb-12 relative z-10">
-        <h1 className="text-3xl md:text-5xl font-sans font-normal mb-6 text-foreground">
-          Settings
-        </h1>
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-3xl md:text-5xl font-sans font-normal text-foreground">
+            Settings
+          </h1>
+          <div className="flex flex-wrap gap-2">
+            {ENDPOINT_PRESETS.map((preset) => {
+              const isActive = preset.label === activePresetLabel;
+              return (
+                <Button
+                  key={preset.label}
+                  variant={isActive ? 'default' : 'outline'}
+                  size="xs"
+                  aria-pressed={isActive}
+                  onClick={() => void applyEndpointPreset(preset)}
+                >
+                  {preset.label}
+                </Button>
+              );
+            })}
+          </div>
+        </div>
 
         {!hydrated ? (
           <div className="h-[720px] flex items-center justify-center">
@@ -556,7 +599,8 @@ const SettingsPageContent = () => {
                   />
                   <p className="text-xs text-muted-foreground">
                     WebRTC signaling server for mesh peer discovery. Leave blank
-                    to disable the mesh and route orders through the relayer.
+                    to disable the mesh and route orders exclusively through the
+                    relayer.
                   </p>
                 </div>
 

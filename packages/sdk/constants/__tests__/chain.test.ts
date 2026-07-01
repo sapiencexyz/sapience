@@ -127,7 +127,7 @@ describe('getChainConfig', () => {
     expect(chain.id).toBe(CHAIN_ID_ROBINHOOD_MAINNET);
     expect(chain.name).toBe('Robinhood');
     expect(chain.rpcUrls.default.http[0]).toBe(
-      'https://rpc.chain.robinhood.com'
+      'https://rpc.mainnet.chain.robinhood.com'
     );
   });
 

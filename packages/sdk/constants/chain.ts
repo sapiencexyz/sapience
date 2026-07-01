@@ -241,12 +241,12 @@ export const robinhoodMainnetChain = {
     symbol: 'ETH',
   },
   rpcUrls: {
-    default: { http: ['https://rpc.chain.robinhood.com'] },
+    default: { http: ['https://rpc.mainnet.chain.robinhood.com'] },
   },
   blockExplorers: {
     default: {
       name: 'Robinhood Chain Explorer',
-      url: 'https://explorer.chain.robinhood.com',
+      url: 'https://explorer.mainnet.chain.robinhood.com',
     },
   },
 } as const satisfies Chain;

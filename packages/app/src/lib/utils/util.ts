@@ -236,6 +236,16 @@ export const shortenAddress = (address: string) => {
  */
 export function getExplorerUrl(chainId?: number): string {
   const id = chainId || DEFAULT_CHAIN_ID;
+  // Prefer the chain's own block explorer from the SDK config (covers the
+  // Robinhood/Meridian chains, e.g. explorer.mainnet.chain.robinhood.com and
+  // explorer.testnet.chain.robinhood.com), falling back to the Ethereal
+  // explorers for chains without one.
+  try {
+    const url = getChainConfig(id).blockExplorers?.default?.url;
+    if (url) return url.replace(/\/$/, '');
+  } catch {
+    /* unsupported chain — fall back below */
+  }
   if (id === CHAIN_ID_ETHEREAL_TESTNET)
     return 'https://explorer.etherealtest.net';
   return 'https://explorer.ethereal.trade';
