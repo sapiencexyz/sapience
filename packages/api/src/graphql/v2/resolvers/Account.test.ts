@@ -199,7 +199,7 @@ describe('accounts (v2)', () => {
     );
   });
 
-  it('caps first at 100 and emits forward cursors', async () => {
+  it('caps first at 25 and emits forward cursors', async () => {
     mockPrisma.user.findMany.mockResolvedValueOnce([
       {
         id: 1,
@@ -213,7 +213,7 @@ describe('accounts (v2)', () => {
       pageInfo: { hasNextPage: boolean };
     }>(accounts)(null, { first: 9999 }, ctx, null);
     expect(mockPrisma.user.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ take: 101 })
+      expect.objectContaining({ take: 26 })
     );
     expect(result.edges[0].cursor).toBeTruthy();
     expect(result.pageInfo.hasNextPage).toBe(false);

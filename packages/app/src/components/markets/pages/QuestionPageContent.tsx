@@ -250,7 +250,7 @@ export default function QuestionPageContent({
   const { data: predictions, isLoading: isLoadingPredictions } =
     usePredictionsByConditionId({
       conditionId,
-      take: 100,
+      take: 25,
     });
 
   // Fetch forecasts for this condition

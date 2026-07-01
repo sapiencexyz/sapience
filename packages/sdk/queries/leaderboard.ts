@@ -1,4 +1,5 @@
 import { graphqlRequest } from './client/graphqlClient';
+import { paginateConnection } from './pagination';
 
 export interface AggregatedLeaderboardEntry {
   address: string;
@@ -36,8 +37,8 @@ export interface UserProfitRankResult {
 }
 
 export const GET_PROFIT_LEADERBOARD = /* GraphQL */ `
-  query ProfitLeaderboard {
-    leaderboard(metric: PNL, first: 100) {
+  query ProfitLeaderboard($after: String) {
+    leaderboard(metric: PNL, first: 25, after: $after) {
       edges {
         node {
           rank
@@ -47,13 +48,17 @@ export const GET_PROFIT_LEADERBOARD = /* GraphQL */ `
           }
         }
       }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
     }
   }
 `;
 
 export const GET_ACCURACY_LEADERBOARD = /* GraphQL */ `
-  query AccuracyLeaderboard($first: Int!) {
-    leaderboard(metric: ACCURACY, first: $first) {
+  query AccuracyLeaderboard($after: String) {
+    leaderboard(metric: ACCURACY, first: 25, after: $after) {
       edges {
         node {
           rank
@@ -62,6 +67,10 @@ export const GET_ACCURACY_LEADERBOARD = /* GraphQL */ `
             address
           }
         }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
       }
     }
   }
@@ -95,7 +104,13 @@ export const GET_USER_PROFIT_RANK = /* GraphQL */ `
   }
 `;
 
-type RankingEdges<TNode> = { edges: Array<{ node: TNode }> } | null;
+type RankingEdges<TNode> = {
+  edges: Array<{ node: TNode }>;
+  pageInfo?: { hasNextPage: boolean; endCursor: string | null };
+} | null;
+
+/** Top-N rows the profit leaderboard renders — bounds the page loop. */
+const PROFIT_LEADERBOARD_DISPLAY_CAP = 100;
 
 type PnlRankingNode = {
   rank: number;
@@ -135,19 +150,35 @@ function toForecasterScores(
 export async function fetchLeaderboard(): Promise<
   AggregatedLeaderboardEntry[]
 > {
-  const data = await graphqlRequest<{
-    leaderboard: RankingEdges<PnlRankingNode>;
-  }>(GET_PROFIT_LEADERBOARD);
-  return toLeaderboardEntries(data?.leaderboard).slice(0, 100);
+  return paginateConnection<AggregatedLeaderboardEntry>({
+    maxNodes: PROFIT_LEADERBOARD_DISPLAY_CAP,
+    fetchPage: async ({ after }) => {
+      const data = await graphqlRequest<{
+        leaderboard: RankingEdges<PnlRankingNode>;
+      }>(GET_PROFIT_LEADERBOARD, { after });
+      return {
+        nodes: toLeaderboardEntries(data?.leaderboard),
+        pageInfo: data?.leaderboard?.pageInfo,
+      };
+    },
+  });
 }
 
 export async function fetchAccuracyLeaderboard(
   limit = 10
 ): Promise<ForecasterScore[]> {
-  const data = await graphqlRequest<{
-    leaderboard: RankingEdges<AccuracyRankingNode>;
-  }>(GET_ACCURACY_LEADERBOARD, { first: limit });
-  return toForecasterScores(data?.leaderboard);
+  return paginateConnection<ForecasterScore>({
+    maxNodes: limit,
+    fetchPage: async ({ after }) => {
+      const data = await graphqlRequest<{
+        leaderboard: RankingEdges<AccuracyRankingNode>;
+      }>(GET_ACCURACY_LEADERBOARD, { after });
+      return {
+        nodes: toForecasterScores(data?.leaderboard),
+        pageInfo: data?.leaderboard?.pageInfo,
+      };
+    },
+  });
 }
 
 export async function fetchForecasterRank(

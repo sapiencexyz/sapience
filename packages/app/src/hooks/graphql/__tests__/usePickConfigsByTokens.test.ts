@@ -81,7 +81,10 @@ describe('PICK_CONFIGS_BY_TOKENS_QUERY', () => {
     const mod = await getModule();
     const doc = mod.PICK_CONFIGS_BY_TOKENS_QUERY as string;
     expect(doc).toContain('filter: { tokens: $tokens }');
-    expect(doc).toContain('first: 100');
+    expect(doc).toContain('first: $first');
+    expect(doc).toContain('after: $after');
+    expect(doc).toContain('hasNextPage');
+    expect(doc).toContain('endCursor');
     expect(doc).toContain('orderBy: { field: CREATED_AT, direction: DESC }');
     expect(doc).toContain('nodes');
     expect(doc).toContain('pickConfigId');
@@ -180,5 +183,53 @@ describe('usePickConfigsByTokens', () => {
     expect(entry?.picks[0].predictedOutcome).toBe(1);
     expect(entry?.picks[0].pickConfigId).toBe('0xpc1');
     expect(entry?.picks[0].condition?.id).toBe('0xcond1'); // CTF hash
+  });
+
+  it('pages through the connection until exhausted, enriching every token match', async () => {
+    const mod = await getModule();
+    mockGraphqlRequest
+      .mockResolvedValueOnce({
+        pickConfigurations: {
+          nodes: Array.from({ length: 25 }, (_, i) =>
+            makeNode({
+              pickConfigId: `0xpc${i}`,
+              predictorToken: `0xtok${i}`,
+              counterpartyToken: `0xother${i}`,
+            })
+          ),
+          pageInfo: { hasNextPage: true, endCursor: 'cursor-25' },
+        },
+      })
+      .mockResolvedValueOnce({
+        pickConfigurations: {
+          nodes: [
+            makeNode({
+              pickConfigId: '0xpc25',
+              predictorToken: '0xtok25',
+              counterpartyToken: '0xother25',
+            }),
+          ],
+          pageInfo: { hasNextPage: false, endCursor: null },
+        },
+      });
+
+    const tokens = Array.from({ length: 26 }, (_, i) => `0xtok${i}`);
+    const { result } = renderHook(() => mod.usePickConfigsByTokens(tokens), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.map.size).toBe(26);
+    });
+
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(2);
+    expect(mockGraphqlRequest.mock.calls[0][1]).toMatchObject({
+      after: null,
+      first: 25,
+    });
+    expect(mockGraphqlRequest.mock.calls[1][1]).toMatchObject({
+      after: 'cursor-25',
+      first: 25,
+    });
   });
 });

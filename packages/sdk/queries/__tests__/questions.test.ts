@@ -116,7 +116,7 @@ describe('GET_QUESTIONS document', () => {
     expect(GET_QUESTIONS).toContain('edges');
     expect(GET_QUESTIONS).toContain('hasNextPage');
     expect(GET_QUESTIONS).toContain('endCursor');
-    expect(GET_QUESTIONS).toContain('conditions(first: 50)');
+    expect(GET_QUESTIONS).toContain('conditions(first: 25)');
     expect(GET_QUESTIONS).toContain('pageInfo');
     expect(GET_QUESTIONS).not.toContain('totalCount');
   });
@@ -377,26 +377,26 @@ describe('fetchQuestionsSorted', () => {
     expect(result.map((q) => q.condition!.id)).toEqual(['0xb', '0xc']);
   });
 
-  test('caps first at the max page size of 100', async () => {
+  test('caps first at the max page size of 25', async () => {
     await fetchQuestionsSorted({ ...baseParams, take: 80, skip: 40 });
     const [, vars] = mockGraphqlRequest.mock.calls[0];
-    expect(vars.first).toBe(100);
+    expect(vars.first).toBe(25);
   });
 
   test('uses cursors when take + skip exceeds the page cap', async () => {
-    const firstPage = Array.from({ length: 100 }, (_, i) => ({
+    const firstPage = Array.from({ length: 25 }, (_, i) => ({
       cursor: `cur-${i}`,
       node: makeConditionNode({ conditionId: `0x${i}` }),
     }));
-    const secondPage = Array.from({ length: 50 }, (_, i) => ({
-      cursor: `cur-${i + 100}`,
-      node: makeConditionNode({ conditionId: `0x${i + 100}` }),
+    const secondPage = Array.from({ length: 15 }, (_, i) => ({
+      cursor: `cur-${i + 25}`,
+      node: makeConditionNode({ conditionId: `0x${i + 25}` }),
     }));
     mockGraphqlRequest
       .mockResolvedValueOnce({
         questions: {
           edges: firstPage,
-          pageInfo: { hasNextPage: true, endCursor: 'cur-99' },
+          pageInfo: { hasNextPage: true, endCursor: 'cur-24' },
         },
       })
       .mockResolvedValueOnce({
@@ -408,23 +408,23 @@ describe('fetchQuestionsSorted', () => {
 
     const result = await fetchQuestionsSorted({
       ...baseParams,
-      take: 100,
-      skip: 50,
+      take: 30,
+      skip: 10,
     });
 
     expect(mockGraphqlRequest).toHaveBeenNthCalledWith(
       1,
       GET_QUESTIONS,
-      expect.objectContaining({ first: 100, after: null })
+      expect.objectContaining({ first: 25, after: null })
     );
     expect(mockGraphqlRequest).toHaveBeenNthCalledWith(
       2,
       GET_QUESTIONS,
-      expect.objectContaining({ first: 50, after: 'cur-99' })
+      expect.objectContaining({ first: 15, after: 'cur-24' })
     );
-    expect(result).toHaveLength(100);
-    expect(result[0].condition!.id).toBe('0x50');
-    expect(result[99].condition!.id).toBe('0x149');
+    expect(result).toHaveLength(30);
+    expect(result[0].condition!.id).toBe('0x10');
+    expect(result[29].condition!.id).toBe('0x39');
   });
 
   test('passes filters through buildQuestionsVariables', async () => {

@@ -42,7 +42,7 @@ export const leaderboard: NonNullable<QueryResolvers['leaderboard']> = async (
 ) => {
   const first = clampTake(args.first ?? 25, {
     defaultTake: 25,
-    maxTake: 100,
+    maxTake: 25,
   });
   const offsetPayload = args.after ? decodeCursor(args.after) : null;
   const start =

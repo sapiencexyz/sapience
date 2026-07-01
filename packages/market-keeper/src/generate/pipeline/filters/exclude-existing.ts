@@ -110,7 +110,7 @@ export async function checkExistingConditions(
   }
 
   const url = graphqlUrl(apiUrl);
-  const PAGE_SIZE = 100;
+  const PAGE_SIZE = 25;
   const chunks: string[][] = [];
   for (let i = 0; i < valid.length; i += PAGE_SIZE) {
     chunks.push(valid.slice(i, i + PAGE_SIZE));

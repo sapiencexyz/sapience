@@ -80,7 +80,7 @@ const RESOLUTION_STATUS_TO_API: Record<ResolutionStatusValue, string> = {
 };
 
 /** The questions connection's max page size. */
-const MAX_PAGE_SIZE = 100;
+const MAX_PAGE_SIZE = 25;
 
 /**
  * Shared Condition selection for both union members. The feed reads the
@@ -158,7 +158,7 @@ export const GET_QUESTIONS = `
               name
               slug
             }
-            conditions(first: 50) {
+            conditions(first: 25) {
               nodes {
                 ${QUESTION_CONDITION_FIELDS}
                 displayOrder

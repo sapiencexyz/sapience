@@ -78,7 +78,7 @@ describe('GET_CONDITION_GROUPS document', () => {
   });
 
   test('pages the nested conditions connection explicitly', () => {
-    expect(GET_CONDITION_GROUPS).toContain('conditions(first: 100)');
+    expect(GET_CONDITION_GROUPS).toContain('conditions(first: 25)');
     expect(GET_CONDITION_GROUPS).toContain('nodes');
   });
 
@@ -99,10 +99,10 @@ describe('GET_CONDITION_GROUPS document', () => {
 // ============================================================================
 
 describe('fetchConditionGroups', () => {
-  test('requests first=take (default 100) with no filter by default', async () => {
+  test('requests first=page cap (25) with no filter by default', async () => {
     await fetchConditionGroups();
     expect(mockGraphqlRequest).toHaveBeenCalledWith(GET_CONDITION_GROUPS, {
-      first: 100,
+      first: 25,
       after: null,
       filter: undefined,
     });
@@ -175,17 +175,17 @@ describe('fetchConditionGroups', () => {
   });
 
   test('uses cursors when take + skip exceeds the page cap', async () => {
-    const firstPage = Array.from({ length: 100 }, (_, i) =>
+    const firstPage = Array.from({ length: 25 }, (_, i) =>
       makeGroup({ id: `g${i}` })
     );
-    const secondPage = Array.from({ length: 50 }, (_, i) =>
-      makeGroup({ id: `g${i + 100}` })
+    const secondPage = Array.from({ length: 15 }, (_, i) =>
+      makeGroup({ id: `g${i + 25}` })
     );
     mockGraphqlRequest
       .mockResolvedValueOnce({
         conditionGroups: {
           nodes: firstPage,
-          pageInfo: { hasNextPage: true, endCursor: 'cursor-100' },
+          pageInfo: { hasNextPage: true, endCursor: 'cursor-25' },
         },
       })
       .mockResolvedValueOnce({
@@ -195,21 +195,21 @@ describe('fetchConditionGroups', () => {
         },
       });
 
-    const result = await fetchConditionGroups({ take: 100, skip: 50 });
+    const result = await fetchConditionGroups({ take: 30, skip: 10 });
 
     expect(mockGraphqlRequest).toHaveBeenNthCalledWith(
       1,
       GET_CONDITION_GROUPS,
-      expect.objectContaining({ first: 100, after: null })
+      expect.objectContaining({ first: 25, after: null })
     );
     expect(mockGraphqlRequest).toHaveBeenNthCalledWith(
       2,
       GET_CONDITION_GROUPS,
-      expect.objectContaining({ first: 50, after: 'cursor-100' })
+      expect.objectContaining({ first: 15, after: 'cursor-25' })
     );
-    expect(result).toHaveLength(100);
-    expect(result[0].id).toBe('g50');
-    expect(result[99].id).toBe('g149');
+    expect(result).toHaveLength(30);
+    expect(result[0].id).toBe('g10');
+    expect(result[29].id).toBe('g39');
   });
 
   test('fetches additional nested condition pages for large groups', async () => {

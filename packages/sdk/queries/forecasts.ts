@@ -1,6 +1,7 @@
 import { getAddress } from 'viem';
 import { FORECAST_SCHEMA_UID } from '../constants/resolver';
 import { graphqlRequest } from './client/graphqlClient';
+import { paginateConnection } from './pagination';
 
 const DEFAULT_SCHEMA_UID = FORECAST_SCHEMA_UID;
 
@@ -50,9 +51,10 @@ type ForecastsConnectionResponse = {
 };
 
 export const GET_FORECASTS_QUERY = `
-  query ForecastsList($filter: ForecastFilter, $first: Int!) {
+  query ForecastsList($filter: ForecastFilter, $first: Int!, $after: String) {
     forecasts(
       first: $first
+      after: $after
       filter: $filter
       orderBy: { field: ATTESTED_AT, direction: DESC }
     ) {
@@ -63,6 +65,10 @@ export const GET_FORECASTS_QUERY = `
         value
         comment
         conditionId
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
       }
     }
   }
@@ -151,14 +157,20 @@ function buildForecastFilter(
   return filter;
 }
 
-function toFormattedAttestations(
+function extractForecastNodes(
   data: ForecastsConnectionResponse | null
-): FormattedAttestation[] {
+): ForecastNode[] {
   const nodes = data?.forecasts?.nodes;
   if (!Array.isArray(nodes)) {
     throw new Error('Failed to fetch forecasts: Invalid response structure');
   }
-  return nodes.map(formatAttestationData);
+  return nodes;
+}
+
+function toFormattedAttestations(
+  data: ForecastsConnectionResponse | null
+): FormattedAttestation[] {
+  return extractForecastNodes(data).map(formatAttestationData);
 }
 
 function toForecastPage(
@@ -178,11 +190,29 @@ function toForecastPage(
 export async function fetchForecasts(
   params: FetchForecastsParams
 ): Promise<FormattedAttestation[]> {
-  const data = await graphqlRequest<ForecastsConnectionResponse>(
-    GET_FORECASTS_QUERY,
-    { filter: buildForecastFilter(params), first: 100 }
-  );
-  return toFormattedAttestations(data);
+  const filter = buildForecastFilter(params);
+  const nodes = await paginateConnection<ForecastNode>({
+    fetchPage: async ({ first, after }) => {
+      const data: ForecastsConnectionResponse =
+        await graphqlRequest<ForecastsConnectionResponse>(GET_FORECASTS_QUERY, {
+          filter,
+          first,
+          after,
+        });
+      const pageInfo = data?.forecasts?.pageInfo;
+      return {
+        nodes: extractForecastNodes(data),
+        pageInfo: pageInfo
+          ? {
+              hasNextPage: Boolean(pageInfo.hasNextPage),
+              endCursor: pageInfo.endCursor ?? null,
+            }
+          : undefined,
+      };
+    },
+  });
+
+  return nodes.map(formatAttestationData);
 }
 
 export interface ForecastPageArgs {

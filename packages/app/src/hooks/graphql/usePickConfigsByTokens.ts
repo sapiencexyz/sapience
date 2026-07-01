@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { paginateConnection } from '@sapience/sdk/queries';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import {
   PICK_CONFIGURATION_FIELDS,
@@ -17,14 +18,19 @@ import {
 // from the previous query's). Node mapping (escrow → marketAddress, resolver →
 // conditionResolver, YES/NO → 1/0, …) lives in the shared adapter.
 export const PICK_CONFIGS_BY_TOKENS_QUERY = `
-  query PickConfigsByTokens($tokens: [Address!]) {
+  query PickConfigsByTokens($tokens: [Address!], $first: Int, $after: String) {
     pickConfigurations(
       filter: { tokens: $tokens }
-      first: 100
+      first: $first
+      after: $after
       orderBy: { field: CREATED_AT, direction: DESC }
     ) {
       nodes {
         ${PICK_CONFIGURATION_FIELDS}
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
       }
     }
   }
@@ -50,10 +56,25 @@ export function usePickConfigsByTokens(tokens: string[]) {
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     queryFn: async () => {
-      const resp = await graphqlRequest<{
-        pickConfigurations: { nodes: PickConfigurationNode[] } | null;
-      }>(PICK_CONFIGS_BY_TOKENS_QUERY, { tokens: sorted });
-      return (resp?.pickConfigurations?.nodes ?? []).map(toPickConfigData);
+      const nodes = await paginateConnection<PickConfigurationNode>({
+        fetchPage: async ({ first, after }) => {
+          const resp = await graphqlRequest<{
+            pickConfigurations: {
+              nodes?: PickConfigurationNode[];
+              pageInfo?: { hasNextPage: boolean; endCursor: string | null };
+            } | null;
+          }>(PICK_CONFIGS_BY_TOKENS_QUERY, {
+            tokens: sorted,
+            first,
+            after,
+          });
+          return {
+            nodes: resp?.pickConfigurations?.nodes ?? [],
+            pageInfo: resp?.pickConfigurations?.pageInfo,
+          };
+        },
+      });
+      return nodes.map(toPickConfigData);
     },
   });
 

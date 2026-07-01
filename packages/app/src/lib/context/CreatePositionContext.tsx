@@ -174,7 +174,7 @@ export const CreatePositionProvider = ({
     const QUERY = `
       query ConditionsByIds($ids: [Bytes!]!) {
         conditions(
-          first: 100
+          first: 25
           orderBy: { field: CREATED_AT, direction: DESC }
           filter: { conditionIds: $ids }
         ) {

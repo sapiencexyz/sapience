@@ -52,12 +52,15 @@ export const PREDICTION_BY_ID_QUERY = `
   }
 `;
 
+// Max page size for the conditions connection — ids are chunked to fit one page.
+const CONDITIONS_PAGE_SIZE = 25;
+
 // GraphQL document — runs against the /v2/graphql endpoint. Variables: { ids }.
 // `id: conditionId` keeps the CTF hash under the stable `id` name.
 export const CONDITIONS_BY_IDS_QUERY = `
   query ConditionsByIds($ids: [Bytes!]!) {
     conditions(
-      first: 100
+      first: 25
       orderBy: { field: CREATED_AT, direction: DESC }
       filter: { conditionIds: $ids }
     ) {
@@ -199,20 +202,33 @@ export async function fetchPredictionWithConditions(
     prediction.pickConfig?.picks.map((p) => p.conditionId) ?? [];
   if (conditionIds.length === 0) return { prediction, conditions: [] };
 
+  // The conditions connection caps each page at 25, so split the ids into
+  // <=25-id chunks and merge — otherwise ids past the 25th would be dropped.
+  const idChunks: string[][] = [];
+  for (let i = 0; i < conditionIds.length; i += CONDITIONS_PAGE_SIZE) {
+    idChunks.push(conditionIds.slice(i, i + CONDITIONS_PAGE_SIZE));
+  }
+
   let conditions: (ConditionData & { id: string })[] = [];
   try {
-    const condResp = await fetch(getGraphQLEndpoint(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query: CONDITIONS_BY_IDS_QUERY,
-        variables: { ids: conditionIds },
-      }),
-    });
-    if (condResp.ok) {
-      const condJson = await condResp.json();
-      conditions = condJson?.data?.conditions?.nodes ?? [];
-    }
+    const chunkResults = await Promise.all(
+      idChunks.map(async (ids) => {
+        const condResp = await fetch(getGraphQLEndpoint(), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: CONDITIONS_BY_IDS_QUERY,
+            variables: { ids },
+          }),
+        });
+        if (!condResp.ok) return [];
+        const condJson = await condResp.json();
+        return (condJson?.data?.conditions?.nodes ?? []) as (ConditionData & {
+          id: string;
+        })[];
+      })
+    );
+    conditions = chunkResults.flat();
   } catch {
     // Condition fetch is non-critical
   }

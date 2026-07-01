@@ -80,7 +80,7 @@ export interface PickConfigurationResult {
 }
 
 /** The pickConfigurations connection's max page size. */
-const MAX_PAGE_SIZE = 100;
+const MAX_PAGE_SIZE = 25;
 
 type PickNode = {
   conditionId: string;

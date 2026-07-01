@@ -50,9 +50,9 @@ const FIELD_TO_PRISMA: Record<string, 'blockNumber' | 'timestamp'> = {
 export const collateralTransfers: NonNullable<
   QueryResolvers['collateralTransfers']
 > = async (_parent, args) => {
-  const first = clampTake(args.first ?? 100, {
-    defaultTake: 100,
-    maxTake: 100,
+  const first = clampTake(args.first ?? 25, {
+    defaultTake: 25,
+    maxTake: 25,
   });
   const field = FIELD_TO_PRISMA[args.orderBy?.field ?? 'TIMESTAMP'];
   const direction = normalizeDirection(args.orderBy?.direction, 'desc');

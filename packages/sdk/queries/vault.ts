@@ -32,8 +32,8 @@ export interface VaultStat {
 // single request. The query still selects `pageInfo` and threads `after` so
 // fetchVaultStats can page forward if a vault ever exceeds that cap — the
 // series stays complete without re-introducing a fixed chain of round-trips.
-// A literal `first` above GRAPHQL_MAX_LIST_SIZE (100) is rejected
-// pre-execution, so an explicit `pageSize` must stay <= 100.
+// A literal `first` above GRAPHQL_MAX_LIST_SIZE (25) is rejected
+// pre-execution, so an explicit `pageSize` must stay <= 25.
 export const GET_VAULT_STATS = /* GraphQL */ `
   query VaultStats(
     $address: Address!
@@ -103,7 +103,7 @@ function toVaultStat(node: WireVaultStat): VaultStat {
  * configured vault (the `vault` field resolves null).
  *
  * `pageSize` (optional) forces an explicit per-page `first` — it must stay
- * <= the API's GRAPHQL_MAX_LIST_SIZE (100), since a larger literal is rejected
+ * <= the API's GRAPHQL_MAX_LIST_SIZE (25), since a larger literal is rejected
  * pre-execution. Omit it to use the resolver's single-page cap.
  */
 export async function fetchVaultStats(

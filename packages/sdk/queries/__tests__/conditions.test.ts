@@ -224,7 +224,7 @@ describe('fetchConditions', () => {
     mockGraphqlRequest.mockResolvedValue({ conditions: { nodes: [] } });
     await fetchConditions();
     expect(mockGraphqlRequest).toHaveBeenCalledWith(GET_CONDITIONS, {
-      first: 50,
+      first: 25,
       after: null,
       filter: { public: true },
     });
@@ -234,7 +234,7 @@ describe('fetchConditions', () => {
     mockGraphqlRequest.mockResolvedValue({ conditions: { nodes: [] } });
     await fetchConditions({ chainId: 5064014 });
     expect(mockGraphqlRequest).toHaveBeenCalledWith(GET_CONDITIONS, {
-      first: 50,
+      first: 25,
       after: null,
       filter: { chainId: 5064014, public: true },
     });
@@ -322,29 +322,29 @@ describe('fetchConditions', () => {
     ]);
   });
 
-  test('clamps first to the max page size of 100', async () => {
+  test('clamps first to the max page size of 25', async () => {
     mockGraphqlRequest.mockResolvedValue({ conditions: { nodes: [] } });
     await fetchConditions({ take: 100, skip: 50 });
     expect(mockGraphqlRequest).toHaveBeenCalledWith(
       GET_CONDITIONS,
-      expect.objectContaining({ first: 100 })
+      expect.objectContaining({ first: 25 })
     );
   });
 
   test('uses cursors when take + skip exceeds the page cap', async () => {
-    const firstPage = Array.from({ length: 100 }, (_, i) => ({
+    const firstPage = Array.from({ length: 25 }, (_, i) => ({
       ...baseNode,
       conditionId: `0x${i}`,
     }));
-    const secondPage = Array.from({ length: 50 }, (_, i) => ({
+    const secondPage = Array.from({ length: 15 }, (_, i) => ({
       ...baseNode,
-      conditionId: `0x${i + 100}`,
+      conditionId: `0x${i + 25}`,
     }));
     mockGraphqlRequest
       .mockResolvedValueOnce({
         conditions: {
           nodes: firstPage,
-          pageInfo: { hasNextPage: true, endCursor: 'cursor-100' },
+          pageInfo: { hasNextPage: true, endCursor: 'cursor-25' },
         },
       })
       .mockResolvedValueOnce({
@@ -354,21 +354,21 @@ describe('fetchConditions', () => {
         },
       });
 
-    const result = await fetchConditions({ take: 100, skip: 50 });
+    const result = await fetchConditions({ take: 30, skip: 10 });
 
     expect(mockGraphqlRequest).toHaveBeenNthCalledWith(
       1,
       GET_CONDITIONS,
-      expect.objectContaining({ first: 100, after: null })
+      expect.objectContaining({ first: 25, after: null })
     );
     expect(mockGraphqlRequest).toHaveBeenNthCalledWith(
       2,
       GET_CONDITIONS,
-      expect.objectContaining({ first: 50, after: 'cursor-100' })
+      expect.objectContaining({ first: 15, after: 'cursor-25' })
     );
-    expect(result).toHaveLength(100);
-    expect(result[0].id).toBe('0x50');
-    expect(result[99].id).toBe('0x149');
+    expect(result).toHaveLength(30);
+    expect(result[0].id).toBe('0x10');
+    expect(result[29].id).toBe('0x39');
   });
 
   test('throws on invalid response structure', async () => {
@@ -407,15 +407,15 @@ describe('fetchConditionsByIds', () => {
     expect(result).toEqual([{ id: '0xa' }, { id: '0xb' }]);
   });
 
-  test('exactly 100 ids uses a single request', async () => {
-    const ids = Array.from({ length: 100 }, (_, i) => `id-${i}`);
+  test('exactly 25 ids uses a single request', async () => {
+    const ids = Array.from({ length: 25 }, (_, i) => `id-${i}`);
     mockGraphqlRequest.mockResolvedValue({ conditions: { nodes: [] } });
     await fetchConditionsByIds(query, ids);
     expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
   });
 
-  test('chunks ids exceeding 100 into batched requests', async () => {
-    const ids = Array.from({ length: 250 }, (_, i) => `id-${i}`);
+  test('chunks ids exceeding 25 into batched requests', async () => {
+    const ids = Array.from({ length: 60 }, (_, i) => `id-${i}`);
     mockGraphqlRequest.mockResolvedValue({
       conditions: { nodes: [{ id: 'result' }] },
     });
@@ -423,12 +423,12 @@ describe('fetchConditionsByIds', () => {
     expect(mockGraphqlRequest).toHaveBeenCalledTimes(3);
     expect(result).toHaveLength(3);
     // each chunk rides the same $ids contract
-    expect(mockGraphqlRequest.mock.calls[0][1].ids).toHaveLength(100);
-    expect(mockGraphqlRequest.mock.calls[2][1].ids).toHaveLength(50);
+    expect(mockGraphqlRequest.mock.calls[0][1].ids).toHaveLength(25);
+    expect(mockGraphqlRequest.mock.calls[2][1].ids).toHaveLength(10);
   });
 
   test('flattens results from multiple chunks', async () => {
-    const ids = Array.from({ length: 200 }, (_, i) => `id-${i}`);
+    const ids = Array.from({ length: 40 }, (_, i) => `id-${i}`);
     mockGraphqlRequest
       .mockResolvedValueOnce({
         conditions: { nodes: [{ id: 'a' }, { id: 'b' }] },

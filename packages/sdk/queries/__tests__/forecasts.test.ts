@@ -44,7 +44,10 @@ describe('forecast documents', () => {
       'orderBy: { field: ATTESTED_AT, direction: DESC }'
     );
     expect(GET_FORECASTS_QUERY).toContain('first: $first');
+    expect(GET_FORECASTS_QUERY).toContain('after: $after');
     expect(GET_FORECASTS_QUERY).toContain('filter: $filter');
+    expect(GET_FORECASTS_QUERY).toContain('hasNextPage');
+    expect(GET_FORECASTS_QUERY).toContain('endCursor');
     expect(GET_FORECASTS_QUERY).toContain('nodes');
     // current field names — not the legacy attestation row shape
     expect(GET_FORECASTS_QUERY).toContain('attestedAt');
@@ -177,10 +180,46 @@ describe('fetchForecasts', () => {
     expect(vars.filter.schemaId).toBe(DEFAULT_SCHEMA_UID);
   });
 
-  test('requests max 100 forecasts (connection max page size)', async () => {
+  test('requests 25 rows per page (connection max page size) starting at cursor null', async () => {
     mockGraphqlRequest.mockResolvedValue({ forecasts: { nodes: [] } });
     await fetchForecasts({});
-    expect(mockGraphqlRequest.mock.calls[0][1].first).toBe(100);
+    expect(mockGraphqlRequest.mock.calls[0][1].first).toBe(25);
+    expect(mockGraphqlRequest.mock.calls[0][1].after).toBeNull();
+  });
+
+  test('loops over cursor pages until hasNextPage is false, concatenating nodes', async () => {
+    mockGraphqlRequest
+      .mockResolvedValueOnce({
+        forecasts: {
+          nodes: [makeNode({ uid: '0xpage1' })],
+          pageInfo: { hasNextPage: true, endCursor: 'cursor-1' },
+        },
+      })
+      .mockResolvedValueOnce({
+        forecasts: {
+          nodes: [makeNode({ uid: '0xpage2' })],
+          pageInfo: { hasNextPage: false, endCursor: null },
+        },
+      });
+
+    const result = await fetchForecasts({});
+
+    expect(result.map((r) => r.uid)).toEqual(['0xpage1', '0xpage2']);
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(2);
+    expect(mockGraphqlRequest.mock.calls[0][1].after).toBeNull();
+    expect(mockGraphqlRequest.mock.calls[1][1].after).toBe('cursor-1');
+  });
+
+  test('stops after one page when hasNextPage is false even with an endCursor', async () => {
+    mockGraphqlRequest.mockResolvedValue({
+      forecasts: {
+        nodes: [makeNode()],
+        pageInfo: { hasNextPage: false, endCursor: 'cursor-1' },
+      },
+    });
+    const result = await fetchForecasts({});
+    expect(result).toHaveLength(1);
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
   });
 
   test('normalizes attester address with EIP-55 checksum', async () => {
