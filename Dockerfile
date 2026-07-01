@@ -26,7 +26,6 @@ COPY packages/relayer/package.json packages/relayer/
 COPY packages/ui/package.json packages/ui/
 COPY packages/protocol/package.json packages/protocol/
 COPY packages/docs/package.json packages/docs/
-COPY packages/edge-cache/package.json packages/edge-cache/
 COPY packages/market-keeper/package.json packages/market-keeper/
 
 RUN pnpm install --frozen-lockfile --ignore-scripts
