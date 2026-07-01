@@ -108,7 +108,13 @@ describe('usePickConfigsByTokens', () => {
     });
 
     const [, variables] = mockGraphqlRequest.mock.calls[0];
-    expect(variables).toEqual({ tokens: ['0xaaa', '0xbbb'] });
+    // First page of the cursor walk: deduped/sorted tokens plus the pagination
+    // vars (page size capped at the API's 25, no cursor yet).
+    expect(variables).toEqual({
+      tokens: ['0xaaa', '0xbbb'],
+      first: 25,
+      after: null,
+    });
   });
 
   it('does not fetch with an empty token list', async () => {

@@ -225,7 +225,15 @@ vi.mock('@sapience/sdk/constants', () => ({
   CHAIN_ID_ETHEREAL: 5064014,
   CHAIN_ID_ETHEREAL_TESTNET: 13374202,
   CHAIN_ID_ARBITRUM: 42161,
+  CHAIN_ID_ROBINHOOD_TESTNET: 46630,
+  CHAIN_ID_ROBINHOOD_MAINNET: 4663,
   DEFAULT_CHAIN_ID: 5064014,
+  getChainConfig: (chainId: number) => ({
+    id: chainId,
+    name: 'Robinhood',
+    nativeCurrency: { decimals: 18, name: 'USDe', symbol: 'USDe' },
+    rpcUrls: { default: { http: ['https://rpc.robinhood.test'] } },
+  }),
   etherealChain: {
     id: 5064014,
     name: 'Ethereal',

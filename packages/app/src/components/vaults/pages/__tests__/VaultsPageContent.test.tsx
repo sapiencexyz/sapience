@@ -77,6 +77,8 @@ vi.mock('@sapience/sdk/contracts', () => ({
 vi.mock('@sapience/sdk/constants', () => ({
   DEFAULT_CHAIN_ID: 42161,
   COLLATERAL_SYMBOLS: { 42161: 'USDe' },
+  isRobinhoodChain: (chainId: number | string) =>
+    Number(chainId) === 46630 || Number(chainId) === 4663,
 }));
 
 // UI component mocks

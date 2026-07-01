@@ -180,10 +180,11 @@ describe('fetchConditionsWithEngagement', () => {
     ]);
   });
 
-  it('chunks id lists of more than 50', async () => {
+  it('chunks id lists larger than the GraphQL page size', async () => {
     const ids = Array.from({ length: 60 }, (_, i) => `0x${i + 1}`);
-    // Chunk 1 (50 ids): conditions + forecasts. Chunk 2 (10): same.
-    for (let i = 0; i < 4; i++) {
+    // Page size is capped at 25 (GRAPHQL_PAGE_SIZE), so 60 ids split into
+    // chunks of 25, 25, 10 — each chunk issues a conditions + a forecasts call.
+    for (let i = 0; i < 6; i++) {
       fetchQueue.push((): Response => {
         return jsonResponse({
           data: {
@@ -196,10 +197,10 @@ describe('fetchConditionsWithEngagement', () => {
 
     await fetchConditionsWithEngagement('https://api.example.com', ids);
 
-    expect(fetchCalls).toHaveLength(4);
+    expect(fetchCalls).toHaveLength(6);
     const sizes = fetchCalls.map(
       (c) => requestBody(c).variables.filter.conditionIds.length
     );
-    expect(sizes).toEqual([50, 50, 10, 10]);
+    expect(sizes).toEqual([25, 25, 25, 25, 10, 10]);
   });
 });
