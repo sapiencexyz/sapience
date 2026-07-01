@@ -9,6 +9,7 @@ import type {
 
 const toastSpy = vi.fn();
 const reorderMutate = vi.fn();
+let lastGroupsSearch: string | undefined;
 let groupsData: AdminConditionGroup[] = [];
 let hydratedByGlobalId = new Map<string, AdminConditionGroupCondition[]>();
 let conditionsLoading = false;
@@ -108,14 +109,17 @@ vi.mock('~/hooks/admin/useAdminConditionGroups', async () => {
   >('~/hooks/admin/useAdminConditionGroups');
   return {
     ...actual,
-    useAdminConditionGroups: () => ({
-      data: groupsData,
-      isLoading: false,
-      isError: false,
-      error: null,
-      isFetching: false,
-      refetch: vi.fn(),
-    }),
+    useAdminConditionGroups: (_enabled: boolean, searchTerm?: string) => {
+      lastGroupsSearch = searchTerm;
+      return {
+        data: groupsData,
+        isLoading: false,
+        isError: false,
+        error: null,
+        isFetching: false,
+        refetch: vi.fn(),
+      };
+    },
     useAdminGroupConditions: (
       globalId: string | null | undefined,
       enabled: boolean
@@ -181,8 +185,21 @@ describe('QuestionOrdering', () => {
     groupsData = [makeGroup()];
     hydratedByGlobalId = new Map();
     conditionsLoading = false;
+    lastGroupsSearch = undefined;
     reorderMutate.mockReset();
     toastSpy.mockReset();
+  });
+
+  it('forwards the (debounced) search term to the groups query', async () => {
+    render(<QuestionOrdering />);
+
+    fireEvent.change(screen.getByPlaceholderText(/Search by name or id/), {
+      target: { value: 'bosnia' },
+    });
+
+    await waitFor(() => {
+      expect(lastGroupsSearch).toBe('bosnia');
+    });
   });
 
   it('preserves a dirty draft when the selected group refetches', async () => {

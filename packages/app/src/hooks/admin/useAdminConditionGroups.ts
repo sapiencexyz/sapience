@@ -52,10 +52,15 @@ function adminBaseFromGraphqlEndpoint(graphqlEndpoint: string): string {
 }
 
 const ADMIN_CONDITION_GROUPS_QUERY = `
-  query AdminConditionGroups($first: Int!, $after: String) {
+  query AdminConditionGroups(
+    $first: Int!
+    $after: String
+    $filter: ConditionGroupFilter
+  ) {
     conditionGroups(
       first: $first
       after: $after
+      filter: $filter
       orderBy: { field: NAME, direction: ASC }
     ) {
       nodes {
@@ -233,9 +238,31 @@ export async function fetchAllGroupConditions(
   return conditions;
 }
 
-async function fetchAllConditionGroups(
-  endpoint: string
+type ConditionGroupFilterInput = { search?: string; groupIds?: number[] };
+
+// Mirrors the "Filter by name or id" input: a purely numeric query is an exact
+// groupId lookup (the server's `groupIds` set); anything else is a
+// case-insensitive substring search against the group name. Returns undefined
+// for an empty query so browse mode fetches the unfiltered list.
+export function buildGroupFilter(
+  searchTerm?: string
+): ConditionGroupFilterInput | undefined {
+  const query = searchTerm?.trim();
+  if (!query) return undefined;
+  if (/^\d+$/.test(query)) return { groupIds: [Number(query)] };
+  return { search: query };
+}
+
+// Server-side search is essential here, not a nicety: there are thousands of
+// condition groups (far more than the old fetch-all cap), so name matches like
+// "United States vs. Bosnia…" sort well past any client-side page limit. The
+// GraphQL `filter` argument pushes the search to the DB so a query returns just
+// its matches.
+export async function fetchAllConditionGroups(
+  endpoint: string,
+  searchTerm?: string
 ): Promise<AdminConditionGroup[]> {
+  const filter = buildGroupFilter(searchTerm);
   const groups: AdminConditionGroup[] = [];
   let after: string | null = null;
 
@@ -244,7 +271,7 @@ async function fetchAllConditionGroups(
       await graphqlPost<AdminConditionGroupsResponse>(
         endpoint,
         ADMIN_CONDITION_GROUPS_QUERY,
-        { first: 25, after }
+        filter ? { first: 25, after, filter } : { first: 25, after }
       );
     const connection = json.data?.conditionGroups;
     const nodes: GqlGroupNode[] = connection?.nodes ?? [];
@@ -258,6 +285,11 @@ async function fetchAllConditionGroups(
         condition: (node.conditions?.nodes ?? []).map(mapConditionNode),
       });
     }
+    // Browse mode (no search) is a first-page preview only — eagerly paging
+    // through thousands of groups would mean dozens of round-trips for a list
+    // nobody scrolls end to end. Operators narrow to a specific group by
+    // searching, which is filtered server-side and paginates fully here.
+    if (!filter) break;
     if (!connection?.pageInfo?.hasNextPage) break;
     after = connection.pageInfo.endCursor ?? null;
     if (!after) break;
@@ -269,12 +301,14 @@ async function fetchAllConditionGroups(
 // Reads the public GraphQL endpoint — no signature. Still gated behind an
 // explicit `enabled` flag so the request only fires once the page opts in.
 export function useAdminConditionGroups(
-  enabled: boolean
+  enabled: boolean,
+  searchTerm?: string
 ): UseQueryResult<AdminConditionGroup[]> {
   const { graphqlEndpoint } = useSettings();
+  const search = searchTerm?.trim() ?? '';
   return useQuery({
-    queryKey: [...ADMIN_CONDITION_GROUPS_QUERY_KEY, graphqlEndpoint],
-    queryFn: () => fetchAllConditionGroups(graphqlEndpoint as string),
+    queryKey: [...ADMIN_CONDITION_GROUPS_QUERY_KEY, graphqlEndpoint, search],
+    queryFn: () => fetchAllConditionGroups(graphqlEndpoint as string, search),
     enabled: enabled && Boolean(graphqlEndpoint),
   });
 }

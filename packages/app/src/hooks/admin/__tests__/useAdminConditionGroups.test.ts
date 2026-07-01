@@ -1,5 +1,102 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { fetchAllGroupConditions } from '../useAdminConditionGroups';
+import {
+  fetchAllConditionGroups,
+  fetchAllGroupConditions,
+} from '../useAdminConditionGroups';
+
+describe('fetchAllConditionGroups', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function emptyGroupsResponse() {
+    return {
+      ok: true,
+      json: async () => ({
+        data: {
+          conditionGroups: {
+            nodes: [],
+            pageInfo: { hasNextPage: false, endCursor: null },
+          },
+        },
+      }),
+    };
+  }
+
+  it('sends a case-insensitive name search filter to the server', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(emptyGroupsResponse());
+    vi.stubGlobal('fetch', fetchMock);
+
+    await fetchAllConditionGroups('https://api.example/graphql', 'bosnia');
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(body.query).toContain('$filter: ConditionGroupFilter');
+    expect(body.variables.filter).toEqual({ search: 'bosnia' });
+  });
+
+  it('looks up a purely numeric query by exact groupId', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(emptyGroupsResponse());
+    vi.stubGlobal('fetch', fetchMock);
+
+    await fetchAllConditionGroups('https://api.example/graphql', '1017');
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(body.variables.filter).toEqual({ groupIds: [1017] });
+  });
+
+  it('omits the filter entirely when no search term is given', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(emptyGroupsResponse());
+    vi.stubGlobal('fetch', fetchMock);
+
+    await fetchAllConditionGroups('https://api.example/graphql');
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(body.variables.filter).toBeUndefined();
+  });
+
+  function groupsPage(hasNextPage: boolean, endCursor: string | null) {
+    return {
+      ok: true,
+      json: async () => ({
+        data: {
+          conditionGroups: {
+            nodes: [
+              {
+                id: 'gid',
+                groupId: 1,
+                name: 'A',
+                negRisk: false,
+                conditions: { nodes: [], pageInfo: { hasNextPage: false } },
+              },
+            ],
+            pageInfo: { hasNextPage, endCursor },
+          },
+        },
+      }),
+    };
+  }
+
+  it('loads only the first page in browse mode even if more exist', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(groupsPage(true, 'cursor-1'));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await fetchAllConditionGroups('https://api.example/graphql');
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('paginates through every page when a search term is given', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(groupsPage(true, 'cursor-1'))
+      .mockResolvedValueOnce(groupsPage(false, null));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await fetchAllConditionGroups('https://api.example/graphql', 'bosnia');
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});
 
 describe('fetchAllGroupConditions', () => {
   beforeEach(() => {

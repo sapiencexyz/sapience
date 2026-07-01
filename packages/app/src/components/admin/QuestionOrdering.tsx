@@ -141,6 +141,7 @@ const QuestionOrdering = () => {
   const { isConnected } = useAccount();
 
   const [groupFilter, setGroupFilter] = useState('');
+  const [debouncedFilter, setDebouncedFilter] = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
   const [order, setOrder] = useState<string[]>([]);
   const loadedBaselineRef = useRef<{ groupId: number | null; key: string }>({
@@ -148,9 +149,18 @@ const QuestionOrdering = () => {
     key: '',
   });
 
+  // Debounce the search box so we hit the server once the operator pauses
+  // typing, not on every keystroke.
+  useEffect(() => {
+    const handle = setTimeout(() => setDebouncedFilter(groupFilter), 250);
+    return () => clearTimeout(handle);
+  }, [groupFilter]);
+
   // Loading reads the public GraphQL endpoint, so it is safe to fetch on mount
-  // without a wallet or signature.
-  const groupsQuery = useAdminConditionGroups(true);
+  // without a wallet or signature. Search is server-side: there are thousands of
+  // groups, so name matches sort well past any client page cap and must be
+  // filtered by the DB rather than in the browser.
+  const groupsQuery = useAdminConditionGroups(true, debouncedFilter);
   const reorderMutation = useReorderConditionGroup();
 
   const groups = useMemo(() => groupsQuery.data ?? [], [groupsQuery.data]);
@@ -170,16 +180,12 @@ const QuestionOrdering = () => {
     [conditionsQuery.data]
   );
 
-  const filteredGroups = useMemo(() => {
-    const query = groupFilter.trim().toLowerCase();
-    const sorted = [...groups].sort((a, b) => a.name.localeCompare(b.name));
-    if (!query) return sorted;
-    return sorted.filter(
-      (group) =>
-        group.name.toLowerCase().includes(query) ||
-        String(group.id).includes(query)
-    );
-  }, [groups, groupFilter]);
+  // Groups arrive already filtered (server-side) and NAME-ascending; sort
+  // defensively so ordering is stable regardless of backend guarantees.
+  const filteredGroups = useMemo(
+    () => [...groups].sort((a, b) => a.name.localeCompare(b.name)),
+    [groups]
+  );
 
   const baselineIds = useMemo(
     () => activeConditions.map((condition) => condition.id),
@@ -320,14 +326,20 @@ const QuestionOrdering = () => {
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div className="space-y-2">
             <Input
-              placeholder="Filter by name or id (e.g. 1017)"
+              placeholder="Search by name or id (e.g. 1017)"
               value={groupFilter}
               onChange={(event) => setGroupFilter(event.target.value)}
             />
             <div className="max-h-96 space-y-1 overflow-y-auto">
-              {filteredGroups.length === 0 ? (
+              {groupsQuery.isFetching && filteredGroups.length === 0 ? (
                 <p className="px-1 py-2 text-sm text-muted-foreground">
-                  No groups match “{groupFilter}”.
+                  Searching…
+                </p>
+              ) : filteredGroups.length === 0 ? (
+                <p className="px-1 py-2 text-sm text-muted-foreground">
+                  {debouncedFilter
+                    ? `No groups match “${debouncedFilter}”.`
+                    : 'No condition groups found.'}
                 </p>
               ) : (
                 filteredGroups.map((group) => (
