@@ -204,7 +204,7 @@ export async function preBatchAuctionPayloads(
  */
 export const GRAPHQL_QUERIES = {
   protocolStats: `query { protocolStats { totalVolume totalPredictions activePredictions uniqueUsers } }`,
-  profitLeaderboard: `query { profitLeaderboard(first: 50) { address totalProfit totalVolume predictionCount winRate } }`,
+  profitLeaderboard: `query { profitLeaderboard(first: 25) { address totalProfit totalVolume predictionCount winRate } }`,
   conditions: `query { conditions(first: 20) { id resolver conditionId predictions(first: 10) { id predictor counterparty predictorCollateral counterpartyCollateral settled } } }`,
   markets: `query { markets(first: 20) { id title status volume predictions { id } } }`,
   userProfile: `query { user(address: "0x0000000000000000000000000000000000000001") { address predictions { id } profit } }`,
