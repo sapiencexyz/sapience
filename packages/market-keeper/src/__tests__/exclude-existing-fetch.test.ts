@@ -114,19 +114,19 @@ describe('checkExistingConditions', () => {
     expect([...result.keys()].sort()).toEqual(['0x1', '0x2']);
   });
 
-  it('chunks large id lists into batches of 100, one request per chunk', async () => {
-    const ids = Array.from({ length: 150 }, (_, i) => `0x${i + 1}`);
-    // 2 chunks × 1 request each = 2 requests.
-    for (let i = 0; i < 2; i++) fetchQueue.push(() => conditionsPage([]));
+  it('chunks large id lists into batches of 25, one request per chunk', async () => {
+    const ids = Array.from({ length: 130 }, (_, i) => `0x${i + 1}`);
+    // 6 chunks × 1 request each = 6 requests (five full chunks of 25 + one of 5).
+    for (let i = 0; i < 6; i++) fetchQueue.push(() => conditionsPage([]));
 
     await checkExistingConditions('https://api.example.com', ids);
 
-    expect(fetchCalls).toHaveLength(2);
+    expect(fetchCalls).toHaveLength(6);
     const sizes = fetchCalls.map(
       (c) =>
         JSON.parse(c.init!.body as string).variables.filter.conditionIds.length
     );
-    expect(sizes.sort((a, b) => a - b)).toEqual([50, 100]);
+    expect(sizes.sort((a, b) => a - b)).toEqual([5, 25, 25, 25, 25, 25]);
   });
 
   it('maps GraphQL fields onto the ExistingCondition shape', async () => {

@@ -63,7 +63,7 @@ export async function graphqlRequest<TData>(
   return result.data;
 }
 
-export const GRAPHQL_PAGE_SIZE = 100; // server-side clamp (relay/pagination.ts MAX_TAKE)
+export const GRAPHQL_PAGE_SIZE = 25; // server-side clamp (relay/pagination.ts MAX_TAKE)
 
 export async function walkConnection<TNode, TData>(opts: {
   graphqlUrl: string;
