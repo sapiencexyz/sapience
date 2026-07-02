@@ -17,6 +17,7 @@ export type ConditionsMap = Map<
     settled?: boolean;
     resolvedToYes?: boolean;
     nonDecisive?: boolean;
+    estimatedPrice?: number | null;
   }
 >;
 
@@ -75,6 +76,7 @@ export function toPicks(
           settled: condition?.settled,
           resolvedToYes: condition?.resolvedToYes,
           nonDecisive: condition?.nonDecisive,
+          estimatedPrice: condition?.estimatedPrice ?? null,
         };
       }
 
@@ -91,6 +93,7 @@ export function toPicks(
         settled: condition?.settled,
         resolvedToYes: condition?.resolvedToYes,
         nonDecisive: condition?.nonDecisive,
+        estimatedPrice: condition?.estimatedPrice ?? null,
       };
     }
 
@@ -105,6 +108,7 @@ export function toPicks(
       settled: condition?.settled,
       resolvedToYes: condition?.resolvedToYes,
       nonDecisive: condition?.nonDecisive,
+      estimatedPrice: condition?.estimatedPrice ?? null,
     };
   });
 }

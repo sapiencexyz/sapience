@@ -73,6 +73,7 @@ export const CONDITIONS_BY_IDS_QUERY = `
         resolvedToYes
         nonDecisive
         resolver
+        estimatedPrice
         category { slug }
       }
     }
@@ -172,6 +173,7 @@ export interface ConditionData {
   resolvedToYes?: boolean;
   nonDecisive?: boolean;
   resolver?: string | null;
+  estimatedPrice?: number | null;
   category?: { slug?: string | null } | null;
 }
 

@@ -69,7 +69,6 @@ import {
 } from './market-helpers';
 import type { VolumeWindow } from '~/hooks/graphql/useInfiniteQuestions';
 import { inferResolverKind } from '~/lib/resolvers/conditionResolver';
-import { usePredictionMap } from '~/hooks/usePredictionMap';
 import { useInfiniteScroll } from '~/hooks/useInfiniteScroll';
 
 interface QuestionsTableProps {
@@ -176,13 +175,11 @@ function decodeOptionId(id: string): {
 }
 
 function createColumns(
-  predictionMapRef: React.RefObject<Record<string, number>>,
   expandedGroupIdsRef: React.RefObject<Set<string>>,
   volumeMetricRef: React.RefObject<VolumeMetric>,
   volumeWindowRef: React.RefObject<VolumeWindow | null>,
   filterVolumeRef: React.RefObject<boolean>,
   onToggleExpand: (groupId: string) => void,
-  onPrediction: (conditionId: string, p: number) => void,
   onSelectMetricOption: (id: MetricOptionId) => void,
   onToggleFilterVolume: () => void
 ): ColumnDef<TopLevelRow>[] {
@@ -268,13 +265,7 @@ function createColumns(
         }
         return (
           <div className="text-sm whitespace-nowrap text-right">
-            <ForecastCell
-              condition={data.condition}
-              prefetchedProbability={
-                predictionMapRef.current[data.condition.id]
-              }
-              onPrediction={(p) => onPrediction(data.condition.id, p)}
-            />
+            <ForecastCell condition={data.condition} />
           </div>
         );
       },
@@ -635,16 +626,12 @@ export function getConditionTimeBucketedVolume(
 // Child row component for expanded group conditions
 function ChildConditionRow({
   condition,
-  predictionMap,
-  onPrediction,
   volumeMetric,
   volumeWindow,
   filterVolume,
   isLast = false,
 }: {
   condition: ConditionGroupConditionType;
-  predictionMap: Record<string, number>;
-  onPrediction: (conditionId: string, p: number) => void;
   volumeMetric: VolumeMetric;
   volumeWindow: VolumeWindow | null;
   filterVolume: boolean;
@@ -695,11 +682,7 @@ function ChildConditionRow({
       </TableCell>
       <TableCell className="py-2 text-right">
         <div className="text-sm whitespace-nowrap">
-          <ForecastCell
-            condition={conditionType}
-            prefetchedProbability={predictionMap[condition.id]}
-            onPrediction={(p) => onPrediction(condition.id, p)}
-          />
+          <ForecastCell condition={conditionType} />
         </div>
       </TableCell>
       <TableCell className="py-2 text-right">
@@ -867,10 +850,6 @@ export default function QuestionsTable({
   const expandedGroupIdsRef = React.useRef<Set<string>>(expandedGroupIds);
   expandedGroupIdsRef.current = expandedGroupIds;
 
-  // Prediction probabilities — throttled to avoid re-rendering on every quote tick
-  const { predictionMap, predictionMapRef, handlePrediction } =
-    usePredictionMap();
-
   const handleToggleExpand = React.useCallback((groupId: string) => {
     setExpandedGroupIds((prev) => {
       const next = new Set(prev);
@@ -911,28 +890,21 @@ export default function QuestionsTable({
     scrollContainerRef,
   });
 
-  // Create columns using refs so column definitions stay stable across prediction
+  // Create columns using refs so column definitions stay stable across state
   // updates (preventing cell remounts and visual flashing).
   const columns = React.useMemo(
     () =>
       createColumns(
-        predictionMapRef,
         expandedGroupIdsRef,
         volumeMetricRef,
         volumeWindowRef,
         filterVolumeRef,
         handleToggleExpand,
-        handlePrediction,
         handleSelectMetricOption,
         handleToggleFilterVolume
       ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- refs are stable, intentionally omitted
-    [
-      handleToggleExpand,
-      handlePrediction,
-      handleSelectMetricOption,
-      handleToggleFilterVolume,
-    ]
+
+    [handleToggleExpand, handleSelectMetricOption, handleToggleFilterVolume]
   );
 
   const table = useReactTable({
@@ -1030,8 +1002,6 @@ export default function QuestionsTable({
                           <ChildConditionRow
                             key={`child-${condition.id}`}
                             condition={condition}
-                            predictionMap={predictionMap}
-                            onPrediction={handlePrediction}
                             volumeMetric={volumeMetric}
                             volumeWindow={volumeWindow}
                             filterVolume={filterVolume}
