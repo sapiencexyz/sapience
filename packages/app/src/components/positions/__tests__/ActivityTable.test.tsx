@@ -326,7 +326,7 @@ describe('ActivityTable', () => {
       'Type',
       'Position',
       'Parties',
-      'Value',
+      'Total',
       'Status',
     ]) {
       expect(
@@ -374,6 +374,42 @@ describe('ActivityTable', () => {
 
     expect(screen.getByText('Predictor won')).toBeInTheDocument();
     expect(screen.getByText('Counterparty won')).toBeInTheDocument();
+  });
+
+  it('shows the winner profit under settled won statuses', () => {
+    // Predictor staked 1, counterparty staked 2.
+    const won = makePredictionItem({
+      prediction: makePrediction({
+        predictionId: '0xpredWin',
+        settled: true,
+        result: 'PREDICTOR_WINS',
+      }),
+    });
+    const lost = makePredictionItem({
+      prediction: makePrediction({
+        predictionId: '0xpredLose',
+        settled: true,
+        result: 'COUNTERPARTY_WINS',
+      }),
+    });
+    mockUseAccountActivity.mockReturnValue(hookState({ items: [won, lost] }));
+    render(<ActivityTable />);
+
+    // Predictor won: profit = counterparty stake (2.00), 200% of own 1.00 stake.
+    const predictorProfit = screen.getByTestId('status-profit-0xpredWin');
+    expect(predictorProfit).toHaveTextContent('+2.00 USDe (200%)');
+    // Counterparty won: profit = predictor stake (1.00), 50% of own 2.00 stake.
+    const counterpartyProfit = screen.getByTestId('status-profit-0xpredLose');
+    expect(counterpartyProfit).toHaveTextContent('+1.00 USDe (50%)');
+  });
+
+  it('shows no profit line for unsettled predictions', () => {
+    mockUseAccountActivity.mockReturnValue(
+      hookState({ items: [makePredictionItem()] })
+    );
+    render(<ActivityTable />);
+
+    expect(screen.queryByTestId(/status-profit/)).not.toBeInTheDocument();
   });
 
   it("shows 'Pending' for an unsettled prediction whose end time has passed", () => {
