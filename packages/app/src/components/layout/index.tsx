@@ -8,7 +8,6 @@ import type { ReactNode } from 'react';
 
 import Header from './Header';
 import Footer from './Footer';
-import BannerCoordinator from '~/components/shared/BannerCoordinator';
 
 const ContentArea = ({ children }: { children: ReactNode }) => {
   return (
@@ -34,12 +33,10 @@ const Layout = ({ children }: { children: ReactNode }) => {
         className="min-h-[100dvh] flex flex-col w-full relative z-10 sm:pb-[33px]"
         style={
           {
-            '--page-top-offset':
-              'calc(var(--banner-offset, 0px) + var(--header-height, 0px))',
+            '--page-top-offset': 'var(--header-height, 0px)',
           } as React.CSSProperties
         }
       >
-        <BannerCoordinator />
         <Header />
         <div className="flex-1 flex w-full">
           <ContentArea>{children}</ContentArea>

@@ -5,6 +5,7 @@ import { formatEther } from 'viem';
 import * as React from 'react';
 import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
+import { ArrowUp } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -29,6 +30,7 @@ import {
 } from '~/hooks/graphql/usePositions';
 import {
   useAccountActivity,
+  type ActivityItem,
   type PredictionActivity,
   type TradeActivity,
 } from '~/hooks/graphql/useAccountActivity';
@@ -49,6 +51,7 @@ import {
   matchesConditionSearch,
 } from '~/lib/utils/tableFilters';
 import { useInfiniteScroll } from '~/hooks/useInfiniteScroll';
+import { useSecondTick } from '~/hooks/useSecondTick';
 
 // ─── Column visibility ───────────────────────────────────────────────────────
 
@@ -82,6 +85,33 @@ function formatTimestamp(ms: number) {
       timeZoneName: 'short',
     }),
   };
+}
+
+// ─── Date cell ───────────────────────────────────────────────────────────────
+// Shared by both row types. Relative labels stay fresh via a single
+// table-level `useSecondTick(30_000)` re-render — not a per-row timer.
+
+function DateCell({ timestamp }: { timestamp: number }) {
+  const { relative, exact } = formatTimestamp(timestamp);
+  return (
+    <td className="px-4 py-3 whitespace-nowrap">
+      <div className="text-sm">
+        <div className="xl:hidden text-xs text-muted-foreground mb-1">Date</div>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="text-brand-white whitespace-nowrap cursor-default">
+                {relative}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <span>{exact}</span>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+    </td>
+  );
 }
 
 // ─── Type badge ──────────────────────────────────────────────────────────────
@@ -126,10 +156,6 @@ function PredictionActivityRow({
   const rawPicks = pickConfig?.picks ?? [];
   const pickLegs = toPicks(rawPicks, isPredictorSide, conditionsMap);
 
-  const { relative: timeDisplay, exact: exactDisplay } = formatTimestamp(
-    item.timestamp
-  );
-
   const predictorEth = Number(
     formatEther(BigInt(prediction.predictorCollateral))
   );
@@ -159,27 +185,7 @@ function PredictionActivityRow({
   return (
     <tr className="border-b last:border-b-0">
       {/* Date */}
-      {!isHidden('date') && (
-        <td className="px-4 py-3 whitespace-nowrap">
-          <div className="text-sm">
-            <div className="xl:hidden text-xs text-muted-foreground mb-1">
-              Date
-            </div>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="text-brand-white whitespace-nowrap cursor-default">
-                    {timeDisplay}
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <span>{exactDisplay}</span>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-        </td>
-      )}
+      {!isHidden('date') && <DateCell timestamp={item.timestamp} />}
       {/* Type */}
       {!isHidden('type') && (
         <td className="px-4 py-3 whitespace-nowrap">
@@ -346,37 +352,13 @@ function TradeActivityRow({
     pickConfig?.predictorToken?.toLowerCase() === trade.token.toLowerCase();
   const pickLegs = toPicks(rawPicks, isPredictorToken, conditionsMap);
 
-  const { relative: timeDisplay, exact: exactDisplay } = formatTimestamp(
-    item.timestamp
-  );
-
   const amount = Number(formatEther(BigInt(trade.tokenAmount)));
   const price = Number(formatEther(BigInt(trade.price)));
 
   return (
     <tr className="border-b last:border-b-0">
       {/* Date */}
-      {!isHidden('date') && (
-        <td className="px-4 py-3 whitespace-nowrap">
-          <div className="text-sm">
-            <div className="xl:hidden text-xs text-muted-foreground mb-1">
-              Date
-            </div>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="text-brand-white whitespace-nowrap cursor-default">
-                    {timeDisplay}
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <span>{exactDisplay}</span>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-        </td>
-      )}
+      {!isHidden('date') && <DateCell timestamp={item.timestamp} />}
       {/* Type */}
       {!isHidden('type') && (
         <td className="px-4 py-3 whitespace-nowrap">
@@ -565,6 +547,73 @@ function SharePredictionDialog({
   );
 }
 
+// ─── Client-side filtering ───────────────────────────────────────────────────
+// Applied to the visible list AND to held-back live items, so the "new
+// activity" banner never counts items the active filters would hide.
+
+function applyClientFilters(
+  items: ActivityItem[],
+  filters: ActivityFilterState,
+  conditionsMap: ConditionsMap
+): ActivityItem[] {
+  let result = items;
+
+  // pickConfigId scoping and activity type filtering are handled server-side
+
+  // Filter by search term
+  if (filters.searchTerm.trim()) {
+    const term = filters.searchTerm.trim();
+    result = result.filter((item) => {
+      const ids = (item.pickConfig?.picks ?? []).map((p) => p.conditionId);
+      return matchesConditionSearch(term, ids, conditionsMap);
+    });
+  }
+
+  // Filter by status (only applies to predictions)
+  if (filters.status.length > 0 && filters.status.length < 3) {
+    result = result.filter((item) => {
+      if (item.type === 'trade') return true; // trades pass through status filter
+      const { prediction, pickConfig } = item;
+      const picks = pickConfig?.picks ?? [];
+      const computed = !prediction.settled
+        ? computeResultFromConditions(picks, conditionsMap)
+        : null;
+      const effectiveResult = prediction.settled
+        ? prediction.result
+        : (computed?.result ?? 'UNRESOLVED');
+
+      if (effectiveResult === 'UNRESOLVED')
+        return filters.status.includes('pending');
+      if (effectiveResult === 'PREDICTOR_WINS')
+        return filters.status.includes('predictor_won');
+      if (effectiveResult === 'COUNTERPARTY_WINS')
+        return filters.status.includes('counterparty_won');
+      return filters.status.includes('pending');
+    });
+  }
+
+  // Filter by value range
+  if (filters.valueRange[0] > 0 || filters.valueRange[1] < Infinity) {
+    result = result.filter((item) => {
+      const value =
+        item.type === 'prediction'
+          ? Number(formatEther(BigInt(item.prediction.predictorCollateral))) +
+            Number(formatEther(BigInt(item.prediction.counterpartyCollateral)))
+          : Number(formatEther(BigInt(item.trade.price)));
+      return value >= filters.valueRange[0] && value <= filters.valueRange[1];
+    });
+  }
+
+  // Filter by date range
+  if (filters.dateRange[0] > -Infinity || filters.dateRange[1] < Infinity) {
+    result = result.filter((item) =>
+      isWithinDateRange(item.timestamp, filters.dateRange)
+    );
+  }
+
+  return result;
+}
+
 // ─── Main component ──────────────────────────────────────────────────────────
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -578,6 +627,7 @@ export default function ActivityTable({
   filterPickConfigId,
   filterToken,
   hideFilters,
+  enableLive = false,
   fill = false,
 }: {
   account?: Address;
@@ -600,6 +650,10 @@ export default function ActivityTable({
   filterToken?: Address;
   /** Hide the filter toolbar (search/status/value-range/date-range). */
   hideFilters?: boolean;
+  /** Poll for new activity and surface it via the pull-to-reveal banner.
+   *  Off by default — each live table polls a full page on an interval, so
+   *  only primary feed surfaces should opt in. */
+  enableLive?: boolean;
   /** Grow the empty/loading panel via `flex-1` to fill the parent.
    *  Caller is responsible for the flex ancestor chain (page wrapper
    *  + bordered container both `flex flex-col flex-1`). Omit for the
@@ -627,6 +681,8 @@ export default function ActivityTable({
     isFetchingMore: activityFetchingMore,
     hasMore: activityHasMore,
     fetchMore: activityFetchMore,
+    pendingItems,
+    revealPending,
   } = useAccountActivity({
     account,
     pageSize: effectivePageSize,
@@ -634,16 +690,32 @@ export default function ActivityTable({
     pickConfigId: filterPickConfigId,
     token: filterToken,
     conditionId: !account ? conditionId : undefined,
+    enableLive,
   });
+
+  // One 30s tick re-renders the whole table so every row's relative
+  // timestamp refreshes together, instead of a setInterval per row.
+  useSecondTick(30_000);
+
+  // Reveal newly-arrived items and bring them into view. Scroll from the
+  // banner element (captured before the reveal unmounts it) — the new rows
+  // land exactly where the banner sits, and scrollIntoView also works inside
+  // nested scroll containers (dialogs), unlike window.scrollTo.
+  const bannerRef = React.useRef<HTMLDivElement>(null);
+  const handleRevealPending = React.useCallback(() => {
+    bannerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    revealPending();
+  }, [revealPending]);
 
   const isAccountMode = !!account;
 
   // Build the condition map from inline `picks.condition` data the server
   // pre-loads. Avoids the second-round-trip waterfall the previous
-  // `useConditionsByIds(conditionIds)` call produced.
+  // `useConditionsByIds(conditionIds)` call produced. Held-back live items
+  // are included so they can be filtered before they're revealed.
   const conditionsMap: ConditionsMap = React.useMemo(() => {
     const m: ConditionsMap = new Map();
-    for (const item of items) {
+    for (const item of [...items, ...pendingItems]) {
       for (const pick of item.pickConfig?.picks ?? []) {
         if (pick.condition && !m.has(pick.conditionId)) {
           m.set(pick.conditionId, pick.condition);
@@ -651,76 +723,20 @@ export default function ActivityTable({
       }
     }
     return m;
-  }, [items]);
+  }, [items, pendingItems]);
 
   // ── Client-side filters ──────────────────────────────────────────────────
-  const filteredItems = React.useMemo(() => {
-    let result = items;
+  const filteredItems = React.useMemo(
+    () => applyClientFilters(items, filters, conditionsMap),
+    [items, filters, conditionsMap]
+  );
 
-    // pickConfigId scoping and activity type filtering are handled server-side
-
-    // Filter by search term
-    if (filters.searchTerm.trim()) {
-      const term = filters.searchTerm.trim();
-      result = result.filter((item) => {
-        if (item.type === 'prediction') {
-          const ids = (item.pickConfig?.picks ?? []).map((p) => p.conditionId);
-          return matchesConditionSearch(term, ids, conditionsMap);
-        }
-        // For trades, match via pick config condition IDs
-        const tradePickIds = (item.pickConfig?.picks ?? []).map(
-          (p) => p.conditionId
-        );
-        return matchesConditionSearch(term, tradePickIds, conditionsMap);
-      });
-    }
-
-    // Filter by status (only applies to predictions)
-    if (filters.status.length > 0 && filters.status.length < 3) {
-      result = result.filter((item) => {
-        if (item.type === 'trade') return true; // trades pass through status filter
-        const { prediction, pickConfig } = item;
-        const picks = pickConfig?.picks ?? [];
-        const computed = !prediction.settled
-          ? computeResultFromConditions(picks, conditionsMap)
-          : null;
-        const effectiveResult = prediction.settled
-          ? prediction.result
-          : (computed?.result ?? 'UNRESOLVED');
-
-        if (effectiveResult === 'UNRESOLVED')
-          return filters.status.includes('pending');
-        if (effectiveResult === 'PREDICTOR_WINS')
-          return filters.status.includes('predictor_won');
-        if (effectiveResult === 'COUNTERPARTY_WINS')
-          return filters.status.includes('counterparty_won');
-        return filters.status.includes('pending');
-      });
-    }
-
-    // Filter by value range
-    if (filters.valueRange[0] > 0 || filters.valueRange[1] < Infinity) {
-      result = result.filter((item) => {
-        const value =
-          item.type === 'prediction'
-            ? Number(formatEther(BigInt(item.prediction.predictorCollateral))) +
-              Number(
-                formatEther(BigInt(item.prediction.counterpartyCollateral))
-              )
-            : Number(formatEther(BigInt(item.trade.price)));
-        return value >= filters.valueRange[0] && value <= filters.valueRange[1];
-      });
-    }
-
-    // Filter by date range
-    if (filters.dateRange[0] > -Infinity || filters.dateRange[1] < Infinity) {
-      result = result.filter((item) =>
-        isWithinDateRange(item.timestamp, filters.dateRange)
-      );
-    }
-
-    return result;
-  }, [items, filters, conditionsMap]);
+  // Count only the held-back items the active filters would actually show —
+  // a banner for items the user can't see reads as a no-op button.
+  const pendingVisibleCount = React.useMemo(
+    () => applyClientFilters(pendingItems, filters, conditionsMap).length,
+    [pendingItems, filters, conditionsMap]
+  );
 
   // ── Share / detail dialog state ──────────────────────────────────────────
   const [sharePrediction, setSharePrediction] = useState<{
@@ -743,6 +759,24 @@ export default function ActivityTable({
   });
 
   // ── Render ───────────────────────────────────────────────────────────────
+  const pendingBanner =
+    pendingVisibleCount > 0 ? (
+      <div
+        ref={bannerRef}
+        className="flex justify-center px-4 py-2 border-b border-border/60 bg-white/[0.03]"
+      >
+        <button
+          type="button"
+          onClick={handleRevealPending}
+          className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-border bg-background text-sm text-brand-white hover:bg-muted/50 transition-colors"
+        >
+          <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" />
+          {pendingVisibleCount} new{' '}
+          {pendingVisibleCount === 1 ? 'activity' : 'activities'}
+        </button>
+      </div>
+    ) : null;
+
   const headerContent =
     hideFilters && !leftSlot ? null : (
       <div className="px-4 py-4 border-b border-border/60 flex flex-col xl:flex-row xl:items-center gap-4 bg-white/[0.03]">
@@ -772,6 +806,7 @@ export default function ActivityTable({
     return (
       <>
         {headerContent}
+        {pendingBanner}
         <EmptyTabState message="No activity found" fill={fill} />
       </>
     );
@@ -781,6 +816,7 @@ export default function ActivityTable({
     return (
       <>
         {headerContent}
+        {pendingBanner}
         <EmptyTabState message="No activity matches your filters" fill={fill} />
       </>
     );
@@ -789,6 +825,7 @@ export default function ActivityTable({
   return (
     <>
       {headerContent}
+      {pendingBanner}
       <div className="overflow-x-auto">
         <table className="w-full text-sm [&>tbody>tr>td]:align-middle [&>tbody>tr:hover]:bg-muted/50 [&>tbody>tr>td]:text-brand-white">
           <thead className="hidden xl:table-header-group text-sm font-medium text-muted-foreground">

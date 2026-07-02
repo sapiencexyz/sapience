@@ -23,10 +23,7 @@ import {
   type ResolutionStatus,
 } from '../_shared';
 import {
-  PREDICTION_BY_ID_QUERY,
-  CONDITIONS_BY_IDS_QUERY,
-  getGraphQLEndpoint,
-  toPredictionData,
+  fetchPredictionWithConditions,
   formatUnits,
   normalizeChoiceLabel,
   getChoiceTone,
@@ -55,59 +52,21 @@ export async function GET(req: Request) {
     // If predictionId is provided and we need data from it (no legs, or need to fill in missing data)
     if (predictionId) {
       try {
-        // Both legs run against /v2/graphql; the prediction node is mapped
-        // back to the legacy-shaped PredictionData via the shared mapper.
-        const graphqlEndpoint = getGraphQLEndpoint();
-        let prediction: PredictionData | null = null;
-
-        const response = await fetch(graphqlEndpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            query: PREDICTION_BY_ID_QUERY,
-            variables: { predictionId },
-          }),
+        // Shared two-leg fetch: both legs run over GET (CDN-cacheable) and
+        // condition ids are chunked to the connection's 25-per-page cap. The
+        // conditions leg is skipped when legs already arrived via params.
+        const fetched = await fetchPredictionWithConditions(predictionId, {
+          includeConditions: !hasLegs,
         });
-
-        if (response.ok) {
-          const result = await response.json();
-          const node = result?.data?.prediction ?? null;
-          prediction = node ? toPredictionData(node) : null;
-        }
+        const prediction: PredictionData | null = fetched.prediction;
 
         if (prediction) {
           // Build legs from picks if not provided via query params
           if (!hasLegs) {
             const picks = prediction.pickConfig?.picks ?? [];
-            const conditionIds = picks.map((p) => p.conditionId);
-
-            // Fetch condition question text
-            const conditionsMap = new Map<string, ConditionData>();
-            if (conditionIds.length > 0) {
-              try {
-                // conditions connection: variables { ids }, nodes under
-                // data.conditions.nodes (the legacy `where` variables made
-                // this leg dead — it silently rendered no questions).
-                const condResp = await fetch(graphqlEndpoint, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    query: CONDITIONS_BY_IDS_QUERY,
-                    variables: { ids: conditionIds },
-                  }),
-                });
-                if (condResp.ok) {
-                  const condResult = await condResp.json();
-                  const conditions: ConditionData[] =
-                    condResult?.data?.conditions?.nodes ?? [];
-                  for (const c of conditions) {
-                    conditionsMap.set(c.id, c);
-                  }
-                }
-              } catch (err) {
-                console.error('Failed to fetch conditions:', err);
-              }
-            }
+            const conditionsMap = new Map<string, ConditionData>(
+              fetched.conditions.map((c) => [c.id, c])
+            );
 
             rawLegs = picks.map((pick) => {
               const condition = conditionsMap.get(pick.conditionId);

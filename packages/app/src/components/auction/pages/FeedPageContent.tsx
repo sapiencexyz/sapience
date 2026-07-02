@@ -18,7 +18,8 @@ const FeedPageContent: React.FC = () => {
     // footer (sm:pb-[33px]), so flex-1 here cleanly stops above it.
     <div className="mx-auto px-3 md:px-6 lg:px-8 w-full pt-4 md:pt-0 flex-1 flex flex-col">
       <div className="border border-border/60 rounded-lg overflow-hidden bg-brand-black mb-3 md:mb-6 lg:mb-8 flex-1 flex flex-col">
-        <ActivityTable leftSlot={titleSlot} fill />
+        {/* The primary feed opts into live "new activity" polling. */}
+        <ActivityTable leftSlot={titleSlot} fill enableLive />
       </div>
     </div>
   );

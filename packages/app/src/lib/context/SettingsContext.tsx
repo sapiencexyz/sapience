@@ -136,13 +136,9 @@ function getDefaultEtherealRpcURL(): string {
 }
 
 function getDefaultArbitrumRpcURL(): string {
+  // Default to the keyless public node rather than an Infura/Alchemy URL that
+  // embeds NEXT_PUBLIC_INFURA_API_KEY — users can still override in Settings.
   const isTestnet = DEFAULT_CHAIN_ID === CHAIN_ID_ETHEREAL_TESTNET;
-  const infuraKey = process.env.NEXT_PUBLIC_INFURA_API_KEY;
-  if (infuraKey) {
-    return isTestnet
-      ? `https://arbitrum-sepolia.infura.io/v3/${infuraKey}`
-      : `https://arbitrum-mainnet.infura.io/v3/${infuraKey}`;
-  }
   return isTestnet
     ? 'https://arbitrum-sepolia-rpc.publicnode.com'
     : 'https://arbitrum-rpc.publicnode.com';

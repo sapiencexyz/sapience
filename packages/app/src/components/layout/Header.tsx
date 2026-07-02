@@ -1,6 +1,5 @@
 'use client';
 
-import { Badge } from '@sapience/ui/components/ui/badge';
 import { Button } from '@sapience/ui/components/ui/button';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import {
@@ -43,7 +42,6 @@ import { useDisconnect } from 'wagmi';
 import CollateralBalanceButton from './CollateralBalanceButton';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import EnsAvatar from '~/components/shared/EnsAvatar';
-import GetAccessDialog from '~/components/shared/GetAccessDialog';
 import ReferralsDialog from '~/components/shared/ReferralsDialog';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import { useAuth } from '~/lib/context/AuthContext';
@@ -205,7 +203,6 @@ const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const thresholdRef = useRef(12);
   const headerRef = useRef<HTMLElement | null>(null);
-  const [isGetAccessOpen, setIsGetAccessOpen] = useState(false);
   const [isReferralsOpen, setIsReferralsOpen] = useState(false);
 
   // Session context for smart account sessions
@@ -353,8 +350,7 @@ const Header = () => {
       {/* Top Header Bar */}
       <header
         ref={headerRef}
-        style={{ top: 'var(--banner-offset, 0px)' } as React.CSSProperties}
-        className={`w-full pt-2 pb-2 xl:py-6 z-[50] sticky left-0 right-0 pointer-events-none bg-background/30 backdrop-blur-sm border-b border-border/20 overflow-x-clip xl:bg-transparent xl:backdrop-blur-0 xl:border-b-0 xl:overflow-visible`}
+        className={`w-full pt-2 pb-2 xl:py-6 z-[50] sticky top-0 left-0 right-0 pointer-events-none bg-background/30 backdrop-blur-sm border-b border-border/20 overflow-x-clip xl:bg-transparent xl:backdrop-blur-0 xl:border-b-0 xl:overflow-visible`}
       >
         <div className={`mx-auto px-4 xl:px-6 transition-all`}>
           <div
@@ -374,12 +370,6 @@ const Header = () => {
                           className="opacity-100"
                           priority
                         />
-                        <Badge
-                          variant="outline"
-                          className="ml-2 px-1.5 py-0.5 text-xs font-medium !rounded-md font-mono border-foreground/40 bg-foreground/10 text-foreground tracking-widest opacity-75"
-                        >
-                          BETA
-                        </Badge>
                       </div>
                     </Link>
                   </div>
@@ -614,21 +604,11 @@ const Header = () => {
               {ready && !hasConnectedWallet && (
                 <>
                   <Button
-                    onClick={() => setIsGetAccessOpen(true)}
-                    className="btn-get-access hidden sm:inline-flex rounded-md h-10 xl:h-9 px-4 text-brand-black hover:text-white font-semibold border-0 transition-colors duration-400 font-mono uppercase tracking-widest text-sm"
-                  >
-                    <span className="relative z-10">Get Access</span>
-                  </Button>
-                  <Button
                     onClick={openConnectDialog}
                     className="bg-primary hover:bg-primary/90 rounded-md h-10 xl:h-9 w-auto px-4 ml-1.5 xl:ml-0 gap-2"
                   >
                     <span>Log in</span>
                   </Button>
-                  <GetAccessDialog
-                    open={isGetAccessOpen}
-                    onOpenChange={setIsGetAccessOpen}
-                  />
                 </>
               )}
             </div>
