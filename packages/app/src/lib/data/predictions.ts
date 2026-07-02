@@ -1,7 +1,7 @@
 // Prediction data types, queries, and fetch helpers.
 // Shared across SSR pages, client components, and OG image routes.
 
-import { getGraphQLEndpoint } from './graphql';
+import { buildGraphQLGetUrl } from './graphql';
 import {
   toPickConfigData,
   type PickConfigurationNode,
@@ -176,30 +176,30 @@ export interface ConditionData {
 }
 
 // Fetch a prediction and its associated conditions by predictionId.
-// Both legs run against /v2/graphql. Returns null prediction if not found.
-// Throws on network errors.
+// Both legs run against /v2/graphql over GET (CDN-cacheable — Apollo with
+// csrfPrevention off serves queries, not mutations, over GET). Returns null
+// prediction if not found. Throws on network errors.
+// Pass `includeConditions: false` to skip the conditions leg when the caller
+// already has the condition metadata (e.g. legs passed via query params).
 export async function fetchPredictionWithConditions(
-  predictionId: string
+  predictionId: string,
+  { includeConditions = true }: { includeConditions?: boolean } = {}
 ): Promise<{
   prediction: PredictionData | null;
   conditions: (ConditionData & { id: string })[];
 }> {
-  const resp = await fetch(getGraphQLEndpoint(), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      query: PREDICTION_BY_ID_QUERY,
-      variables: { predictionId },
-    }),
-  });
+  const resp = await fetch(
+    buildGraphQLGetUrl(PREDICTION_BY_ID_QUERY, { predictionId })
+  );
   if (!resp.ok) return { prediction: null, conditions: [] };
   const json = await resp.json();
   const node: PredictionByIdNode | null = json?.data?.prediction ?? null;
   if (!node) return { prediction: null, conditions: [] };
   const prediction = toPredictionData(node);
 
-  const conditionIds =
-    prediction.pickConfig?.picks.map((p) => p.conditionId) ?? [];
+  const conditionIds = includeConditions
+    ? (prediction.pickConfig?.picks.map((p) => p.conditionId) ?? [])
+    : [];
   if (conditionIds.length === 0) return { prediction, conditions: [] };
 
   // The conditions connection caps each page at 25, so split the ids into
@@ -213,14 +213,9 @@ export async function fetchPredictionWithConditions(
   try {
     const chunkResults = await Promise.all(
       idChunks.map(async (ids) => {
-        const condResp = await fetch(getGraphQLEndpoint(), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            query: CONDITIONS_BY_IDS_QUERY,
-            variables: { ids },
-          }),
-        });
+        const condResp = await fetch(
+          buildGraphQLGetUrl(CONDITIONS_BY_IDS_QUERY, { ids })
+        );
         if (!condResp.ok) return [];
         const condJson = await condResp.json();
         return (condJson?.data?.conditions?.nodes ?? []) as (ConditionData & {

@@ -6,6 +6,7 @@ export {
   PREDICTION_BY_ID_QUERY,
   CONDITIONS_BY_IDS_QUERY,
   toPredictionData,
+  fetchPredictionWithConditions,
   type PredictionByIdNode,
   type PredictionPick,
   type PredictionPickConfig,

@@ -350,8 +350,7 @@ const Header = () => {
       {/* Top Header Bar */}
       <header
         ref={headerRef}
-        style={{ top: 'var(--banner-offset, 0px)' } as React.CSSProperties}
-        className={`w-full pt-2 pb-2 xl:py-6 z-[50] sticky left-0 right-0 pointer-events-none bg-background/30 backdrop-blur-sm border-b border-border/20 overflow-x-clip xl:bg-transparent xl:backdrop-blur-0 xl:border-b-0 xl:overflow-visible`}
+        className={`w-full pt-2 pb-2 xl:py-6 z-[50] sticky top-0 left-0 right-0 pointer-events-none bg-background/30 backdrop-blur-sm border-b border-border/20 overflow-x-clip xl:bg-transparent xl:backdrop-blur-0 xl:border-b-0 xl:overflow-visible`}
       >
         <div className={`mx-auto px-4 xl:px-6 transition-all`}>
           <div

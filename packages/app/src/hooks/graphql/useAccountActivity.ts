@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Address } from 'viem';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import {
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import {
   PREDICTION_FIELDS,
@@ -227,7 +231,7 @@ export function useAccountActivity({
   token,
   conditionId,
   enabled: enabledOverride,
-  enableLive = true,
+  enableLive = false,
   liveIntervalMs = DEFAULT_LIVE_INTERVAL_MS,
 }: {
   account?: Address;
@@ -255,8 +259,10 @@ export function useAccountActivity({
   enabled?: boolean;
   /**
    * Poll the newest page on an interval and surface items that arrive after
-   * the initial load as `pendingCount` (held back until `revealPending()`),
-   * rather than silently mutating the visible list. Defaults to true.
+   * the initial load as `pendingCount` / `pendingItems` (held back until
+   * `revealPending()`), rather than silently mutating the visible list.
+   * Defaults to false — polling a full page per mounted table is real API
+   * load, so consumers opt in (the global feed does).
    */
   enableLive?: boolean;
   /** Polling cadence for the live "new activity" check. */
@@ -343,8 +349,9 @@ export function useAccountActivity({
   // interval and, on a fresh queryKey, is cheap-isolated from the paginated
   // query above so revealing/holding new items never disturbs the visible list
   // or the user's scroll position.
-  const liveQuery = useQuery({
-    queryKey: [
+  const queryClient = useQueryClient();
+  const liveQueryKey = useMemo(
+    () => [
       'accountActivityLive',
       account ?? 'global',
       typeFilter,
@@ -353,10 +360,51 @@ export function useAccountActivity({
       conditionId ?? null,
       pageSize,
     ],
-    enabled: enabled && enableLive,
-    staleTime: 0,
+    [account, typeFilter, pickConfigId, token, conditionId, pageSize]
+  );
+
+  // Items the user has explicitly pulled in from the pending banner. Prepended
+  // (newest first) ahead of the paginated list. Snapshots only anchor position;
+  // the `items` memo below resolves each key to its freshest copy.
+  const [revealed, setRevealed] = useState<ActivityItem[]>([]);
+
+  // The live poll waits for the base query's first page and starts from a
+  // cache seeded with it. That (a) avoids a second, byte-identical page-1
+  // request at mount, and (b) keeps the pending banner off when the base
+  // query failed — otherwise every live item would count as "new" against an
+  // empty screen and revealing would strand the user with no pagination.
+  const [liveSeeded, setLiveSeeded] = useState(false);
+  const firstPage = data?.pages[0];
+
+  // Reset the reveal/seed state whenever the query scope changes — a new
+  // filter means a different feed, so previously-revealed items no longer
+  // belong and the live cache must re-seed from the new scope's first page.
+  const scopeKey = `${account ?? 'global'}|${typeFilter ?? ''}|${
+    pickConfigId ?? ''
+  }|${token ?? ''}|${conditionId ?? ''}|${pageSize}`;
+  useEffect(() => {
+    setRevealed([]);
+    setLiveSeeded(false);
+  }, [scopeKey]);
+
+  useEffect(() => {
+    if (!enableLive || liveSeeded || !firstPage) return;
+    queryClient.setQueryData<ActivityConnection>(
+      liveQueryKey,
+      (existing) => existing ?? firstPage
+    );
+    setLiveSeeded(true);
+  }, [enableLive, liveSeeded, firstPage, queryClient, liveQueryKey]);
+
+  const liveQuery = useQuery({
+    queryKey: liveQueryKey,
+    enabled: enabled && enableLive && liveSeeded,
+    // Seeded/polled data counts as fresh for one interval so enabling the
+    // query (or remounting within it) doesn't refetch what we just wrote.
+    staleTime: liveIntervalMs,
     gcTime: 5 * 60 * 1000,
     refetchInterval: liveIntervalMs,
+    refetchOnMount: false,
     refetchOnWindowFocus: true,
     queryFn: async () => {
       const resp = await graphqlRequest<{
@@ -379,19 +427,6 @@ export function useAccountActivity({
     [liveQuery.data, account]
   );
 
-  // Items the user has explicitly pulled in from the pending banner. Prepended
-  // (newest first) ahead of the paginated list.
-  const [revealed, setRevealed] = useState<ActivityItem[]>([]);
-
-  // Reset the revealed buffer whenever the query scope changes — a new filter
-  // means a different feed, so previously-revealed items no longer belong.
-  const scopeKey = `${account ?? 'global'}|${typeFilter ?? ''}|${
-    pickConfigId ?? ''
-  }|${token ?? ''}|${conditionId ?? ''}|${pageSize}`;
-  useEffect(() => {
-    setRevealed([]);
-  }, [scopeKey]);
-
   // Everything currently on screen (revealed + paginated), deduped.
   const visibleKeys = useMemo(() => {
     const s = new Set<string>();
@@ -407,16 +442,27 @@ export function useAccountActivity({
   );
 
   const items: ActivityItem[] = useMemo(() => {
+    // Revealed entries fix the ordering (newest-first ahead of the paginated
+    // list), but each key renders its freshest copy: the live poll re-reads
+    // page 1 every interval and the base query refetches, so preferring their
+    // copies keeps a revealed row from freezing at its reveal-time snapshot
+    // (e.g. never showing `settled`).
+    const freshByKey = new Map<string, ActivityItem>();
+    for (const it of liveItems) freshByKey.set(itemKey(it), it);
+    for (const it of baseItems) {
+      const key = itemKey(it);
+      if (!freshByKey.has(key)) freshByKey.set(key, it);
+    }
     const seen = new Set<string>();
     const out: ActivityItem[] = [];
     for (const it of [...revealed, ...baseItems]) {
       const key = itemKey(it);
       if (seen.has(key)) continue;
       seen.add(key);
-      out.push(it);
+      out.push(freshByKey.get(key) ?? it);
     }
     return out;
-  }, [revealed, baseItems]);
+  }, [revealed, baseItems, liveItems]);
 
   const revealPending = useCallback(() => {
     setRevealed((prev) => {
@@ -440,6 +486,9 @@ export function useAccountActivity({
     hasMore,
     fetchMore,
     pendingCount: pending.length,
+    /** Held-back new items, newest first — exposed so consumers that filter
+     *  client-side can count only the items the user will actually see. */
+    pendingItems: pending,
     revealPending,
   };
 }

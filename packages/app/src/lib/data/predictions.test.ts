@@ -105,7 +105,7 @@ describe('fetchPredictionWithConditions', () => {
     vi.unstubAllGlobals();
   });
 
-  it('posts both legs to the GraphQL endpoint and maps the prediction', async () => {
+  it('fetches both legs over GET (CDN-cacheable) and maps the prediction', async () => {
     fetchMock
       .mockResolvedValueOnce({
         ok: true,
@@ -132,17 +132,21 @@ describe('fetchPredictionWithConditions', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
 
+    // Both legs ride in the query string with no init object — the default
+    // GET method Apollo serves (and the CDN caches), never a POST body.
     const [predUrl, predInit] = fetchMock.mock.calls[0];
     expect(String(predUrl)).toContain('/graphql');
-    expect(JSON.parse(predInit.body).variables).toEqual({
-      predictionId: '0xpred1',
-    });
+    expect(predInit).toBeUndefined();
+    expect(
+      JSON.parse(new URL(String(predUrl)).searchParams.get('variables') ?? '')
+    ).toEqual({ predictionId: '0xpred1' });
 
     const [condUrl, condInit] = fetchMock.mock.calls[1];
     expect(String(condUrl)).toContain('/graphql');
-    expect(JSON.parse(condInit.body).variables).toEqual({
-      ids: ['0xcond1'],
-    });
+    expect(condInit).toBeUndefined();
+    expect(
+      JSON.parse(new URL(String(condUrl)).searchParams.get('variables') ?? '')
+    ).toEqual({ ids: ['0xcond1'] });
 
     expect(result.prediction?.marketAddress).toBe('0xescrow');
     expect(result.prediction?.result).toBe('UNRESOLVED');
@@ -200,18 +204,32 @@ describe('fetchPredictionWithConditions', () => {
     // 1 prediction leg + 2 chunked conditions legs.
     expect(fetchMock).toHaveBeenCalledTimes(3);
 
-    const firstChunkIds = JSON.parse(fetchMock.mock.calls[1][1].body).variables
-      .ids;
-    const secondChunkIds = JSON.parse(fetchMock.mock.calls[2][1].body).variables
-      .ids;
-    expect(firstChunkIds).toHaveLength(25);
-    expect(secondChunkIds).toHaveLength(5);
+    const chunkIds = (call: unknown[]) =>
+      JSON.parse(new URL(String(call[0])).searchParams.get('variables') ?? '')
+        .ids;
+    expect(chunkIds(fetchMock.mock.calls[1])).toHaveLength(25);
+    expect(chunkIds(fetchMock.mock.calls[2])).toHaveLength(5);
 
     // Every returned condition is preserved (nothing truncated at the 25 cap).
     expect(result.conditions).toHaveLength(30);
     expect(result.conditions.map((c) => c.id)).toEqual(
       picks.map((p) => p.conditionId)
     );
+  });
+
+  it('skips the conditions leg when includeConditions is false', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ data: { prediction: makePredictionNode() } }),
+    });
+
+    const result = await fetchPredictionWithConditions('0xpred1', {
+      includeConditions: false,
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result.prediction?.predictionId).toBe('0xpred1');
+    expect(result.conditions).toEqual([]);
   });
 
   it('returns null prediction without a conditions round trip when not found', async () => {

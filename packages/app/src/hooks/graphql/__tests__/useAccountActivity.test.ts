@@ -510,6 +510,8 @@ describe('useAccountActivity live feed', () => {
     await waitFor(() => expect(result.current.pendingCount).toBe(1), {
       timeout: 2000,
     });
+    // …exposes the held-back items for consumers that filter client-side…
+    expect(predictionKeys(result.current.pendingItems)).toEqual(['0xpred2']);
     // …but the visible list is unchanged until the user reveals.
     expect(predictionKeys(result.current.items)).toEqual(['0xpred1']);
 
@@ -525,5 +527,106 @@ describe('useAccountActivity live feed', () => {
       ])
     );
     expect(result.current.pendingCount).toBe(0);
+  });
+
+  it('seeds the live query from the base page instead of duplicating the initial request', async () => {
+    const mod = await getModule();
+
+    mockGraphqlRequest.mockResolvedValue(
+      makeConnection([{ timestamp: 1700000001, node: makePredictionNode() }])
+    );
+
+    const { result } = renderHook(
+      // Long interval: any second request during the test window would be
+      // the mount-time duplicate this guards against, not a poll.
+      () =>
+        mod.useAccountActivity({ enableLive: true, liveIntervalMs: 60_000 }),
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => expect(result.current.items.length).toBe(1));
+    // Give a would-be duplicate live fetch time to fire.
+    await new Promise((r) => setTimeout(r, 100));
+
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
+    expect(result.current.pendingCount).toBe(0);
+  });
+
+  it('keeps the live poll and pending count off while the base query has no data', async () => {
+    const mod = await getModule();
+
+    mockGraphqlRequest.mockRejectedValue(new Error('network down'));
+
+    const { result } = renderHook(
+      () => mod.useAccountActivity({ enableLive: true, liveIntervalMs: 50 }),
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    // Let several would-be poll intervals elapse.
+    await new Promise((r) => setTimeout(r, 200));
+
+    // Only the (failed) base request fired — no live poll against a feed the
+    // user can't see, and no "N new activities" banner over an error state.
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
+    expect(result.current.pendingCount).toBe(0);
+    expect(result.current.pendingItems).toEqual([]);
+  });
+
+  it('refreshes revealed items with fresher copies from later polls', async () => {
+    const mod = await getModule();
+
+    const A = { timestamp: 1700000001, node: makePredictionNode() }; // 0xpred1
+    const B = {
+      timestamp: 1700000002,
+      node: makePredictionNode({ predictionId: '0xpred2' }),
+    };
+    const BSettled = {
+      timestamp: 1700000002,
+      node: makePredictionNode({
+        predictionId: '0xpred2',
+        settled: true,
+        settledAt: '2026-06-02T00:00:00.000Z',
+        result: 'PREDICTOR_WINS',
+      }),
+    };
+
+    let current = makeConnection([A]);
+    mockGraphqlRequest.mockImplementation(async () => current);
+
+    const { result } = renderHook(
+      () => mod.useAccountActivity({ enableLive: true, liveIntervalMs: 50 }),
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => expect(result.current.items.length).toBe(1));
+
+    // B arrives and the user reveals it while it is unsettled.
+    current = makeConnection([B, A]);
+    await waitFor(() => expect(result.current.pendingCount).toBe(1), {
+      timeout: 2000,
+    });
+    await act(async () => {
+      result.current.revealPending();
+    });
+    await waitFor(() =>
+      expect(predictionKeys(result.current.items)).toEqual([
+        '0xpred2',
+        '0xpred1',
+      ])
+    );
+
+    // B settles server-side. The reveal-time snapshot must not shadow the
+    // fresher copy the live poll returns.
+    current = makeConnection([BSettled, A]);
+    await waitFor(
+      () => {
+        const item = result.current.items[0];
+        if (item.type !== 'prediction') throw new Error('expected prediction');
+        expect(item.prediction.settled).toBe(true);
+        expect(item.prediction.result).toBe('PREDICTOR_WINS');
+      },
+      { timeout: 2000 }
+    );
   });
 });
