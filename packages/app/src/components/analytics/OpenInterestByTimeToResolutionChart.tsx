@@ -27,7 +27,10 @@ const MONTH_SECONDS = 30 * DAY_SECONDS;
  * labels exactly: "≤1 day", "2-7 days", "8-30 days", "1-2 mo.",
  * "2-3 mo.", "3-6 mo.", "6 mo.+".
  */
-function formatBucketLabel(min: number | null, max: number | null): string {
+export function formatBucketLabel(
+  min: number | null,
+  max: number | null
+): string {
   if (max == null) {
     // Open-ended tail.
     if (min == null) return 'All';
