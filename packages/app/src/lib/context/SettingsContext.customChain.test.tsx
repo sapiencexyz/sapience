@@ -57,6 +57,13 @@ beforeAll(() => {
 
 beforeEach(() => {
   window.localStorage.clear();
+  // Pre-seed the one-time Robinhood-preset flag so mounting the provider
+  // doesn't apply the preset and reload (the post-migration state every
+  // returning user is in).
+  window.localStorage.setItem(
+    'sapience.settings.robinhoodDefaultsMigrated',
+    '1'
+  );
   getChainId.mockReset();
 });
 

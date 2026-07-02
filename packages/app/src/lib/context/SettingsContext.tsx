@@ -18,6 +18,7 @@ import {
   useState,
 } from 'react';
 import { getNetworkEndpointDefaults } from '~/lib/config/networkDefaults';
+import { applyRobinhoodPresetOnce } from '~/lib/settings/applyRobinhoodPresetOnce';
 
 type SettingsContextValue = {
   /** GraphQL endpoint used by the app. The full path is stored as configured. */
@@ -190,6 +191,16 @@ export const SettingsProvider = ({
   useEffect(() => {
     setMounted(true);
     try {
+      // One-time: on the first visit after this ships, persist the Robinhood
+      // preset exactly as if the user pressed its Settings button, then
+      // reload (the chain override is read at module-eval time). Everything
+      // the user changes afterwards sticks.
+      if (typeof window !== 'undefined') {
+        if (applyRobinhoodPresetOnce(window.localStorage).applied) {
+          window.location.reload();
+          return;
+        }
+      }
       const g =
         typeof window !== 'undefined'
           ? window.localStorage.getItem(STORAGE_KEYS.graphql)
