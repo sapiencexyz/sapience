@@ -182,6 +182,14 @@ function PredictionActivityRow({
     );
   const endsAtMs = endsAtSec * 1000;
 
+  // Winner takes the loser's stake; percent is return on the winner's stake.
+  const winnerStake = predictorWon ? predictorEth : counterpartyEth;
+  const winnerProfit = predictorWon ? counterpartyEth : predictorEth;
+  const winnerProfitPct =
+    winnerStake > 0
+      ? parseFloat(((winnerProfit / winnerStake) * 100).toFixed(2))
+      : null;
+
   return (
     <tr className="border-b last:border-b-0">
       {/* Date */}
@@ -269,7 +277,7 @@ function PredictionActivityRow({
         <td className="px-4 py-3 whitespace-nowrap">
           <div>
             <div className="xl:hidden text-xs text-muted-foreground mb-1">
-              Value
+              Total
             </div>
             <div className="whitespace-nowrap tabular-nums text-brand-white font-mono">
               <NumberDisplay
@@ -298,14 +306,26 @@ function PredictionActivityRow({
               <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
                 Pending
               </span>
-            ) : predictorWon ? (
-              <span className="whitespace-nowrap tabular-nums font-mono uppercase text-yes cursor-default">
-                Predictor won
-              </span>
-            ) : counterpartyWon ? (
-              <span className="whitespace-nowrap tabular-nums font-mono uppercase text-yes cursor-default">
-                Counterparty won
-              </span>
+            ) : predictorWon || counterpartyWon ? (
+              <div className="flex flex-col gap-0.5">
+                <span className="whitespace-nowrap tabular-nums font-mono uppercase text-yes cursor-default">
+                  {predictorWon ? 'Predictor won' : 'Counterparty won'}
+                </span>
+                {winnerProfit > 0 && (
+                  <span
+                    data-testid={`status-profit-${prediction.predictionId}`}
+                    className="whitespace-nowrap tabular-nums font-mono text-xs text-muted-foreground cursor-default"
+                  >
+                    +
+                    <NumberDisplay
+                      value={winnerProfit}
+                      className="tabular-nums font-mono"
+                    />{' '}
+                    {collateralSymbol}
+                    {winnerProfitPct !== null && <> ({winnerProfitPct}%)</>}
+                  </span>
+                )}
+              </div>
             ) : (
               <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
                 Settled
@@ -425,7 +445,7 @@ function TradeActivityRow({
         <td className="px-4 py-3 whitespace-nowrap">
           <div>
             <div className="xl:hidden text-xs text-muted-foreground mb-1">
-              Value
+              Total
             </div>
             <div className="flex flex-col gap-0.5">
               <span className="whitespace-nowrap tabular-nums text-brand-white font-mono">
@@ -759,16 +779,18 @@ export default function ActivityTable({
   });
 
   // ── Render ───────────────────────────────────────────────────────────────
+  // Floats over the top of the table rather than occupying its own row, so
+  // arriving items never shift the layout. Needs a `relative` ancestor.
   const pendingBanner =
     pendingVisibleCount > 0 ? (
       <div
         ref={bannerRef}
-        className="flex justify-center px-4 py-2 border-b border-border/60 bg-white/[0.03]"
+        className="absolute inset-x-0 top-4 z-10 flex justify-center pointer-events-none"
       >
         <button
           type="button"
           onClick={handleRevealPending}
-          className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-border bg-background text-sm text-brand-white hover:bg-muted/50 transition-colors"
+          className="pointer-events-auto inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-border bg-background shadow-lg text-sm text-brand-white hover:bg-muted/50 transition-colors"
         >
           <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" />
           {pendingVisibleCount} new{' '}
@@ -802,12 +824,16 @@ export default function ActivityTable({
     );
   }
 
+  const fillWrapper = fill ? 'relative flex flex-col flex-1' : 'relative';
+
   if (items.length === 0) {
     return (
       <>
         {headerContent}
-        {pendingBanner}
-        <EmptyTabState message="No activity found" fill={fill} />
+        <div className={fillWrapper}>
+          {pendingBanner}
+          <EmptyTabState message="No activity found" fill={fill} />
+        </div>
       </>
     );
   }
@@ -816,8 +842,13 @@ export default function ActivityTable({
     return (
       <>
         {headerContent}
-        {pendingBanner}
-        <EmptyTabState message="No activity matches your filters" fill={fill} />
+        <div className={fillWrapper}>
+          {pendingBanner}
+          <EmptyTabState
+            message="No activity matches your filters"
+            fill={fill}
+          />
+        </div>
       </>
     );
   }
@@ -825,7 +856,7 @@ export default function ActivityTable({
   return (
     <>
       {headerContent}
-      {pendingBanner}
+      {pendingBanner && <div className="relative">{pendingBanner}</div>}
       <div className="overflow-x-auto">
         <table className="w-full text-sm [&>tbody>tr>td]:align-middle [&>tbody>tr:hover]:bg-muted/50 [&>tbody>tr>td]:text-brand-white">
           <thead className="hidden xl:table-header-group text-sm font-medium text-muted-foreground">
@@ -852,7 +883,7 @@ export default function ActivityTable({
               )}
               {!isHidden('value') && (
                 <th className="px-4 py-3 text-left align-middle font-medium">
-                  Value
+                  Total
                 </th>
               )}
               {!isHidden('status') && (
