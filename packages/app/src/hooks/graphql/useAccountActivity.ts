@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Address } from 'viem';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import {
   PREDICTION_FIELDS,
@@ -190,7 +190,34 @@ function toActivityItem(
   return null;
 }
 
+/** Stable domain identity for an item — used for dedup across pages and for
+ *  diffing the live feed against what's already on screen. */
+function itemKey(item: ActivityItem): string {
+  return item.type === 'prediction'
+    ? `Prediction:${item.prediction.predictionId}`
+    : `Trade:${item.trade.tradeHash}`;
+}
+
+/** Map a connection's edges to typed items, deduping on the domain id. */
+function mapEdges(
+  edges: ActivityEdge[] | undefined,
+  account?: string
+): ActivityItem[] {
+  const seen = new Set<string>();
+  const out: ActivityItem[] = [];
+  for (const edge of edges ?? []) {
+    const item = toActivityItem(edge, account);
+    if (!item) continue;
+    const key = itemKey(item);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+  }
+  return out;
+}
+
 const DEFAULT_PAGE_SIZE = 20;
+const DEFAULT_LIVE_INTERVAL_MS = 20_000;
 
 export function useAccountActivity({
   account,
@@ -200,6 +227,8 @@ export function useAccountActivity({
   token,
   conditionId,
   enabled: enabledOverride,
+  enableLive = true,
+  liveIntervalMs = DEFAULT_LIVE_INTERVAL_MS,
 }: {
   account?: Address;
   pageSize?: number;
@@ -224,6 +253,14 @@ export function useAccountActivity({
    * recent global activity. Pass false to skip the query entirely.
    */
   enabled?: boolean;
+  /**
+   * Poll the newest page on an interval and surface items that arrive after
+   * the initial load as `pendingCount` (held back until `revealPending()`),
+   * rather than silently mutating the visible list. Defaults to true.
+   */
+  enableLive?: boolean;
+  /** Polling cadence for the live "new activity" check. */
+  liveIntervalMs?: number;
 }) {
   const enabled = enabledOverride ?? true;
 
@@ -287,17 +324,12 @@ export function useAccountActivity({
 
   // Map edges to typed ActivityItems, deduping on the domain id
   // (predictionId / tradeHash) — cursor boundaries can overlap on refetch.
-  const items: ActivityItem[] = useMemo(() => {
+  const baseItems: ActivityItem[] = useMemo(() => {
     const seen = new Set<string>();
     const mapped: ActivityItem[] = [];
     for (const page of data?.pages ?? []) {
-      for (const edge of page.edges) {
-        const item = toActivityItem(edge, account);
-        if (!item) continue;
-        const key =
-          item.type === 'prediction'
-            ? `Prediction:${item.prediction.predictionId}`
-            : `Trade:${item.trade.tradeHash}`;
+      for (const item of mapEdges(page.edges, account)) {
+        const key = itemKey(item);
         if (seen.has(key)) continue;
         seen.add(key);
         mapped.push(item);
@@ -305,6 +337,96 @@ export function useAccountActivity({
     }
     return mapped;
   }, [data, account]);
+
+  // ── Live "new activity" polling ────────────────────────────────────────────
+  // A lightweight, separate query for just the newest page. It refetches on an
+  // interval and, on a fresh queryKey, is cheap-isolated from the paginated
+  // query above so revealing/holding new items never disturbs the visible list
+  // or the user's scroll position.
+  const liveQuery = useQuery({
+    queryKey: [
+      'accountActivityLive',
+      account ?? 'global',
+      typeFilter,
+      pickConfigId ?? null,
+      token ?? null,
+      conditionId ?? null,
+      pageSize,
+    ],
+    enabled: enabled && enableLive,
+    staleTime: 0,
+    gcTime: 5 * 60 * 1000,
+    refetchInterval: liveIntervalMs,
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
+      const resp = await graphqlRequest<{
+        activity: ActivityConnection | null;
+      }>(ACCOUNT_ACTIVITY_QUERY, {
+        account: account ?? null,
+        conditionIds: conditionId ? [conditionId] : null,
+        pickConfigId: pickConfigId ?? null,
+        token: token ?? null,
+        types,
+        first: pageSize,
+        after: null,
+      });
+      return resp?.activity ?? EMPTY_ACTIVITY_PAGE;
+    },
+  });
+
+  const liveItems = useMemo(
+    () => mapEdges(liveQuery.data?.edges, account),
+    [liveQuery.data, account]
+  );
+
+  // Items the user has explicitly pulled in from the pending banner. Prepended
+  // (newest first) ahead of the paginated list.
+  const [revealed, setRevealed] = useState<ActivityItem[]>([]);
+
+  // Reset the revealed buffer whenever the query scope changes — a new filter
+  // means a different feed, so previously-revealed items no longer belong.
+  const scopeKey = `${account ?? 'global'}|${typeFilter ?? ''}|${
+    pickConfigId ?? ''
+  }|${token ?? ''}|${conditionId ?? ''}|${pageSize}`;
+  useEffect(() => {
+    setRevealed([]);
+  }, [scopeKey]);
+
+  // Everything currently on screen (revealed + paginated), deduped.
+  const visibleKeys = useMemo(() => {
+    const s = new Set<string>();
+    for (const it of revealed) s.add(itemKey(it));
+    for (const it of baseItems) s.add(itemKey(it));
+    return s;
+  }, [revealed, baseItems]);
+
+  // New items the live poll found that aren't on screen yet.
+  const pending = useMemo(
+    () => liveItems.filter((it) => !visibleKeys.has(itemKey(it))),
+    [liveItems, visibleKeys]
+  );
+
+  const items: ActivityItem[] = useMemo(() => {
+    const seen = new Set<string>();
+    const out: ActivityItem[] = [];
+    for (const it of [...revealed, ...baseItems]) {
+      const key = itemKey(it);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(it);
+    }
+    return out;
+  }, [revealed, baseItems]);
+
+  const revealPending = useCallback(() => {
+    setRevealed((prev) => {
+      const seen = new Set(prev.map(itemKey));
+      const fresh = pending.filter((it) => !seen.has(itemKey(it)));
+      if (fresh.length === 0) return prev;
+      // `pending` is already newest-first from the server; keep it that way.
+      return [...fresh, ...prev];
+    });
+  }, [pending]);
 
   const hasMore = Boolean(hasNextPage);
   const fetchMore = useCallback(() => {
@@ -317,5 +439,7 @@ export function useAccountActivity({
     isFetchingMore,
     hasMore,
     fetchMore,
+    pendingCount: pending.length,
+    revealPending,
   };
 }

@@ -5,6 +5,7 @@ import { formatEther } from 'viem';
 import * as React from 'react';
 import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
+import { ArrowUp } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -84,6 +85,43 @@ function formatTimestamp(ms: number) {
   };
 }
 
+/** Re-render on an interval so relative timestamps ("5 minutes ago") stay
+ *  fresh while the page sits open, without any refetch. */
+function useNowTick(intervalMs: number) {
+  const [, setTick] = React.useState(0);
+  React.useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), intervalMs);
+    return () => clearInterval(id);
+  }, [intervalMs]);
+}
+
+// ─── Date cell ───────────────────────────────────────────────────────────────
+// Shared by both row types; self-refreshes the relative label every 30s.
+
+function DateCell({ timestamp }: { timestamp: number }) {
+  useNowTick(30_000);
+  const { relative, exact } = formatTimestamp(timestamp);
+  return (
+    <td className="px-4 py-3 whitespace-nowrap">
+      <div className="text-sm">
+        <div className="xl:hidden text-xs text-muted-foreground mb-1">Date</div>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="text-brand-white whitespace-nowrap cursor-default">
+                {relative}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <span>{exact}</span>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+    </td>
+  );
+}
+
 // ─── Type badge ──────────────────────────────────────────────────────────────
 
 function TypeBadge({ type }: { type: 'prediction' | 'trade' }) {
@@ -126,10 +164,6 @@ function PredictionActivityRow({
   const rawPicks = pickConfig?.picks ?? [];
   const pickLegs = toPicks(rawPicks, isPredictorSide, conditionsMap);
 
-  const { relative: timeDisplay, exact: exactDisplay } = formatTimestamp(
-    item.timestamp
-  );
-
   const predictorEth = Number(
     formatEther(BigInt(prediction.predictorCollateral))
   );
@@ -159,27 +193,7 @@ function PredictionActivityRow({
   return (
     <tr className="border-b last:border-b-0">
       {/* Date */}
-      {!isHidden('date') && (
-        <td className="px-4 py-3 whitespace-nowrap">
-          <div className="text-sm">
-            <div className="xl:hidden text-xs text-muted-foreground mb-1">
-              Date
-            </div>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="text-brand-white whitespace-nowrap cursor-default">
-                    {timeDisplay}
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <span>{exactDisplay}</span>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-        </td>
-      )}
+      {!isHidden('date') && <DateCell timestamp={item.timestamp} />}
       {/* Type */}
       {!isHidden('type') && (
         <td className="px-4 py-3 whitespace-nowrap">
@@ -346,37 +360,13 @@ function TradeActivityRow({
     pickConfig?.predictorToken?.toLowerCase() === trade.token.toLowerCase();
   const pickLegs = toPicks(rawPicks, isPredictorToken, conditionsMap);
 
-  const { relative: timeDisplay, exact: exactDisplay } = formatTimestamp(
-    item.timestamp
-  );
-
   const amount = Number(formatEther(BigInt(trade.tokenAmount)));
   const price = Number(formatEther(BigInt(trade.price)));
 
   return (
     <tr className="border-b last:border-b-0">
       {/* Date */}
-      {!isHidden('date') && (
-        <td className="px-4 py-3 whitespace-nowrap">
-          <div className="text-sm">
-            <div className="xl:hidden text-xs text-muted-foreground mb-1">
-              Date
-            </div>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="text-brand-white whitespace-nowrap cursor-default">
-                    {timeDisplay}
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <span>{exactDisplay}</span>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-        </td>
-      )}
+      {!isHidden('date') && <DateCell timestamp={item.timestamp} />}
       {/* Type */}
       {!isHidden('type') && (
         <td className="px-4 py-3 whitespace-nowrap">
@@ -627,6 +617,8 @@ export default function ActivityTable({
     isFetchingMore: activityFetchingMore,
     hasMore: activityHasMore,
     fetchMore: activityFetchMore,
+    pendingCount,
+    revealPending,
   } = useAccountActivity({
     account,
     pageSize: effectivePageSize,
@@ -635,6 +627,14 @@ export default function ActivityTable({
     token: filterToken,
     conditionId: !account ? conditionId : undefined,
   });
+
+  // Reveal newly-arrived items and bring them into view.
+  const handleRevealPending = React.useCallback(() => {
+    revealPending();
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [revealPending]);
 
   const isAccountMode = !!account;
 
@@ -743,6 +743,20 @@ export default function ActivityTable({
   });
 
   // ── Render ───────────────────────────────────────────────────────────────
+  const pendingBanner =
+    pendingCount > 0 ? (
+      <div className="flex justify-center px-4 py-2 border-b border-border/60 bg-white/[0.03]">
+        <button
+          type="button"
+          onClick={handleRevealPending}
+          className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-border bg-background text-sm text-brand-white hover:bg-muted/50 transition-colors"
+        >
+          <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" />
+          {pendingCount} new {pendingCount === 1 ? 'activity' : 'activities'}
+        </button>
+      </div>
+    ) : null;
+
   const headerContent =
     hideFilters && !leftSlot ? null : (
       <div className="px-4 py-4 border-b border-border/60 flex flex-col xl:flex-row xl:items-center gap-4 bg-white/[0.03]">
@@ -772,6 +786,7 @@ export default function ActivityTable({
     return (
       <>
         {headerContent}
+        {pendingBanner}
         <EmptyTabState message="No activity found" fill={fill} />
       </>
     );
@@ -781,6 +796,7 @@ export default function ActivityTable({
     return (
       <>
         {headerContent}
+        {pendingBanner}
         <EmptyTabState message="No activity matches your filters" fill={fill} />
       </>
     );
@@ -789,6 +805,7 @@ export default function ActivityTable({
   return (
     <>
       {headerContent}
+      {pendingBanner}
       <div className="overflow-x-auto">
         <table className="w-full text-sm [&>tbody>tr>td]:align-middle [&>tbody>tr:hover]:bg-muted/50 [&>tbody>tr>td]:text-brand-white">
           <thead className="hidden xl:table-header-group text-sm font-medium text-muted-foreground">

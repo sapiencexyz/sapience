@@ -170,7 +170,7 @@ describe('useAccountActivity', () => {
   it('runs the query for the global feed with null filters', async () => {
     const mod = await getModule();
 
-    renderHook(() => mod.useAccountActivity({}), {
+    renderHook(() => mod.useAccountActivity({ enableLive: false }), {
       wrapper: createWrapper(),
     });
 
@@ -197,9 +197,12 @@ describe('useAccountActivity', () => {
       makeConnection([{ timestamp: 1700000123, node: makePredictionNode() }])
     );
 
-    const { result } = renderHook(() => mod.useAccountActivity({}), {
-      wrapper: createWrapper(),
-    });
+    const { result } = renderHook(
+      () => mod.useAccountActivity({ enableLive: false }),
+      {
+        wrapper: createWrapper(),
+      }
+    );
 
     await waitFor(() => {
       expect(result.current.items.length).toBe(1);
@@ -242,6 +245,7 @@ describe('useAccountActivity', () => {
       () =>
         mod.useAccountActivity({
           account: '0xBUYER' as `0x${string}`,
+          enableLive: false,
         }),
       { wrapper: createWrapper() }
     );
@@ -286,6 +290,7 @@ describe('useAccountActivity', () => {
           token: '0xpredictortoken' as `0x${string}`,
           conditionId: '0xc1',
           activityType: 'trade',
+          enableLive: false,
         }),
       { wrapper: createWrapper() }
     );
@@ -308,9 +313,16 @@ describe('useAccountActivity', () => {
     const mod = await getModule();
     const wrapper = createWrapper();
 
-    renderHook(() => mod.useAccountActivity({ activityType: 'prediction' }), {
-      wrapper,
-    });
+    renderHook(
+      () =>
+        mod.useAccountActivity({
+          activityType: 'prediction',
+          enableLive: false,
+        }),
+      {
+        wrapper,
+      }
+    );
     await waitFor(() => {
       expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
     });
@@ -318,9 +330,12 @@ describe('useAccountActivity', () => {
       types: ['PREDICTION'],
     });
 
-    renderHook(() => mod.useAccountActivity({ activityType: 'all' }), {
-      wrapper: createWrapper(),
-    });
+    renderHook(
+      () => mod.useAccountActivity({ activityType: 'all', enableLive: false }),
+      {
+        wrapper: createWrapper(),
+      }
+    );
     await waitFor(() => {
       expect(mockGraphqlRequest).toHaveBeenCalledTimes(2);
     });
@@ -352,7 +367,7 @@ describe('useAccountActivity', () => {
       );
 
     const { result } = renderHook(
-      () => mod.useAccountActivity({ pageSize: 1 }),
+      () => mod.useAccountActivity({ pageSize: 1, enableLive: false }),
       { wrapper: createWrapper() }
     );
 
@@ -414,7 +429,7 @@ describe('useAccountActivity', () => {
       );
 
     const { result } = renderHook(
-      () => mod.useAccountActivity({ pageSize: 2 }),
+      () => mod.useAccountActivity({ pageSize: 2, enableLive: false }),
       { wrapper: createWrapper() }
     );
 
@@ -434,5 +449,81 @@ describe('useAccountActivity', () => {
       i.type === 'prediction' ? i.prediction.predictionId : i.trade.tradeHash
     );
     expect(keys).toEqual(['0xpred1', '0xtrade1', '0xtrade2']);
+  });
+});
+
+// ─── Live "new activity" polling ─────────────────────────────────────────────
+
+function predictionKeys(items: { type: string }[]) {
+  return (items as { type: string; prediction?: { predictionId: string } }[])
+    .filter((i) => i.type === 'prediction')
+    .map((i) => i.prediction!.predictionId);
+}
+
+describe('useAccountActivity live feed', () => {
+  it('does not poll or expose pending items when live is disabled', async () => {
+    const mod = await getModule();
+
+    mockGraphqlRequest.mockResolvedValue(
+      makeConnection([{ timestamp: 1700000001, node: makePredictionNode() }])
+    );
+
+    const { result } = renderHook(
+      () => mod.useAccountActivity({ enableLive: false }),
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => expect(result.current.items.length).toBe(1));
+
+    // No separate live query — exactly the one paginated request fired.
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
+    expect(result.current.pendingCount).toBe(0);
+  });
+
+  it('detects items that arrive after load and holds them until revealed', async () => {
+    const mod = await getModule();
+
+    const A = { timestamp: 1700000001, node: makePredictionNode() }; // 0xpred1
+    const B = {
+      timestamp: 1700000002,
+      node: makePredictionNode({ predictionId: '0xpred2' }),
+    };
+
+    // Mutable "server" — both the base and live queries read from it.
+    let current = makeConnection([A]);
+    mockGraphqlRequest.mockImplementation(async () => current);
+
+    const { result } = renderHook(
+      () => mod.useAccountActivity({ enableLive: true, liveIntervalMs: 50 }),
+      { wrapper: createWrapper() }
+    );
+
+    // Initial load: only A is shown, nothing pending.
+    await waitFor(() => expect(result.current.items.length).toBe(1));
+    expect(result.current.pendingCount).toBe(0);
+    expect(predictionKeys(result.current.items)).toEqual(['0xpred1']);
+
+    // A new activity B lands at the top of the feed.
+    current = makeConnection([B, A]);
+
+    // The live poll picks it up and surfaces the count…
+    await waitFor(() => expect(result.current.pendingCount).toBe(1), {
+      timeout: 2000,
+    });
+    // …but the visible list is unchanged until the user reveals.
+    expect(predictionKeys(result.current.items)).toEqual(['0xpred1']);
+
+    await act(async () => {
+      result.current.revealPending();
+    });
+
+    // Revealed items are prepended (newest first) and the count clears.
+    await waitFor(() =>
+      expect(predictionKeys(result.current.items)).toEqual([
+        '0xpred2',
+        '0xpred1',
+      ])
+    );
+    expect(result.current.pendingCount).toBe(0);
   });
 });
