@@ -30,41 +30,75 @@ export type Connection<TNode> = {
   pageInfo: PageInfo;
 };
 
+/**
+ * GraphQL-level errors ride back as HTTP 200 with an `errors` array, so
+ * `fetchWithRetry` (which only retries 429/5xx/network failures) never
+ * sees them. Transient server-side errors — the API's 8s Prisma query
+ * timeout, connection-pool exhaustion — must be retried here instead:
+ * the underlying Postgres query keeps running after the API stops
+ * waiting, so a retry lands on a warm cache and typically succeeds.
+ */
+const TRANSIENT_GRAPHQL_ERROR_PATTERNS = [
+  /query timeout/i,
+  /timed out fetching a new connection/i,
+  /connection pool/i,
+];
+
+function isTransientGraphqlError(errors: Array<{ message: string }>): boolean {
+  return errors.some((e) =>
+    TRANSIENT_GRAPHQL_ERROR_PATTERNS.some((p) => p.test(e.message))
+  );
+}
+
 export async function graphqlRequest<TData>(
   graphqlUrl: string,
   query: string,
   variables: Record<string, unknown>,
-  label: string
+  label: string,
+  retryOpts?: { maxRetries?: number; baseDelayMs?: number }
 ): Promise<TData> {
-  const response = await fetchWithRetry(graphqlUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify({ query, variables }),
-  });
+  const maxRetries = retryOpts?.maxRetries ?? 5;
+  const baseDelayMs = retryOpts?.baseDelayMs ?? 1000;
 
-  if (!response.ok) {
-    const body = await response.text().catch(() => '(unreadable body)');
-    throw new Error(
-      `[${label}] GraphQL query failed: HTTP ${response.status} ${response.statusText}\nResponse body: ${body.slice(0, 2000)}`
-    );
-  }
+  for (let attempt = 0; ; attempt++) {
+    const response = await fetchWithRetry(graphqlUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({ query, variables }),
+    });
 
-  const result = (await response.json()) as {
-    data?: TData;
-    errors?: Array<{ message: string }>;
-  };
-  if (result.errors && result.errors.length > 0) {
-    throw new Error(
-      `[${label}] GraphQL query returned errors: ${result.errors.map((e) => e.message).join('; ')}`
-    );
+    if (!response.ok) {
+      const body = await response.text().catch(() => '(unreadable body)');
+      throw new Error(
+        `[${label}] GraphQL query failed: HTTP ${response.status} ${response.statusText}\nResponse body: ${body.slice(0, 2000)}`
+      );
+    }
+
+    const result = (await response.json()) as {
+      data?: TData;
+      errors?: Array<{ message: string }>;
+    };
+    if (result.errors && result.errors.length > 0) {
+      const joined = result.errors.map((e) => e.message).join('; ');
+      if (attempt < maxRetries && isTransientGraphqlError(result.errors)) {
+        const delay =
+          baseDelayMs * Math.pow(2, attempt) + Math.random() * baseDelayMs;
+        console.log(
+          `[Retry] [${label}] Transient GraphQL error, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxRetries}) — ${joined}`
+        );
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        continue;
+      }
+      throw new Error(`[${label}] GraphQL query returned errors: ${joined}`);
+    }
+    if (result.data == null) {
+      throw new Error(`[${label}] GraphQL response carried no data`);
+    }
+    return result.data;
   }
-  if (result.data == null) {
-    throw new Error(`[${label}] GraphQL response carried no data`);
-  }
-  return result.data;
 }
 
 export async function walkConnection<TNode, TData>(opts: {
