@@ -1,6 +1,5 @@
 'use client';
 
-import { Badge } from '@sapience/ui/components/ui/badge';
 import { Button } from '@sapience/ui/components/ui/button';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import {
@@ -372,12 +371,6 @@ const Header = () => {
                           className="opacity-100"
                           priority
                         />
-                        <Badge
-                          variant="outline"
-                          className="ml-2 px-1.5 py-0.5 text-xs font-medium !rounded-md font-mono border-foreground/40 bg-foreground/10 text-foreground tracking-widest opacity-75"
-                        >
-                          BETA
-                        </Badge>
                       </div>
                     </Link>
                   </div>

@@ -8,7 +8,6 @@ import type { ReactNode } from 'react';
 
 import Header from './Header';
 import Footer from './Footer';
-import BannerCoordinator from '~/components/shared/BannerCoordinator';
 
 const ContentArea = ({ children }: { children: ReactNode }) => {
   return (
@@ -39,7 +38,6 @@ const Layout = ({ children }: { children: ReactNode }) => {
           } as React.CSSProperties
         }
       >
-        <BannerCoordinator />
         <Header />
         <div className="flex-1 flex w-full">
           <ContentArea>{children}</ContentArea>
