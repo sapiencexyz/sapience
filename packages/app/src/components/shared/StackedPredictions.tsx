@@ -32,6 +32,8 @@ export interface Pick {
   resolvedToYes?: boolean;
   /** If settled, whether the outcome was non-decisive (tie). */
   nonDecisive?: boolean;
+  /** API-estimated YES probability (0-1) for the condition, when available. */
+  estimatedPrice?: number | null;
 }
 
 interface StackedPredictionsProps {

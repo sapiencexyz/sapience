@@ -30,6 +30,7 @@ function makeConditionsMap(
         settled: v.settled ?? false,
         resolvedToYes: v.resolvedToYes ?? false,
         nonDecisive: v.nonDecisive ?? false,
+        estimatedPrice: v.estimatedPrice ?? null,
       },
     ])
   );
@@ -507,5 +508,43 @@ describe('toPicks — mixed resolver picks', () => {
     expect(result[0].settled).toBe(true);
     expect(result[0].resolvedToYes).toBe(true);
     expect(result[0].nonDecisive).toBe(false);
+  });
+
+  it('threads estimatedPrice from the conditionsMap on both Pyth and default paths', () => {
+    const pythConditionId = makePythConditionId();
+    const pythPick = makePickData({ conditionId: pythConditionId });
+    const defaultPick: PickData = {
+      id: 4,
+      pickConfigId: '0x04',
+      conditionResolver: '0x1234567890123456789012345678901234567890',
+      conditionId: 'cond-estimated',
+      predictedOutcome: OutcomeSide.YES,
+    };
+    const map = makeConditionsMap([
+      [pythConditionId, { estimatedPrice: 0.61 }],
+      ['cond-estimated', { question: 'Will it rain?', estimatedPrice: 0.27 }],
+    ]);
+    const result = toPicks([pythPick, defaultPick], true, map);
+    expect(result[0].estimatedPrice).toBe(0.61);
+    expect(result[1].estimatedPrice).toBe(0.27);
+  });
+
+  it('maps a missing condition or estimate to a null estimatedPrice', () => {
+    const pick: PickData = {
+      id: 5,
+      pickConfigId: '0x05',
+      conditionResolver: '0x1234567890123456789012345678901234567890',
+      conditionId: 'cond-unknown',
+      predictedOutcome: OutcomeSide.YES,
+    };
+    const noCondition = toPicks([pick], true, emptyConditionsMap);
+    expect(noCondition[0].estimatedPrice).toBeNull();
+
+    const noEstimate = toPicks(
+      [pick],
+      true,
+      makeConditionsMap([['cond-unknown', { question: 'Q' }]])
+    );
+    expect(noEstimate[0].estimatedPrice).toBeNull();
   });
 });

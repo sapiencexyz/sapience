@@ -1,13 +1,12 @@
 'use client';
 
-import * as React from 'react';
+import type * as React from 'react';
 import { formatEther } from 'viem';
 import { motion } from 'framer-motion';
 import ConditionTitleLink from '../ConditionTitleLink';
 import { type TopLevelRow, EndTimeCell, PredictCell } from '../market-helpers';
 import { getCategoryIcon } from '~/lib/theme/categoryIcons';
 import { formatPercentChance } from '~/lib/format/percentChance';
-import MarketPredictionRequest from '~/components/shared/MarketPredictionRequest';
 
 // ---------------------------------------------------------------------------
 // Animation variants
@@ -140,20 +139,13 @@ function formatOI(oiWei: bigint): string {
 
 interface ConditionCardProps {
   row: TopLevelRow & { kind: 'condition' };
-  predictionMapRef: React.RefObject<Record<string, number>>;
-  onPrediction: (conditionId: string, p: number) => void;
   variant?: 'default' | 'child';
 }
 
-function ConditionCard({
-  row,
-  predictionMapRef,
-  onPrediction,
-  variant = 'default',
-}: ConditionCardProps) {
+function ConditionCard({ row, variant = 'default' }: ConditionCardProps) {
   const { condition } = row;
   const oiWei = BigInt(condition.openInterest || '0');
-  const probability = predictionMapRef.current[condition.id];
+  const probability = condition.estimatedPrice ?? null;
   const percentLabel =
     probability != null ? formatPercentChance(probability) : null;
   // Numeric percent for gauge arc (clamped 1–99 to avoid fully-empty/full visual)
@@ -162,11 +154,6 @@ function ConditionCard({
       ? Math.max(1, Math.min(99, Math.round(probability * 100)))
       : null;
   const CategoryIcon = getCategoryIcon(condition.category?.slug);
-
-  const handlePrediction = React.useCallback(
-    (p: number) => onPrediction(condition.id, p),
-    [condition.id, onPrediction]
-  );
 
   return (
     <motion.div
@@ -213,17 +200,6 @@ function ConditionCard({
                 <span className="font-display text-[14px] font-bold text-royal-900">
                   —
                 </span>
-                <MarketPredictionRequest
-                  conditionId={condition.id}
-                  prefetchedProbability={probability}
-                  estimatedPrice={condition.estimatedPrice}
-                  onPrediction={handlePrediction}
-                  inline
-                  requestLabel="Request"
-                  chainId={condition.chainId}
-                  resolverAddress={condition.resolver}
-                  className="[&_.font-mono]:font-display [&_.font-mono]:font-semibold [&_.font-mono]:text-[9px] [&_button]:font-display [&_button]:font-semibold [&_button]:text-[9px] [&_button]:text-royal-500 [&_.animate-pulse]:font-display [&_.animate-pulse]:font-semibold [&_.animate-pulse]:text-[8px] [&_.animate-pulse]:text-royal-400"
-                />
               </div>
             )}
           </SemiCircleGaugeShell>

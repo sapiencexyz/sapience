@@ -31,6 +31,7 @@ export function useEnrichedTokens(tokens: string[]) {
             settled: c.settled ?? undefined,
             resolvedToYes: c.resolvedToYes ?? undefined,
             nonDecisive: c.nonDecisive ?? undefined,
+            estimatedPrice: c.estimatedPrice ?? null,
           });
         }
       }
