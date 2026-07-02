@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const fetchCalls: Array<{ url: string; init?: RequestInit }> = [];
+const fetchCalls: Array<{
+  url: string;
+  init?: RequestInit;
+  maxRetries?: number;
+  baseDelayMs?: number;
+}> = [];
 const fetchQueue: Array<() => Response> = [];
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -11,12 +16,19 @@ function jsonResponse(body: unknown, status = 200): Response {
 }
 
 vi.mock('./fetch', () => ({
-  fetchWithRetry: vi.fn(async (url: string, init?: RequestInit) => {
-    fetchCalls.push({ url, init });
-    const next = fetchQueue.shift();
-    if (!next) throw new Error(`No queued response for ${url}`);
-    return next();
-  }),
+  fetchWithRetry: vi.fn(
+    async (
+      url: string,
+      init?: RequestInit,
+      maxRetries?: number,
+      baseDelayMs?: number
+    ) => {
+      fetchCalls.push({ url, init, maxRetries, baseDelayMs });
+      const next = fetchQueue.shift();
+      if (!next) throw new Error(`No queued response for ${url}`);
+      return next();
+    }
+  ),
 }));
 
 import { graphqlRequest } from './graphql';
@@ -105,5 +117,63 @@ describe('graphqlRequest transient-error retry', () => {
       /no data/
     );
     expect(fetchCalls).toHaveLength(1);
+  });
+
+  it('retries on extensions.code QUERY_TIMEOUT even when the message is reworded', async () => {
+    fetchQueue.push(() =>
+      jsonResponse({
+        errors: [
+          {
+            message: 'Something entirely different happened',
+            extensions: { code: 'QUERY_TIMEOUT' },
+          },
+        ],
+      })
+    );
+    fetchQueue.push(() => jsonResponse({ data: { ping: 'pong' } }));
+
+    const data = await graphqlRequest<{ ping: string }>(
+      URL,
+      QUERY,
+      {},
+      'Test',
+      OPTS
+    );
+
+    expect(data).toEqual({ ping: 'pong' });
+    expect(fetchCalls).toHaveLength(2);
+  });
+
+  it('does not retry on an unknown extensions code with a non-transient message', async () => {
+    fetchQueue.push(() =>
+      jsonResponse({
+        errors: [
+          {
+            message: 'Variable "$filter" got invalid value',
+            extensions: { code: 'BAD_USER_INPUT' },
+          },
+        ],
+      })
+    );
+
+    await expect(graphqlRequest(URL, QUERY, {}, 'Test', OPTS)).rejects.toThrow(
+      /invalid value/
+    );
+    expect(fetchCalls).toHaveLength(1);
+  });
+});
+
+describe('graphqlRequest HTTP retry budget', () => {
+  it('passes a small explicit maxRetries to fetchWithRetry so backoff stays bounded', async () => {
+    fetchQueue.push(() => jsonResponse({ data: { ping: 'pong' } }));
+
+    await graphqlRequest<{ ping: string }>(URL, QUERY, {}, 'Test', OPTS);
+
+    expect(fetchCalls).toHaveLength(1);
+    // fetchWithRetry defaults to maxRetries=10 (~17 min of exponential
+    // backoff); graphqlRequest's own outer retry loop compounds that,
+    // so it must pass a small explicit inner budget instead.
+    expect(fetchCalls[0].maxRetries).toBeDefined();
+    expect(fetchCalls[0].maxRetries).toBeLessThanOrEqual(3);
   });
 });

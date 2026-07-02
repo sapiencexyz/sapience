@@ -38,17 +38,47 @@ export type Connection<TNode> = {
  * the underlying Postgres query keeps running after the API stops
  * waiting, so a retry lands on a warm cache and typically succeeds.
  */
+type GraphqlResponseError = {
+  message: string;
+  extensions?: { code?: string };
+};
+
+/**
+ * Structured error codes the API stamps on transient failures
+ * (`extensions.code` on the GraphQL error). Preferred over message
+ * matching — the API can reword messages without breaking retries.
+ */
+const TRANSIENT_GRAPHQL_ERROR_CODES = new Set(['QUERY_TIMEOUT']);
+
+/**
+ * Message-based fallback for errors that carry no structured code —
+ * Prisma-internal wording (connection pool exhaustion) and older API
+ * deployments that predate `extensions.code`.
+ */
 const TRANSIENT_GRAPHQL_ERROR_PATTERNS = [
   /query timeout/i,
   /timed out fetching a new connection/i,
   /connection pool/i,
 ];
 
-function isTransientGraphqlError(errors: Array<{ message: string }>): boolean {
-  return errors.some((e) =>
-    TRANSIENT_GRAPHQL_ERROR_PATTERNS.some((p) => p.test(e.message))
+function isTransientGraphqlError(errors: GraphqlResponseError[]): boolean {
+  return errors.some(
+    (e) =>
+      (e.extensions?.code != null &&
+        TRANSIENT_GRAPHQL_ERROR_CODES.has(e.extensions.code)) ||
+      TRANSIENT_GRAPHQL_ERROR_PATTERNS.some((p) => p.test(e.message))
   );
 }
+
+/**
+ * Inner HTTP retry budget. `fetchWithRetry` defaults to maxRetries=10
+ * (~17 minutes of exponential backoff worst case); compounded with this
+ * module's own transient-error retry loop that would balloon to 60+
+ * HTTP attempts inside cron jobs. Capping the inner budget bounds a
+ * single graphqlRequest to a few seconds of HTTP-level backoff while
+ * the outer loop keeps handling transient GraphQL errors.
+ */
+const HTTP_MAX_RETRIES = 2;
 
 export async function graphqlRequest<TData>(
   graphqlUrl: string,
@@ -61,14 +91,18 @@ export async function graphqlRequest<TData>(
   const baseDelayMs = retryOpts?.baseDelayMs ?? 1000;
 
   for (let attempt = 0; ; attempt++) {
-    const response = await fetchWithRetry(graphqlUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
+    const response = await fetchWithRetry(
+      graphqlUrl,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({ query, variables }),
       },
-      body: JSON.stringify({ query, variables }),
-    });
+      HTTP_MAX_RETRIES
+    );
 
     if (!response.ok) {
       const body = await response.text().catch(() => '(unreadable body)');
@@ -79,7 +113,7 @@ export async function graphqlRequest<TData>(
 
     const result = (await response.json()) as {
       data?: TData;
-      errors?: Array<{ message: string }>;
+      errors?: GraphqlResponseError[];
     };
     if (result.errors && result.errors.length > 0) {
       const joined = result.errors.map((e) => e.message).join('; ');
