@@ -33,6 +33,7 @@ import {
   sumEscrowBalancesAtBlock,
 } from '../../../../services/protocolStats';
 import { getProviderForChain } from '../../../../lib/utils';
+import { TtlCache } from '../../../../lib/ttlCache';
 
 import { createLogger } from '../../../../core/logger';
 
@@ -462,11 +463,6 @@ const computeProtocolStats = async (
 
 const PROTOCOL_STATS_TTL_MS = 60_000;
 
-type ProtocolStatsCacheEntry = {
-  promise: Promise<ProtocolStat[]>;
-  expiresAt: number;
-};
-
 // Keyed by the requested vault family ('__default__' = the protocol family,
 // which is what the analytics page asks for). The value is the in-flight
 // promise, not the resolved array, so concurrent callers single-flight onto
@@ -476,7 +472,9 @@ type ProtocolStatsCacheEntry = {
 // (3 series queries + the live candle's on-chain RPC) with no dependence on
 // the page/cursor. Collapsing them to one DB+RPC pass per TTL window is the
 // dominant win for the dashboard's load time.
-const protocolStatsCache = new Map<string, ProtocolStatsCacheEntry>();
+const protocolStatsCache = new TtlCache<string, Promise<ProtocolStat[]>>({
+  ttlMs: PROTOCOL_STATS_TTL_MS,
+});
 
 /** Test hook — drop all memoized protocol-stats entries. */
 export const __clearProtocolStatsCache = (): void => {
@@ -486,23 +484,18 @@ export const __clearProtocolStatsCache = (): void => {
 export const getProtocolStatsCacheStats = (): {
   size: number;
   live: number;
-} => {
-  const now = Date.now();
-  let live = 0;
-  for (const entry of protocolStatsCache.values()) {
-    if (entry.expiresAt > now) live += 1;
-  }
-  return { size: protocolStatsCache.size, live };
-};
+} => ({
+  size: protocolStatsCache.size(),
+  live: protocolStatsCache.liveSize(),
+});
 
 export const protocolStats: NonNullable<QueryResolvers['protocolStats']> = (
   _parent,
   { vaultAddress: vaultAddressArg }
 ) => {
   const key = vaultAddressArg ? vaultAddressArg.toLowerCase() : '__default__';
-  const now = Date.now();
   const hit = protocolStatsCache.get(key);
-  if (hit && hit.expiresAt > now) return hit.promise;
+  if (hit) return hit;
 
   // Don't cache rejections: evict on failure so a transient RPC/DB blip isn't
   // pinned as the answer for the whole TTL window (the next caller retries).
@@ -510,10 +503,7 @@ export const protocolStats: NonNullable<QueryResolvers['protocolStats']> = (
     protocolStatsCache.delete(key);
     throw err;
   });
-  protocolStatsCache.set(key, {
-    promise,
-    expiresAt: now + PROTOCOL_STATS_TTL_MS,
-  });
+  protocolStatsCache.set(key, promise);
   return promise;
 };
 

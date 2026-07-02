@@ -49,6 +49,19 @@ export function toPicks(
         : OutcomeSide.YES;
     const choice = getChoiceLabel(effectiveOutcome);
 
+    // Condition-derived fields common to every branch below; only question,
+    // endTime, and source vary per branch.
+    const shared = {
+      choice,
+      conditionId: pick.conditionId,
+      resolverAddress: pick.conditionResolver ?? condition?.resolver ?? null,
+      categorySlug: condition?.category?.slug ?? null,
+      settled: condition?.settled,
+      resolvedToYes: condition?.resolvedToYes,
+      nonDecisive: condition?.nonDecisive,
+      estimatedPrice: condition?.estimatedPrice ?? null,
+    };
+
     if (resolverKind === 'pyth') {
       const decoded = decodePythMarketId(pick.conditionId as `0x${string}`);
 
@@ -65,50 +78,28 @@ export function toPicks(
           (feedLabel ? `${feedLabel} > $${priceStr}` : pick.conditionId);
 
         return {
+          ...shared,
           question,
-          choice,
-          conditionId: pick.conditionId,
-          resolverAddress:
-            pick.conditionResolver ?? condition?.resolver ?? null,
-          categorySlug: condition?.category?.slug ?? null,
           endTime: condition?.endTime ?? Number(decoded.endTime),
           source: 'pyth' as const,
-          settled: condition?.settled,
-          resolvedToYes: condition?.resolvedToYes,
-          nonDecisive: condition?.nonDecisive,
-          estimatedPrice: condition?.estimatedPrice ?? null,
         };
       }
 
       // Decode failed — still mark as Pyth
       return {
+        ...shared,
         question:
           condition?.question ?? condition?.shortName ?? pick.conditionId,
-        choice,
-        conditionId: pick.conditionId,
-        resolverAddress: pick.conditionResolver ?? condition?.resolver ?? null,
-        categorySlug: condition?.category?.slug ?? null,
         endTime: condition?.endTime ?? null,
         source: 'pyth' as const,
-        settled: condition?.settled,
-        resolvedToYes: condition?.resolvedToYes,
-        nonDecisive: condition?.nonDecisive,
-        estimatedPrice: condition?.estimatedPrice ?? null,
       };
     }
 
     // Default path (non-Pyth resolvers)
     return {
+      ...shared,
       question: condition?.question ?? condition?.shortName ?? pick.conditionId,
-      choice,
-      conditionId: pick.conditionId,
-      resolverAddress: pick.conditionResolver ?? condition?.resolver ?? null,
-      categorySlug: condition?.category?.slug ?? null,
       endTime: condition?.endTime ?? null,
-      settled: condition?.settled,
-      resolvedToYes: condition?.resolvedToYes,
-      nonDecisive: condition?.nonDecisive,
-      estimatedPrice: condition?.estimatedPrice ?? null,
     };
   });
 }
