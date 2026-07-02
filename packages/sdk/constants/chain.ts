@@ -117,7 +117,13 @@ export function isBuiltInTradingChain(chainId: number): boolean {
  * `readCustomChainOverride`) takes precedence so the whole app runs against a
  * user-supplied chain after a reload.
  */
-const ENV_DEFAULT_CHAIN_ID: number =
+/**
+ * The build's default chain, straight from the environment — never affected by
+ * the localStorage custom-chain override. Use this (not `DEFAULT_CHAIN_ID`)
+ * when a decision must reflect the deployment rather than the user's session,
+ * e.g. picking which network's preset a migration should apply.
+ */
+export const ENV_DEFAULT_CHAIN_ID: number =
   Number(
     process.env.NEXT_PUBLIC_DEFAULT_CHAIN_ID || process.env.DEFAULT_CHAIN_ID
   ) || CHAIN_ID_ETHEREAL;

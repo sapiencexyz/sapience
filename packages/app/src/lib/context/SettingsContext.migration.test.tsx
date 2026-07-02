@@ -1,9 +1,11 @@
 /**
  * Tests for the one-time Robinhood preset application wired into
- * SettingsContext's mount effect: the first visit persists exactly what the
- * Robinhood preset button writes and reloads once; the persisted flag makes
- * every later mount a no-op, so anything the user changes afterwards
- * (including switching back to Ethereal) sticks.
+ * SettingsContext's mount effect: the first visit of a session carrying
+ * endpoint/chain overrides persists exactly what the Robinhood preset button
+ * writes and reloads once; a session with no overrides only gets the flag (the
+ * defaults already serve Robinhood). The persisted flag makes every later
+ * mount a no-op, so anything the user changes afterwards (including switching
+ * back to Ethereal) sticks.
  */
 
 import { render, screen, waitFor } from '@testing-library/react';
@@ -105,7 +107,7 @@ describe('SettingsContext one-time Robinhood preset', () => {
     );
   });
 
-  test('a brand-new visitor also gets the preset applied, once', async () => {
+  test('a brand-new visitor only gets the flag: defaults already serve Robinhood, no reload', async () => {
     render(
       <SettingsProvider>
         <Probe />
@@ -113,14 +115,15 @@ describe('SettingsContext one-time Robinhood preset', () => {
     );
 
     await waitFor(() => {
-      expect(reloadMock).toHaveBeenCalledTimes(1);
+      expect(
+        window.localStorage.getItem(ROBINHOOD_DEFAULTS_MIGRATION_KEY)
+      ).toBe('1');
     });
-    expect(window.localStorage.getItem(GRAPHQL_KEY)).toBe(
-      ROBINHOOD_MAINNET_SETTINGS.graphqlEndpoint
-    );
-    expect(window.localStorage.getItem(ROBINHOOD_DEFAULTS_MIGRATION_KEY)).toBe(
-      '1'
-    );
+    // No overrides pinned, no reload — the network defaults keep serving the
+    // Robinhood endpoints and future default changes still reach this user.
+    expect(window.localStorage.getItem(GRAPHQL_KEY)).toBeNull();
+    expect(window.localStorage.getItem(CUSTOM_CHAIN_ID_KEY)).toBeNull();
+    expect(reloadMock).not.toHaveBeenCalled();
   });
 
   test('with the flag set, later changes stick (user switched back to Ethereal)', async () => {
