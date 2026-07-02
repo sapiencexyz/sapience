@@ -483,6 +483,18 @@ export const __clearProtocolStatsCache = (): void => {
   protocolStatsCache.clear();
 };
 
+export const getProtocolStatsCacheStats = (): {
+  size: number;
+  live: number;
+} => {
+  const now = Date.now();
+  let live = 0;
+  for (const entry of protocolStatsCache.values()) {
+    if (entry.expiresAt > now) live += 1;
+  }
+  return { size: protocolStatsCache.size, live };
+};
+
 export const protocolStats: NonNullable<QueryResolvers['protocolStats']> = (
   _parent,
   { vaultAddress: vaultAddressArg }
