@@ -18,6 +18,7 @@ import {
   useState,
 } from 'react';
 import { getNetworkEndpointDefaults } from '~/lib/config/networkDefaults';
+import { migrateEtherealDefaultsToRobinhood } from '~/lib/settings/migrateEtherealDefaults';
 
 type SettingsContextValue = {
   /** GraphQL endpoint used by the app. The full path is stored as configured. */
@@ -190,6 +191,20 @@ export const SettingsProvider = ({
   useEffect(() => {
     setMounted(true);
     try {
+      // One-time move of Ethereal-era overrides onto the Robinhood defaults,
+      // before any of them hydrate into state. The custom-chain keys are read
+      // at module-eval time (DEFAULT_CHAIN_ID, wagmi config), so clearing
+      // them only takes effect after a reload — mirroring how the Settings
+      // preset buttons apply a chain switch.
+      if (typeof window !== 'undefined') {
+        const migration = migrateEtherealDefaultsToRobinhood(
+          window.localStorage
+        );
+        if (migration.chainCleared) {
+          window.location.reload();
+          return;
+        }
+      }
       const g =
         typeof window !== 'undefined'
           ? window.localStorage.getItem(STORAGE_KEYS.graphql)
