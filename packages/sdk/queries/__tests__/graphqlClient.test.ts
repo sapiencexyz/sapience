@@ -72,6 +72,67 @@ describe('getGraphQLEndpoint', () => {
   });
 });
 
+describe('setGraphQLEndpointResolver', () => {
+  test('a registered resolver wins over the env default', async () => {
+    process.env.NEXT_PUBLIC_FOIL_API_URL = 'https://api.example.com';
+    const { getGraphQLEndpoint, setGraphQLEndpointResolver } = await import(
+      '../client/graphqlClient'
+    );
+    setGraphQLEndpointResolver(
+      () => 'https://api.predict.meridian.xyz/graphql'
+    );
+    expect(getGraphQLEndpoint()).toBe(
+      'https://api.predict.meridian.xyz/graphql'
+    );
+  });
+
+  test('the stored override wins over a registered resolver', async () => {
+    const store: Record<string, string> = {
+      'sapience.settings.graphqlEndpoint': 'https://override.example/graphql',
+    };
+    vi.stubGlobal('window', {
+      localStorage: { getItem: (k: string) => store[k] ?? null },
+    });
+    const { getGraphQLEndpoint, setGraphQLEndpointResolver } = await import(
+      '../client/graphqlClient'
+    );
+    setGraphQLEndpointResolver(() => 'https://resolver.example/graphql');
+    expect(getGraphQLEndpoint()).toBe('https://override.example/graphql');
+  });
+
+  test('a resolver returning null or empty falls through to the env default', async () => {
+    process.env.NEXT_PUBLIC_FOIL_API_URL = 'https://api.example.com';
+    const { getGraphQLEndpoint, setGraphQLEndpointResolver } = await import(
+      '../client/graphqlClient'
+    );
+    setGraphQLEndpointResolver(() => null);
+    expect(getGraphQLEndpoint()).toBe('https://api.example.com/v2/graphql');
+    setGraphQLEndpointResolver(() => '');
+    expect(getGraphQLEndpoint()).toBe('https://api.example.com/v2/graphql');
+  });
+
+  test('a throwing resolver falls through to the env default', async () => {
+    process.env.NEXT_PUBLIC_FOIL_API_URL = 'https://api.example.com';
+    const { getGraphQLEndpoint, setGraphQLEndpointResolver } = await import(
+      '../client/graphqlClient'
+    );
+    setGraphQLEndpointResolver(() => {
+      throw new Error('boom');
+    });
+    expect(getGraphQLEndpoint()).toBe('https://api.example.com/v2/graphql');
+  });
+
+  test('setGraphQLEndpointResolver(null) restores the env behavior', async () => {
+    process.env.NEXT_PUBLIC_FOIL_API_URL = 'https://api.example.com';
+    const { getGraphQLEndpoint, setGraphQLEndpointResolver } = await import(
+      '../client/graphqlClient'
+    );
+    setGraphQLEndpointResolver(() => 'https://resolver.example/graphql');
+    setGraphQLEndpointResolver(null);
+    expect(getGraphQLEndpoint()).toBe('https://api.example.com/v2/graphql');
+  });
+});
+
 describe('graphqlRequest', () => {
   test('issues the request against the resolved endpoint', async () => {
     process.env.NEXT_PUBLIC_FOIL_API_URL = 'https://api.example.com';
