@@ -24,7 +24,7 @@ import {
   createErrorImageResponse,
 } from '../_shared';
 import { PREFERRED_ESTIMATE_QUOTER } from '~/lib/constants';
-import { getGraphQLEndpoint } from '~/lib/data/graphql';
+import { buildGraphQLGetUrl } from '~/lib/data/graphql';
 
 export const runtime = 'nodejs';
 
@@ -187,11 +187,7 @@ async function fetchConditionData(
       resolvers: resolver ? [resolver] : null,
     };
 
-    const response = await fetch(getGraphQLEndpoint(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, variables }),
-    });
+    const response = await fetch(buildGraphQLGetUrl(query, variables));
 
     if (!response.ok) {
       return {

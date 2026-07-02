@@ -25,7 +25,7 @@ import {
 import {
   PREDICTION_BY_ID_QUERY,
   CONDITIONS_BY_IDS_QUERY,
-  getGraphQLEndpoint,
+  buildGraphQLGetUrl,
   toPredictionData,
   formatUnits,
   normalizeChoiceLabel,
@@ -55,19 +55,14 @@ export async function GET(req: Request) {
     // If predictionId is provided and we need data from it (no legs, or need to fill in missing data)
     if (predictionId) {
       try {
-        // Both legs run against /v2/graphql; the prediction node is mapped
-        // back to the legacy-shaped PredictionData via the shared mapper.
-        const graphqlEndpoint = getGraphQLEndpoint();
+        // Both legs run against /v2/graphql over GET (CDN-cacheable); the
+        // prediction node is mapped back to the legacy-shaped PredictionData
+        // via the shared mapper.
         let prediction: PredictionData | null = null;
 
-        const response = await fetch(graphqlEndpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            query: PREDICTION_BY_ID_QUERY,
-            variables: { predictionId },
-          }),
-        });
+        const response = await fetch(
+          buildGraphQLGetUrl(PREDICTION_BY_ID_QUERY, { predictionId })
+        );
 
         if (response.ok) {
           const result = await response.json();
@@ -88,14 +83,11 @@ export async function GET(req: Request) {
                 // conditions connection: variables { ids }, nodes under
                 // data.conditions.nodes (the legacy `where` variables made
                 // this leg dead — it silently rendered no questions).
-                const condResp = await fetch(graphqlEndpoint, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    query: CONDITIONS_BY_IDS_QUERY,
-                    variables: { ids: conditionIds },
-                  }),
-                });
+                const condResp = await fetch(
+                  buildGraphQLGetUrl(CONDITIONS_BY_IDS_QUERY, {
+                    ids: conditionIds,
+                  })
+                );
                 if (condResp.ok) {
                   const condResult = await condResp.json();
                   const conditions: ConditionData[] =
