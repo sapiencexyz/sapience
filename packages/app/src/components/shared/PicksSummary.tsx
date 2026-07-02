@@ -19,7 +19,7 @@ import { getCategoryIcon } from '~/lib/theme/categoryIcons';
 import { getCategoryStyle } from '~/lib/utils/categoryStyle';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
 import { EndTimeCell } from '~/components/markets/market-helpers';
-import MarketPredictionRequest from '~/components/shared/MarketPredictionRequest';
+import EstimatedPrice from '~/components/shared/EstimatedPrice';
 
 interface PicksSummaryProps {
   picks: Pick[];
@@ -47,14 +47,7 @@ function PickForecastCell({ pick }: { pick: Pick }) {
     );
   }
 
-  return (
-    <MarketPredictionRequest
-      conditionId={pick.conditionId}
-      inline
-      eager
-      skipViewportCheck
-    />
-  );
+  return <EstimatedPrice estimatedPrice={pick.estimatedPrice} />;
 }
 
 function PickEndsCell({ pick }: { pick: Pick }) {

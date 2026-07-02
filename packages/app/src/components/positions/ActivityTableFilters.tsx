@@ -93,9 +93,7 @@ export function ActivityTableFilters(props: {
         config={ACTIVITY_CONFIG}
         inline
         searchClassName={
-          showTypeFilter
-            ? 'order-first md:order-none col-span-2 md:col-span-1'
-            : undefined
+          showTypeFilter ? 'order-first col-span-2 md:col-span-1' : undefined
         }
       />
     </div>

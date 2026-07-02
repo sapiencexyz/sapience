@@ -1,14 +1,33 @@
 import { GraphQLClient } from 'graphql-request';
 
-const GRAPHQL_ENDPOINT_KEY = 'sapience.settings.graphqlEndpoint';
+export const GRAPHQL_ENDPOINT_KEY = 'sapience.settings.graphqlEndpoint';
 // Legacy key kept only for migration: older sessions stored the endpoint under
 // a `graphqlEndpointV2` key before v1/v2 were collapsed into one concept.
-const LEGACY_GRAPHQL_ENDPOINT_KEY = 'sapience.settings.graphqlEndpointV2';
+export const LEGACY_GRAPHQL_ENDPOINT_KEY =
+  'sapience.settings.graphqlEndpointV2';
+
+type GraphQLEndpointResolver = () => string | null | undefined;
+
+let endpointResolver: GraphQLEndpointResolver | null = null;
+
+/**
+ * Registers a fallback endpoint resolver consulted after the localStorage
+ * override but before the env-var default. The app uses this to point
+ * default sessions at its active network's endpoint; consumers that never
+ * register a resolver keep the env-derived behavior unchanged.
+ */
+export const setGraphQLEndpointResolver = (
+  resolver: GraphQLEndpointResolver | null
+) => {
+  endpointResolver = resolver;
+};
 
 /**
  * Resolves the GraphQL endpoint used by app queries. Sapience deployments use
  * `/v2/graphql`; Meridian exposes the same schema at `/graphql`, so the setting
  * stores the full endpoint path rather than deriving one from an origin.
+ * The localStorage step is inert on the server; server-side resolution is
+ * resolver → env default.
  */
 export const getGraphQLEndpoint = () => {
   try {
@@ -20,6 +39,14 @@ export const getGraphQLEndpoint = () => {
     }
   } catch {
     /* noop */
+  }
+  if (endpointResolver) {
+    try {
+      const resolved = endpointResolver();
+      if (resolved) return resolved;
+    } catch {
+      /* fall through to the env default */
+    }
   }
   const baseUrl =
     process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz';
