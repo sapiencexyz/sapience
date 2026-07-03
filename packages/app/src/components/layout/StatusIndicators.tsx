@@ -5,14 +5,24 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
+import {
+  ENV_DEFAULT_CHAIN_ID,
+  isRobinhoodChain,
+} from '@sapience/sdk/constants';
 import Image from 'next/image';
 import { PeerIndicator } from '~/components/shared/PeerIndicator';
 import { useRpcPing } from '~/hooks/blockchain/useRpcPing';
+import { useSettings } from '~/lib/context/SettingsContext';
 
 export const ETHENA_BASE_APY = 3.8;
 
 export function StatusIndicators() {
   const pingMs = useRpcPing();
+  const { signalEndpoint, customChainId } = useSettings();
+  const isRobinhood = isRobinhoodChain(customChainId ?? ENV_DEFAULT_CHAIN_ID);
+  // A blank signal endpoint means the mesh is disabled — hide the peer
+  // indicator entirely instead of showing a permanent "0 PEERS".
+  const showMesh = Boolean(signalEndpoint);
 
   return (
     <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:gap-1.5 text-xs">
@@ -44,8 +54,12 @@ export function StatusIndicators() {
         <TooltipTrigger asChild>
           <span className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground tabular-nums cursor-default">
             <Image
-              src="/ethereal-logomark.svg"
-              alt="Ethereal"
+              src={
+                isRobinhood
+                  ? '/robinhood-logomark.svg'
+                  : '/ethereal-logomark.svg'
+              }
+              alt={isRobinhood ? 'Robinhood' : 'Ethereal'}
               width={14}
               height={14}
               className="opacity-70"
@@ -53,17 +67,25 @@ export function StatusIndicators() {
             {pingMs !== null ? `${pingMs}ms` : '—'}
           </span>
         </TooltipTrigger>
-        <TooltipContent side="top">Ethereal Ping</TooltipContent>
+        <TooltipContent side="top">
+          {isRobinhood ? 'Robinhood Chain Ping' : 'Ethereal Ping'}
+        </TooltipContent>
       </Tooltip>
-      <span className="hidden xl:inline text-muted-foreground/60 mx-1">·</span>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className="cursor-default">
-            <PeerIndicator />
+      {showMesh && (
+        <>
+          <span className="hidden xl:inline text-muted-foreground/60 mx-1">
+            ·
           </span>
-        </TooltipTrigger>
-        <TooltipContent side="top">Sapience Mesh Network</TooltipContent>
-      </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="cursor-default">
+                <PeerIndicator />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="top">Sapience Mesh Network</TooltipContent>
+          </Tooltip>
+        </>
+      )}
     </div>
   );
 }
