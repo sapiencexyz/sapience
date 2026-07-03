@@ -74,7 +74,8 @@ vi.mock('@sapience/sdk/contracts', () => ({
   singleLegVault: { 42161: { address: '0xSingleLegVault' } },
 }));
 
-vi.mock('@sapience/sdk/constants', () => ({
+vi.mock('@sapience/sdk/constants', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sapience/sdk/constants')>()),
   DEFAULT_CHAIN_ID: 42161,
   COLLATERAL_SYMBOLS: { 42161: 'USDe' },
   isRobinhoodChain: (chainId: number | string) =>

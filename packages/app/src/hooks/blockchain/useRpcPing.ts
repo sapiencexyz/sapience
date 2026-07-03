@@ -1,14 +1,18 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getRpcUrl, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useAnimatedNumber } from '~/hooks/useAnimatedNumber';
+import { useSettings } from '~/lib/context/SettingsContext';
 
 const PING_INTERVAL_MS = 10_000;
 
 export function useRpcPing() {
   const [rawMs, setRawMs] = useState<number | null>(null);
-  const rpcUrl = useMemo(() => getRpcUrl(DEFAULT_CHAIN_ID), []);
+  // Ping whatever RPC the user entered in Settings; fall back to the active
+  // chain's built-in RPC when no custom RPC is configured (or pre-mount).
+  const { customRpcURL } = useSettings();
+  const rpcUrl = customRpcURL || getRpcUrl(DEFAULT_CHAIN_ID);
   const intervalRef = useRef<ReturnType<typeof setInterval> | undefined>(
     undefined
   );
