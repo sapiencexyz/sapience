@@ -3,6 +3,11 @@ import { PERIOD_DAYS, type Period } from '~/components/shared/PeriodFilter';
 
 const ONE_DAY_IN_SECONDS = 24 * 60 * 60;
 
+// Ceiling for the displayed annualized return. Young vaults with a strong
+// week still annualize to silly numbers; past this point the figure carries
+// no information, so clamp it.
+const MAX_HEADLINE_APY_PCT = 1_000_000;
+
 export type VaultPnlChartPoint = {
   timestamp: number;
   pnl: number;
@@ -21,16 +26,13 @@ function findFirstActivePointIndex(points: BasePoint[]): number {
 export function buildVaultPnlChartData(
   vaultStats: VaultStatPoint[] | undefined,
   period: Period,
-  nowSec = Math.floor(Date.now() / 1000),
-  anchorSec?: number
+  nowSec = Math.floor(Date.now() / 1000)
 ): VaultPnlChartPoint[] {
   if (!vaultStats || vaultStats.length === 0) return [];
 
   const periodDays = PERIOD_DAYS[period];
-  const periodCutoff =
-    periodDays === Infinity ? 0 : nowSec - periodDays * ONE_DAY_IN_SECONDS;
   const cutoffTimestamp =
-    anchorSec !== undefined ? Math.max(periodCutoff, anchorSec) : periodCutoff;
+    periodDays === Infinity ? 0 : nowSec - periodDays * ONE_DAY_IN_SECONDS;
 
   const filteredPoints: BasePoint[] = vaultStats
     .filter((stat) => stat.timestamp >= cutoffTimestamp)
@@ -58,6 +60,12 @@ export function buildVaultPnlChartData(
   const visiblePoints = filteredPoints.slice(sliceStart);
   const returnAnchor = visiblePoints[returnAnchorIndex];
 
+  // `pct` is a time-weighted return: each interval's PnL is divided by the
+  // TVL at the interval's start, then the (1 + r) factors are chained. This
+  // keeps deposits/withdrawals from distorting the return — a deposit grows
+  // the base for *later* intervals instead of inflating the whole series
+  // against the first snapshot's (possibly tiny) TVL.
+  let growth = 1;
   return visiblePoints.map((point, index) => {
     if (index < returnAnchorIndex) {
       return {
@@ -68,13 +76,19 @@ export function buildVaultPnlChartData(
       };
     }
 
-    const pnlDelta = point.pnl - returnAnchor.pnl;
-    const pct = returnAnchor.tvl > 0 ? (pnlDelta / returnAnchor.tvl) * 100 : 0;
+    if (index > returnAnchorIndex) {
+      const prev = visiblePoints[index - 1];
+      // A zero-TVL interval start (full withdrawal) has no capital base to
+      // measure against; treat it as flat.
+      if (prev.tvl > 0) {
+        growth *= 1 + (point.pnl - prev.pnl) / prev.tvl;
+      }
+    }
 
     return {
       ...point,
-      pnlDelta,
-      pct,
+      pnlDelta: point.pnl - returnAnchor.pnl,
+      pct: (growth - 1) * 100,
       isReturnAnchor: index === returnAnchorIndex,
     };
   });
@@ -109,11 +123,15 @@ export function calculateVaultPnlHeadlineApy(
 
   if (returnAnchor.tvl <= 0) return null;
 
-  const periodReturn = lastPoint.pnlDelta / returnAnchor.tvl;
+  // The last point's `pct` is the chained time-weighted return since the
+  // anchor (see buildVaultPnlChartData), so annualization inherits its
+  // deposit/withdrawal adjustment.
+  const periodReturn = lastPoint.pct / 100;
   if (1 + periodReturn <= 0) return null;
 
   const daysElapsed = (nowSec - returnAnchor.timestamp) / ONE_DAY_IN_SECONDS;
   if (daysElapsed < 0.5) return null;
 
-  return (Math.pow(1 + periodReturn, 365 / daysElapsed) - 1) * 100;
+  const apy = (Math.pow(1 + periodReturn, 365 / daysElapsed) - 1) * 100;
+  return Math.min(apy, MAX_HEADLINE_APY_PCT);
 }
