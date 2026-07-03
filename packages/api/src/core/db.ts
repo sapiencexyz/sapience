@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { GraphQLError } from 'graphql';
@@ -71,6 +72,15 @@ export const withQueryTimeout = async <T>(
 let _instance: PrismaClient | undefined;
 let _extendedInstance: PrismaClient | undefined;
 
+/** Deterministic prepared-statement names so pg reuses server-side plans. */
+const statementNameGenerator = (query: { sql: string }): string => {
+  const hash = createHash('sha256')
+    .update(query.sql)
+    .digest('hex')
+    .slice(0, 16);
+  return `p_${hash}`;
+};
+
 function getInstance(): PrismaClient {
   if (_instance) return _instance;
 
@@ -78,14 +88,23 @@ function getInstance(): PrismaClient {
   // In Prisma 7 these params come from the adapter (pg connection
   // options), not from query-string params on DATABASE_URL, because
   // the Rust engine that used to parse those is gone.
-  const adapter = new PrismaPg({
-    connectionString: config.DATABASE_URL,
-    max: config.CONNECTION_POOL_SIZE,
-    idleTimeoutMillis: 10_000,
-  });
+  const adapter = new PrismaPg(
+    {
+      connectionString: config.DATABASE_URL,
+      max: config.CONNECTION_POOL_SIZE,
+      idleTimeoutMillis: 10_000,
+    },
+    { statementNameGenerator }
+  );
 
+  // Generated PrismaClient ctor types can trail the 7.8 runtime by a
+  // patch; queryPlanCacheMaxSize is supported at runtime regardless.
   _instance = new PrismaClient({
     adapter,
+    // Cap Prisma 7's query-plan cache. Without a bound, keeper cron
+    // traffic (many paginated condition/forecast walks) can retain
+    // hundreds of thousands of compiled-plan objects in heap.
+    queryPlanCacheMaxSize: config.PRISMA_QUERY_PLAN_CACHE_MAX_SIZE,
     log: config.isProd
       ? (['info', 'warn', 'error'] as const)
       : (['warn', 'error'] as const),
@@ -93,7 +112,7 @@ function getInstance(): PrismaClient {
       maxWait: config.PRISMA_QUERY_TIMEOUT_MS,
       timeout: config.PRISMA_QUERY_TIMEOUT_MS,
     },
-  });
+  } as ConstructorParameters<typeof PrismaClient>[0]);
 
   // `$use` was removed in Prisma 6.16+; the modern equivalent is
   // `$extends({ query: { $allOperations } })`. We compose the old
