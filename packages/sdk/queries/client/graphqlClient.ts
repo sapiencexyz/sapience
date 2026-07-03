@@ -58,15 +58,14 @@ export const getGraphQLEndpoint = () => {
   }
 };
 
+// No custom headers: a cross-origin GET with only safelisted headers is a
+// CORS "simple request", so the browser skips the OPTIONS preflight that a
+// header like X-Request-ID would force on every query. The API generates a
+// request id server-side when none is supplied and echoes it back as
+// `x-request-id`, so log correlation is unaffected.
 export const createGraphQLClient = () =>
   new GraphQLClient(getGraphQLEndpoint(), {
     method: 'GET',
-    headers: {
-      'X-Request-ID':
-        typeof crypto !== 'undefined' && crypto.randomUUID
-          ? crypto.randomUUID().slice(0, 8)
-          : Math.random().toString(36).slice(2, 10),
-    },
   });
 
 export async function graphqlRequest<T>(
