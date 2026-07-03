@@ -43,7 +43,26 @@ export class TtlCache<K, V> {
     return this.get(key) !== undefined;
   }
 
+  delete(key: K): void {
+    this.store.delete(key);
+  }
+
   clear(): void {
     this.store.clear();
+  }
+
+  /** Total entries including expired (not yet evicted on get). */
+  size(): number {
+    return this.store.size;
+  }
+
+  /** Entries still within TTL. */
+  liveSize(): number {
+    const now = Date.now();
+    let live = 0;
+    for (const entry of this.store.values()) {
+      if (entry.expiresAt >= now) live += 1;
+    }
+    return live;
   }
 }

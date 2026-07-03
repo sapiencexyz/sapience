@@ -12,7 +12,6 @@ import {
   groupConditionToConditionType,
 } from '../market-helpers';
 import { ConditionCard, GroupCard, staggerContainer } from './MarketCard';
-import { usePredictionMap } from '~/hooks/usePredictionMap';
 import { useInfiniteScroll } from '~/hooks/useInfiniteScroll';
 
 // ---------------------------------------------------------------------------
@@ -78,8 +77,6 @@ export default function QuestionsGrid({
   hasMore,
   onFetchMore,
 }: QuestionsGridProps) {
-  const { predictionMapRef, handlePrediction } = usePredictionMap();
-
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   const { loadMoreRef } = useInfiniteScroll({
     hasMore,
@@ -159,14 +156,7 @@ export default function QuestionsGrid({
                     );
                   }
 
-                  return (
-                    <ConditionCard
-                      key={row.id}
-                      row={row}
-                      predictionMapRef={predictionMapRef}
-                      onPrediction={handlePrediction}
-                    />
-                  );
+                  return <ConditionCard key={row.id} row={row} />;
                 })}
 
                 {hasMore && (
@@ -242,8 +232,6 @@ export default function QuestionsGrid({
                                       kind: 'condition';
                                     }
                                   }
-                                  predictionMapRef={predictionMapRef}
-                                  onPrediction={handlePrediction}
                                   variant="child"
                                 />
                               );

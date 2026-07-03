@@ -10,6 +10,7 @@ import type React from 'react';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { hashFn } from 'wagmi/query';
 import { readCustomChainOverride } from '@sapience/sdk/constants';
+import '~/lib/config/registerGraphqlResolver';
 import { resolveChainsAndRpcUrls } from './providers.chains';
 import { httpWithRetry } from '~/lib/utils/util';
 import { SapienceProvider } from '~/lib/context/SapienceProvider';

@@ -19,6 +19,7 @@
 import { monitorEventLoopDelay, type IntervalHistogram } from 'node:perf_hooks';
 import { createLogger } from '../core/logger';
 import { inflightRegistry } from './inflightRegistry';
+import { collectCacheStats } from './cacheStats';
 
 const log = createLogger('inflight-dump');
 
@@ -67,6 +68,7 @@ export function startInflightDump(intervalMs: number): () => void {
           heapUsedMb: Math.round(memory.heapUsed / BYTES_PER_MB),
           externalMb: Math.round(memory.external / BYTES_PER_MB),
         },
+        caches: collectCacheStats(),
         eventLoop: {
           p50Ms: Number(eventLoopP50Ms.toFixed(1)),
           p99Ms: Number(eventLoopP99Ms.toFixed(1)),

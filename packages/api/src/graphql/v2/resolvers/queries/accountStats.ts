@@ -103,6 +103,14 @@ export const getMerged = async (
   return merged;
 };
 
+export const getAccountStatsCacheStats = (): {
+  merged: { size: number; live: number };
+  accuracy: { size: number; live: number };
+} => ({
+  merged: { size: cache.size(), live: cache.liveSize() },
+  accuracy: { size: accuracyCache.size(), live: accuracyCache.liveSize() },
+});
+
 export type RankColumn = 'NET_PNL' | 'VOLUME';
 
 export const rankedFor = (

@@ -3,8 +3,6 @@
 import {
   DEFAULT_CHAIN_ID,
   CHAIN_ID_ETHEREAL_TESTNET,
-  CUSTOM_CHAIN_ID_KEY,
-  CUSTOM_RPC_URL_KEY,
   getRpcUrl,
 } from '@sapience/sdk/constants';
 import { createPublicClient, http } from 'viem';
@@ -18,6 +16,8 @@ import {
   useState,
 } from 'react';
 import { getNetworkEndpointDefaults } from '~/lib/config/networkDefaults';
+import { applyRobinhoodPresetOnce } from '~/lib/settings/applyRobinhoodPresetOnce';
+import { STORAGE_KEYS } from '~/lib/settings/storageKeys';
 
 type SettingsContextValue = {
   /** GraphQL endpoint used by the app. The full path is stored as configured. */
@@ -84,25 +84,6 @@ type SettingsContextValue = {
     meshFanout: number;
   };
 };
-
-const STORAGE_KEYS = {
-  graphql: 'sapience.settings.graphqlEndpoint',
-  // Legacy key, read once for migration into `graphql` then removed on save.
-  legacyGraphqlV2: 'sapience.settings.graphqlEndpointV2',
-  api: 'sapience.settings.apiBaseUrl',
-  chat: 'sapience.settings.chatBaseUrl',
-  admin: 'sapience.settings.adminBaseUrl',
-  etherealRpcURL: 'sapience.settings.etherealRpcURL',
-  arbitrumRpcURL: 'sapience.settings.arbitrumRpcURL',
-  // Custom-chain override keys are owned by the SDK (single source of truth)
-  customChainId: CUSTOM_CHAIN_ID_KEY,
-  customRpcURL: CUSTOM_RPC_URL_KEY,
-  connectionDurationHours: 'sapience.settings.connectionDurationHours',
-  signalEndpoint: 'sapience.settings.signalEndpoint',
-  meshRateLimit: 'sapience.settings.meshRateLimit',
-  meshMaxPeers: 'sapience.settings.meshMaxPeers',
-  meshFanout: 'sapience.settings.meshFanout',
-} as const;
 
 export const DEFAULT_CONNECTION_DURATION_HOURS = 24 * 7;
 
@@ -190,6 +171,17 @@ export const SettingsProvider = ({
   useEffect(() => {
     setMounted(true);
     try {
+      // One-time: on the first visit after this ships, sessions carrying
+      // endpoint/chain overrides get the Robinhood preset exactly as if the
+      // user pressed its Settings button, then reload (the chain override is
+      // read at module-eval time); override-free sessions just get the flag.
+      // Everything the user changes afterwards sticks.
+      if (typeof window !== 'undefined') {
+        if (applyRobinhoodPresetOnce(window.localStorage).applied) {
+          window.location.reload();
+          return;
+        }
+      }
       const g =
         typeof window !== 'undefined'
           ? window.localStorage.getItem(STORAGE_KEYS.graphql)

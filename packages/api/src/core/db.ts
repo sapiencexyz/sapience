@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { GraphQLError } from 'graphql';
 import { PrismaClient } from '../../generated/prisma';
 import { config } from './config';
 import { createLogger } from './logger';
@@ -47,8 +48,16 @@ export const withQueryTimeout = async <T>(
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeoutPromise = new Promise<never>((_, reject) => {
     timer = setTimeout(() => {
+      // GraphQLError with a structured code (not a plain Error): the
+      // extensions survive graphql-js execution and Apollo's formatError
+      // onto the response's `errors` array, letting clients (e.g. the
+      // market-keeper's transient-error retry) classify the timeout by
+      // `extensions.code` instead of matching the human-readable message.
       reject(
-        new Error(`Query timeout: ${opts.label} exceeded ${opts.timeoutMs}ms`)
+        new GraphQLError(
+          `Query timeout: ${opts.label} exceeded ${opts.timeoutMs}ms`,
+          { extensions: { code: 'QUERY_TIMEOUT' } }
+        )
       );
     }, opts.timeoutMs);
   });

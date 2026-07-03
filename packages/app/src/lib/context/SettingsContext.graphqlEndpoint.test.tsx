@@ -100,6 +100,13 @@ function ChatProbe() {
 
 beforeEach(() => {
   window.localStorage.clear();
+  // Pre-seed the one-time Robinhood-defaults migration flag so seeded
+  // overrides hydrate instead of being cleared on mount (the post-migration
+  // state every returning user is in).
+  window.localStorage.setItem(
+    'sapience.settings.robinhoodDefaultsMigrated',
+    '1'
+  );
 });
 
 describe('SettingsContext GraphQL endpoint', () => {

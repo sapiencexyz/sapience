@@ -21,7 +21,7 @@ import type {
   SortDirection,
   QuestionType,
 } from '~/hooks/graphql/useInfiniteQuestions';
-import MarketPredictionRequest from '~/components/shared/MarketPredictionRequest';
+import EstimatedPrice from '~/components/shared/EstimatedPrice';
 import YesNoSplitButton from '~/components/shared/YesNoSplitButton';
 import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
@@ -428,18 +428,8 @@ export function EndTimeCell({
 // Forecast / Predict cells
 // ---------------------------------------------------------------------------
 
-/** Shows a live prediction probability or a dash for settled markets */
-export function ForecastCell({
-  condition,
-  prefetchedProbability,
-  onPrediction,
-  skipViewportCheck,
-}: {
-  condition: ConditionType;
-  prefetchedProbability?: number | null;
-  onPrediction?: (p: number) => void;
-  skipViewportCheck?: boolean;
-}) {
+/** Shows the API-estimated probability or a resolution badge for settled markets */
+export function ForecastCell({ condition }: { condition: ConditionType }) {
   if (condition.settled) {
     const status: ResolutionBadgeStatus = condition.nonDecisive
       ? 'nonDecisive'
@@ -450,17 +440,7 @@ export function ForecastCell({
     return <ResolutionBadge status={status} />;
   }
 
-  return (
-    <MarketPredictionRequest
-      conditionId={condition.id}
-      prefetchedProbability={prefetchedProbability}
-      estimatedPrice={condition.estimatedPrice}
-      onPrediction={onPrediction}
-      skipViewportCheck={skipViewportCheck}
-      chainId={condition.chainId}
-      resolverAddress={condition.resolver}
-    />
-  );
+  return <EstimatedPrice estimatedPrice={condition.estimatedPrice} />;
 }
 
 /** Group forecast cell — shows option count */
