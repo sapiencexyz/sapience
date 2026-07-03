@@ -13,6 +13,17 @@
 
 import type { Prisma } from '../../../../../generated/prisma';
 import prisma from '../../../../core/db';
+
+/** Columns surfaced by the Forecast GraphQL type — omits heavy EAS payload fields. */
+const FORECAST_LIST_SELECT = {
+  uid: true,
+  attester: true,
+  conditionId: true,
+  prediction: true,
+  comment: true,
+  schemaId: true,
+  time: true,
+} satisfies Prisma.AttestationSelect;
 import type { QueryResolvers } from '../../__generated__/resolvers';
 import {
   buildConnection,
@@ -67,6 +78,7 @@ export const forecasts: NonNullable<QueryResolvers['forecasts']> = async (
     where: withCursorWhere(where, cursorWhere),
     orderBy: [{ time: direction }, { uid: direction }],
     take: first + 1,
+    select: FORECAST_LIST_SELECT,
   });
 
   return buildConnection({

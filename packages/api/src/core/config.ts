@@ -51,6 +51,10 @@ const validators = {
     default: 8000,
     desc: 'Maximum time for a Prisma query to complete',
   }),
+  PRISMA_QUERY_PLAN_CACHE_MAX_SIZE: num({
+    default: 128,
+    desc: 'Max entries in Prisma 7 query-plan cache (0 disables). Unbounded growth here retains compiled SQL metadata and shows up as prisma__type / {type,chunk} objects in heap snapshots under keeper cron traffic.',
+  }),
   FIXTURE_SEED_TIMEOUT_MS: num({
     default: 25000,
     desc: 'Hard ceiling on how long boot-time fixture seeding may delay binding the HTTP port. Exceeding it is non-fatal — the port binds and seeding continues in the background.',
