@@ -48,10 +48,64 @@ describe('vaultPnlChartUtils', () => {
       NOW_SEC - ONE_DAY,
     ]);
     expect(chartData.map((point) => point.pnlDelta)).toEqual([0, 0, 10, 20]);
-    expect(chartData.map((point) => point.pct)).toEqual([0, 0, 10, 20]);
+    // pct chains per-interval returns: 10% then 10% on the grown base → 21%.
+    expect(chartData[0].pct).toBe(0);
+    expect(chartData[1].pct).toBe(0);
+    expect(chartData[2].pct).toBeCloseTo(10, 10);
+    expect(chartData[3].pct).toBeCloseTo(21, 10);
   });
 
-  it('calculates headline APY from the first active 3M snapshot instead of the preserved zero-TVL baseline', () => {
+  it('measures each interval against its own starting TVL so later deposits do not inflate the return', () => {
+    const protocolStats = [
+      makeStat({ timestamp: NOW_SEC - 3 * ONE_DAY, tvl: 100, pnl: 0 }),
+      makeStat({ timestamp: NOW_SEC - 2 * ONE_DAY, tvl: 100, pnl: 50 }),
+      // Large deposit arrives; the next interval's PnL is measured against
+      // the new capital base, not the tiny seed TVL.
+      makeStat({ timestamp: NOW_SEC - ONE_DAY, tvl: 10_000, pnl: 150 }),
+    ];
+
+    const chartData = buildVaultPnlChartData(protocolStats, 'ALL', NOW_SEC);
+
+    // Each interval's return divides by the *previous snapshot's* TVL:
+    // r1 = 50/100, r2 = (150-50)/100 → cumulative (1.5)(2.0) - 1 = 200%.
+    expect(chartData[1].pct).toBeCloseTo(50, 10);
+    expect(chartData[2].pct).toBeCloseTo(200, 10);
+  });
+
+  it('uses the grown capital base for intervals after a deposit snapshot', () => {
+    const protocolStats = [
+      makeStat({ timestamp: NOW_SEC - 3 * ONE_DAY, tvl: 100, pnl: 0 }),
+      // Deposit lands: TVL jumps to 10k with no PnL change.
+      makeStat({ timestamp: NOW_SEC - 2 * ONE_DAY, tvl: 10_000, pnl: 0 }),
+      makeStat({ timestamp: NOW_SEC - ONE_DAY, tvl: 10_100, pnl: 100 }),
+    ];
+
+    const chartData = buildVaultPnlChartData(protocolStats, 'ALL', NOW_SEC);
+
+    // r1 = 0; r2 = 100 / 10,000 = 1% — NOT 100/100 = 100% as the old
+    // fixed-denominator formula would report.
+    expect(chartData[1].pct).toBeCloseTo(0, 10);
+    expect(chartData[2].pct).toBeCloseTo(1, 10);
+  });
+
+  it('treats intervals starting from zero TVL as flat instead of dividing by zero', () => {
+    const protocolStats = [
+      makeStat({ timestamp: NOW_SEC - 4 * ONE_DAY, tvl: 100, pnl: 0 }),
+      makeStat({ timestamp: NOW_SEC - 3 * ONE_DAY, tvl: 100, pnl: 10 }),
+      // Full withdrawal mid-series.
+      makeStat({ timestamp: NOW_SEC - 2 * ONE_DAY, tvl: 0, pnl: 10 }),
+      makeStat({ timestamp: NOW_SEC - ONE_DAY, tvl: 100, pnl: 15 }),
+    ];
+
+    const chartData = buildVaultPnlChartData(protocolStats, 'ALL', NOW_SEC);
+
+    expect(chartData[1].pct).toBeCloseTo(10, 10);
+    expect(chartData[2].pct).toBeCloseTo(10, 10);
+    // Interval starting at tvl=0 contributes no return.
+    expect(chartData[3].pct).toBeCloseTo(10, 10);
+  });
+
+  it('calculates headline APY from the chained return since the first active snapshot', () => {
     const protocolStats = [
       makeStat({ timestamp: NOW_SEC - 43 * ONE_DAY, tvl: 0, pnl: 0 }),
       makeStat({ timestamp: NOW_SEC - 42 * ONE_DAY, tvl: 100, pnl: 10 }),
@@ -61,78 +115,25 @@ describe('vaultPnlChartUtils', () => {
 
     const chartData = buildVaultPnlChartData(protocolStats, '3M', NOW_SEC);
 
-    const expectedApy = (Math.pow(1.2, 365 / 42) - 1) * 100;
+    // Chained return: (1.1)(1.1) - 1 = 21% over 42 days.
+    const expectedApy = (Math.pow(1.21, 365 / 42) - 1) * 100;
 
     expect(calculateVaultPnlHeadlineApy(chartData, NOW_SEC)).toBeCloseTo(
       expectedApy,
-      10
+      8
     );
   });
 
-  it('clamps visible history to anchorSec when the period window extends before it', () => {
-    const anchorSec = NOW_SEC - 7 * ONE_DAY;
+  it('caps the headline APY at 1,000,000%', () => {
     const protocolStats = [
-      makeStat({ timestamp: NOW_SEC - 30 * ONE_DAY, tvl: 100, pnl: 1 }),
-      makeStat({ timestamp: NOW_SEC - 14 * ONE_DAY, tvl: 100, pnl: 2 }),
-      makeStat({ timestamp: NOW_SEC - 8 * ONE_DAY, tvl: 100, pnl: 3 }),
-      makeStat({ timestamp: anchorSec, tvl: 100, pnl: 10 }),
-      makeStat({ timestamp: NOW_SEC - 3 * ONE_DAY, tvl: 100, pnl: 20 }),
-      makeStat({ timestamp: NOW_SEC - ONE_DAY, tvl: 100, pnl: 30 }),
+      makeStat({ timestamp: NOW_SEC - 3 * ONE_DAY, tvl: 100, pnl: 0 }),
+      makeStat({ timestamp: NOW_SEC - ONE_DAY, tvl: 200, pnl: 100 }),
     ];
 
-    const chartData = buildVaultPnlChartData(
-      protocolStats,
-      'ALL',
-      NOW_SEC,
-      anchorSec
-    );
+    const chartData = buildVaultPnlChartData(protocolStats, 'ALL', NOW_SEC);
 
-    expect(chartData.map((point) => point.timestamp)).toEqual([
-      anchorSec,
-      NOW_SEC - 3 * ONE_DAY,
-      NOW_SEC - ONE_DAY,
-    ]);
-    // pnlDelta rebases off the first post-anchor point (pnl=10).
-    expect(chartData.map((point) => point.pnlDelta)).toEqual([0, 10, 20]);
-    expect(chartData[0].isReturnAnchor).toBe(true);
-  });
-
-  it('computes APY from the post-anchor snapshot, not an earlier funded one', () => {
-    const anchorSec = NOW_SEC - 7 * ONE_DAY;
-    const protocolStats = [
-      makeStat({ timestamp: NOW_SEC - 30 * ONE_DAY, tvl: 100, pnl: 1 }),
-      makeStat({ timestamp: anchorSec, tvl: 100, pnl: 10 }),
-      makeStat({ timestamp: NOW_SEC - ONE_DAY, tvl: 100, pnl: 20 }),
-    ];
-
-    const chartData = buildVaultPnlChartData(
-      protocolStats,
-      'ALL',
-      NOW_SEC,
-      anchorSec
-    );
-    const apy = calculateVaultPnlHeadlineApy(chartData, NOW_SEC);
-
-    // periodReturn = (20 - 10) / 100 = 0.1 over 7 days
-    const expectedApy = (Math.pow(1.1, 365 / 7) - 1) * 100;
-    expect(apy).toBeCloseTo(expectedApy, 10);
-  });
-
-  it('returns an empty series when anchorSec is in the future', () => {
-    const anchorSec = NOW_SEC + ONE_DAY;
-    const protocolStats = [
-      makeStat({ timestamp: NOW_SEC - 5 * ONE_DAY, tvl: 100, pnl: 1 }),
-      makeStat({ timestamp: NOW_SEC - ONE_DAY, tvl: 100, pnl: 2 }),
-    ];
-
-    const chartData = buildVaultPnlChartData(
-      protocolStats,
-      'ALL',
-      NOW_SEC,
-      anchorSec
-    );
-
-    expect(chartData).toEqual([]);
+    // +100% over 3 days annualizes to an astronomical number; the cap wins.
+    expect(calculateVaultPnlHeadlineApy(chartData, NOW_SEC)).toBe(1_000_000);
   });
 
   describe('computeVaultPnlYDomain', () => {

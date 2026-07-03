@@ -170,8 +170,6 @@ type VaultPnlChartProps = {
   externalPeriod?: Period;
   /** Hide entire internal header (title, APY, tabs). Defaults to true. */
   showHeader?: boolean;
-  /** Optional lower bound on visible history (Unix seconds). Snapshots before this are dropped. */
-  chartAnchorSec?: number;
 };
 
 export default function VaultPnlChart({
@@ -181,7 +179,6 @@ export default function VaultPnlChart({
   className,
   externalPeriod,
   showHeader = true,
-  chartAnchorSec,
 }: VaultPnlChartProps) {
   const collateralSymbol = COLLATERAL_SYMBOLS[DEFAULT_CHAIN_ID] || 'USDe';
   const [internalPeriod, setInternalPeriod] = useState<Period>('ALL');
@@ -201,18 +198,15 @@ export default function VaultPnlChart({
 
   // Trim pre-activity snapshots for every period so % mode and APY anchor off
   // the first funded point, while keeping a visible zero baseline immediately
-  // before activity when a prior snapshot exists. `chartAnchorSec` adds a hard
-  // lower bound on visible history for vaults where the caller wants to hide
-  // a pre-activity tail (see `vaultAnchors.ts`).
+  // before activity when a prior snapshot exists.
   const chartData = useMemo(
     () =>
       buildVaultPnlChartData(
         vaultStats?.map(toVaultStatPoint),
         period,
-        Math.floor(Date.now() / 1000),
-        chartAnchorSec
+        Math.floor(Date.now() / 1000)
       ),
-    [vaultStats, period, chartAnchorSec]
+    [vaultStats, period]
   );
 
   // Headline APY uses wall-clock now for elapsed-days so it doesn't snap to
