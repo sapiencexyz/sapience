@@ -161,7 +161,40 @@ describe('useVaultStats', () => {
     expect(mockFetchVaultStats).toHaveBeenCalledTimes(1);
     expect(mockFetchVaultStats).toHaveBeenCalledWith(
       '0xVault',
-      DEFAULT_CHAIN_ID
+      DEFAULT_CHAIN_ID,
+      expect.objectContaining({
+        onProgress: expect.any(Function),
+        // First load: nothing cached yet to refetch incrementally from.
+        baseline: undefined,
+      })
+    );
+  });
+
+  it('streams progressive pages into the query cache via onProgress', async () => {
+    const older = { ...vaultStat, timestamp: vaultStat.timestamp - 3600 };
+    let releaseFinal: (() => void) | undefined;
+    mockFetchVaultStats.mockImplementation(
+      (_addr: string, _chain: number, opts: Record<string, unknown>) => {
+        const onProgress = opts.onProgress as (s: unknown[]) => void;
+        // Newest page lands first; the full series resolves later.
+        onProgress([vaultStat]);
+        return new Promise((resolve) => {
+          releaseFinal = () => resolve([older, vaultStat]);
+        });
+      }
+    );
+
+    const mod = await getModule();
+    const { result } = renderHook(() => mod.useVaultStats('0xVault'), {
+      wrapper: createWrapper().wrapper,
+    });
+
+    // The partial (newest-first) page is visible before the fetch resolves.
+    await waitFor(() => expect(result.current.data).toEqual([vaultStat]));
+
+    releaseFinal?.();
+    await waitFor(() =>
+      expect(result.current.data).toEqual([older, vaultStat])
     );
   });
 
