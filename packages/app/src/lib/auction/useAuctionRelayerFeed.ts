@@ -16,6 +16,13 @@ export type AuctionFeedMessage = {
 // 30-minute staleness threshold for subscription pruning
 const SUBSCRIPTION_TTL_MS = 30 * 60 * 1000;
 
+// Refcount of mounted hook instances sharing the WS connection's RFQ feed
+// subscription (terminal page + AutoBid overlap on /terminal). Subscribe when
+// the first consumer mounts, unsubscribe when the last one unmounts — leaving
+// /terminal must stop the RFQ fan-out to this session, that's the whole point
+// of the feed being opt-in.
+let feedConsumerCount = 0;
+
 export function useAuctionRelayerFeed(options?: {
   observeVaultQuotes?: boolean;
 }) {
@@ -40,16 +47,18 @@ export function useAuctionRelayerFeed(options?: {
     if (!wsUrl) return;
     const client = getSharedAuctionWsClient(wsUrl);
     // Join the global RFQ feed so auction.started broadcasts reach this
-    // session (queued until open). Never unsubscribed on cleanup: the client
-    // is shared across consumers (terminal, AutoBid), so one unmounting must
-    // not cut the feed for the others — the subscription dies with the
-    // connection instead.
-    client.send({ type: 'auction.feed.subscribe' });
+    // session (queued until open). Only the first consumer sends it — the
+    // relayer subscription is per-connection, not per-consumer.
+    feedConsumerCount++;
+    if (feedConsumerCount === 1) {
+      client.send({ type: 'auction.feed.subscribe' });
+    }
     // Observe vault quotes (queued until open)
     if (observeVaultQuotes) client.send({ type: 'vault_quote.observe' });
 
     const offOpen = client.addOpenListener(() => {
-      // Feed subscriptions are per-connection — rejoin on reconnect
+      // Feed subscriptions are per-connection — rejoin on reconnect.
+      // Duplicate sends from overlapping consumers are idempotent server-side.
       client.send({ type: 'auction.feed.subscribe' });
       // Resubscribe to all auctions on reconnect
       for (const id of Array.from(subscribedAuctionsRef.current.keys())) {
@@ -155,6 +164,12 @@ export function useAuctionRelayerFeed(options?: {
     }, 60_000);
 
     return () => {
+      // Leave the RFQ feed when the last consumer unmounts (e.g. navigating
+      // away from /terminal) so this session stops receiving every RFQ.
+      feedConsumerCount--;
+      if (feedConsumerCount === 0) {
+        client.send({ type: 'auction.feed.unsubscribe' });
+      }
       if (observeVaultQuotes) client.send({ type: 'vault_quote.unobserve' });
       offMsg();
       offOpen();
