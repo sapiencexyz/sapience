@@ -3,7 +3,9 @@ import type { VaultStatPoint } from '~/lib/adapters/vaultStat';
 import {
   buildVaultPnlChartData,
   calculateVaultPnlHeadlineApy,
+  chartAnchorSecForChain,
   computeVaultPnlYDomain,
+  ROBINHOOD_CHART_START_SEC,
 } from '../vaultPnlChartUtils';
 
 const ONE_DAY = 24 * 60 * 60;
@@ -181,5 +183,66 @@ describe('vaultPnlChartUtils', () => {
       NOW_SEC - ONE_DAY,
     ]);
     expect(chartData.map((point) => point.pnlDelta)).toEqual([0, 0, 5]);
+  });
+
+  it('anchorSec clamps visible history and re-bases the return anchor after it', () => {
+    const anchor = NOW_SEC - 2 * ONE_DAY;
+    const protocolStats = [
+      // Pre-anchor history: funded and profitable — must not leak into the
+      // chart or into the return baseline.
+      makeStat({ timestamp: NOW_SEC - 5 * ONE_DAY, tvl: 100, pnl: 0 }),
+      makeStat({ timestamp: NOW_SEC - 4 * ONE_DAY, tvl: 100, pnl: 50 }),
+      makeStat({ timestamp: anchor, tvl: 200, pnl: 60 }),
+      makeStat({ timestamp: NOW_SEC - ONE_DAY, tvl: 200, pnl: 80 }),
+    ];
+
+    const chartData = buildVaultPnlChartData(
+      protocolStats,
+      'ALL',
+      NOW_SEC,
+      anchor
+    );
+
+    expect(chartData.map((point) => point.timestamp)).toEqual([
+      anchor,
+      NOW_SEC - ONE_DAY,
+    ]);
+    // Returns measure from the first visible point, not from launch.
+    expect(chartData[0].isReturnAnchor).toBe(true);
+    expect(chartData.map((point) => point.pnlDelta)).toEqual([0, 20]);
+    expect(chartData[1].pct).toBeCloseTo(10, 10);
+  });
+
+  it('anchorSec never widens a shorter period window', () => {
+    const anchor = NOW_SEC - 30 * ONE_DAY;
+    const protocolStats = [
+      makeStat({ timestamp: NOW_SEC - 20 * ONE_DAY, tvl: 100, pnl: 0 }),
+      makeStat({ timestamp: NOW_SEC - ONE_DAY, tvl: 100, pnl: 10 }),
+    ];
+
+    const chartData = buildVaultPnlChartData(
+      protocolStats,
+      '1W',
+      NOW_SEC,
+      anchor
+    );
+
+    // The 1W cutoff (7 days) still wins over the older anchor.
+    expect(chartData.map((point) => point.timestamp)).toEqual([
+      NOW_SEC - ONE_DAY,
+    ]);
+  });
+
+  describe('chartAnchorSecForChain', () => {
+    it('anchors Robinhood/Meridian chains at the 2026-07-01 launch', () => {
+      expect(ROBINHOOD_CHART_START_SEC).toBe(Date.UTC(2026, 6, 1) / 1000);
+      expect(chartAnchorSecForChain(4663)).toBe(ROBINHOOD_CHART_START_SEC);
+      expect(chartAnchorSecForChain(46630)).toBe(ROBINHOOD_CHART_START_SEC);
+    });
+
+    it('leaves other chains unanchored', () => {
+      expect(chartAnchorSecForChain(42161)).toBeUndefined();
+      expect(chartAnchorSecForChain(137)).toBeUndefined();
+    });
   });
 });

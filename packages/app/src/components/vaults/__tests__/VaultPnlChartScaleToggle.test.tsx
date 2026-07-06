@@ -25,6 +25,7 @@ vi.mock('recharts', () => ({
 vi.mock('@sapience/sdk/constants', () => ({
   DEFAULT_CHAIN_ID: 42161,
   COLLATERAL_SYMBOLS: { 42161: 'USDe' },
+  isRobinhoodChain: () => false,
 }));
 
 vi.mock('@sapience/ui/components/ui/tabs', () => ({
