@@ -352,6 +352,19 @@ function PositionRow({
           className="text-brand-white font-mono"
         />
       </TableCell>
+      {/* To Win — net winnings (payout − size) if the position hits.
+          Settled/sold/closed rows have nothing left to win. */}
+      <TableCell>
+        {!isResolved && !isClosed && !isSoldRow ? (
+          <NumberDisplay
+            value={payoutFormatted - positionSizeFormatted}
+            appendedText={collateralSymbol}
+            className="text-brand-white font-mono"
+          />
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        )}
+      </TableCell>
       {/* Profit/Loss → PENDING / CLAIM / Realized PnL */}
       <TableCell>{renderPnlCell()}</TableCell>
       {/* Ends */}
@@ -438,6 +451,7 @@ type SortKey =
   | 'updatedAt'
   | 'positionSize'
   | 'payout'
+  | 'toWin'
   | 'pnl'
   | 'ends'
   | 'resolvedAt';
@@ -448,6 +462,7 @@ const DEFAULT_SORT_DIRS: Record<SortKey, SortDir> = {
   updatedAt: 'desc',
   positionSize: 'desc',
   payout: 'desc',
+  toWin: 'desc',
   pnl: 'desc',
   ends: 'asc',
   // Most recently resolved first; still-pending positions (no resolvedAt)
@@ -708,6 +723,23 @@ export default function PositionsTable({
             (!p.isPredictorToken && res === 'COUNTERPARTY_WINS');
           return holderWon ? payout - size : -size;
         }
+        case 'toWin': {
+          const onChainResolved = p.pickConfig?.resolved ?? false;
+          const computed = !onChainResolved
+            ? computeResultFromConditions(rawPicks, conditionsMap)
+            : null;
+          const res = onChainResolved
+            ? (p.pickConfig?.result ?? 'UNRESOLVED')
+            : (computed?.result ?? 'UNRESOLVED');
+          const isResolved = onChainResolved || res !== 'UNRESOLVED';
+          const isSoldRow = p.status === 'SOLD' || p.id.includes('-sell-');
+          const isClosed = !isResolved && BigInt(p.balance) === 0n;
+          // Settled/sold/closed rows have nothing left to win; pin them
+          // below every open position. A large finite sentinel (not
+          // -Infinity: two -Infinity rows subtract to NaN in the comparator).
+          if (isResolved || isSoldRow || isClosed) return -Number.MAX_VALUE;
+          return payout - size;
+        }
         case 'ends': {
           const endsAt = Math.max(
             0,
@@ -863,6 +895,14 @@ export default function PositionsTable({
                 <SortableHeader
                   label="Payout"
                   sortKey="payout"
+                  sort={sort}
+                  onSort={handleSort}
+                />
+              </TableHead>
+              <TableHead className="h-auto py-3">
+                <SortableHeader
+                  label="To Win"
+                  sortKey="toWin"
                   sort={sort}
                   onSort={handleSort}
                 />
