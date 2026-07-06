@@ -345,6 +345,15 @@ function PositionRow({
           className="text-brand-white font-mono"
         />
       </TableCell>
+      {/* To Win — the position's net winnings if it hits (payout − size).
+          Size and payout always exist, so every row shows an amount. */}
+      <TableCell>
+        <NumberDisplay
+          value={payoutFormatted - positionSizeFormatted}
+          appendedText={collateralSymbol}
+          className="text-brand-white font-mono"
+        />
+      </TableCell>
       <TableCell>
         <NumberDisplay
           value={payoutFormatted}
@@ -438,6 +447,7 @@ type SortKey =
   | 'updatedAt'
   | 'positionSize'
   | 'payout'
+  | 'toWin'
   | 'pnl'
   | 'ends'
   | 'resolvedAt';
@@ -448,6 +458,7 @@ const DEFAULT_SORT_DIRS: Record<SortKey, SortDir> = {
   updatedAt: 'desc',
   positionSize: 'desc',
   payout: 'desc',
+  toWin: 'desc',
   pnl: 'desc',
   ends: 'asc',
   // Most recently resolved first; still-pending positions (no resolvedAt)
@@ -708,6 +719,8 @@ export default function PositionsTable({
             (!p.isPredictorToken && res === 'COUNTERPARTY_WINS');
           return holderWon ? payout - size : -size;
         }
+        case 'toWin':
+          return payout - size;
         case 'ends': {
           const endsAt = Math.max(
             0,
@@ -855,6 +868,14 @@ export default function PositionsTable({
                 <SortableHeader
                   label="Position Size"
                   sortKey="positionSize"
+                  sort={sort}
+                  onSort={handleSort}
+                />
+              </TableHead>
+              <TableHead className="h-auto py-3">
+                <SortableHeader
+                  label="To Win"
+                  sortKey="toWin"
                   sort={sort}
                   onSort={handleSort}
                 />
