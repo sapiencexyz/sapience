@@ -39,10 +39,18 @@ export function useAuctionRelayerFeed(options?: {
   useEffect(() => {
     if (!wsUrl) return;
     const client = getSharedAuctionWsClient(wsUrl);
+    // Join the global RFQ feed so auction.started broadcasts reach this
+    // session (queued until open). Never unsubscribed on cleanup: the client
+    // is shared across consumers (terminal, AutoBid), so one unmounting must
+    // not cut the feed for the others — the subscription dies with the
+    // connection instead.
+    client.send({ type: 'auction.feed.subscribe' });
     // Observe vault quotes (queued until open)
     if (observeVaultQuotes) client.send({ type: 'vault_quote.observe' });
 
     const offOpen = client.addOpenListener(() => {
+      // Feed subscriptions are per-connection — rejoin on reconnect
+      client.send({ type: 'auction.feed.subscribe' });
       // Resubscribe to all auctions on reconnect
       for (const id of Array.from(subscribedAuctionsRef.current.keys())) {
         client.send({ type: 'auction.subscribe', payload: { auctionId: id } });
