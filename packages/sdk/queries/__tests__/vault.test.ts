@@ -60,7 +60,7 @@ describe('GET_VAULT_STATS document', () => {
     // its default page size, while `totalCount`/`pageInfo`/`after` let the
     // fetcher plan newest-first offset jumps across a multi-page series.
     expect(GET_VAULT_STATS).toContain(
-      'statsHistory(first: $first, after: $after)'
+      'statsHistory(first: $first, after: $after, filter: $filter)'
     );
     expect(GET_VAULT_STATS).toContain('totalCount');
     expect(GET_VAULT_STATS).toContain('hasNextPage');
@@ -88,6 +88,7 @@ describe('fetchVaultStats', () => {
       chainId: 42161,
       first: null,
       after: null,
+      filter: null,
     });
   });
 
@@ -141,6 +142,7 @@ describe('fetchVaultStats', () => {
       chainId: 42161,
       first: 25,
       after: null,
+      filter: null,
     });
   });
 
@@ -276,7 +278,7 @@ describe('fetchVaultStats', () => {
     warn.mockRestore();
   });
 
-  test('with a baseline, refetches only the tail: last known row + appended rows', async () => {
+  test('with a baseline, refetches only the tail by timestamp (gte last known bucket)', async () => {
     const baseline = Array.from({ length: 5 }, (_, i) => ({
       timestamp: ts(i),
       balance: '1000',
@@ -296,19 +298,56 @@ describe('fetchVaultStats', () => {
 
     const result = await fetchVaultStats('0xabc', 42161, { baseline });
 
-    // A single request, starting at the baseline's last row (offset 4).
+    // A single request, filtered from the last known bucket's timestamp —
+    // NOT an offset cursor: offsets shift under server-side dedupe/backfill,
+    // so the tail is addressed by timestamp instead.
     expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
-    expect(
-      startFromAfter(
-        (mockGraphqlRequest.mock.calls[0][1] as { after: string | null }).after
-      )
-    ).toBe(4);
+    expect(mockGraphqlRequest).toHaveBeenCalledWith(GET_VAULT_STATS, {
+      address: '0xabc',
+      chainId: 42161,
+      first: null,
+      after: null,
+      filter: { timestamp: { gte: ts(4) } },
+    });
 
     expect(result.map((s) => s.timestamp)).toEqual(
       Array.from({ length: 6 }, (_, i) => ts(i))
     );
     // The rewritten bucket's values replace the stale baseline row.
     expect(result[4].balance).toBe('9999');
+  });
+
+  test('a long baseline gap pages the filtered tail on server-issued cursors', async () => {
+    const baseline = [
+      {
+        timestamp: ts(0),
+        balance: '1000',
+        deployedCollateral: '500',
+        undeployedCollateral: '300',
+        cumulativePnl: '42',
+        claimableCollateral: '10',
+      },
+    ];
+    mockGraphqlRequest
+      .mockResolvedValueOnce(
+        responseWith([node(ts(0)), node(ts(1))], {
+          hasNextPage: true,
+          endCursor: 'tail-cursor-1',
+        })
+      )
+      .mockResolvedValueOnce(
+        responseWith([node(ts(2))], { hasNextPage: false, endCursor: null })
+      );
+
+    const result = await fetchVaultStats('0xabc', 42161, { baseline });
+
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(2);
+    // The second page threads the SERVER's endCursor and keeps the filter.
+    expect(mockGraphqlRequest.mock.calls[1][1]).toMatchObject({
+      after: 'tail-cursor-1',
+      filter: { timestamp: { gte: ts(0) } },
+    });
+    expect(result.map((s) => s.timestamp)).toEqual([ts(0), ts(1), ts(2)]);
   });
 });
 

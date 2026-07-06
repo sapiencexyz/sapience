@@ -221,6 +221,40 @@ describe('useVaultStats', () => {
     await waitFor(() => expect(result.current.isError).toBe(true));
   });
 
+  it('rolls streamed partials back on failure and never baselines from them', async () => {
+    // First fetch: streams a newest-first partial into the cache, then dies
+    // mid-walk. The partial must not survive as data, and must not become
+    // the next fetch's baseline (it is not a [0, N) prefix of the series).
+    mockFetchVaultStats.mockImplementationOnce(
+      async (_addr: string, _chain: number, opts: Record<string, unknown>) => {
+        (opts.onProgress as (s: unknown[]) => void)([vaultStat]);
+        throw new Error('walk died');
+      }
+    );
+
+    const mod = await getModule();
+    const { result } = renderHook(() => mod.useVaultStats('0xVault'), {
+      wrapper: createWrapper().wrapper,
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    // Cache rolled back: no prior complete series, so an empty array — the
+    // truncated partial is not rendered as complete data.
+    expect(result.current.data).toEqual([]);
+
+    // Retry (beforeEach default resolves [vaultStat]): no completed fetch
+    // yet, so no baseline — a full walk re-fetches everything.
+    await result.current.refetch();
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(mockFetchVaultStats.mock.calls[1][2]).toMatchObject({
+      baseline: undefined,
+    });
+
+    // After a completed fetch, the NEXT refetch baselines from its result.
+    await result.current.refetch();
+    expect(mockFetchVaultStats.mock.calls[2][2].baseline).toEqual([vaultStat]);
+  });
+
   it('lowercases the address in the queryKey so 0xABC and 0xabc dedupe', async () => {
     const mod = await getModule();
     const { wrapper } = createWrapper();

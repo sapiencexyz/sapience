@@ -345,18 +345,14 @@ function PositionRow({
           className="text-brand-white font-mono"
         />
       </TableCell>
-      {/* To Win — net winnings (payout − size) if the position hits.
-          Settled/sold/closed rows have nothing left to win. */}
+      {/* To Win — the position's net winnings if it hits (payout − size).
+          Size and payout always exist, so every row shows an amount. */}
       <TableCell>
-        {!isResolved && !isClosed && !isSoldRow ? (
-          <NumberDisplay
-            value={payoutFormatted - positionSizeFormatted}
-            appendedText={collateralSymbol}
-            className="text-brand-white font-mono"
-          />
-        ) : (
-          <span className="text-muted-foreground">—</span>
-        )}
+        <NumberDisplay
+          value={payoutFormatted - positionSizeFormatted}
+          appendedText={collateralSymbol}
+          className="text-brand-white font-mono"
+        />
       </TableCell>
       <TableCell>
         <NumberDisplay
@@ -723,23 +719,8 @@ export default function PositionsTable({
             (!p.isPredictorToken && res === 'COUNTERPARTY_WINS');
           return holderWon ? payout - size : -size;
         }
-        case 'toWin': {
-          const onChainResolved = p.pickConfig?.resolved ?? false;
-          const computed = !onChainResolved
-            ? computeResultFromConditions(rawPicks, conditionsMap)
-            : null;
-          const res = onChainResolved
-            ? (p.pickConfig?.result ?? 'UNRESOLVED')
-            : (computed?.result ?? 'UNRESOLVED');
-          const isResolved = onChainResolved || res !== 'UNRESOLVED';
-          const isSoldRow = p.status === 'SOLD' || p.id.includes('-sell-');
-          const isClosed = !isResolved && BigInt(p.balance) === 0n;
-          // Settled/sold/closed rows have nothing left to win; pin them
-          // below every open position. A large finite sentinel (not
-          // -Infinity: two -Infinity rows subtract to NaN in the comparator).
-          if (isResolved || isSoldRow || isClosed) return -Number.MAX_VALUE;
+        case 'toWin':
           return payout - size;
-        }
         case 'ends': {
           const endsAt = Math.max(
             0,

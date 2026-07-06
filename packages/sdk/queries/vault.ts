@@ -41,9 +41,10 @@ export const GET_VAULT_STATS = /* GraphQL */ `
     $chainId: Int
     $first: Int
     $after: String
+    $filter: VaultStatFilter
   ) {
     vault(address: $address, chainId: $chainId) {
-      statsHistory(first: $first, after: $after) {
+      statsHistory(first: $first, after: $after, filter: $filter) {
         nodes {
           timestamp
           balance
@@ -76,6 +77,9 @@ type VaultStatsConnection = {
   totalCount?: number | null;
   pageInfo: { hasNextPage: boolean; endCursor: string | null };
 };
+
+/** `VaultStatFilter` input: snapshot timestamp window, epoch seconds, inclusive. */
+type VaultStatsFilter = { timestamp?: { gte?: number; lte?: number } };
 
 type VaultStatsResponse = {
   vault: {
@@ -129,10 +133,12 @@ export interface FetchVaultStatsOptions {
   /** Total request budget for one walk (default DEFAULT_MAX_PAGES). */
   maxPages?: number;
   /**
-   * Previously fetched ascending series (e.g. the react-query cache). When
-   * provided, only the tail is re-fetched: the last known row (its bucket can
-   * be rewritten by a stats-writer re-run) plus anything appended after it —
-   * an interval refetch costs one request instead of a full re-walk.
+   * The COMPLETE ascending series returned by a previous successful call.
+   * When provided, only the tail is re-fetched (by timestamp): the last known
+   * bucket (it can be rewritten by a stats-writer re-run) plus anything after
+   * it — an interval refetch costs one request instead of a full re-walk.
+   * Never pass a streamed onProgress partial here: its missing head would be
+   * treated as already-fetched and the hole would persist across refetches.
    */
   baseline?: VaultStat[];
   /**
@@ -176,7 +182,8 @@ export async function fetchVaultStats(
   };
 
   const requestPage = async (
-    after: string | null
+    after: string | null,
+    filter?: VaultStatsFilter
   ): Promise<VaultStatsConnection | null> => {
     const data: VaultStatsResponse = await graphqlRequest<VaultStatsResponse>(
       GET_VAULT_STATS,
@@ -185,6 +192,7 @@ export async function fetchVaultStats(
         chainId,
         first: pageSize ?? null,
         after,
+        filter: filter ?? null,
       }
     );
     const history = data?.vault?.statsHistory;
@@ -192,11 +200,16 @@ export async function fetchVaultStats(
   };
 
   // Forward endCursor walk from `after`. Used for the incremental tail and as
-  // the fallback when the server doesn't report totalCount.
-  const walkForward = async (after: string | null, budget: number) => {
+  // the fallback when the server doesn't report totalCount. Only server-issued
+  // cursors are followed here, so it stays valid under any cursor scheme.
+  const walkForward = async (
+    after: string | null,
+    budget: number,
+    filter?: VaultStatsFilter
+  ) => {
     let cursor = after;
     for (let page = 0; page < budget; page += 1) {
-      const conn = await requestPage(cursor);
+      const conn = await requestPage(cursor, filter);
       if (!conn) return;
       add(conn.nodes);
       onProgress?.(series());
@@ -205,10 +218,17 @@ export async function fetchVaultStats(
     }
   };
 
-  // ── Incremental refetch: baseline covers offsets [0, N) ──
+  // ── Incremental refetch ──
+  // Re-fetch the tail by TIMESTAMP, not by offset: a cached series' length is
+  // not a server row offset (server-side dedupes/backfills shift offsets, and
+  // an offset resume would silently skip or hole the series if the baseline
+  // were ever not a [0, N) prefix). `gte` includes the last known bucket so a
+  // bucket rewritten by a stats-writer re-run refreshes too. Steady state is
+  // one request; a long gap pages forward on server-issued cursors.
   if (baseline && baseline.length > 0) {
     for (const s of baseline) byTimestamp.set(s.timestamp, s);
-    await walkForward(offsetCursor(baseline.length - 1), maxPages);
+    const lastKnownTs = baseline[baseline.length - 1].timestamp;
+    await walkForward(null, maxPages, { timestamp: { gte: lastKnownTs } });
     return series();
   }
 

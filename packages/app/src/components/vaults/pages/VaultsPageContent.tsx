@@ -202,8 +202,11 @@ const VaultsPageContent = () => {
   // and the yield/rewards block — keep it on that source so their loaders match
   // the data they render. The balance display gates on `vaultAccountValue`
   // separately via `isBalanceReady` below.
-  const { data: vaultStats, isLoading: isAnalyticsLoading } =
-    useVaultStats(VAULT_ADDRESS);
+  const {
+    data: vaultStats,
+    isLoading: isAnalyticsLoading,
+    isError: isAnalyticsError,
+  } = useVaultStats(VAULT_ADDRESS);
   const { data: vaultAccountValue } = useVaultAccountValue(VAULT_ADDRESS);
 
   const [depositAmount, setDepositAmount] = useState('');
@@ -894,6 +897,7 @@ const VaultsPageContent = () => {
                         <VaultPnlChart
                           vaultStats={vaultStats ?? undefined}
                           isLoading={isAnalyticsLoading}
+                          isError={isAnalyticsError}
                           className="flex-1"
                         />
                       </div>

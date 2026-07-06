@@ -163,6 +163,8 @@ type VaultPnlChartProps = {
   vaultStats?: VaultStat[];
   /** Whether the data is loading */
   isLoading?: boolean;
+  /** Whether the stats fetch failed (rendered only when no data is available). */
+  isError?: boolean;
   /** Chart height in pixels (ignored if className includes flex-1) */
   height?: number;
   /** Additional class names for the container */
@@ -176,6 +178,7 @@ type VaultPnlChartProps = {
 export default function VaultPnlChart({
   vaultStats: externalStats,
   isLoading: externalLoading,
+  isError: externalError,
   height = 200,
   className,
   externalPeriod,
@@ -192,10 +195,15 @@ export default function VaultPnlChart({
 
   // Use internal fetch if no external data provided. With no address the hook
   // is disabled and yields no data — callers that want a series pass it in.
-  const { data: internalStats, isLoading: internalLoading } = useVaultStats();
+  const {
+    data: internalStats,
+    isLoading: internalLoading,
+    isError: internalError,
+  } = useVaultStats();
 
   const vaultStats = externalStats ?? internalStats;
   const isLoading = externalLoading ?? internalLoading;
+  const isError = externalError ?? internalError;
 
   // Trim pre-activity snapshots for every period so % mode and APY anchor off
   // the first funded point, while keeping a visible zero baseline immediately
@@ -323,7 +331,7 @@ export default function VaultPnlChart({
           </div>
         ) : chartData.length === 0 ? (
           <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-sm">
-            No data for this period
+            {isError ? 'Error loading chart data' : 'No data for this period'}
           </div>
         ) : (
           <div className="absolute inset-0 transition-opacity duration-300">
