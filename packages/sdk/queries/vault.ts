@@ -1,4 +1,5 @@
 import { graphqlRequest } from './client/graphqlClient';
+import { DEFAULT_MAX_PAGES } from './pagination';
 
 /**
  * Per-vault economic snapshot series, fetched from the `vault(address:,
@@ -28,12 +29,12 @@ export interface VaultStat {
 // result ordered.
 //
 // `first` is left to the variable (nullable): omitting it lets the resolver
-// return up to its MAX_STATS_POINTS cap in one page, so the common case is a
-// single request. The query still selects `pageInfo` and threads `after` so
-// fetchVaultStats can page forward if a vault ever exceeds that cap — the
-// series stays complete without re-introducing a fixed chain of round-trips.
-// A literal `first` above GRAPHQL_MAX_LIST_SIZE (25) is rejected
-// pre-execution, so an explicit `pageSize` must stay <= 25.
+// return its default page size in one request — up to MAX_STATS_POINTS on
+// deployments that keep the big-page path, or GRAPHQL_MAX_LIST_SIZE (25) on
+// deployments that cap every page. A literal `first` above
+// GRAPHQL_MAX_LIST_SIZE is rejected pre-execution, so an explicit `pageSize`
+// must stay <= 25. `totalCount` lets fetchVaultStats plan reverse
+// (newest-first) offset jumps when the series doesn't fit in one page.
 export const GET_VAULT_STATS = /* GraphQL */ `
   query VaultStats(
     $address: Address!
@@ -51,6 +52,7 @@ export const GET_VAULT_STATS = /* GraphQL */ `
           cumulativePnl
           claimableCollateral
         }
+        totalCount
         pageInfo {
           hasNextPage
           endCursor
@@ -69,12 +71,15 @@ type WireVaultStat = {
   claimableCollateral: string | number;
 };
 
+type VaultStatsConnection = {
+  nodes: WireVaultStat[];
+  totalCount?: number | null;
+  pageInfo: { hasNextPage: boolean; endCursor: string | null };
+};
+
 type VaultStatsResponse = {
   vault: {
-    statsHistory: {
-      nodes: WireVaultStat[];
-      pageInfo: { hasNextPage: boolean; endCursor: string | null };
-    };
+    statsHistory: VaultStatsConnection;
   } | null;
 };
 
@@ -93,29 +98,86 @@ function toVaultStat(node: WireVaultStat): VaultStat {
   };
 }
 
+// `statsHistory` cursors are opaque strings on the wire, but structurally
+// stable for this API: base64url(JSON `{k: "<row offset>", id: ""}`) — the
+// resolver's offset cursor (see the API's relay/cursor.ts). Synthesizing one
+// lets the client start a page at ANY offset, which is what makes
+// newest-first loading possible on an ascending, forward-only connection.
+// `startOffset` is the offset of the first row wanted; the server skips to
+// `k + 1`.
+const offsetCursor = (startOffset: number): string | null => {
+  if (startOffset <= 0) return null;
+  const json = JSON.stringify({ k: String(startOffset - 1), id: '' });
+  const toB64 = (globalThis as { btoa?: (s: string) => string }).btoa;
+  const b64 = toB64
+    ? toB64(json)
+    : Buffer.from(json, 'utf-8').toString('base64');
+  return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+};
+
+// In-flight tail chunks per batch. Small enough to be polite to the API,
+// large enough that a long series backfills quickly behind the visible chart.
+const CHUNK_CONCURRENCY = 4;
+
+export interface FetchVaultStatsOptions {
+  /**
+   * Explicit per-page `first`. Must stay <= the API's GRAPHQL_MAX_LIST_SIZE
+   * (25) — a larger literal is rejected pre-execution. Omit to take the
+   * server's default page (larger on deployments that kept the big-page path).
+   */
+  pageSize?: number;
+  /** Total request budget for one walk (default DEFAULT_MAX_PAGES). */
+  maxPages?: number;
+  /**
+   * Previously fetched ascending series (e.g. the react-query cache). When
+   * provided, only the tail is re-fetched: the last known row (its bucket can
+   * be rewritten by a stats-writer re-run) plus anything appended after it —
+   * an interval refetch costs one request instead of a full re-walk.
+   */
+  baseline?: VaultStat[];
+  /**
+   * Streaming callback fired as pages land, with the ascending series fetched
+   * so far — always contiguous from the newest snapshot backward, so a chart
+   * can render recent history immediately and grow leftward.
+   */
+  onProgress?: (stats: VaultStat[]) => void;
+}
+
 /**
- * Fetch a vault's full snapshot series, oldest-first.
+ * Fetch a vault's full snapshot series, oldest-first — loading newest pages
+ * FIRST.
  *
- * The resolver returns up to its MAX_STATS_POINTS cap per page, so for a
- * normal vault this completes in a single request. The loop pages on
- * `pageInfo` only if a vault's series ever exceeds the cap, so the chart never
- * silently loses history. Returns an empty array when the address is not a
- * configured vault (the `vault` field resolves null).
+ * One request resolves the newest state of the series (`totalCount` + the
+ * server's page size). When everything fits in a single page that's the only
+ * round-trip. Otherwise the remaining pages are fetched newest-to-oldest via
+ * synthesized offset cursors, `CHUNK_CONCURRENCY` at a time, invoking
+ * `onProgress` as coverage grows backward from the newest snapshot. If the
+ * series exceeds `maxPages`, the OLDEST pages are dropped (with a console
+ * warning) — recent history always wins.
  *
- * `pageSize` (optional) forces an explicit per-page `first` — it must stay
- * <= the API's GRAPHQL_MAX_LIST_SIZE (25), since a larger literal is rejected
- * pre-execution. Omit it to use the resolver's single-page cap.
+ * Returns an empty array when the address is not a configured vault (the
+ * `vault` field resolves null).
  */
 export async function fetchVaultStats(
   address: string,
   chainId?: number,
-  pageSize?: number
+  opts: FetchVaultStatsOptions = {}
 ): Promise<VaultStat[]> {
-  const nodes: WireVaultStat[] = [];
-  let after: string | null = null;
-  // Bound the loop defensively against a non-progressing cursor; the daily
-  // series can't realistically exceed a few thousand snapshots.
-  for (let page = 0; page < 50; page += 1) {
+  const { pageSize, maxPages = DEFAULT_MAX_PAGES, baseline, onProgress } = opts;
+
+  // Merge by timestamp: chunk boundaries are planned client-side, and a
+  // server-side dedupe/backfill between requests could shift offsets by a
+  // row — keying on timestamp makes overlap harmless.
+  const byTimestamp = new Map<number, VaultStat>();
+  const series = () =>
+    Array.from(byTimestamp.values()).sort((a, b) => a.timestamp - b.timestamp);
+  const add = (nodes: WireVaultStat[] | undefined) => {
+    for (const n of nodes ?? []) byTimestamp.set(n.timestamp, toVaultStat(n));
+  };
+
+  const requestPage = async (
+    after: string | null
+  ): Promise<VaultStatsConnection | null> => {
     const data: VaultStatsResponse = await graphqlRequest<VaultStatsResponse>(
       GET_VAULT_STATS,
       {
@@ -126,12 +188,88 @@ export async function fetchVaultStats(
       }
     );
     const history = data?.vault?.statsHistory;
-    if (!history || !Array.isArray(history.nodes)) break;
-    nodes.push(...history.nodes);
-    if (!history.pageInfo?.hasNextPage || !history.pageInfo.endCursor) break;
-    after = history.pageInfo.endCursor;
+    return history && Array.isArray(history.nodes) ? history : null;
+  };
+
+  // Forward endCursor walk from `after`. Used for the incremental tail and as
+  // the fallback when the server doesn't report totalCount.
+  const walkForward = async (after: string | null, budget: number) => {
+    let cursor = after;
+    for (let page = 0; page < budget; page += 1) {
+      const conn = await requestPage(cursor);
+      if (!conn) return;
+      add(conn.nodes);
+      onProgress?.(series());
+      if (!conn.pageInfo?.hasNextPage || !conn.pageInfo.endCursor) return;
+      cursor = conn.pageInfo.endCursor;
+    }
+  };
+
+  // ── Incremental refetch: baseline covers offsets [0, N) ──
+  if (baseline && baseline.length > 0) {
+    for (const s of baseline) byTimestamp.set(s.timestamp, s);
+    await walkForward(offsetCursor(baseline.length - 1), maxPages);
+    return series();
   }
-  return nodes.map(toVaultStat).sort((a, b) => a.timestamp - b.timestamp);
+
+  // ── Full walk ──
+  const head = await requestPage(null);
+  if (!head) return [];
+  const headNodes = head.nodes ?? [];
+  const total = typeof head.totalCount === 'number' ? head.totalCount : null;
+
+  // Whole series fit in one page — the common case for a short series.
+  if (!head.pageInfo?.hasNextPage || headNodes.length === 0) {
+    add(headNodes);
+    onProgress?.(series());
+    return series();
+  }
+
+  // The head page came back full, so its length IS the server's page size —
+  // the stride for planning reverse offset jumps.
+  const stride = headNodes.length;
+
+  if (total === null || total <= stride) {
+    // No totalCount to plan reverse jumps from; degrade to the classic
+    // oldest-first endCursor walk rather than lose the series.
+    add(headNodes);
+    onProgress?.(series());
+    await walkForward(head.pageInfo.endCursor, maxPages - 1);
+    return series();
+  }
+
+  // Tail chunk start offsets, newest chunk first. The head page covered
+  // [0, stride); each chunk covers [offset, offset + stride).
+  const offsets: number[] = [];
+  for (let o = stride; o < total; o += stride) offsets.push(o);
+  offsets.reverse();
+
+  // Budget (head already spent 1 request). Newest chunks win: the walk just
+  // stops early, dropping the oldest part of the series.
+  const budget = Math.max(1, maxPages - 1);
+  const dropped = offsets.length - budget;
+  const planned = dropped > 0 ? offsets.slice(0, budget) : offsets;
+  if (dropped > 0) {
+    console.warn(
+      `fetchVaultStats: series of ${total} snapshots exceeds maxPages=${maxPages}; dropping the oldest ${dropped} page(s)`
+    );
+  }
+
+  for (let i = 0; i < planned.length; i += CHUNK_CONCURRENCY) {
+    const batch = planned.slice(i, i + CHUNK_CONCURRENCY);
+    const results = await Promise.all(
+      batch.map((offset) => requestPage(offsetCursor(offset)))
+    );
+    for (const conn of results) add(conn?.nodes);
+    // The moment the walk reaches the head page's upper edge the gap closes
+    // and the head rows join the series. Until then (and permanently, when
+    // the budget dropped pages) they stay out — emitting them early would
+    // put a hole in the middle of the chart's x-axis.
+    if (batch[batch.length - 1] === stride) add(headNodes);
+    onProgress?.(series());
+  }
+
+  return series();
 }
 
 export interface VaultAccountValue {

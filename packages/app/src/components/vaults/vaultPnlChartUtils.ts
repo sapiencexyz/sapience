@@ -1,7 +1,19 @@
+import { isRobinhoodChain } from '@sapience/sdk/constants';
 import type { VaultStatPoint } from '~/lib/adapters/vaultStat';
 import { PERIOD_DAYS, type Period } from '~/components/shared/PeriodFilter';
 
 const ONE_DAY_IN_SECONDS = 24 * 60 * 60;
+
+// Vault activity on the Robinhood/Meridian chains starts at the 2026-07-01
+// UTC cutover; snapshots before that are a pre-launch tail that would drag
+// every period's return anchor (and the ALL view's x-range) into dead
+// history, so the charts clamp their visible start here.
+export const ROBINHOOD_CHART_START_SEC = Date.UTC(2026, 6, 1) / 1000;
+
+/** Hard lower bound on visible chart history for a chain, if it has one. */
+export function chartAnchorSecForChain(chainId: number): number | undefined {
+  return isRobinhoodChain(chainId) ? ROBINHOOD_CHART_START_SEC : undefined;
+}
 
 // Ceiling for the displayed annualized return. Young vaults with a strong
 // week still annualize to silly numbers; past this point the figure carries
@@ -26,13 +38,18 @@ function findFirstActivePointIndex(points: BasePoint[]): number {
 export function buildVaultPnlChartData(
   vaultStats: VaultStatPoint[] | undefined,
   period: Period,
-  nowSec = Math.floor(Date.now() / 1000)
+  nowSec = Math.floor(Date.now() / 1000),
+  anchorSec?: number
 ): VaultPnlChartPoint[] {
   if (!vaultStats || vaultStats.length === 0) return [];
 
   const periodDays = PERIOD_DAYS[period];
-  const cutoffTimestamp =
+  const periodCutoff =
     periodDays === Infinity ? 0 : nowSec - periodDays * ONE_DAY_IN_SECONDS;
+  // `anchorSec` is a hard lower bound on visible history (see
+  // chartAnchorSecForChain); the period window still applies on top of it.
+  const cutoffTimestamp =
+    anchorSec !== undefined ? Math.max(periodCutoff, anchorSec) : periodCutoff;
 
   const filteredPoints: BasePoint[] = vaultStats
     .filter((stat) => stat.timestamp >= cutoffTimestamp)

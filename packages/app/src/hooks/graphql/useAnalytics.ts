@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import {
   fetchProtocolAnalytics,
@@ -22,11 +22,22 @@ const CACHE_TIME_MS = 60 * 1000;
  * sites can read it unconditionally; `enabled` keeps the network call gated.
  */
 export function useVaultStats(vaultAddress?: string) {
+  const queryClient = useQueryClient();
+  const queryKey = ['vaultStats', vaultAddress?.toLowerCase() ?? null];
   return useQuery<VaultStat[]>({
-    queryKey: ['vaultStats', vaultAddress?.toLowerCase() ?? null],
+    queryKey,
     queryFn: () =>
       vaultAddress
-        ? fetchVaultStats(vaultAddress, DEFAULT_CHAIN_ID)
+        ? fetchVaultStats(vaultAddress, DEFAULT_CHAIN_ID, {
+            // Stream pages into the cache as they land: the fetcher loads
+            // newest-first, so the chart paints recent history immediately
+            // and grows leftward while older pages arrive.
+            onProgress: (partial) =>
+              queryClient.setQueryData(queryKey, partial),
+            // Seed interval refetches from the cached series so they only
+            // pull the tail (one request) instead of re-walking every page.
+            baseline: queryClient.getQueryData<VaultStat[]>(queryKey),
+          })
         : Promise.resolve([]),
     enabled: !!vaultAddress,
     staleTime: CACHE_TIME_MS,

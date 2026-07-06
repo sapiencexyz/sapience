@@ -17,6 +17,7 @@ import { Button } from '@sapience/ui/components/ui/button';
 import {
   buildVaultPnlChartData,
   calculateVaultPnlHeadlineApy,
+  chartAnchorSecForChain,
   computeVaultPnlYDomain,
 } from './vaultPnlChartUtils';
 import { useVaultStats, type VaultStat } from '~/hooks/graphql/useAnalytics';
@@ -198,13 +199,15 @@ export default function VaultPnlChart({
 
   // Trim pre-activity snapshots for every period so % mode and APY anchor off
   // the first funded point, while keeping a visible zero baseline immediately
-  // before activity when a prior snapshot exists.
+  // before activity when a prior snapshot exists. The chain anchor clamps
+  // visible history to the chain's launch (Robinhood: 2026-07-01).
   const chartData = useMemo(
     () =>
       buildVaultPnlChartData(
         vaultStats?.map(toVaultStatPoint),
         period,
-        Math.floor(Date.now() / 1000)
+        Math.floor(Date.now() / 1000),
+        chartAnchorSecForChain(DEFAULT_CHAIN_ID)
       ),
     [vaultStats, period]
   );
@@ -239,6 +242,20 @@ export default function VaultPnlChart({
       ),
     [displayData, displayMode]
   );
+
+  // Evenly time-spaced tick positions for the numeric x-axis; recharts' own
+  // "nice" numeric ticks land on arbitrary epoch values.
+  const xTicks = useMemo(() => {
+    if (displayData.length === 0) return [];
+    const min = displayData[0].timestamp;
+    const max = displayData[displayData.length - 1].timestamp;
+    if (max <= min) return [min];
+    const TICK_COUNT = 5;
+    return Array.from(
+      { length: TICK_COUNT },
+      (_, i) => min + ((max - min) * i) / (TICK_COUNT - 1)
+    );
+  }, [displayData]);
 
   const currentValue =
     displayData.length > 0 ? displayData[displayData.length - 1].value : 0;
@@ -354,8 +371,15 @@ export default function VaultPnlChart({
                   strokeDasharray="3 3"
                   stroke="hsl(var(--brand-white) / 0.1)"
                 />
+                {/* type="number" spaces points by actual time rather than the
+                    default categorical axis, which gives every snapshot equal
+                    width — mixed snapshot cadences (3h history vs hourly)
+                    would otherwise stretch the denser recent window. */}
                 <XAxis
                   dataKey="timestamp"
+                  type="number"
+                  domain={['dataMin', 'dataMax']}
+                  ticks={xTicks}
                   {...CHART_AXIS_STYLE}
                   tickFormatter={formatTimestampTick}
                 />

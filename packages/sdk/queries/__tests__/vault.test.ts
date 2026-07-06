@@ -30,22 +30,39 @@ const responseWith = (
   pageInfo: { hasNextPage: boolean; endCursor: string | null } = {
     hasNextPage: false,
     endCursor: null,
-  }
+  },
+  totalCount?: number
 ) => ({
-  vault: { statsHistory: { nodes, pageInfo } },
+  vault: {
+    statsHistory: {
+      nodes,
+      ...(totalCount !== undefined ? { totalCount } : {}),
+      pageInfo,
+    },
+  },
 });
+
+// Inverse of the fetcher's synthesized offset cursor: the start offset a
+// given `after` value asks the server to begin at (k + 1), 0 when null.
+const startFromAfter = (after: string | null): number => {
+  if (!after) return 0;
+  const b64 = after.replace(/-/g, '+').replace(/_/g, '/');
+  const parsed = JSON.parse(Buffer.from(b64, 'base64').toString('utf-8'));
+  return Number(parsed.k) + 1;
+};
 
 describe('GET_VAULT_STATS document', () => {
   test('queries vault(address, chainId).statsHistory with the expected fields', () => {
     expect(GET_VAULT_STATS).toContain(
       'vault(address: $address, chainId: $chainId)'
     );
-    // `first` is a nullable variable: omitting it lets the resolver return up
-    // to its MAX_STATS_POINTS cap in one page, while `pageInfo`/`after` keep a
-    // pagination fallback for any vault that exceeds the cap.
+    // `first` is a nullable variable: omitting it lets the resolver return
+    // its default page size, while `totalCount`/`pageInfo`/`after` let the
+    // fetcher plan newest-first offset jumps across a multi-page series.
     expect(GET_VAULT_STATS).toContain(
       'statsHistory(first: $first, after: $after)'
     );
+    expect(GET_VAULT_STATS).toContain('totalCount');
     expect(GET_VAULT_STATS).toContain('hasNextPage');
     expect(GET_VAULT_STATS).toContain('endCursor');
     expect(GET_VAULT_STATS).toContain('timestamp');
@@ -89,7 +106,7 @@ describe('fetchVaultStats', () => {
     ]);
   });
 
-  test('pages on `pageInfo` when a vault exceeds the server cap', async () => {
+  test('falls back to a forward endCursor walk when the server omits totalCount', async () => {
     mockGraphqlRequest
       .mockResolvedValueOnce(
         responseWith([node(1700000300), node(1700000200)], {
@@ -118,11 +135,11 @@ describe('fetchVaultStats', () => {
 
   test('forwards an explicit pageSize as the per-page `first`', async () => {
     mockGraphqlRequest.mockResolvedValue(responseWith([node(1700000100)]));
-    await fetchVaultStats('0xabc', 42161, 100);
+    await fetchVaultStats('0xabc', 42161, { pageSize: 25 });
     expect(mockGraphqlRequest).toHaveBeenCalledWith(GET_VAULT_STATS, {
       address: '0xabc',
       chainId: 42161,
-      first: 100,
+      first: 25,
       after: null,
     });
   });
@@ -185,6 +202,113 @@ describe('fetchVaultStats', () => {
     expect(await fetchVaultStats('0xabc', 42161)).toEqual([]);
     mockGraphqlRequest.mockResolvedValue(null);
     expect(await fetchVaultStats('0xabc', 42161)).toEqual([]);
+  });
+
+  // ── Newest-first multi-page walk ──────────────────────────────────────────
+  //
+  // Simulated server: 20 snapshots (offset i → timestamp ts(i)), page size 3.
+  // The head request returns the oldest page + totalCount; the fetcher then
+  // jumps to the tail via synthesized offset cursors, newest chunk first.
+  const ts = (offset: number) => 1700000000 + offset * 100;
+
+  const mockOffsetServer = (total: number, stride: number) => {
+    mockGraphqlRequest.mockImplementation(
+      async (_doc: unknown, vars: { after: string | null }) => {
+        const start = startFromAfter(vars.after);
+        const rows = [];
+        for (let i = start; i < Math.min(start + stride, total); i += 1) {
+          rows.push(node(ts(i)));
+        }
+        return responseWith(
+          rows,
+          {
+            hasNextPage: start + stride < total,
+            endCursor: rows.length ? `end-${start + rows.length - 1}` : null,
+          },
+          total
+        );
+      }
+    );
+  };
+
+  test('loads a long series newest-first, streaming contiguous progress', async () => {
+    mockOffsetServer(20, 3);
+    const emissions: number[][] = [];
+
+    const result = await fetchVaultStats('0xabc', 42161, {
+      onProgress: (stats) => emissions.push(stats.map((s) => s.timestamp)),
+    });
+
+    // 1 head request + 6 tail chunks (offsets 18,15,12,9 then 6,3).
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(7);
+    const starts = mockGraphqlRequest.mock.calls.map((c) =>
+      startFromAfter((c[1] as { after: string | null }).after)
+    );
+    expect(starts).toEqual([0, 18, 15, 12, 9, 6, 3]);
+
+    // Progress is contiguous from the newest snapshot backward: first batch
+    // covers offsets 9..19, second closes the gap down to the head page.
+    expect(emissions).toHaveLength(2);
+    expect(emissions[0]).toEqual(
+      Array.from({ length: 11 }, (_, i) => ts(9 + i))
+    );
+    expect(emissions[1]).toEqual(Array.from({ length: 20 }, (_, i) => ts(i)));
+
+    expect(result.map((s) => s.timestamp)).toEqual(
+      Array.from({ length: 20 }, (_, i) => ts(i))
+    );
+  });
+
+  test('maxPages drops the OLDEST pages, never the newest', async () => {
+    mockOffsetServer(20, 3);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    // Budget: 1 head + 2 tail chunks → offsets 18 and 15 only.
+    const result = await fetchVaultStats('0xabc', 42161, { maxPages: 3 });
+
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(3);
+    // Only the newest 5 snapshots survive; the head page's oldest rows are
+    // excluded too (they would leave a hole in the middle of the series).
+    expect(result.map((s) => s.timestamp)).toEqual(
+      Array.from({ length: 5 }, (_, i) => ts(15 + i))
+    );
+    expect(warn).toHaveBeenCalledOnce();
+    warn.mockRestore();
+  });
+
+  test('with a baseline, refetches only the tail: last known row + appended rows', async () => {
+    const baseline = Array.from({ length: 5 }, (_, i) => ({
+      timestamp: ts(i),
+      balance: '1000',
+      deployedCollateral: '500',
+      undeployedCollateral: '300',
+      cumulativePnl: '42',
+      claimableCollateral: '10',
+    }));
+    // The server rewrote the last known bucket (balance 1000 → 9999) and
+    // appended one new snapshot after it.
+    mockGraphqlRequest.mockResolvedValue(
+      responseWith([node(ts(4), { balance: '9999' }), node(ts(5))], {
+        hasNextPage: false,
+        endCursor: null,
+      })
+    );
+
+    const result = await fetchVaultStats('0xabc', 42161, { baseline });
+
+    // A single request, starting at the baseline's last row (offset 4).
+    expect(mockGraphqlRequest).toHaveBeenCalledTimes(1);
+    expect(
+      startFromAfter(
+        (mockGraphqlRequest.mock.calls[0][1] as { after: string | null }).after
+      )
+    ).toBe(4);
+
+    expect(result.map((s) => s.timestamp)).toEqual(
+      Array.from({ length: 6 }, (_, i) => ts(i))
+    );
+    // The rewritten bucket's values replace the stale baseline row.
+    expect(result[4].balance).toBe('9999');
   });
 });
 
