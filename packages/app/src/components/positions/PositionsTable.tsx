@@ -345,13 +345,6 @@ function PositionRow({
           className="text-brand-white font-mono"
         />
       </TableCell>
-      <TableCell>
-        <NumberDisplay
-          value={payoutFormatted}
-          appendedText={collateralSymbol}
-          className="text-brand-white font-mono"
-        />
-      </TableCell>
       {/* To Win — net winnings (payout − size) if the position hits.
           Settled/sold/closed rows have nothing left to win. */}
       <TableCell>
@@ -364,6 +357,13 @@ function PositionRow({
         ) : (
           <span className="text-muted-foreground">—</span>
         )}
+      </TableCell>
+      <TableCell>
+        <NumberDisplay
+          value={payoutFormatted}
+          appendedText={collateralSymbol}
+          className="text-brand-white font-mono"
+        />
       </TableCell>
       {/* Profit/Loss → PENDING / CLAIM / Realized PnL */}
       <TableCell>{renderPnlCell()}</TableCell>
@@ -893,16 +893,16 @@ export default function PositionsTable({
               </TableHead>
               <TableHead className="h-auto py-3">
                 <SortableHeader
-                  label="Payout"
-                  sortKey="payout"
+                  label="To Win"
+                  sortKey="toWin"
                   sort={sort}
                   onSort={handleSort}
                 />
               </TableHead>
               <TableHead className="h-auto py-3">
                 <SortableHeader
-                  label="To Win"
-                  sortKey="toWin"
+                  label="Payout"
+                  sortKey="payout"
                   sort={sort}
                   onSort={handleSort}
                 />
