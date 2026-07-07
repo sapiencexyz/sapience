@@ -43,6 +43,7 @@ import {
 import RiskDisclaimer from '~/components/markets/forms/shared/RiskDisclaimer';
 import Loader from '~/components/shared/Loader';
 import VaultPnlChart from '~/components/vaults/VaultPnlChart';
+import VaultSharePriceChart from '~/components/vaults/VaultSharePriceChart';
 import { ETHENA_BASE_APY } from '~/components/layout/StatusIndicators';
 
 const DEPOSIT_WHITELIST: `0x${string}`[] = [
@@ -212,6 +213,7 @@ const VaultsPageContent = () => {
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [activeTab, setActiveTab] = useState('deposit');
+  const [activeChart, setActiveChart] = useState<'pnl' | 'sharePrice'>('pnl');
   const [pendingAction, setPendingAction] = useState<
     'deposit' | 'withdraw' | 'cancelDeposit' | 'cancelWithdrawal' | undefined
   >(undefined);
@@ -894,12 +896,25 @@ const VaultsPageContent = () => {
                       </div>
 
                       <div className="p-5 pt-4 rounded-lg bg-[hsl(var(--primary)/_0.05)] border border-brand-white/10 lg:flex-1 lg:flex lg:flex-col lg:min-h-0 lg:overflow-hidden">
-                        <VaultPnlChart
-                          vaultStats={vaultStats ?? undefined}
-                          isLoading={isAnalyticsLoading}
-                          isError={isAnalyticsError}
-                          className="flex-1"
-                        />
+                        {activeChart === 'pnl' ? (
+                          <VaultPnlChart
+                            vaultStats={vaultStats ?? undefined}
+                            isLoading={isAnalyticsLoading}
+                            isError={isAnalyticsError}
+                            className="flex-1"
+                            onToggleChart={() => setActiveChart('sharePrice')}
+                          />
+                        ) : (
+                          <VaultSharePriceChart
+                            vaultStats={vaultStats ?? undefined}
+                            vaultAddress={VAULT_ADDRESS}
+                            chainId={VAULT_CHAIN_ID}
+                            isLoading={isAnalyticsLoading}
+                            isError={isAnalyticsError}
+                            className="flex-1"
+                            onToggleChart={() => setActiveChart('pnl')}
+                          />
+                        )}
                       </div>
                     </div>
 

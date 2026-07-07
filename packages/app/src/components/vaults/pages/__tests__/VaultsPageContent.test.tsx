@@ -15,6 +15,7 @@ const {
   mockRouterReplace,
   mockSearchParamsToString,
   mockVaultPnlChart,
+  mockVaultSharePriceChart,
 } = vi.hoisted(() => ({
   mockUseRestrictedJurisdiction: vi.fn(),
   mockUsePassiveLiquidityVault: vi.fn(),
@@ -25,6 +26,7 @@ const {
   mockRouterReplace: vi.fn(),
   mockSearchParamsToString: vi.fn(() => ''),
   mockVaultPnlChart: vi.fn(),
+  mockVaultSharePriceChart: vi.fn(),
 }));
 
 // ---------------------------------------------------------------------------
@@ -244,6 +246,15 @@ vi.mock('~/components/vaults/VaultPnlChart', () => {
   };
   VaultPnlChart.displayName = 'VaultPnlChart';
   return { __esModule: true, default: VaultPnlChart };
+});
+
+vi.mock('~/components/vaults/VaultSharePriceChart', () => {
+  const VaultSharePriceChart = (props: { isLoading?: boolean }) => {
+    mockVaultSharePriceChart(props);
+    return <div />;
+  };
+  VaultSharePriceChart.displayName = 'VaultSharePriceChart';
+  return { __esModule: true, default: VaultSharePriceChart };
 });
 
 // ---------------------------------------------------------------------------
