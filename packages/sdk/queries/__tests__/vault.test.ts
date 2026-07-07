@@ -159,6 +159,9 @@ describe('fetchVaultStats', () => {
         undeployedCollateral: '300',
         cumulativePnl: '42',
         claimableCollateral: '10',
+        // Pre-feature snapshots carry no share price; the mapper emits an
+        // explicit null rather than omitting the key.
+        sharePrice: null,
       },
       {
         timestamp: 1700000200,
@@ -167,6 +170,7 @@ describe('fetchVaultStats', () => {
         undeployedCollateral: '300',
         cumulativePnl: '42',
         claimableCollateral: '10',
+        sharePrice: null,
       },
     ]);
   });
