@@ -22,6 +22,12 @@ export interface VaultStat {
   cumulativePnl: string;
   /** wUSDe owed on resolved-but-unredeemed winning sides, net of claimed, wei. */
   claimableCollateral: string;
+  /**
+   * Mark-to-market assets-per-share as a decimal ratio string (e.g. "1.0234"
+   * — dimensionless, NOT wei). Null for snapshots predating the share-price
+   * feature or taken while the vault-quoter was unreachable.
+   */
+  sharePrice: string | null;
 }
 
 // `statsHistory` returns ascending (oldest-first) timestamps; the final
@@ -52,6 +58,7 @@ export const GET_VAULT_STATS = /* GraphQL */ `
           undeployedCollateral
           cumulativePnl
           claimableCollateral
+          sharePrice
         }
         totalCount
         pageInfo {
@@ -70,6 +77,7 @@ type WireVaultStat = {
   undeployedCollateral: string | number;
   cumulativePnl: string | number;
   claimableCollateral: string | number;
+  sharePrice?: string | null;
 };
 
 type VaultStatsConnection = {
@@ -99,6 +107,8 @@ function toVaultStat(node: WireVaultStat): VaultStat {
     undeployedCollateral: wei(node.undeployedCollateral),
     cumulativePnl: wei(node.cumulativePnl),
     claimableCollateral: wei(node.claimableCollateral),
+    // Decimal ratio string, NOT a BigInt scalar — no wei() normalization.
+    sharePrice: node.sharePrice ?? null,
   };
 }
 

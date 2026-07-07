@@ -43,6 +43,7 @@ import {
 import RiskDisclaimer from '~/components/markets/forms/shared/RiskDisclaimer';
 import Loader from '~/components/shared/Loader';
 import VaultPnlChart from '~/components/vaults/VaultPnlChart';
+import VaultSharePriceChart from '~/components/vaults/VaultSharePriceChart';
 import { ETHENA_BASE_APY } from '~/components/layout/StatusIndicators';
 
 const DEPOSIT_WHITELIST: `0x${string}`[] = [
@@ -899,6 +900,16 @@ const VaultsPageContent = () => {
                           isLoading={isAnalyticsLoading}
                           isError={isAnalyticsError}
                           className="flex-1"
+                        />
+                      </div>
+
+                      <div className="p-5 pt-4 rounded-lg bg-[hsl(var(--primary)/_0.05)] border border-brand-white/10">
+                        <VaultSharePriceChart
+                          vaultStats={vaultStats ?? undefined}
+                          vaultAddress={VAULT_ADDRESS}
+                          chainId={VAULT_CHAIN_ID}
+                          isLoading={isAnalyticsLoading}
+                          isError={isAnalyticsError}
                         />
                       </div>
                     </div>
