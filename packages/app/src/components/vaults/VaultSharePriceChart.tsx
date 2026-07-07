@@ -1,7 +1,7 @@
 'use client';
 
 import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Address } from 'viem';
 import {
   AreaChart,
@@ -13,6 +13,8 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { Tabs, TabsTrigger } from '@sapience/ui/components/ui/tabs';
+import { Button } from '@sapience/ui/components/ui/button';
+import { ArrowRightLeft } from 'lucide-react';
 import { chartAnchorSecForChain } from './vaultPnlChartUtils';
 import {
   buildVaultSharePriceChartData,
@@ -81,7 +83,7 @@ function ChartTooltip({
         {dateLabel}
       </div>
       <div className="text-sm font-mono text-brand-white">
-        {formatPrice(Number(dataPoint.value))} {collateralSymbol} / share
+        {formatPrice(Number(dataPoint.value))} {collateralSymbol}
       </div>
     </div>
   );
@@ -113,6 +115,8 @@ type VaultSharePriceChartProps = {
   externalPeriod?: Period;
   /** Hide entire internal header (title, latest price, tabs). Defaults to true. */
   showHeader?: boolean;
+  /** Renders a swap button in the header that switches to the sibling chart. */
+  onToggleChart?: () => void;
 };
 
 export default function VaultSharePriceChart({
@@ -125,6 +129,7 @@ export default function VaultSharePriceChart({
   className,
   externalPeriod,
   showHeader = true,
+  onToggleChart,
 }: VaultSharePriceChartProps) {
   const collateralSymbol = COLLATERAL_SYMBOLS[chainId] || 'USDe';
   const [internalPeriod, setInternalPeriod] = useState<Period>('ALL');
@@ -135,6 +140,19 @@ export default function VaultSharePriceChart({
   const liveQuote = useVaultShareQuoteWs({ chainId, vaultAddress });
   const livePrice =
     liveQuote.source === 'ws' ? Number(liveQuote.vaultCollateralPerShare) : NaN;
+
+  // The live quote lands a moment after mount (WS connect + subscribe +
+  // relayer replay). Until then a pre-history vault has zero points, which
+  // would flash "No share price history yet" — hold the loader through a
+  // grace window instead, and only fall back to the empty state if no quote
+  // ever arrives (quoter offline).
+  const awaitingLiveQuote = Boolean(vaultAddress) && liveQuote.source !== 'ws';
+  const [quoteGraceExpired, setQuoteGraceExpired] = useState(false);
+  useEffect(() => {
+    if (!awaitingLiveQuote) return undefined;
+    const timer = setTimeout(() => setQuoteGraceExpired(true), 8_000);
+    return () => clearTimeout(timer);
+  }, [awaitingLiveQuote]);
 
   const chartData = useMemo(
     () =>
@@ -181,9 +199,22 @@ export default function VaultSharePriceChart({
     >
       {showHeader && (
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-1 gap-1 sm:gap-2">
-          <h4 className="text-base font-mono uppercase tracking-wider text-brand-white">
-            Share Price
-          </h4>
+          <div className="flex items-center gap-2">
+            <h4 className="text-base font-mono uppercase tracking-wider text-brand-white">
+              Share Price
+            </h4>
+            {onToggleChart && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-5 px-1.5 text-muted-foreground/60 hover:text-brand-white [&_svg]:!size-2.5"
+                onClick={onToggleChart}
+                aria-label="Show profit/loss chart"
+              >
+                <ArrowRightLeft />
+              </Button>
+            )}
+          </div>
           <div className="flex items-center justify-between sm:justify-end gap-3 flex-wrap">
             <span
               className={`text-base font-mono text-brand-white transition-opacity duration-300 ${latestPrice !== null ? 'opacity-100' : 'opacity-0'}`}
@@ -213,7 +244,8 @@ export default function VaultSharePriceChart({
           minHeight: height,
         }}
       >
-        {isLoading ? (
+        {isLoading ||
+        (chartData.length === 0 && awaitingLiveQuote && !quoteGraceExpired) ? (
           <div className="absolute inset-0 flex items-center justify-center">
             <Loader className="w-6 h-6" />
           </div>

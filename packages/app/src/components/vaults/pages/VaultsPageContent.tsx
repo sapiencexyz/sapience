@@ -213,6 +213,7 @@ const VaultsPageContent = () => {
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [activeTab, setActiveTab] = useState('deposit');
+  const [activeChart, setActiveChart] = useState<'pnl' | 'sharePrice'>('pnl');
   const [pendingAction, setPendingAction] = useState<
     'deposit' | 'withdraw' | 'cancelDeposit' | 'cancelWithdrawal' | undefined
   >(undefined);
@@ -895,22 +896,25 @@ const VaultsPageContent = () => {
                       </div>
 
                       <div className="p-5 pt-4 rounded-lg bg-[hsl(var(--primary)/_0.05)] border border-brand-white/10 lg:flex-1 lg:flex lg:flex-col lg:min-h-0 lg:overflow-hidden">
-                        <VaultPnlChart
-                          vaultStats={vaultStats ?? undefined}
-                          isLoading={isAnalyticsLoading}
-                          isError={isAnalyticsError}
-                          className="flex-1"
-                        />
-                      </div>
-
-                      <div className="p-5 pt-4 rounded-lg bg-[hsl(var(--primary)/_0.05)] border border-brand-white/10">
-                        <VaultSharePriceChart
-                          vaultStats={vaultStats ?? undefined}
-                          vaultAddress={VAULT_ADDRESS}
-                          chainId={VAULT_CHAIN_ID}
-                          isLoading={isAnalyticsLoading}
-                          isError={isAnalyticsError}
-                        />
+                        {activeChart === 'pnl' ? (
+                          <VaultPnlChart
+                            vaultStats={vaultStats ?? undefined}
+                            isLoading={isAnalyticsLoading}
+                            isError={isAnalyticsError}
+                            className="flex-1"
+                            onToggleChart={() => setActiveChart('sharePrice')}
+                          />
+                        ) : (
+                          <VaultSharePriceChart
+                            vaultStats={vaultStats ?? undefined}
+                            vaultAddress={VAULT_ADDRESS}
+                            chainId={VAULT_CHAIN_ID}
+                            isLoading={isAnalyticsLoading}
+                            isError={isAnalyticsError}
+                            className="flex-1"
+                            onToggleChart={() => setActiveChart('pnl')}
+                          />
+                        )}
                       </div>
                     </div>
 

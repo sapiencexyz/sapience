@@ -14,6 +14,7 @@ import {
 } from 'recharts';
 import { Tabs, TabsTrigger } from '@sapience/ui/components/ui/tabs';
 import { Button } from '@sapience/ui/components/ui/button';
+import { ArrowRightLeft } from 'lucide-react';
 import {
   buildVaultPnlChartData,
   calculateVaultPnlHeadlineApy,
@@ -173,6 +174,8 @@ type VaultPnlChartProps = {
   externalPeriod?: Period;
   /** Hide entire internal header (title, APY, tabs). Defaults to true. */
   showHeader?: boolean;
+  /** Renders a swap button in the header that switches to the sibling chart. */
+  onToggleChart?: () => void;
 };
 
 export default function VaultPnlChart({
@@ -183,6 +186,7 @@ export default function VaultPnlChart({
   className,
   externalPeriod,
   showHeader = true,
+  onToggleChart,
 }: VaultPnlChartProps) {
   const collateralSymbol = COLLATERAL_SYMBOLS[DEFAULT_CHAIN_ID] || 'USDe';
   const [internalPeriod, setInternalPeriod] = useState<Period>('ALL');
@@ -282,6 +286,17 @@ export default function VaultPnlChart({
             <h4 className="text-base font-mono uppercase tracking-wider text-brand-white">
               Profit/Loss
             </h4>
+            {onToggleChart && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-5 px-1.5 text-muted-foreground/60 hover:text-brand-white [&_svg]:!size-2.5"
+                onClick={onToggleChart}
+                aria-label="Show share price chart"
+              >
+                <ArrowRightLeft />
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
