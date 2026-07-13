@@ -134,6 +134,22 @@ export async function batchCanRequestResolution(
 
     const batchResults = await polygonClient.multicall({ contracts });
 
+    // viem's multicall (allowFailure default) surfaces a dead RPC as N
+    // per-call failures rather than a rejected promise. An entire batch
+    // failing means the transport or the reader contract is broken — not
+    // per-condition state — so raise it instead of silently returning
+    // false for everything (which reads as "nothing to settle, 0 errors").
+    if (batch.length > 0 && batchResults.every((r) => r.status === 'failure')) {
+      const first = batchResults[0];
+      const reason =
+        first.status === 'failure' && first.error instanceof Error
+          ? first.error.message.split('\n')[0]
+          : 'unknown error';
+      throw new Error(
+        `canRequestResolution multicall: every call in the batch failed (${reason})`
+      );
+    }
+
     for (let j = 0; j < batch.length; j++) {
       const r = batchResults[j];
       results.set(

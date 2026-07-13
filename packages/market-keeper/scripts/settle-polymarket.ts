@@ -46,6 +46,7 @@ import {
   defineChain,
 } from 'viem';
 import { batchCheckGammaResolution } from '../src/polymarket-api.js';
+import { fetchConditionIdsWithUnsettledPredictions } from '../src/sapience/unsettled-conditions.js';
 import {
   createPolygonClient,
   createPolygonWalletClient,
@@ -223,6 +224,12 @@ query UnresolvedConditions($take: Int!, $skip: Int!, $resolver: String!) {
         # would silently exclude privated conditions that still have
         # engagement to settle. Match both values.
         { OR: [{ public: { equals: true } }, { public: { equals: false } }] }
+        # Engagement filter. CAUTION: openInterest is a drifting counter
+        # (incremented on mint, clamp-decremented on settle/close) and is
+        # NOT authoritative — conditions with real unsettled escrow
+        # collateral can sit at "0" here. Those are recovered by the
+        # unsettled-predictions union in processResolverPair, which walks
+        # escrow predictions directly.
         {
           OR: [
             { openInterest: { gt: "0" } }
@@ -469,7 +476,8 @@ async function processResolverPair(
   sapienceApiUrl: string,
   polygonClient: PublicClient,
   etherealClient: PublicClient,
-  walletClient: WalletClient<Transport, Chain, Account> | null
+  walletClient: WalletClient<Transport, Chain, Account> | null,
+  escrowConditionIds: Set<string>
 ): Promise<PairResults> {
   const results: PairResults = {
     label: pair.label,
@@ -485,6 +493,23 @@ async function processResolverPair(
     sapienceApiUrl,
     pair.resolver
   );
+
+  // Union in conditions that back unsettled escrow predictions. The
+  // condition-table query above gates on the drifting openInterest
+  // counter, so privated conditions with real locked collateral would
+  // otherwise never reach settlement.
+  const known = new Set(conditions.map((c) => c.id.toLowerCase()));
+  let recovered = 0;
+  for (const id of escrowConditionIds) {
+    if (known.has(id)) continue;
+    conditions.push({ id });
+    recovered++;
+  }
+  if (recovered > 0) {
+    console.log(
+      `Recovered ${recovered} condition(s) with unsettled predictions missed by the condition-table query`
+    );
+  }
   results.total = conditions.length;
 
   if (conditions.length === 0) {
@@ -593,6 +618,8 @@ async function main() {
 
   const polygonRpcUrl = process.env.POLYGON_RPC_URL;
   const privateKey = process.env.ADMIN_PRIVATE_KEY;
+  const sapienceApiBase =
+    process.env.SAPIENCE_API_URL || 'https://api.sapience.xyz';
   let sapienceApiUrl: string;
   if (process.env.SAPIENCE_API_URL) {
     sapienceApiUrl = process.env.SAPIENCE_API_URL + '/graphql';
@@ -645,6 +672,20 @@ async function main() {
   }
 
   try {
+    // Escrow ground truth, fetched once and shared across pairs:
+    // conditions still backing unsettled predictions, keyed by resolver.
+    // Soft-fail so a v2 API hiccup degrades to the condition-table query
+    // instead of skipping the settlement run entirely.
+    let unsettledByResolver = new Map<string, Set<string>>();
+    try {
+      unsettledByResolver =
+        await fetchConditionIdsWithUnsettledPredictions(sapienceApiBase);
+    } catch (err) {
+      console.warn(
+        `Failed to fetch unsettled-prediction conditions, falling back to condition-table query only: ${err instanceof Error ? err.message : String(err)}`
+      );
+    }
+
     const allResults: PairResults[] = [];
 
     for (const pair of pairs) {
@@ -658,7 +699,8 @@ async function main() {
         sapienceApiUrl,
         polygonClient,
         etherealClient,
-        walletClient
+        walletClient,
+        unsettledByResolver.get(pair.resolver.toLowerCase()) ?? new Set()
       );
       allResults.push(results);
     }
