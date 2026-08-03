@@ -1,110 +1,82 @@
-<p align="center">
-  <img src="packages/app/public/logo.svg" alt="Sapience" width="360" />
-</p>
+# Sapience App
 
-<h3 align="center">Prediction markets where humans and AI agents compete to forecast the future.</h3>
+A Next.js client for the Sapience prediction market on the Robinhood (Meridian) deployment.
 
-<p align="center">
-  <a href="https://sapience.xyz">App</a> · <a href="https://docs.sapience.xyz">Docs</a> · <a href="https://discord.gg/sapience">Discord</a> · <a href="https://x.com/sapiencexyz">𝕏</a>
-</p>
+Four pages: **markets** (browse and filter), **analytics**, **feed**, and **vaults**. Only the vault page transacts — deposits and withdrawals through your connected wallet.
 
----
-
-| 🎯 **Start Trading**                                                                                               | 🤖 **Build an Agent**                                                                                                            |
-| :----------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------- |
-| **[Join Discord](https://discord.gg/sapience)** to get an invite code and start using the app during early access. | Point your AI agent at **[`SKILL.md`](https://sapience.xyz/skills)** — everything it needs to start trading is in that one file. |
-
----
-
-## What is Sapience?
-
-Sapience is an open-source prediction market protocol where you stake [USDe](https://ethena.fi) on the outcomes of future events. You make a prediction, an auction finds you the best odds, and a smart contract handles the rest.
-
-What makes it different:
-
-- **RFQ-based pricing** — You don't buy from an order book. You broadcast a prediction and market makers compete via request-for-quote (RFQ) to give you the best payout. This works especially well for niche questions and combos that traditional markets can't support.
-- **Combos** — Combine multiple picks into a single position. "BTC over $100k AND ETH over $5k by July" — if both are correct, you win.
-- **AI-native** — Sapience is built for agents from day one. The [SKILL.md](https://sapience.xyz/skills) file gives any LLM-based agent everything it needs to trade: API endpoints, WebSocket flows, signing schemes, and contract ABIs. No SDK required (though [we have one](packages/sdk)).
-- **Fully onchain settlement** — An immutable smart contract holds collateral, verifies signatures, and distributes winnings. The offchain layer just passes messages.
-- **Liquidity vaults** — Pool capital with a vault manager who deploys it across prediction markets.
-
-## How It Works
-
-1. **Build a prediction** — Pick one or more outcomes across available markets
-2. **Set your position size** — How much USDe you want to stake
-3. **Watch the auction** — Market makers compete to offer you the highest payout
-4. **Accept and settle** — The smart contract locks collateral from both sides
-5. **Collect if you're right** — When markets resolve, winners receive the staked collateral
-
-All trading happens on [Ethereal](https://ethereal.trade) using [USDe](https://ethena.fi) as collateral.
-
-## For Developers
-
-### Monorepo Structure
-
-| Package                                   | Description                                                           |
-| ----------------------------------------- | --------------------------------------------------------------------- |
-| [`protocol`](packages/protocol)           | Solidity smart contracts — PredictionMarket, Vaults, Resolvers        |
-| [`sdk`](packages/sdk)                     | TypeScript SDK — auction helpers, ABI exports, signing utilities      |
-| [`api`](packages/api)                     | Backend — GraphQL API and blockchain indexers                         |
-| [`relayer`](packages/relayer)             | WebSocket relayer brokering auctions between predictors and vaults    |
-| [`app`](packages/app)                     | Next.js frontend at [sapience.xyz](https://sapience.xyz)              |
-| [`ui`](packages/ui)                       | Shared React component library                                        |
-| [`docs`](packages/docs)                   | Documentation site at [docs.sapience.xyz](https://docs.sapience.xyz)  |
-| [`market-keeper`](packages/market-keeper) | Cron pipeline for ingesting Polymarket markets and running settlement |
-
-### Quick Start
+## Getting started
 
 ```bash
 pnpm install
-
-# Frontend
-pnpm run dev:app         # http://localhost:3000
-
-# API
-pnpm run dev:api         # http://localhost:3001
-
-# Relayer
-pnpm run dev:relayer     # ws://localhost:3002
-
-# Docs
-pnpm run dev:docs        # http://localhost:3003
+cp .env.sample .env   # every value is optional; defaults point at the hosted deployment
+pnpm dev              # http://localhost:3000
 ```
 
-For contract development see [`packages/protocol/CLAUDE.md`](packages/protocol/CLAUDE.md). Most app/API work runs against the deployed Ethereal contracts rather than a local chain — see [`packages/sdk/contracts/addresses.ts`](packages/sdk/contracts/addresses.ts).
+```bash
+pnpm check            # lint + type-check + test
+pnpm build            # production build
+```
 
-### Building Agents
+There is no backend in this repo. The app reads from the hosted GraphQL API and opens one websocket to the relayer for live vault share-price quotes.
 
-The fastest path: read **[`SKILL.md`](https://sapience.xyz/skills)**. It's a self-contained reference that covers:
+See [`AGENTS.md`](AGENTS.md) for project structure and conventions.
 
-- GraphQL queries for markets and positions
-- WebSocket auction flow (taker and maker)
-- EIP-712 signing for bids
-- On-chain minting and claiming
+## Static Build
 
-For deeper dives, see the [Forecasting Agent Guide](https://docs.sapience.xyz/builder-guide/guides/forecasting-agent) and [Trading Agent Guide](https://docs.sapience.xyz/builder-guide/guides/trading-agent).
+A parallel build target produces a fully client-renderable static version suitable for hosting on IPFS, S3, Cloudflare Pages, or any static file server — a censorship-resistant distribution channel alongside the SSR deployment.
 
-### Trust Model
+### Build
 
-- **The relayer** only routes messages. It can't forge bids, modify sizes, or steal funds.
-- **Signatures are verified onchain.** A bid is worthless unless cryptographically signed.
-- **The smart contract is the sole authority.** It holds collateral, validates everything, and distributes winnings.
-- **Vaults are smart contracts.** Managers decide strategy but can't withdraw your funds.
+```bash
+pnpm build:static     # output in out/
+```
 
-## Bug Bounty
+### Local preview
 
-Binary options and secondary market sales are experimental features and are **out of scope** of the bug bounty program.
+```bash
+npx serve out --single -l 3333
+# Open http://localhost:3333
+```
 
-## Links
+`--single` enables SPA fallback routing (serves `index.html` for unknown paths), mirroring how static hosts handle the `_redirects` / `200.html` files.
 
-- **App**: [sapience.xyz](https://sapience.xyz)
-- **Docs**: [docs.sapience.xyz](https://docs.sapience.xyz)
-- **Agent Skill**: [sapience.xyz/skills](https://sapience.xyz/skills)
-- **Discord**: [discord.gg/sapience](https://discord.gg/sapience)
-- **Twitter**: [@sapiencexyz](https://x.com/sapiencexyz)
+### Pin to Pinata (IPFS)
 
-## License
+```bash
+# Get a JWT at https://app.pinata.cloud/developers/api-keys
+export PINATA_JWT="your-jwt-here"
+pnpm pin:ipfs
+```
 
-[MIT](LICENSE) — the entire protocol is fully open source. Contracts, SDK, API, frontend — all of it. We believe prediction markets should be transparent and verifiable top to bottom.
+This uploads `out/` to Pinata and prints the resulting CID and gateway URL.
 
-We welcome pull requests. If you want to contribute or just chat, [come hang out in Discord](https://discord.gg/sapience).
+### Update ENS contenthash
+
+After pinning, point an ENS name at the IPFS build:
+
+1. **Via the ENS app**: go to `https://app.ens.domains/<your-name>.eth?tab=records` and set the Content Hash to `ipfs://<CID>`
+
+2. **Via the pin script**:
+
+   ```bash
+   export PINATA_JWT="your-jwt-here"
+   export ENS_PRIVATE_KEY="0x..."  # ENS name owner/manager key
+   pnpm pin:ipfs -- --ens sapience.eth
+   ```
+
+3. **Via cast** (foundry):
+   ```bash
+   cast send <resolver-address> "setContenthash(bytes32,bytes)" <namehash> <encoded-cid> --rpc-url https://eth.llamarpc.com --private-key $ENS_PRIVATE_KEY
+   ```
+
+### How it works
+
+`scripts/build-static.mjs`:
+
+1. Swaps server-dependent pages with client-only `.static.tsx` overrides
+2. Removes route handlers and dynamic route pages
+3. Runs `next build` with `output: 'export'` (via `next.config.static.js`)
+4. Restores all original files (guaranteed via a `finally` block)
+5. Post-processes `out/` with a `200.html` SPA fallback, `_redirects`, and `_headers`
+
+The dynamic route `/questions/:parts` is handled client-side by `SpaFallbackRouter`, which matches the URL and lazy-loads the page with client-side data fetching.
