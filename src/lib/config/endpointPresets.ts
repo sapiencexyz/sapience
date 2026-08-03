@@ -17,9 +17,6 @@ export type EndpointPreset = {
   customRpcURL: string;
   graphqlEndpoint: string;
   relayerEndpoint: string;
-  // Blank disables the mesh; blank chat hides the chat bubble.
-  signalEndpoint: string;
-  chatBaseUrl: string;
 };
 
 export const ROBINHOOD_MAINNET_SETTINGS: EndpointPreset = {
@@ -28,8 +25,6 @@ export const ROBINHOOD_MAINNET_SETTINGS: EndpointPreset = {
   customRpcURL: 'https://rpc.mainnet.chain.robinhood.com',
   graphqlEndpoint: 'https://api.predict.meridian.xyz/graphql',
   relayerEndpoint: 'https://relayer.predict.meridian.xyz/auction',
-  signalEndpoint: '',
-  chatBaseUrl: '',
 } as const;
 
 export const ROBINHOOD_TESTNET_SETTINGS: EndpointPreset = {
@@ -38,6 +33,10 @@ export const ROBINHOOD_TESTNET_SETTINGS: EndpointPreset = {
   customRpcURL: 'https://rpc.testnet.chain.robinhood.com',
   graphqlEndpoint: 'https://api.predict.meridiantest.net/graphql',
   relayerEndpoint: 'https://relayer.predict.meridiantest.net/auction',
-  signalEndpoint: '',
-  chatBaseUrl: '',
 } as const;
+
+// Order shown next to the Settings heading.
+export const ENDPOINT_PRESETS: EndpointPreset[] = [
+  ROBINHOOD_MAINNET_SETTINGS,
+  ROBINHOOD_TESTNET_SETTINGS,
+];

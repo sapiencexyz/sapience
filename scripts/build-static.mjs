@@ -87,11 +87,19 @@ try {
     console.log(`[static]   swapped ${path.relative(APP_ROOT, override)} → ${path.relative(APP_ROOT, target)}`);
   }
 
-  // ── Step 2: Remove the dynamic route page ──────────────────────────
-  // `/questions/:parts` can't be prerendered without a server; SpaFallbackRouter
-  // picks it up client-side in the static build.
-  removeWithBackup(path.join(SRC_APP, 'questions', '[...parts]', 'page.tsx'));
-  console.log('[static]   removed src/app/questions/[...parts]/page.tsx');
+  // ── Step 2: Remove dynamic route pages ─────────────────────────────
+  // Next.js can't statically export a dynamic route. SpaFallbackRouter picks
+  // these up client-side instead — keep the two lists in sync (enforced by
+  // src/components/static/__tests__/static-build-invariants.test.ts).
+  const dynamicPages = [
+    path.join(SRC_APP, 'questions', '[...parts]', 'page.tsx'),
+    path.join(SRC_APP, 'profile', '[address]', 'page.tsx'),
+  ];
+
+  for (const page of dynamicPages) {
+    removeWithBackup(page);
+    console.log(`[static]   removed ${path.relative(APP_ROOT, page)}`);
+  }
 
   // ── Step 3: Run next build ─────────────────────────────────────────
   console.log('\n[static] Running next build...\n');

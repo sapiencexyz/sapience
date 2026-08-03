@@ -1,5 +1,5 @@
 export * from './types';
-export { TechSpecTable } from './TechSpecTable';
+export { TechSpecBadges } from './TechSpecBadges';
 export { PredictionsTable } from './PredictionsTable';
 export {
   PredictionScatterChart,

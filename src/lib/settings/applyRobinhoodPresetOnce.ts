@@ -88,9 +88,10 @@ export function applyRobinhoodPresetOnce(
     storage.setItem(STORAGE_KEYS.graphql, preset.graphqlEndpoint);
     storage.removeItem(STORAGE_KEYS.legacyGraphqlV2); // legacy key
     storage.setItem(STORAGE_KEYS.api, preset.relayerEndpoint);
-    // Blank disables the mesh / hides the chat bubble, same as the preset.
-    storage.setItem(STORAGE_KEYS.signalEndpoint, preset.signalEndpoint);
-    storage.setItem(STORAGE_KEYS.chat, preset.chatBaseUrl);
+    // The mesh and chat are gone; clear any endpoints a pre-Robinhood session
+    // still has stored for them.
+    storage.removeItem(STORAGE_KEYS.signalEndpoint);
+    storage.removeItem(STORAGE_KEYS.chat);
     storage.setItem(STORAGE_KEYS.etherealRpcURL, preset.customRpcURL);
 
     storage.setItem(ROBINHOOD_DEFAULTS_MIGRATION_KEY, '1');

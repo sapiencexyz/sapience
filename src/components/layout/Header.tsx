@@ -1,20 +1,6 @@
 'use client';
 
-import {
-  LogOut,
-  Menu,
-  User,
-  BookOpen,
-  Settings,
-  ChevronDown,
-  Telescope,
-  Bot,
-  Sparkles,
-  Trophy,
-  Users,
-  BarChart3,
-  Activity,
-} from 'lucide-react';
+import { LogOut, Menu, User, Users } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -84,14 +70,7 @@ const NavLinks = ({ onClose }: NavLinksProps) => {
           className={`flex w-fit px-3 py-2 rounded-full ${linkClass} ${isActive('/markets', pathname) ? activeClass : ''} hover:text-accent-gold transition-colors`}
           onClick={handleLinkClick}
         >
-          Prediction Markets
-        </Link>
-        <Link
-          href="/terminal"
-          className={`flex w-fit px-3 py-2 rounded-full ${linkClass} ${isActive('/terminal', pathname) ? activeClass : ''} hover:text-accent-gold transition-colors`}
-          onClick={handleLinkClick}
-        >
-          Trading Terminal
+          Markets
         </Link>
         <Link
           href="/vaults"
@@ -107,36 +86,6 @@ const NavLinks = ({ onClose }: NavLinksProps) => {
         >
           Leaderboard
         </Link>
-        <Link
-          href="/forecasts"
-          className={`flex w-fit px-3 py-2 rounded-full ${linkClass} ${isActive('/forecasts', pathname) ? activeClass : ''} hover:text-accent-gold transition-colors`}
-          onClick={handleLinkClick}
-        >
-          Forecasting
-        </Link>
-        <Link
-          href="/skill"
-          className={`flex w-fit px-3 py-2 rounded-full ${linkClass} ${isActive('/skill', pathname) ? activeClass : ''} hover:text-accent-gold transition-colors`}
-          onClick={handleLinkClick}
-        >
-          Agent Skills
-        </Link>
-        <Link
-          href="/bots"
-          className={`flex w-fit px-3 py-2 rounded-full ${linkClass} ${isActive('/bots', pathname) ? activeClass : ''} hover:text-accent-gold transition-colors`}
-          onClick={handleLinkClick}
-        >
-          Build Bots
-        </Link>
-        <a
-          href="https://docs.sapience.xyz"
-          target="_blank"
-          rel="noopener noreferrer"
-          className={`flex w-fit px-3 py-2 rounded-full ${linkClass} hover:text-accent-gold transition-colors`}
-          onClick={handleLinkClick}
-        >
-          Docs
-        </a>
         <Link
           href="/analytics"
           className={`flex w-fit xl:hidden px-3 py-2 rounded-full ${linkClass} ${isActive('/analytics', pathname) ? activeClass : ''} hover:text-accent-gold transition-colors`}
@@ -323,13 +272,7 @@ const Header = () => {
                 href="/markets"
                 className={`sc-heading text-foreground transition-colors px-3 py-2 rounded-full hover:bg-transparent hover:text-accent-gold`}
               >
-                Prediction Markets
-              </Link>
-              <Link
-                href="/terminal"
-                className={`sc-heading text-foreground transition-colors px-3 py-2 rounded-full hover:bg-transparent hover:text-accent-gold`}
-              >
-                Trading Terminal
+                Markets
               </Link>
               <Link
                 href="/vaults"
@@ -345,92 +288,30 @@ const Header = () => {
                   Profile
                 </Link>
               )}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    className={`sc-heading text-foreground transition-colors px-3 py-2 rounded-full inline-flex items-center gap-1 focus:outline-none focus-visible:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0 outline-none ring-0 hover:bg-transparent hover:text-accent-gold`}
-                  >
-                    More
-                    <ChevronDown className="h-4 w-4" strokeWidth={2.5} />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem asChild>
-                    <Link
-                      href="/leaderboard"
-                      className="group cursor-pointer flex items-center transition-colors hover:text-accent-gold data-[highlighted]:text-accent-gold hover:bg-transparent data-[highlighted]:bg-transparent"
-                    >
-                      <Trophy className="mr-px h-4 w-4 opacity-75 transition-colors group-hover:opacity-100 data-[highlighted]:opacity-100" />
-                      <span>Leaderboard</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link
-                      href="/forecasts"
-                      className="group cursor-pointer flex items-center transition-colors hover:text-accent-gold data-[highlighted]:text-accent-gold hover:bg-transparent data-[highlighted]:bg-transparent"
-                    >
-                      <Telescope className="mr-px h-4 w-4 opacity-75 transition-colors group-hover:opacity-100 data-[highlighted]:opacity-100" />
-                      <span>Forecasting</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link
-                      href="/skill"
-                      className="group cursor-pointer flex items-center transition-colors hover:text-accent-gold data-[highlighted]:text-accent-gold hover:bg-transparent data-[highlighted]:bg-transparent"
-                    >
-                      <Sparkles className="mr-px h-4 w-4 opacity-75 transition-colors group-hover:opacity-100 data-[highlighted]:opacity-100" />
-                      <span>Agent Skills</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link
-                      href="/bots"
-                      className="group cursor-pointer flex items-center transition-colors hover:text-accent-gold data-[highlighted]:text-accent-gold hover:bg-transparent data-[highlighted]:bg-transparent"
-                    >
-                      <Bot className="mr-px h-4 w-4 opacity-75 transition-colors group-hover:opacity-100 data-[highlighted]:opacity-100" />
-                      <span>Build Bots</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link
-                      href="/analytics"
-                      className="group cursor-pointer flex items-center transition-colors hover:text-accent-gold data-[highlighted]:text-accent-gold hover:bg-transparent data-[highlighted]:bg-transparent"
-                    >
-                      <BarChart3 className="mr-px h-4 w-4 opacity-75 transition-colors group-hover:opacity-100 data-[highlighted]:opacity-100" />
-                      <span>Analytics</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link
-                      href="/feed"
-                      className="group cursor-pointer flex items-center transition-colors hover:text-accent-gold data-[highlighted]:text-accent-gold hover:bg-transparent data-[highlighted]:bg-transparent"
-                    >
-                      <Activity className="mr-px h-4 w-4 opacity-75 transition-colors group-hover:opacity-100 data-[highlighted]:opacity-100" />
-                      <span>Feed</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link
-                      href="/settings"
-                      className="group cursor-pointer flex items-center transition-colors hover:text-accent-gold data-[highlighted]:text-accent-gold hover:bg-transparent data-[highlighted]:bg-transparent"
-                    >
-                      <Settings className="mr-px h-4 w-4 opacity-75 transition-colors group-hover:opacity-100 data-[highlighted]:opacity-100" />
-                      <span>Settings</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <a
-                      href="https://docs.sapience.xyz"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group cursor-pointer flex items-center transition-colors hover:text-accent-gold data-[highlighted]:text-accent-gold hover:bg-transparent data-[highlighted]:bg-transparent"
-                    >
-                      <BookOpen className="mr-px h-4 w-4 opacity-75 transition-colors group-hover:opacity-100 data-[highlighted]:opacity-100" />
-                      <span>Docs</span>
-                    </a>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <Link
+                href="/leaderboard"
+                className={`sc-heading text-foreground transition-colors px-3 py-2 rounded-full hover:bg-transparent hover:text-accent-gold`}
+              >
+                Leaderboard
+              </Link>
+              <Link
+                href="/analytics"
+                className={`sc-heading text-foreground transition-colors px-3 py-2 rounded-full hover:bg-transparent hover:text-accent-gold`}
+              >
+                Analytics
+              </Link>
+              <Link
+                href="/feed"
+                className={`sc-heading text-foreground transition-colors px-3 py-2 rounded-full hover:bg-transparent hover:text-accent-gold`}
+              >
+                Feed
+              </Link>
+              <Link
+                href="/settings"
+                className={`sc-heading text-foreground transition-colors px-3 py-2 rounded-full hover:bg-transparent hover:text-accent-gold`}
+              >
+                Settings
+              </Link>
             </nav>
 
             <div className="flex items-center gap-2 sm:gap-3 xl:gap-4 pointer-events-auto">

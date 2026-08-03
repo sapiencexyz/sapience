@@ -6,6 +6,9 @@ import { usePathname } from 'next/navigation';
 const QuestionPageClient = React.lazy(
   () => import('~/app/questions/[...parts]/QuestionPageClient')
 );
+const ProfilePageContent = React.lazy(
+  () => import('~/components/profile/pages/ProfilePageContent')
+);
 
 const Loading = () => (
   <div className="flex min-h-[50dvh] items-center justify-center">
@@ -22,14 +25,20 @@ const NotFoundContent = () => (
   </div>
 );
 
-type RouteMatch = { type: 'question'; parts: string[] } | null;
+type RouteMatch =
+  | { type: 'question'; parts: string[] }
+  | { type: 'profile'; address: string }
+  | null;
 
 function matchRoute(pathname: string): RouteMatch {
   // Strip trailing slash for matching
   const p = pathname.replace(/\/$/, '') || '/';
 
-  const m = p.match(/^\/questions\/(.+)$/);
+  let m = p.match(/^\/questions\/(.+)$/);
   if (m) return { type: 'question', parts: m[1].split('/') };
+
+  m = p.match(/^\/profile\/([^/]+)$/);
+  if (m) return { type: 'profile', address: m[1] };
 
   return null;
 }
@@ -42,7 +51,10 @@ export default function SpaFallbackRouter() {
 
   return (
     <Suspense fallback={<Loading />}>
-      <QuestionPageClient parts={match.parts} />
+      {match.type === 'question' && <QuestionPageClient parts={match.parts} />}
+      {match.type === 'profile' && (
+        <ProfilePageContent addressOverride={match.address} />
+      )}
     </Suspense>
   );
 }

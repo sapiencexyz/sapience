@@ -24,10 +24,12 @@ const EXPECTED_WRITES: Record<string, string> = {
   [STORAGE_KEYS.customRpcURL]: ROBINHOOD_MAINNET_SETTINGS.customRpcURL,
   [STORAGE_KEYS.graphql]: ROBINHOOD_MAINNET_SETTINGS.graphqlEndpoint,
   [STORAGE_KEYS.api]: ROBINHOOD_MAINNET_SETTINGS.relayerEndpoint,
-  [STORAGE_KEYS.signalEndpoint]: ROBINHOOD_MAINNET_SETTINGS.signalEndpoint,
-  [STORAGE_KEYS.chat]: ROBINHOOD_MAINNET_SETTINGS.chatBaseUrl,
   [STORAGE_KEYS.etherealRpcURL]: ROBINHOOD_MAINNET_SETTINGS.customRpcURL,
 };
+
+// The mesh and chat are gone; the migration clears any endpoint a
+// pre-Robinhood session still has stored for them.
+const EXPECTED_REMOVALS = [STORAGE_KEYS.signalEndpoint, STORAGE_KEYS.chat];
 
 function makeStorage(seed: Record<string, string> = {}) {
   const store = new Map<string, string>(Object.entries(seed));
@@ -88,11 +90,16 @@ describe('applyRobinhoodPresetOnce', () => {
   test('session with Ethereal-era overrides: persists exactly what the Robinhood Mainnet button writes', () => {
     const storage = makeStorage({
       [STORAGE_KEYS.graphql]: 'https://api.sapience.xyz/v2/graphql',
+      [STORAGE_KEYS.signalEndpoint]: 'https://relayer.sapience.xyz/signal',
+      [STORAGE_KEYS.chat]: 'https://api.sapience.xyz/chat',
     });
     const result = applyRobinhoodPresetOnce(storage);
     expect(result).toEqual({ applied: true });
     for (const [key, value] of Object.entries(EXPECTED_WRITES)) {
       expect(storage.getItem(key)).toBe(value);
+    }
+    for (const key of EXPECTED_REMOVALS) {
+      expect(storage.getItem(key)).toBeNull();
     }
     expect(storage.getItem(ROBINHOOD_DEFAULTS_MIGRATION_KEY)).toBe('1');
   });

@@ -9,7 +9,6 @@ import { useRouter } from 'next/navigation';
 import {
   Activity,
   ArrowLeftRight,
-  FileText,
   DollarSign,
   Handshake,
   Telescope,
@@ -42,7 +41,7 @@ import {
   type ForecastData,
   type CombinedPrediction,
   PredictionScatterChart,
-  TechSpecTable,
+  TechSpecBadges,
   scatterChartStyles,
 } from '~/components/markets/question';
 
@@ -405,19 +404,13 @@ export default function QuestionPageContent({
   // Positions tab is hidden when no predictions exist for this condition.
   const hasPositions = predictions.length > 0;
 
-  type PrimaryTab =
-    | 'predictions'
-    | 'positions'
-    | 'forecasts'
-    | 'resolution'
-    | 'techspecs';
+  type PrimaryTab = 'predictions' | 'positions' | 'forecasts' | 'resolution';
 
   const TAB_VALUES: PrimaryTab[] = [
     'predictions',
     'positions',
     'forecasts',
     'resolution',
-    'techspecs',
   ];
 
   const getTabFromHash = (): PrimaryTab | null => {
@@ -546,30 +539,14 @@ export default function QuestionPageContent({
 
   const categorySlug = data.category?.slug;
 
-  const renderTechSpecsCard = (withBorder = true) => (
-    <div
-      className={`${
-        withBorder ? 'border border-border rounded-lg' : ''
-      } bg-brand-black p-0 overflow-hidden`}
-    >
-      <TechSpecTable
-        conditionId={conditionId}
-        endTime={data?.endTime ?? null}
-        settled={data?.settled ?? null}
-        resolvedToYes={data?.resolvedToYes ?? null}
-        nonDecisive={data?.nonDecisive ?? null}
-        resolverAddress={resolverAddress}
-      />
-    </div>
-  );
-
   const renderScatterPlotCard = () => (
     <div
       className={`relative w-full min-w-0 bg-brand-black border border-border rounded-lg pt-6 pr-8 pb-2 pl-2 min-h-[320px] h-[320px] sm:h-[360px] ${
-        data?.settled ? 'lg:h-[205px] lg:min-h-0' : 'lg:min-h-[280px] lg:h-full'
+        data?.settled ? 'lg:h-[260px] lg:min-h-0' : 'lg:h-[420px]'
       }`}
-      // Explicit height on small screens so Recharts can compute dimensions
-      // When settled, use fixed height on desktop; otherwise let grid stretch fill the height
+      // Recharts needs a definite height to compute dimensions. The chart used
+      // to be a stretched grid item beside the tech-spec sidebar, so `h-full`
+      // resolved; now that it runs full width its height must be explicit.
     >
       <PredictionScatterChart
         scatterData={scatterData}
@@ -581,10 +558,6 @@ export default function QuestionPageContent({
         xTickLabels={xTickLabels}
       />
     </div>
-  );
-
-  const sidebarContent = (
-    <div className="flex flex-col gap-4">{renderTechSpecsCard()}</div>
   );
 
   const mobileTabs = (
@@ -626,13 +599,6 @@ export default function QuestionPageContent({
             >
               <Handshake className="h-3.5 w-3.5" />
               Resolution
-            </TabsTrigger>
-            <TabsTrigger
-              value="techspecs"
-              className="px-3 py-1.5 text-sm rounded-md bg-brand-white/[0.08] data-[state=active]:bg-brand-white/15 data-[state=active]:text-brand-white text-muted-foreground hover:text-brand-white/80 hover:bg-brand-white/[0.12] transition-colors inline-flex items-center gap-1.5 whitespace-nowrap"
-            >
-              <FileText className="h-3.5 w-3.5" />
-              Tech Specs
             </TabsTrigger>
           </TabsList>
         </div>
@@ -717,9 +683,6 @@ export default function QuestionPageContent({
           )}
         </TabsContent>
         {/* Content area - Tech Specs */}
-        <TabsContent value="techspecs" className="m-0">
-          {renderTechSpecsCard(false)}
-        </TabsContent>
       </div>
     </Tabs>
   );
@@ -906,15 +869,25 @@ export default function QuestionPageContent({
             )}
           </div>
 
-          {/* Scatter plot on the left, sidebar cards on the right; tabs below */}
-          <div className="hidden lg:grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 mb-6 items-stretch">
-            {renderScatterPlotCard()}
-            {sidebarContent}
+          {/* Resolver + condition. These used to sit in a desktop sidebar, which
+              left the chart at ~60% width to show two rows of metadata. As a
+              secondary badge row they stay visible and the chart runs full width. */}
+          <div className="flex flex-wrap items-center gap-2 mb-6 -mt-3">
+            <TechSpecBadges
+              conditionId={conditionId}
+              endTime={data?.endTime ?? null}
+              settled={data?.settled ?? null}
+              resolvedToYes={data?.resolvedToYes ?? null}
+              nonDecisive={data?.nonDecisive ?? null}
+              resolverAddress={resolverAddress}
+            />
           </div>
+
+          {/* Chart runs full width; resolver/condition ride in the badge row */}
+          <div className="hidden lg:block mb-6">{renderScatterPlotCard()}</div>
 
           <div className="lg:hidden flex flex-col gap-6 mb-12">
             {renderScatterPlotCard()}
-            {renderTechSpecsCard()}
             {mobileTabs}
           </div>
 
