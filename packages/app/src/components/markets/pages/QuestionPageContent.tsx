@@ -23,7 +23,6 @@ import {
   Handshake,
   Telescope,
 } from 'lucide-react';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { OutcomeSide } from '@sapience/sdk/types';
 import { formatEther } from 'viem';
 import { decodePythMarketId } from '@sapience/sdk';
@@ -33,8 +32,6 @@ import EndTimeDisplay from '~/components/shared/EndTimeDisplay';
 import SafeMarkdown from '~/components/shared/SafeMarkdown';
 import { ResolverBadge } from '~/components/shared/ResolverBadge';
 import Comments, { CommentFilters } from '~/components/shared/Comments';
-import PredictionForm from '~/components/markets/pages/PredictionForm';
-import ConditionForecastForm from '~/components/conditions/ConditionForecastForm';
 import { POLYMARKET_RESOLVER_ADDRESSES } from '~/lib/constants';
 import { inferResolverKind } from '~/lib/resolvers/conditionResolver';
 import { FocusAreaBadge } from '~/components/shared/FocusAreaBadge';
@@ -44,7 +41,6 @@ import EmptyTabState from '~/components/shared/EmptyTabState';
 import { usePredictionsByConditionId } from '~/hooks/graphql/usePositions';
 import { useForecasts } from '~/hooks/graphql/useForecasts';
 import { d18ToPercentage } from '~/lib/utils/util';
-import { useAuctionStart } from '~/lib/auction/useAuctionStart';
 import { getQuestionHref } from '~/lib/utils/questionHref';
 import {
   type PredictionData,
@@ -69,7 +65,6 @@ export default function QuestionPageContent({
   conditionId,
   resolverAddressFromUrl,
 }: QuestionPageContentProps) {
-  const [refetchTrigger, setRefetchTrigger] = React.useState(0);
   const router = useRouter();
 
   // Fetch condition data - filter by both conditionId and resolver address when available
@@ -184,12 +179,7 @@ export default function QuestionPageContent({
     refetchOnReconnect: false,
   });
 
-  const handleForecastSuccess = React.useCallback(() => {
-    setRefetchTrigger((prev) => prev + 1);
-  }, []);
-
   // Use chain/resolver from the condition - no fallbacks
-  const chainId = data?.chainId ?? DEFAULT_CHAIN_ID;
   const resolverAddress = data?.resolver ?? undefined;
 
   const isPolymarketResolver =
@@ -531,11 +521,6 @@ export default function QuestionPageContent({
     return { xDomain: domain, xTicks: ticks, xTickLabels: labels };
   }, [scatterData, forecastScatterData, data?.endTime]);
 
-  // Disable logging - only CreatePositionForm should log auction activity
-  const { bids, requestQuotes } = useAuctionStart({
-    disableLogging: true,
-    skipIntentSigning: true,
-  });
   if (isLoading) {
     return (
       <div
@@ -565,24 +550,6 @@ export default function QuestionPageContent({
   const displayTitle = data.question || data.shortName || '';
 
   const categorySlug = data.category?.slug;
-
-  const renderPredictionFormCard = () => (
-    <PredictionForm
-      conditionId={conditionId}
-      question={data.question || ''}
-      shortName={data.shortName}
-      categorySlug={data.category?.slug}
-      resolverAddress={resolverAddress}
-      chainId={chainId}
-      bids={bids}
-      requestQuotes={requestQuotes}
-      settled={data.settled}
-      resolvedToYes={data.resolvedToYes}
-      nonDecisive={data.nonDecisive}
-      endTime={data.endTime}
-      estimatedPrice={data.estimatedPrice}
-    />
-  );
 
   const renderTechSpecsCard = (withBorder = true) => (
     <div
@@ -622,10 +589,7 @@ export default function QuestionPageContent({
   );
 
   const sidebarContent = (
-    <div className="flex flex-col gap-4">
-      {renderPredictionFormCard()}
-      {renderTechSpecsCard()}
-    </div>
+    <div className="flex flex-col gap-4">{renderTechSpecsCard()}</div>
   );
 
   const mobileTabs = (
@@ -687,18 +651,6 @@ export default function QuestionPageContent({
         </TabsContent>
         {/* Content area - Forecasts */}
         <TabsContent value="forecasts" className="m-0">
-          {!data?.settled && (
-            <div className="p-4 border-b border-border/60">
-              <ConditionForecastForm
-                conditionId={conditionId}
-                resolver={data.resolver ?? ''}
-                question={data.question || ''}
-                endTime={data.endTime ?? undefined}
-                categorySlug={data.category?.slug}
-                onSuccess={handleForecastSuccess}
-              />
-            </div>
-          )}
           {data?.settled && !isLoadingForecasts && forecasts.length === 0 ? (
             <EmptyTabState message="No forecasts" />
           ) : (
@@ -706,7 +658,6 @@ export default function QuestionPageContent({
               selectedCategory={CommentFilters.SelectedQuestion}
               question={data.question}
               conditionId={conditionId}
-              refetchTrigger={refetchTrigger}
             />
           )}
         </TabsContent>
@@ -828,18 +779,6 @@ export default function QuestionPageContent({
           <PositionsTable conditionId={conditionId} showHeaderText={false} />
         </TabsContent>
         <TabsContent value="forecasts" className="m-0">
-          {!data?.settled && (
-            <div className="p-4 border-b border-border/60">
-              <ConditionForecastForm
-                conditionId={conditionId}
-                resolver={data.resolver ?? ''}
-                question={data.question || ''}
-                endTime={data.endTime ?? undefined}
-                categorySlug={data.category?.slug}
-                onSuccess={handleForecastSuccess}
-              />
-            </div>
-          )}
           {data?.settled && !isLoadingForecasts && forecasts.length === 0 ? (
             <EmptyTabState message="No forecasts" />
           ) : (
@@ -847,7 +786,6 @@ export default function QuestionPageContent({
               selectedCategory={CommentFilters.SelectedQuestion}
               question={data.question}
               conditionId={conditionId}
-              refetchTrigger={refetchTrigger}
             />
           )}
         </TabsContent>
@@ -980,7 +918,6 @@ export default function QuestionPageContent({
           </div>
 
           <div className="lg:hidden flex flex-col gap-6 mb-12">
-            {renderPredictionFormCard()}
             {renderScatterPlotCard()}
             {renderTechSpecsCard()}
             {mobileTabs}

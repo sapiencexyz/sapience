@@ -42,7 +42,6 @@ import {
 import PicksSummary from '~/components/shared/PicksSummary';
 import LegacyBadge from '~/components/shared/LegacyBadge';
 import PositionDialog from '~/components/positions/PositionDialog';
-import OgShareDialogBase from '~/components/shared/OgShareDialog';
 import {
   PositionsTableFilters,
   getDefaultPositionsFilterState,
@@ -55,7 +54,6 @@ import {
 import { useEscrowWrite } from '~/hooks/blockchain/useEscrowWrite';
 import { useClaimableAmount } from '~/hooks/blockchain/useEscrowContract';
 import { useSession } from '~/lib/context/SessionContext';
-import SellPositionDialog from '~/components/secondary/SellPositionDialog';
 
 // Render an ROI percentage with sign. Sub-1%-magnitude non-zero values
 // collapse to "<1%" so a 0.4% gain doesn't render as "+0%". Color carries
@@ -70,14 +68,12 @@ function PositionRow({
   position,
   collateralSymbol,
   conditionsMap,
-  onShare,
   onOpenDialog,
   onRefetch,
 }: {
   position: PositionBalance;
   collateralSymbol: string;
   conditionsMap: ConditionsMap;
-  onShare: (position: PositionBalance) => void;
   onOpenDialog: () => void;
   onRefetch?: () => void;
 }) {
@@ -307,16 +303,6 @@ function PositionRow({
         <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
           PENDING
         </span>
-        {isOwnPosition && BigInt(position.balance) > 0n && (
-          <SellPositionDialog position={position} onSuccess={onRefetch}>
-            <button
-              type="button"
-              className="inline-flex items-center justify-center h-7 px-2.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-            >
-              Sell
-            </button>
-          </SellPositionDialog>
-        )}
       </div>
     );
   };
@@ -426,18 +412,6 @@ function PositionRow({
             PENDING
           </span>
         )}
-      </TableCell>
-      {/* Actions */}
-      <TableCell className="text-right">
-        <div className="flex items-center justify-end gap-2">
-          <button
-            type="button"
-            className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
-            onClick={() => onShare(position)}
-          >
-            Share
-          </button>
-        </div>
       </TableCell>
     </TableRow>
   );
@@ -740,42 +714,9 @@ export default function PositionsTable({
     );
   }, [filteredPositions, sort, conditionsMap]);
 
-  // Share dialog state
-  const [sharePosition, setSharePosition] =
-    React.useState<PositionBalance | null>(null);
-
   // Prediction detail dialog state
   const [dialogPosition, setDialogPosition] =
     React.useState<PositionBalance | null>(null);
-
-  // Build OG image URL for position sharing
-  const shareImageSrc = React.useMemo(() => {
-    if (!sharePosition) return null;
-    const { pickConfig, isPredictorToken } = sharePosition;
-    const rawPicks = pickConfig?.picks ?? [];
-    const resolvedPicks = toPicks(rawPicks, isPredictorToken, conditionsMap);
-
-    const wager = parseFloat(
-      formatEther(BigInt(sharePosition.userCollateral || '0'))
-    ).toFixed(2);
-    const payoutStr = parseFloat(
-      formatEther(BigInt(sharePosition.totalPayout || '0'))
-    ).toFixed(2);
-
-    const qp = new URLSearchParams();
-    qp.set('wager', wager);
-    qp.set('payout', payoutStr);
-    qp.set('symbol', collateralSymbol);
-    if (!isPredictorToken) {
-      qp.set('anti', '1');
-    }
-
-    for (const pick of resolvedPicks) {
-      qp.append('leg', `${pick.question}|${pick.choice}`);
-    }
-
-    return `/og/prediction?${qp.toString()}`;
-  }, [sharePosition, conditionsMap, collateralSymbol]);
 
   // Header with leftSlot (tab switcher) and inline filters
   // When leftSlot is provided (profile page), tabs + filters sit on one row (desktop)
@@ -926,7 +867,6 @@ export default function PositionsTable({
                   onSort={handleSort}
                 />
               </TableHead>
-              <TableHead className="h-auto py-3"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -936,7 +876,6 @@ export default function PositionsTable({
                 position={position}
                 collateralSymbol={collateralSymbol}
                 conditionsMap={conditionsMap}
-                onShare={setSharePosition}
                 onOpenDialog={() => setDialogPosition(position)}
                 onRefetch={refetch}
               />
@@ -960,24 +899,6 @@ export default function PositionsTable({
         conditionsMap={conditionsMap}
         collateralSymbol={collateralSymbol}
       />
-
-      {sharePosition && shareImageSrc && (
-        <OgShareDialogBase
-          imageSrc={shareImageSrc}
-          open={!!sharePosition}
-          onOpenChange={(open) => {
-            if (!open) setSharePosition(null);
-          }}
-          title="Share Prediction"
-          shareUrl={
-            sharePosition.pickConfig?.predictionId
-              ? typeof window !== 'undefined'
-                ? `${window.location.origin}/predictions/${sharePosition.pickConfig.predictionId}`
-                : `/predictions/${sharePosition.pickConfig.predictionId}`
-              : undefined
-          }
-        />
-      )}
     </>
   );
 }

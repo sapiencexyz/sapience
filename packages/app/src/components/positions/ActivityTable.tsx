@@ -13,7 +13,6 @@ import {
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
 import { COLLATERAL_SYMBOLS, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
-import { OutcomeSide } from '@sapience/sdk/types';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import TableLoadingState from '~/components/shared/TableLoadingState';
 import InfiniteScrollFooter from '~/components/shared/InfiniteScrollFooter';
@@ -34,7 +33,6 @@ import {
   type PredictionActivity,
   type TradeActivity,
 } from '~/hooks/graphql/useAccountActivity';
-import OgShareDialogBase from '~/components/shared/OgShareDialog';
 import PredictionDialog from '~/components/positions/PredictionDialog';
 import {
   toPicks,
@@ -61,8 +59,7 @@ export type ActivityColumn =
   | 'position'
   | 'parties'
   | 'value'
-  | 'status'
-  | 'share';
+  | 'status';
 
 function makeIsHidden(hidden: ReadonlyArray<ActivityColumn> | undefined) {
   const set = new Set(hidden ?? []);
@@ -137,18 +134,12 @@ function PredictionActivityRow({
   item,
   collateralSymbol,
   conditionsMap,
-  onShare,
   onOpenDialog,
   isHidden,
 }: {
   item: PredictionActivity;
   collateralSymbol: string;
   conditionsMap: ConditionsMap;
-  onShare: (data: {
-    prediction: Prediction;
-    pickConfig: PickConfigData | null;
-    isPredictorSide: boolean;
-  }) => void;
   onOpenDialog: () => void;
   isHidden: (col: ActivityColumn) => boolean;
 }) {
@@ -334,18 +325,6 @@ function PredictionActivityRow({
           </div>
         </td>
       )}
-      {/* Share */}
-      {!isHidden('share') && (
-        <td className="px-4 py-3 whitespace-nowrap">
-          <button
-            type="button"
-            className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
-            onClick={() => onShare({ prediction, pickConfig, isPredictorSide })}
-          >
-            Share
-          </button>
-        </td>
-      )}
     </tr>
   );
 }
@@ -481,89 +460,7 @@ function TradeActivityRow({
           </div>
         </td>
       )}
-      {/* Share (empty for trades) */}
-      {!isHidden('share') && <td className="px-4 py-3 whitespace-nowrap" />}
     </tr>
-  );
-}
-
-// ─── Share dialog ────────────────────────────────────────────────────────────
-
-function SharePredictionDialog({
-  sharePrediction,
-  conditionsMap,
-  collateralSymbol,
-  onClose,
-}: {
-  sharePrediction: {
-    prediction: Prediction;
-    pickConfig: PickConfigData | null;
-    isPredictorSide: boolean;
-  };
-  conditionsMap: ConditionsMap;
-  collateralSymbol: string;
-  onClose: () => void;
-}) {
-  const { prediction, pickConfig, isPredictorSide } = sharePrediction;
-
-  const imageSrc = React.useMemo(() => {
-    const picks = pickConfig?.picks ?? [];
-    const predictorEth = Number(
-      formatEther(BigInt(prediction.predictorCollateral))
-    );
-    const counterpartyEth = Number(
-      formatEther(BigInt(prediction.counterpartyCollateral))
-    );
-    const totalEth = predictorEth + counterpartyEth;
-
-    const wager = isPredictorSide ? predictorEth : counterpartyEth;
-
-    const qp = new URLSearchParams();
-    qp.set('wager', wager.toFixed(2));
-    qp.set('payout', totalEth.toFixed(2));
-    qp.set('symbol', collateralSymbol);
-    if (!isPredictorSide) {
-      qp.set('anti', '1');
-    }
-
-    for (const pick of picks) {
-      const condition = conditionsMap.get(pick.conditionId);
-      const question =
-        condition?.question ?? condition?.shortName ?? pick.conditionId;
-      const choice = isPredictorSide
-        ? (pick.predictedOutcome as OutcomeSide) === OutcomeSide.YES
-          ? 'Yes'
-          : 'No'
-        : (pick.predictedOutcome as OutcomeSide) === OutcomeSide.YES
-          ? 'No'
-          : 'Yes';
-      qp.append('leg', `${question}|${choice}`);
-    }
-
-    return `/og/prediction?${qp.toString()}`;
-  }, [
-    prediction,
-    pickConfig,
-    isPredictorSide,
-    conditionsMap,
-    collateralSymbol,
-  ]);
-
-  const shareUrl =
-    typeof window !== 'undefined'
-      ? `${window.location.origin}/predictions/${prediction.predictionId}`
-      : `/predictions/${prediction.predictionId}`;
-
-  return (
-    <OgShareDialogBase
-      imageSrc={imageSrc}
-      open
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
-      title="Share Prediction"
-      shareUrl={shareUrl}
-    />
   );
 }
 
@@ -758,13 +655,7 @@ export default function ActivityTable({
     [pendingItems, filters, conditionsMap]
   );
 
-  // ── Share / detail dialog state ──────────────────────────────────────────
-  const [sharePrediction, setSharePrediction] = useState<{
-    prediction: Prediction;
-    pickConfig: PickConfigData | null;
-    isPredictorSide: boolean;
-  } | null>(null);
-
+  // ── Detail dialog state ──────────────────────────────────────────
   const [dialogPrediction, setDialogPrediction] = useState<{
     prediction: Prediction;
     pickConfig: PickConfigData | null;
@@ -891,12 +782,6 @@ export default function ActivityTable({
                   Status
                 </th>
               )}
-              {!isHidden('share') && (
-                <th
-                  className="px-4 py-3 text-left align-middle font-medium"
-                  aria-label="Share"
-                />
-              )}
             </tr>
           </thead>
           <tbody>
@@ -907,7 +792,6 @@ export default function ActivityTable({
                   item={item}
                   collateralSymbol={collateralSymbol}
                   conditionsMap={conditionsMap}
-                  onShare={(data) => setSharePrediction(data)}
                   onOpenDialog={() =>
                     setDialogPrediction({
                       prediction: item.prediction,
@@ -935,14 +819,6 @@ export default function ActivityTable({
           ref={loadMoreRef}
           isLoading={activityFetchingMore}
           loadingMessage="Loading more activity…"
-        />
-      )}
-      {sharePrediction && (
-        <SharePredictionDialog
-          sharePrediction={sharePrediction}
-          conditionsMap={conditionsMap}
-          collateralSymbol={collateralSymbol}
-          onClose={() => setSharePrediction(null)}
         />
       )}
       <PredictionDialog

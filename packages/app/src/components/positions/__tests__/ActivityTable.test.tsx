@@ -466,7 +466,7 @@ describe('ActivityTable', () => {
     mockUseAccountActivity.mockReturnValue(
       hookState({ items: [makePredictionItem()] })
     );
-    render(<ActivityTable hiddenColumns={['status', 'share']} />);
+    render(<ActivityTable hiddenColumns={['status']} />);
 
     expect(
       screen.queryByRole('columnheader', { name: 'Status' })

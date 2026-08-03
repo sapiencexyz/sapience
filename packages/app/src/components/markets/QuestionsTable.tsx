@@ -65,7 +65,6 @@ import {
   EndTimeCell,
   ForecastCell,
   GroupForecastCell,
-  PredictCell,
 } from './market-helpers';
 import type { VolumeWindow } from '~/hooks/graphql/useInfiniteQuestions';
 import { inferResolverKind } from '~/lib/resolvers/conditionResolver';
@@ -565,11 +564,7 @@ function createColumns(
     },
     {
       id: 'predict',
-      header: () => (
-        <span className="block text-center whitespace-nowrap">
-          Select Predictions
-        </span>
-      ),
+      header: () => null,
       cell: ({ row }) => {
         const data = row.original;
         if (data.kind === 'group') {
@@ -590,12 +585,7 @@ function createColumns(
             </div>
           );
         }
-        return (
-          <PredictCell
-            condition={data.condition}
-            className="max-w-[320px] ml-auto"
-          />
-        );
+        return null;
       },
       enableSorting: false,
       enableHiding: false,
@@ -742,12 +732,7 @@ function ChildConditionRow({
           <span className="text-muted-foreground">—</span>
         )}
       </TableCell>
-      <TableCell className="py-2 pr-4">
-        <PredictCell
-          condition={conditionType}
-          className="max-w-[320px] ml-auto"
-        />
-      </TableCell>
+      <TableCell className="py-2 pr-4" />
     </TableRow>
   );
 }

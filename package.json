@@ -4,48 +4,27 @@
   "private": true,
   "main": "index.js",
   "scripts": {
-    "build": "pnpm run build:backend",
-    "build:backend": "pnpm --filter @sapience/sdk run build:lib && pnpm --filter @sapience/api run prisma:generate",
-    "build:web": "pnpm --filter @sapience/app run build && pnpm --filter docs run build",
+    "build": "pnpm --filter @sapience/sdk run build:lib",
+    "build:web": "pnpm --filter @sapience/app run build",
     "test": "pnpm run test --recursive",
     "dev:app": "pnpm --filter @sapience/app run dev",
-    "dev:docs": "pnpm --filter docs run dev",
-    "dev:api": "concurrently \"NODE_ENV=development pnpm --filter api run dev:service\" \"NODE_ENV=development pnpm --filter api run dev:worker\"",
-    "dev:api:service": "NODE_ENV=development pnpm --filter api run dev:service",
-    "dev:api:worker": "NODE_ENV=development pnpm --filter api run dev:worker",
-    "dev:relayer": "NODE_ENV=development pnpm --filter @sapience/relayer run dev",
-    "start:reindex-market": "pnpm --filter api run start:reindex-market",
-    "start:reindex-missing": "pnpm --filter api run start:reindex-missing",
-    "start:reindex-resource": "pnpm --filter api run start:reindex-resource",
-    "start:reindex-market-group-factory": "pnpm --filter api run start:reindex-market-group-factory",
-    "start:reindex-eas": "pnpm --filter api run start:reindex-eas",
-    "start:backfill-accuracy": "pnpm --filter api run start:backfill-accuracy",
-    "start:compute-stats": "pnpm --filter api run start:compute-stats",
-    "start:backfill-stats": "pnpm --filter api run start:backfill-stats",
-    "check": "pnpm --filter @sapience/sdk run build:lib && pnpm --filter @sapience/api run prisma:generate && pnpm -r run lint && pnpm -r --filter=!protocol run type-check && pnpm -r --filter=!protocol run test",
+    "check": "pnpm --filter @sapience/sdk run build:lib && pnpm -r run lint && pnpm -r run type-check && pnpm -r run test",
     "format:check": "pnpm -r run format:check",
     "prepare": "husky"
   },
   "keywords": [],
   "devDependencies": {
-    "concurrently": "8.2.2",
     "husky": "9.1.7",
     "lint-staged": "16.3.3",
     "prettier": "3.3.3"
   },
   "engines": {
-    "node": ">=22.12",
+    "node": ">=20.11",
     "pnpm": ">=10.16.0 <11"
-  },
-  "resolutions": {
-    "@openzeppelin/contracts": "5.0.2"
   },
   "pnpm": {
     "overrides": {
-      "typegraphql-prisma>@prisma/client": "6.10.1",
-      "typegraphql-prisma>prisma": "6.10.1",
       "form-data": "4.0.4",
-      "request>form-data": "4.0.4",
       "elliptic": "6.6.1",
       "protobufjs": "7.2.5",
       "zod": "3.25.76",

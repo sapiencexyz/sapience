@@ -3,7 +3,6 @@
 import * as React from 'react';
 import { format } from 'date-fns';
 import { formatEther } from 'viem';
-import { Minus } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -11,9 +10,7 @@ import {
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
 import { Badge } from '@sapience/ui/components/ui/badge';
-import { cn } from '@sapience/ui/lib/utils';
 import type { FilterState } from './TableFilters';
-import { inferResolverKind } from '~/lib/resolvers/conditionResolver';
 import type { ConditionType } from '~/hooks/graphql/useConditions';
 import type { ConditionGroupConditionType } from '~/hooks/graphql/useConditionGroups';
 import type {
@@ -22,8 +19,6 @@ import type {
   QuestionType,
 } from '~/hooks/graphql/useInfiniteQuestions';
 import EstimatedPrice from '~/components/shared/EstimatedPrice';
-import YesNoSplitButton from '~/components/shared/YesNoSplitButton';
-import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import { getDeterministicCategoryColor } from '~/lib/theme/categoryPalette';
 import { isPriceSubCategory } from '~/lib/utils/categoryMatcher';
@@ -453,117 +448,6 @@ export function GroupForecastCell({
     <span className="text-muted-foreground font-mono">
       {conditions.length} option{conditions.length === 1 ? '' : 's'}
     </span>
-  );
-}
-
-/** YES/NO split-button wired to CreatePositionContext */
-export function PredictCell({
-  condition,
-  className,
-  colorScheme,
-}: {
-  condition: ConditionType;
-  className?: string;
-  colorScheme?: 'default' | 'bold';
-}) {
-  const { addSelection, removeSelection, selections } =
-    useCreatePositionContext();
-
-  const selectionState = React.useMemo(() => {
-    if (!condition.id) return { selectedYes: false, selectedNo: false };
-    const existing = selections.find((s) => s.conditionId === condition.id);
-    return {
-      selectedYes: !!existing && existing.prediction === true,
-      selectedNo: !!existing && existing.prediction === false,
-    };
-  }, [selections, condition.id]);
-
-  const handleYes = React.useCallback(() => {
-    if (!condition.id) return;
-    const existing = selections.find((s) => s.conditionId === condition.id);
-    if (existing && existing.prediction === true) {
-      removeSelection(existing.id);
-      return;
-    }
-    addSelection({
-      conditionId: condition.id,
-      question: condition.question,
-      shortName: condition.shortName,
-      prediction: true,
-      categorySlug: condition.category?.slug,
-      resolverAddress: condition.resolver,
-      endTime: condition.endTime,
-    });
-  }, [
-    condition.id,
-    condition.category?.slug,
-    condition.endTime,
-    condition.question,
-    condition.shortName,
-    condition.resolver,
-    selections,
-    removeSelection,
-    addSelection,
-  ]);
-
-  const handleNo = React.useCallback(() => {
-    if (!condition.id) return;
-    const existing = selections.find((s) => s.conditionId === condition.id);
-    if (existing && existing.prediction === false) {
-      removeSelection(existing.id);
-      return;
-    }
-    addSelection({
-      conditionId: condition.id,
-      question: condition.question,
-      shortName: condition.shortName,
-      prediction: false,
-      categorySlug: condition.category?.slug,
-      resolverAddress: condition.resolver,
-      endTime: condition.endTime,
-    });
-  }, [
-    condition.id,
-    condition.category?.slug,
-    condition.endTime,
-    condition.question,
-    condition.shortName,
-    condition.resolver,
-    selections,
-    removeSelection,
-    addSelection,
-  ]);
-
-  if (condition.settled) {
-    return (
-      <div className="w-full max-w-[320px] ml-auto h-8 flex items-center justify-center text-muted-foreground opacity-50">
-        <Minus className="h-3 w-3" />
-      </div>
-    );
-  }
-
-  // Pyth conditions can't accept new predictions after endTime (settlement is on-chain via oracle).
-  // Polymarket conditions may still be tradeable after endTime, so don't disable those.
-  const isPythPastEnd =
-    inferResolverKind(condition.resolver) === 'pyth' &&
-    !!condition.endTime &&
-    condition.endTime <= Math.floor(Date.now() / 1000);
-
-  return (
-    <div className={cn('w-full font-mono', className)}>
-      <YesNoSplitButton
-        onYes={handleYes}
-        onNo={handleNo}
-        className="w-full gap-4"
-        size="sm"
-        yesLabel="YES"
-        noLabel="NO"
-        selectedYes={selectionState.selectedYes}
-        selectedNo={selectionState.selectedNo}
-        colorScheme={colorScheme}
-        disabled={isPythPastEnd}
-      />
-    </div>
   );
 }
 
