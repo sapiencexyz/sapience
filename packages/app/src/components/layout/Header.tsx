@@ -1,7 +1,6 @@
 'use client';
 
 import { Button } from '@sapience/ui/components/ui/button';
-import { useToast } from '@sapience/ui/hooks/use-toast';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,8 +26,6 @@ import {
   Sparkles,
   Trophy,
   Users,
-  Wallet,
-  XCircle,
   BarChart3,
   Activity,
 } from 'lucide-react';
@@ -45,11 +42,6 @@ import EnsAvatar from '~/components/shared/EnsAvatar';
 import ReferralsDialog from '~/components/shared/ReferralsDialog';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import { useAuth } from '~/lib/context/AuthContext';
-import { useSession } from '~/lib/context/SessionContext';
-import {
-  useSettings,
-  DEFAULT_CONNECTION_DURATION_HOURS,
-} from '~/lib/context/SettingsContext';
 import { StatusIndicators } from '~/components/layout/StatusIndicators';
 
 const isActive = (path: string, pathname: string) => {
@@ -67,7 +59,6 @@ const NavLinks = ({ onClose }: NavLinksProps) => {
   const pathname = usePathname();
   const { ready, hasConnectedWallet, connectedWallet } = useConnectedWallet();
   const { setOpenMobile, isMobile } = useSidebar();
-  const { effectiveAddress } = useSession();
   const linkClass = 'sc-heading justify-start rounded-full';
   const activeClass = 'text-accent-gold';
 
@@ -179,7 +170,7 @@ const NavLinks = ({ onClose }: NavLinksProps) => {
             onClick={handleLinkClick}
           >
             <Link
-              href={`/profile/${effectiveAddress ?? connectedWallet.address}`}
+              href={`/profile/${connectedWallet.address}`}
               className="flex items-center gap-2"
             >
               <User className="h-4 w-4" />
@@ -199,26 +190,10 @@ const Header = () => {
   const { openConnectDialog } = useConnectDialog();
   const { setLoggedOut } = useAuth();
   const { disconnect } = useDisconnect();
-  const { toast } = useToast();
   const [isScrolled, setIsScrolled] = useState(false);
   const thresholdRef = useRef(12);
   const headerRef = useRef<HTMLElement | null>(null);
   const [isReferralsOpen, setIsReferralsOpen] = useState(false);
-
-  // Session context for smart account sessions
-  const {
-    isSessionActive,
-    startSession,
-    endSession,
-    isStartingSession,
-    smartAccountAddress,
-    accountMode,
-    setAccountMode,
-    isUsingSmartAccount,
-    effectiveAddress,
-  } = useSession();
-
-  const { connectionDurationHours } = useSettings();
 
   useEffect(() => {
     const recalcThreshold = () => {
@@ -290,49 +265,7 @@ const Header = () => {
     };
   }, []);
 
-  // Handle start session
-  const handleStartSession = async () => {
-    try {
-      await startSession({
-        durationHours:
-          connectionDurationHours ?? DEFAULT_CONNECTION_DURATION_HOURS,
-      });
-      toast({
-        title: 'Connection Established',
-        description: 'You can now use the app without signing transactions.',
-        duration: 5000,
-      });
-    } catch (error) {
-      console.error('Failed to start session:', error);
-      toast({
-        title: 'Failed to Start Session',
-        description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive',
-        duration: 5000,
-      });
-    }
-  };
-
   const handleLogout = () => {
-    // End any active session first
-    if (isSessionActive) {
-      console.debug('[Header] Ending active session before logout');
-      endSession();
-    } else {
-      console.debug('[Header] No active session to end');
-    }
-
-    // Clear app-specific localStorage items first
-    try {
-      if (typeof window !== 'undefined') {
-        window.localStorage.removeItem('sapience.chat.token');
-        window.localStorage.removeItem('sapience.chat.tokenExpiresAt');
-        window.dispatchEvent(new Event('sapience:chat_logout'));
-      }
-    } catch {
-      // localStorage not available
-    }
-
     // Disconnect wagmi connections
     try {
       disconnect?.();
@@ -406,7 +339,7 @@ const Header = () => {
               </Link>
               {ready && hasConnectedWallet && connectedWallet?.address && (
                 <Link
-                  href={`/profile/${effectiveAddress ?? connectedWallet.address}`}
+                  href={`/profile/${connectedWallet.address}`}
                   className={`sc-heading text-foreground transition-colors px-3 py-2 rounded-full hover:bg-transparent hover:text-accent-gold`}
                 >
                   Profile
@@ -507,29 +440,15 @@ const Header = () => {
               )}
               {ready && hasConnectedWallet && (
                 <>
-                  {/* In smart-account mode without session: show "Establish Connection" to start session */}
-                  {accountMode === 'smart-account' && !isSessionActive && (
-                    <Button
-                      className="rounded-md h-10 xl:h-9 px-4"
-                      onClick={handleStartSession}
-                      disabled={isStartingSession || !smartAccountAddress}
-                    >
-                      {isStartingSession
-                        ? 'Connecting...'
-                        : 'Establish Connection'}
-                    </Button>
-                  )}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="outline"
                         className="rounded-md h-9 w-9 p-0 overflow-hidden bg-brand-black text-brand-white border border-brand-white/10 hover:bg-brand-black/90"
                       >
-                        {(effectiveAddress ?? connectedWallet?.address) ? (
+                        {connectedWallet?.address ? (
                           <EnsAvatar
-                            address={
-                              effectiveAddress ?? connectedWallet!.address
-                            }
+                            address={connectedWallet.address}
                             className="h-9 w-9 rounded-md"
                             width={36}
                             height={36}
@@ -551,39 +470,6 @@ const Header = () => {
                         <Users className="mr-0.5 opacity-75 h-4 w-4" />
                         <span>Referrals</span>
                       </DropdownMenuItem>
-                      {/* Account mode toggle - switch between smart account and wallet */}
-                      {smartAccountAddress && (
-                        <DropdownMenuItem
-                          className="flex items-center cursor-pointer"
-                          onSelect={async () => {
-                            if (accountMode === 'smart-account') {
-                              // Switching to EOA mode
-                              setAccountMode('eoa');
-                            } else {
-                              // Switching to smart-account mode - also start session
-                              setAccountMode('smart-account');
-                              await handleStartSession();
-                            }
-                          }}
-                        >
-                          <Wallet className="mr-0.5 opacity-75 h-4 w-4" />
-                          <span>
-                            {accountMode === 'smart-account'
-                              ? 'Use wallet'
-                              : 'Use account'}
-                          </span>
-                        </DropdownMenuItem>
-                      )}
-                      {/* End session - only show when in smart account mode with active session */}
-                      {isUsingSmartAccount && isSessionActive && (
-                        <DropdownMenuItem
-                          className="flex items-center cursor-pointer"
-                          onSelect={endSession}
-                        >
-                          <XCircle className="mr-0.5 opacity-75 h-4 w-4" />
-                          <span>End session</span>
-                        </DropdownMenuItem>
-                      )}
                       <DropdownMenuItem
                         className="flex items-center cursor-pointer"
                         onClick={handleLogout}

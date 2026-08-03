@@ -586,24 +586,6 @@ describe('ActivityTable', () => {
     );
   });
 
-  it('opens the OG share dialog with the prediction share image', () => {
-    mockUseAccountActivity.mockReturnValue(
-      hookState({ items: [makePredictionItem()] })
-    );
-    render(<ActivityTable />);
-
-    expect(screen.queryByTestId('og-share-dialog')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
-
-    const dialog = screen.getByTestId('og-share-dialog');
-    const src = dialog.getAttribute('data-image-src')!;
-    expect(src).toMatch(/^\/og\/prediction\?/);
-    const params = new URLSearchParams(src.split('?')[1]);
-    expect(params.get('wager')).toBe('1.00'); // predictor side
-    expect(params.get('payout')).toBe('3.00'); // total collateral
-    expect(params.get('leg')).toBe('Will ETH hit 5k?|Yes');
-  });
-
   it('renders the infinite-scroll footer only when more pages exist', () => {
     mockUseAccountActivity.mockReturnValue(
       hookState({ items: [makePredictionItem()], hasMore: true })

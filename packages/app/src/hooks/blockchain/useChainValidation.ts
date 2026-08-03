@@ -1,4 +1,3 @@
-import * as Sentry from '@sentry/nextjs';
 import { useCallback } from 'react';
 import { useAccount, useSwitchChain } from 'wagmi';
 
@@ -69,11 +68,6 @@ export function useChainValidation({
           } catch (switchError) {
             onLoading?.(false);
             console.error('Failed to switch chain:', switchError);
-            Sentry.captureException(switchError, {
-              tags: { component: 'chain-switch' },
-              extra: { targetChainId: chainId, currentChainId },
-            });
-
             const message =
               switchError instanceof Error &&
               switchError.message.includes('User rejected the request')

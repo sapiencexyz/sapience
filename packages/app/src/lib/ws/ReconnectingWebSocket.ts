@@ -1,7 +1,5 @@
 'use client';
 
-import * as Sentry from '@sentry/nextjs';
-
 type OutgoingMessage = Record<string, unknown> & { id?: string };
 
 type AckResolver = {
@@ -95,23 +93,12 @@ export class ReconnectingWebSocketClient {
     if (!this.url) return;
     try {
       this.log('connecting', this.url);
-      Sentry.addBreadcrumb({
-        category: 'ws.lifecycle',
-        level: 'info',
-        message: 'connect',
-        data: { url: this.url },
-      });
       const ws = new WebSocket(this.url);
       this.ws = ws;
       this.isOpen = false;
 
       ws.onopen = () => {
         this.log('open');
-        Sentry.addBreadcrumb({
-          category: 'ws.lifecycle',
-          level: 'info',
-          message: 'open',
-        });
         this.isOpen = true;
         this.backoffMs = this.initialBackoffMs;
         this.flushOutbox();
@@ -155,11 +142,6 @@ export class ReconnectingWebSocketClient {
 
       ws.onerror = (e) => {
         this.log('error', e);
-        Sentry.addBreadcrumb({
-          category: 'ws.lifecycle',
-          level: 'error',
-          message: 'error',
-        });
         for (const cb of Array.from(this.errorListeners)) {
           try {
             cb(e);
@@ -171,11 +153,6 @@ export class ReconnectingWebSocketClient {
 
       ws.onclose = () => {
         this.log('close');
-        Sentry.addBreadcrumb({
-          category: 'ws.lifecycle',
-          level: 'info',
-          message: 'close',
-        });
         this.isOpen = false;
         this.stopHeartbeat();
         for (const cb of Array.from(this.closeListeners)) {
@@ -226,12 +203,6 @@ export class ReconnectingWebSocketClient {
     this.backoffMs = Math.min(this.backoffMs * 2, this.maxBackoffMs);
     window.setTimeout(() => {
       if (navigator.onLine === false) return;
-      Sentry.addBreadcrumb({
-        category: 'ws.lifecycle',
-        level: 'info',
-        message: 'reconnect',
-        data: { delay },
-      });
       for (const cb of Array.from(this.reconnectListeners)) {
         try {
           cb();
@@ -246,12 +217,6 @@ export class ReconnectingWebSocketClient {
   private tryReconnectSoon(force = false) {
     if (!this.url) return;
     if (force) this.backoffMs = this.initialBackoffMs;
-    Sentry.addBreadcrumb({
-      category: 'ws.lifecycle',
-      level: 'info',
-      message: 'reconnect-soon',
-      data: { force },
-    });
     this.safeClose();
   }
 
@@ -324,12 +289,6 @@ export class ReconnectingWebSocketClient {
     return await new Promise<T>((resolve, reject) => {
       const timeout = window.setTimeout(() => {
         if (this.acks.has(id)) this.acks.delete(id);
-        Sentry.addBreadcrumb({
-          category: 'ws.lifecycle',
-          level: 'warning',
-          message: 'ack-timeout',
-          data: { id, type },
-        });
         reject(new Error('ack_timeout'));
       }, timeoutMs);
       this.acks.set(id, {

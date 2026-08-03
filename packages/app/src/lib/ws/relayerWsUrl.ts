@@ -1,4 +1,4 @@
-export function toAuctionWsUrl(
+export function toRelayerWsUrl(
   baseHttpUrl: string | null | undefined
 ): string | null {
   try {

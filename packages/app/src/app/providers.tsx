@@ -15,12 +15,9 @@ import { resolveChainsAndRpcUrls } from './providers.chains';
 import { httpWithRetry } from '~/lib/utils/util';
 import { SapienceProvider } from '~/lib/context/SapienceProvider';
 import ThemeProvider from '~/lib/context/ThemeProvider';
-import { CreatePositionProvider } from '~/lib/context/CreatePositionContext';
 import { SettingsProvider } from '~/lib/context/SettingsContext';
 import { ConnectDialogProvider } from '~/lib/context/ConnectDialogContext';
-import { FundDialogProvider } from '~/lib/context/FundDialogContext';
 import { AuthProvider } from '~/lib/context/AuthContext';
-import { SessionProvider } from '~/lib/context/SessionContext';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -98,17 +95,9 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
         <SettingsProvider>
           <AuthProvider>
             <WagmiProvider config={wagmiConfig}>
-              <SessionProvider>
-                <SapienceProvider>
-                  <ConnectDialogProvider>
-                    <FundDialogProvider>
-                      <CreatePositionProvider>
-                        {children}
-                      </CreatePositionProvider>
-                    </FundDialogProvider>
-                  </ConnectDialogProvider>
-                </SapienceProvider>
-              </SessionProvider>
+              <SapienceProvider>
+                <ConnectDialogProvider>{children}</ConnectDialogProvider>
+              </SapienceProvider>
             </WagmiProvider>
           </AuthProvider>
         </SettingsProvider>

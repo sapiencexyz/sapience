@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
-import PageContainer from '~/components/layout/PageContainer';
 import MarketsPageClient from './MarketsPageClient';
+import PageContainer from '~/components/layout/PageContainer';
 
 export const metadata: Metadata = {
   title: 'Prediction Markets',

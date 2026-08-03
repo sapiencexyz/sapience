@@ -78,7 +78,6 @@ export function useInfiniteScroll({
 
     container.addEventListener('scroll', handleScroll, { passive: true });
     return () => container.removeEventListener('scroll', handleScroll);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scrollContainerRef]);
 
   // Scroll listener on window — fires when the page scrolls (covers the table

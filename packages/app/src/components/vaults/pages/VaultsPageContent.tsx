@@ -40,7 +40,7 @@ import {
   useProtocolStats,
   useVaultAccountValue,
 } from '~/hooks/graphql/useAnalytics';
-import RiskDisclaimer from '~/components/markets/forms/shared/RiskDisclaimer';
+import RiskDisclaimer from '~/components/shared/RiskDisclaimer';
 import Loader from '~/components/shared/Loader';
 import VaultPnlChart from '~/components/vaults/VaultPnlChart';
 import VaultSharePriceChart from '~/components/vaults/VaultSharePriceChart';

@@ -169,6 +169,7 @@ vi.mock('@sapience/ui/components/ui/tooltip', () => ({
 vi.mock('lucide-react', () => ({
   Vault: () => <span />,
   Clock: () => <span />,
+  AlertTriangle: () => <span />,
 }));
 
 vi.mock('viem', () => ({

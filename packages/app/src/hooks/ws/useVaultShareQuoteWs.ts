@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Address } from 'viem';
 import { useSettings } from '../../lib/context/SettingsContext';
-import { toAuctionWsUrl } from '../../lib/ws/auctionUrl';
-import { getSharedAuctionWsClient } from '../../lib/ws/AuctionWsClient';
+import { toRelayerWsUrl } from '../../lib/ws/relayerWsUrl';
+import { getSharedRelayerClient } from '../../lib/ws/relayerClient';
 
 interface VaultShareWsQuotePayload {
   chainId: number;
@@ -41,7 +41,7 @@ export function useVaultShareQuoteWs(
     if (!chainId || !vaultAddress) {
       return null;
     }
-    return toAuctionWsUrl(apiBaseUrl);
+    return toRelayerWsUrl(apiBaseUrl);
   }, [apiBaseUrl, chainId, vaultAddress]);
 
   useEffect(() => {
@@ -49,7 +49,7 @@ export function useVaultShareQuoteWs(
       return;
     }
 
-    const client = getSharedAuctionWsClient(wsUrl);
+    const client = getSharedRelayerClient(wsUrl);
 
     // Restore last valid quote if available to prevent flashing to 0
     if (lastValidQuoteRef.current) {

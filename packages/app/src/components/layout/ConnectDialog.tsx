@@ -12,11 +12,6 @@ import {
 import { Button } from '@sapience/ui/components/ui/button';
 import { Wallet } from 'lucide-react';
 import { useAuth } from '~/lib/context/AuthContext';
-import { useSession } from '~/lib/context/SessionContext';
-import {
-  useSettings,
-  DEFAULT_CONNECTION_DURATION_HOURS,
-} from '~/lib/context/SettingsContext';
 
 // EIP-6963 types
 interface EIP6963ProviderInfo {
@@ -38,10 +33,6 @@ interface EIP6963AnnounceProviderEvent extends Event {
 interface ConnectDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** When true, immediately start session creation (wallet already connected) */
-  startSessionOnOpen?: boolean;
-  /** Called after startSessionOnOpen has been consumed */
-  onSessionStarted?: () => void;
 }
 
 // Featured wallets to always show (with download links if not installed)
@@ -75,77 +66,16 @@ const FEATURED_WALLETS = [
 export default function ConnectDialog({
   open,
   onOpenChange,
-  startSessionOnOpen,
-  onSessionStarted,
 }: ConnectDialogProps) {
   const { isConnected, address } = useAccount();
   const [isClient, setIsClient] = useState(false);
   const { clearLoggedOut } = useAuth();
-  const { startSession, sessionCreationStep, accountMode } = useSession();
-  const { connectionDurationHours } = useSettings();
 
-  // Track if we're creating a session after wallet connection
-  const [isCreatingSession, setIsCreatingSession] = useState(false);
-
-  // Track if we just connected a wallet (to trigger auto-session)
-  // Use a ref to track previous connection state to avoid race conditions
+  // Track previous connection state so a fresh connect closes the dialog
   const prevConnectedRef = useRef(isConnected);
 
   const { connect, isPending, connectors } = useConnect();
   const [connectingId, setConnectingId] = useState<string | null>(null);
-
-  // Dynamic status message based on session creation progress (without dots — animated separately)
-  const statusMessage = useMemo(() => {
-    if (!isCreatingSession) return null;
-    switch (sessionCreationStep) {
-      case 'switching-network':
-        return 'SWITCHING NETWORK';
-      case 'requesting-approval':
-        return 'ESTABLISHING CONNECTION';
-      case 'deploying-account':
-      case 'finalizing':
-        return 'FINALIZING CONNECTION';
-      default:
-        return 'ESTABLISHING CONNECTION';
-    }
-  }, [isCreatingSession, sessionCreationStep]);
-
-  // Animated dots: cycles . -> .. -> ... every 500ms
-  const [dotCount, setDotCount] = useState(1);
-  useEffect(() => {
-    if (!isCreatingSession) {
-      setDotCount(1);
-      return;
-    }
-    const interval = setInterval(() => {
-      setDotCount((prev) => (prev % 3) + 1);
-    }, 500);
-    return () => clearInterval(interval);
-  }, [isCreatingSession]);
-
-  // Track previous message for fade transition
-  const [displayedMessage, setDisplayedMessage] = useState<string | null>(null);
-  const [isFading, setIsFading] = useState(false);
-  useEffect(() => {
-    if (!statusMessage) {
-      setDisplayedMessage(null);
-      return;
-    }
-    if (displayedMessage === null) {
-      // First message — show immediately
-      setDisplayedMessage(statusMessage);
-      return;
-    }
-    if (statusMessage !== displayedMessage) {
-      // Message changed — fade out, swap, fade in
-      setIsFading(true);
-      const timeout = setTimeout(() => {
-        setDisplayedMessage(statusMessage);
-        setIsFading(false);
-      }, 200);
-      return () => clearTimeout(timeout);
-    }
-  }, [statusMessage, displayedMessage]);
 
   // EIP-6963 wallet discovery
   const [discoveredWallets, setDiscoveredWallets] = useState<
@@ -183,84 +113,16 @@ export default function ConnectDialog({
     setIsClient(true);
   }, []);
 
-  // Start session when opened with startSessionOnOpen flag (e.g. after refcode entry)
-  useEffect(() => {
-    // Sessions are a smart-account feature; never create one in EOA/wallet mode.
-    if (accountMode !== 'smart-account') return;
-    if (!startSessionOnOpen || !open || !isConnected || isCreatingSession)
-      return;
-
-    onSessionStarted?.();
-    setIsCreatingSession(true);
-
-    const runSession = async () => {
-      try {
-        console.debug('[ConnectDialog] Starting session after refcode entry');
-        await startSession({
-          durationHours:
-            connectionDurationHours ?? DEFAULT_CONNECTION_DURATION_HOURS,
-        });
-        console.debug('[ConnectDialog] Session created successfully');
-      } catch (error) {
-        console.error('[ConnectDialog] Failed to create session:', error);
-      } finally {
-        setIsCreatingSession(false);
-        onOpenChange(false);
-      }
-    };
-
-    void runSession();
-  }, [startSessionOnOpen, open, isConnected, accountMode]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Auto-create session when wallet connects, then close dialog.
+  // Close the dialog once a wallet connects.
   useEffect(() => {
     const wasConnected = prevConnectedRef.current;
     prevConnectedRef.current = isConnected;
 
-    // Detect fresh wallet connection (went from disconnected to connected while dialog is open)
     if (isConnected && !wasConnected && open && address) {
-      console.debug('[ConnectDialog] Fresh wallet connection detected');
       clearLoggedOut();
-
-      // EOA/wallet mode doesn't use sessions — just connect and close.
-      if (accountMode !== 'smart-account') {
-        onOpenChange(false);
-        return;
-      }
-
-      const createSessionAsync = async () => {
-        try {
-          setIsCreatingSession(true);
-          console.debug('[ConnectDialog] Starting session');
-          await startSession({
-            durationHours:
-              connectionDurationHours ?? DEFAULT_CONNECTION_DURATION_HOURS,
-          });
-          console.debug('[ConnectDialog] Session created successfully');
-        } catch (error) {
-          console.error(
-            '[ConnectDialog] Failed to auto-create session:',
-            error
-          );
-          // Still close the dialog even if session creation fails
-        } finally {
-          setIsCreatingSession(false);
-          onOpenChange(false);
-        }
-      };
-
-      void createSessionAsync();
+      onOpenChange(false);
     }
-  }, [
-    isConnected,
-    open,
-    onOpenChange,
-    clearLoggedOut,
-    startSession,
-    address,
-    connectionDurationHours,
-    accountMode,
-  ]);
+  }, [isConnected, open, onOpenChange, clearLoggedOut, address]);
 
   const handleEIP6963Connect = useCallback(
     (wallet: EIP6963ProviderDetail) => {
@@ -384,21 +246,6 @@ export default function ConnectDialog({
 
         {/* Wallet Options */}
         <div className="relative flex flex-col gap-3">
-          {/* Dynamic status overlay */}
-          {isCreatingSession && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-[2px] rounded-md animate-in fade-in duration-300">
-              <span
-                className="font-mono text-sm tracking-wide text-accent-gold transition-opacity duration-200"
-                style={{ opacity: isFading ? 0 : 1 }}
-              >
-                {displayedMessage ?? 'GETTING READY'}
-                <span className="inline-block w-[1.5ch] text-left">
-                  {'.'.repeat(dotCount)}
-                </span>
-              </span>
-            </div>
-          )}
-
           {/* Loading state */}
           {!isClient && (
             <p className="text-sm text-muted-foreground text-center py-2">
@@ -420,11 +267,7 @@ export default function ConnectDialog({
                   variant="outline"
                   className="w-full h-14 justify-start gap-3 px-4 text-base font-medium bg-[hsl(var(--muted)/0.3)] border-border/50 hover:bg-[hsl(var(--muted)/0.5)] disabled:opacity-50"
                   onClick={() => handleWalletClick(wallet)}
-                  disabled={
-                    isCreatingSession ||
-                    !isInstalled ||
-                    (isPending && isInstalled)
-                  }
+                  disabled={!isInstalled || (isPending && isInstalled)}
                 >
                   <div className="flex items-center justify-center w-7 h-7 rounded overflow-hidden shrink-0">
                     {wallet.icon ? (

@@ -1,19 +1,14 @@
 import type { Metadata, Viewport } from 'next';
 import type React from 'react';
-import { Suspense } from 'react';
-import { Analytics } from '@vercel/analytics/react';
 import { Toaster } from '@sapience/ui/components/ui/toaster';
 import { TooltipProvider } from '@sapience/ui/components/ui/tooltip';
 import Providers from '~/app/providers';
 import { ibmPlexMono } from '~/app/fonts';
 import Layout from '~/components/layout';
-import ChatWidget from '~/components/shared/ChatWidget';
 import CommandMenu from '~/components/shared/CommandMenu';
 import ConsoleMessage from '~/components/shared/ConsoleMessage';
-import FloatingChatButton from '~/components/shared/FloatingChatButton';
 import GlobalLoader from '~/components/shared/GlobalLoader';
 import InstallDialog from '~/components/shared/InstallDialog';
-import { ChatProvider } from '~/lib/context/ChatContext';
 import { LoadingProvider } from '~/lib/context/LoadingContext';
 import '~/styles/globals.css';
 
@@ -118,25 +113,16 @@ const RootLayout = ({ children }: RootLayoutProps) => {
       <body className="overflow-x-hidden">
         <Providers>
           <LoadingProvider>
-            <ChatProvider>
-              <GlobalLoader />
-              <TooltipProvider>
-                <Layout>{children}</Layout>
-              </TooltipProvider>
-              <CommandMenu />
-              <Toaster />
-              <InstallDialog />
-              <div className="fixed bottom-5 right-4 sm:bottom-14 sm:right-6 z-[55]">
-                <Suspense fallback={null}>
-                  <FloatingChatButton />
-                </Suspense>
-              </div>
-              <ChatWidget />
-              <ConsoleMessage />
-            </ChatProvider>
+            <GlobalLoader />
+            <TooltipProvider>
+              <Layout>{children}</Layout>
+            </TooltipProvider>
+            <CommandMenu />
+            <Toaster />
+            <InstallDialog />
+            <ConsoleMessage />
           </LoadingProvider>
         </Providers>
-        <Analytics />
       </body>
     </html>
   );

@@ -47,8 +47,7 @@ interface UsePassiveLiquidityVaultConfig {
 export function usePassiveLiquidityVault(
   config?: UsePassiveLiquidityVaultConfig
 ) {
-  const { currentAddress, isCalculating: isCalculatingAddress } =
-    useCurrentAddress();
+  const { currentAddress } = useCurrentAddress();
 
   const VAULT_ADDRESS: Address = config?.vaultAddress || DEFAULT_VAULT_ADDRESS;
   const TARGET_CHAIN_ID: number | undefined = config?.chainId;
@@ -294,9 +293,7 @@ export function usePassiveLiquidityVault(
   );
 
   const isInteractionDelayActive =
-    !isCalculatingAddress &&
-    !isLastInteractionPending &&
-    interactionDelayRemainingSec > 0;
+    !isLastInteractionPending && interactionDelayRemainingSec > 0;
 
   const parsedUserData = userData
     ? { balance: (userData[0] as bigint) || 0n }
@@ -481,7 +478,6 @@ export function usePassiveLiquidityVault(
     accountAddress: currentAddress,
     isLoadingVaultData,
     isLoadingUserData,
-    isCalculatingAddress,
     isVaultPending,
     deposit,
     requestWithdrawal,

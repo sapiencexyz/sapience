@@ -10,7 +10,6 @@ import {
   isRobinhoodChain,
 } from '@sapience/sdk/constants';
 import Image from 'next/image';
-import { PeerIndicator } from '~/components/shared/PeerIndicator';
 import { useRpcPing } from '~/hooks/blockchain/useRpcPing';
 import { useSettings } from '~/lib/context/SettingsContext';
 
@@ -18,12 +17,8 @@ export const ETHENA_BASE_APY = 3.8;
 
 export function StatusIndicators() {
   const pingMs = useRpcPing();
-  const { signalEndpoint, customChainId } = useSettings();
+  const { customChainId } = useSettings();
   const isRobinhood = isRobinhoodChain(customChainId ?? ENV_DEFAULT_CHAIN_ID);
-  // A blank signal endpoint means the mesh is disabled — hide the peer
-  // indicator entirely instead of showing a permanent "0 PEERS".
-  const showMesh = Boolean(signalEndpoint);
-
   return (
     <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:gap-1.5 text-xs">
       <Tooltip>
@@ -71,21 +66,6 @@ export function StatusIndicators() {
           {isRobinhood ? 'Robinhood Chain Ping' : 'Ethereal Ping'}
         </TooltipContent>
       </Tooltip>
-      {showMesh && (
-        <>
-          <span className="hidden xl:inline text-muted-foreground/60 mx-1">
-            ·
-          </span>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="cursor-default">
-                <PeerIndicator />
-              </span>
-            </TooltipTrigger>
-            <TooltipContent side="top">Sapience Mesh Network</TooltipContent>
-          </Tooltip>
-        </>
-      )}
     </div>
   );
 }

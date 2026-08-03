@@ -2,12 +2,12 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { getQuestionHref } from '~/lib/utils/questionHref';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
+import { getQuestionHref } from '~/lib/utils/questionHref';
 
 type ConditionTitleLinkProps = {
   conditionId?: string;

@@ -1,6 +1,6 @@
 'use client';
 
-import * as React from 'react';
+import type * as React from 'react';
 import { formatPercentChance } from '~/lib/format/percentChance';
 
 function interpolateProbabilityColor(p: number): string {

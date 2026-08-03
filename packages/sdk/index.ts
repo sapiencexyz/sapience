@@ -14,10 +14,4 @@ export * from './onchain/escrow';
 export * from './onchain/tokenAddress';
 
 export * from './auction/encoding';
-export * from './auction/escrowEncoding';
-export * from './auction/escrowSigning';
-export * from './auction/secondarySigning';
-export * from './auction/buildAuctionPayload';
 export * from './auction/decodePredictedOutcomes';
-
-export * from './relayer/escrowAuctionWs';

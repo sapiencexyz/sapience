@@ -59,18 +59,6 @@ describe('StatusIndicators', () => {
     expect(screen.queryByText(/MESH PENDING/)).toBeNull();
   });
 
-  test('hides the peer indicator before settings are mounted (null endpoint)', () => {
-    mockSettings({ signalEndpoint: null });
-    render(<StatusIndicators />);
-    expect(screen.queryByText(/PEERS?/)).toBeNull();
-  });
-
-  test('shows the peer indicator when a signal endpoint is set', () => {
-    mockSettings({ signalEndpoint: 'https://relayer.sapience.xyz/signal' });
-    render(<StatusIndicators />);
-    expect(screen.getByText(/0 PEERS/)).toBeInTheDocument();
-  });
-
   test('shows the Robinhood logomark when the custom chain is Robinhood mainnet', () => {
     mockSettings({ customChainId: CHAIN_ID_ROBINHOOD_MAINNET });
     render(<StatusIndicators />);

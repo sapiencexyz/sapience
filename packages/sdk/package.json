@@ -22,36 +22,6 @@
       "import": "./dist/auction/encoding.mjs",
       "require": "./dist/auction/encoding.js"
     },
-    "./auction/escrowEncoding": {
-      "types": "./dist/auction/escrowEncoding.d.ts",
-      "import": "./dist/auction/escrowEncoding.mjs",
-      "require": "./dist/auction/escrowEncoding.js"
-    },
-    "./auction/escrowSigning": {
-      "types": "./dist/auction/escrowSigning.d.ts",
-      "import": "./dist/auction/escrowSigning.mjs",
-      "require": "./dist/auction/escrowSigning.js"
-    },
-    "./auction/simulate": {
-      "types": "./dist/auction/simulate.d.ts",
-      "import": "./dist/auction/simulate.mjs",
-      "require": "./dist/auction/simulate.js"
-    },
-    "./auction/secondarySigning": {
-      "types": "./dist/auction/secondarySigning.d.ts",
-      "import": "./dist/auction/secondarySigning.mjs",
-      "require": "./dist/auction/secondarySigning.js"
-    },
-    "./auction/secondaryValidation": {
-      "types": "./dist/auction/secondaryValidation.d.ts",
-      "import": "./dist/auction/secondaryValidation.mjs",
-      "require": "./dist/auction/secondaryValidation.js"
-    },
-    "./relayer/escrowAuctionWs": {
-      "types": "./dist/relayer/escrowAuctionWs.d.ts",
-      "import": "./dist/relayer/escrowAuctionWs.mjs",
-      "require": "./dist/relayer/escrowAuctionWs.js"
-    },
     "./abis": {
       "types": "./dist/abis/index.d.ts",
       "import": "./dist/abis/index.mjs",
@@ -108,40 +78,10 @@
       "import": "./dist/contracts/index.mjs",
       "require": "./dist/contracts/index.js"
     },
-    "./auction/validation": {
-      "types": "./dist/auction/validation.d.ts",
-      "import": "./dist/auction/validation.mjs",
-      "require": "./dist/auction/validation.js"
-    },
-    "./auction/gossipValidation": {
-      "types": "./dist/auction/gossipValidation.d.ts",
-      "import": "./dist/auction/gossipValidation.mjs",
-      "require": "./dist/auction/gossipValidation.js"
-    },
-    "./auction/bidPreprocessor": {
-      "types": "./dist/auction/bidPreprocessor.d.ts",
-      "import": "./dist/auction/bidPreprocessor.mjs",
-      "require": "./dist/auction/bidPreprocessor.js"
-    },
-    "./auction/initiate": {
-      "types": "./dist/auction/initiate.d.ts",
-      "import": "./dist/auction/initiate.mjs",
-      "require": "./dist/auction/initiate.js"
-    },
-    "./auction/buildAuctionPayload": {
-      "types": "./dist/auction/buildAuctionPayload.d.ts",
-      "import": "./dist/auction/buildAuctionPayload.mjs",
-      "require": "./dist/auction/buildAuctionPayload.js"
-    },
     "./auction/decodePredictedOutcomes": {
       "types": "./dist/auction/decodePredictedOutcomes.d.ts",
       "import": "./dist/auction/decodePredictedOutcomes.mjs",
       "require": "./dist/auction/decodePredictedOutcomes.js"
-    },
-    "./session": {
-      "types": "./dist/session/index.d.ts",
-      "import": "./dist/session/index.mjs",
-      "require": "./dist/session/index.js"
     },
     "./utils": {
       "types": "./dist/utils/index.d.ts",
@@ -151,8 +91,8 @@
   },
   "scripts": {
     "prepare": "pnpm run build:lib",
-    "dev": "tsup index.ts auction/encoding.ts auction/escrowEncoding.ts auction/escrowSigning.ts auction/simulate.ts auction/secondarySigning.ts auction/secondaryValidation.ts auction/validation.ts auction/gossipValidation.ts auction/bidPreprocessor.ts auction/initiate.ts auction/buildAuctionPayload.ts auction/decodePredictedOutcomes.ts relayer/escrowAuctionWs.ts abis/index.ts constants/index.ts contracts/index.ts contracts/addresses.ts queries/index.ts queries/client/graphqlClient.ts types/index.ts types/escrow.ts types/secondary.ts types/graphql.ts types/graphql.v2.ts session/index.ts utils/index.ts --format cjs,esm --dts --watch",
-    "build:lib": "tsup index.ts auction/encoding.ts auction/escrowEncoding.ts auction/escrowSigning.ts auction/simulate.ts auction/secondarySigning.ts auction/secondaryValidation.ts auction/validation.ts auction/gossipValidation.ts auction/bidPreprocessor.ts auction/initiate.ts auction/buildAuctionPayload.ts auction/decodePredictedOutcomes.ts relayer/escrowAuctionWs.ts abis/index.ts constants/index.ts contracts/index.ts contracts/addresses.ts queries/index.ts queries/client/graphqlClient.ts types/index.ts types/escrow.ts types/secondary.ts types/graphql.ts types/graphql.v2.ts session/index.ts utils/index.ts --format cjs,esm --dts --tsconfig tsconfig.build.json",
+    "dev": "tsup index.ts auction/encoding.ts auction/decodePredictedOutcomes.ts abis/index.ts constants/index.ts contracts/index.ts contracts/addresses.ts queries/index.ts queries/client/graphqlClient.ts types/index.ts types/escrow.ts types/secondary.ts types/graphql.ts types/graphql.v2.ts utils/index.ts --format cjs,esm --dts --watch",
+    "build:lib": "tsup index.ts auction/encoding.ts auction/decodePredictedOutcomes.ts abis/index.ts constants/index.ts contracts/index.ts contracts/addresses.ts queries/index.ts queries/client/graphqlClient.ts types/index.ts types/escrow.ts types/secondary.ts types/graphql.ts types/graphql.v2.ts utils/index.ts --format cjs,esm --dts --tsconfig tsconfig.build.json",
     "build": "pnpm run build:lib",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix --quiet && pnpm format",
@@ -168,12 +108,6 @@
   },
   "peerDependenciesMeta": {
     "ws": {
-      "optional": true
-    },
-    "@zerodev/sdk": {
-      "optional": true
-    },
-    "@zerodev/ecdsa-validator": {
       "optional": true
     },
     "react": {
@@ -194,8 +128,6 @@
     "@types/node": "22.14.0",
     "@types/react": "19.1.8",
     "@types/ws": "8.5.10",
-    "@zerodev/ecdsa-validator": "5.3.3",
-    "@zerodev/sdk": "5.4.5",
     "eslint": "9.31.0",
     "eslint-plugin-import": "2.32.0",
     "prettier": "3.3.3",
@@ -209,8 +141,6 @@
   },
   "peerDependencies": {
     "@tanstack/react-query": "5.x",
-    "@zerodev/ecdsa-validator": "5.3.3",
-    "@zerodev/sdk": "5.4.5",
     "graphql": "^16.0.0",
     "react": ">=18 || 19",
     "react-dom": ">=18 || 19",

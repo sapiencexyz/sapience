@@ -53,7 +53,6 @@ import {
 } from '~/lib/utils/tableFilters';
 import { useEscrowWrite } from '~/hooks/blockchain/useEscrowWrite';
 import { useClaimableAmount } from '~/hooks/blockchain/useEscrowContract';
-import { useSession } from '~/lib/context/SessionContext';
 
 // Render an ROI percentage with sign. Sub-1%-magnitude non-zero values
 // collapse to "<1%" so a 0.4% gain doesn't render as "+0%". Color carries
@@ -80,16 +79,12 @@ function PositionRow({
   const { pickConfig, isPredictorToken } = position;
   const rawPicks = pickConfig?.picks ?? [];
   const picks = toPicks(rawPicks, isPredictorToken, conditionsMap);
-  const { effectiveAddress, smartAccountAddress } = useSession();
   const { address: walletAddress } = useAccount();
 
-  // Show action buttons if the connected wallet (EOA or Smart Account) owns this position
+  // Show action buttons if the connected wallet owns this position
   const holderLower = position.holder?.toLowerCase();
   const isOwnPosition =
-    !!holderLower &&
-    (effectiveAddress?.toLowerCase() === holderLower ||
-      smartAccountAddress?.toLowerCase() === holderLower ||
-      walletAddress?.toLowerCase() === holderLower);
+    !!holderLower && walletAddress?.toLowerCase() === holderLower;
 
   // Position size = user's deposited collateral (from Prediction records)
   const positionSizeFormatted = parseFloat(

@@ -8,8 +8,8 @@ let messageListeners: Array<(msg: unknown) => void> = [];
 let openListeners: Array<() => void> = [];
 const mockSend = vi.fn();
 
-vi.mock('~/lib/ws/AuctionWsClient', () => ({
-  getSharedAuctionWsClient: () => ({
+vi.mock('~/lib/ws/relayerClient', () => ({
+  getSharedRelayerClient: () => ({
     send: mockSend,
     addMessageListener: (fn: (msg: unknown) => void) => {
       messageListeners.push(fn);
@@ -26,8 +26,8 @@ vi.mock('~/lib/ws/AuctionWsClient', () => ({
   }),
 }));
 
-vi.mock('~/lib/ws/auctionUrl', () => ({
-  toAuctionWsUrl: (base: string) => `wss://mock/${base}`,
+vi.mock('~/lib/ws/relayerWsUrl', () => ({
+  toRelayerWsUrl: (base: string) => `wss://mock/${base}`,
 }));
 
 vi.mock('~/lib/context/SettingsContext', () => ({
