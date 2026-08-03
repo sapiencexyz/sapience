@@ -145,35 +145,18 @@ describe('buildDepositCalls', () => {
   const assetAddress = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' as Address;
   const vaultAddress = '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' as Address;
 
-  test('no wrap or approve needed → single deposit call', () => {
+  test('sufficient allowance → single deposit call', () => {
     const calls = buildDepositCalls({
       amount: '10',
       assetAddress,
       vaultAddress,
       vaultAbi,
-      pricePerShare: '1',
-      wrappedBalance: 100_000_000_000_000_000_000n, // 100 — more than enough
+      pricePerShare: '1', // 100 — more than enough
       currentAllowance: 100_000_000_000_000_000_000n,
     });
     expect(calls).toHaveLength(1);
     expect(calls[0].to).toBe(vaultAddress);
     expect(calls[0].value).toBe(0n);
-  });
-
-  test('wrap needed → adds wrap call before deposit', () => {
-    const calls = buildDepositCalls({
-      amount: '10',
-      assetAddress,
-      vaultAddress,
-      vaultAbi,
-      pricePerShare: '1',
-      wrappedBalance: 0n, // no wrapped balance
-      currentAllowance: 100_000_000_000_000_000_000n,
-    });
-    // wrap + deposit
-    expect(calls).toHaveLength(2);
-    expect(calls[0].to).toBe(assetAddress);
-    expect(calls[0].value).toBe(10_000_000_000_000_000_000n);
   });
 
   test('approve needed → adds approve call before deposit', () => {
@@ -183,7 +166,6 @@ describe('buildDepositCalls', () => {
       vaultAddress,
       vaultAbi,
       pricePerShare: '1',
-      wrappedBalance: 100_000_000_000_000_000_000n,
       currentAllowance: 0n, // no allowance
     });
     // approve + deposit
@@ -192,68 +174,15 @@ describe('buildDepositCalls', () => {
     expect(calls[0].value).toBe(0n);
   });
 
-  test('both wrap and approve needed → three calls', () => {
-    const calls = buildDepositCalls({
-      amount: '10',
-      assetAddress,
-      vaultAddress,
-      vaultAbi,
-      pricePerShare: '1',
-      wrappedBalance: 0n,
-      currentAllowance: 0n,
-    });
-    expect(calls).toHaveLength(3);
-    // wrap, approve, deposit
-    expect(calls[0].value).toBe(10_000_000_000_000_000_000n);
-    expect(calls[1].value).toBe(0n);
-    expect(calls[2].to).toBe(vaultAddress);
-  });
-
-  test('wrapNative=false skips the wrap even when wrapped balance is short', () => {
-    const calls = buildDepositCalls({
-      amount: '10',
-      assetAddress,
-      vaultAddress,
-      vaultAbi,
-      pricePerShare: '1',
-      wrappedBalance: 0n, // short, but collateral is a standalone ERC-20
-      currentAllowance: 100_000_000_000_000_000_000n,
-      wrapNative: false,
-    });
-    // approve already sufficient → just the deposit, no payable wrap
-    expect(calls).toHaveLength(1);
-    expect(calls[0].to).toBe(vaultAddress);
-    expect(calls.every((c) => c.value === 0n)).toBe(true);
-  });
-
-  test('wrapNative=false still approves when allowance is short', () => {
-    const calls = buildDepositCalls({
-      amount: '10',
-      assetAddress,
-      vaultAddress,
-      vaultAbi,
-      pricePerShare: '1',
-      wrappedBalance: 0n,
-      currentAllowance: 0n,
-      wrapNative: false,
-    });
-    // approve + deposit, but no wrap call with ETH value
-    expect(calls).toHaveLength(2);
-    expect(calls[0].to).toBe(assetAddress); // approve on asset
-    expect(calls.every((c) => c.value === 0n)).toBe(true);
-  });
-
   test('non-18 decimals scale the deposit amount', () => {
     const calls = buildDepositCalls({
       amount: '10',
       assetAddress,
       vaultAddress,
       vaultAbi,
-      pricePerShare: '1',
-      wrappedBalance: 100_000_000n, // 100 at 6 decimals
+      pricePerShare: '1', // 100 at 6 decimals
       currentAllowance: 100_000_000n,
       decimals: 6,
-      wrapNative: false,
     });
     expect(calls).toHaveLength(1);
     const decoded = decodeFunctionData({ abi: vaultAbi, data: calls[0].data });
@@ -267,7 +196,6 @@ describe('buildDepositCalls', () => {
       vaultAddress,
       vaultAbi,
       pricePerShare: undefined,
-      wrappedBalance: 100_000_000_000_000_000_000n,
       currentAllowance: 100_000_000_000_000_000_000n,
     });
     expect(calls).toHaveLength(1);
@@ -280,7 +208,6 @@ describe('buildDepositCalls', () => {
       vaultAddress,
       vaultAbi,
       pricePerShare: '0',
-      wrappedBalance: 100_000_000_000_000_000_000n,
       currentAllowance: 100_000_000_000_000_000_000n,
     });
     expect(calls).toHaveLength(1);
@@ -295,7 +222,6 @@ describe('buildDepositCalls', () => {
       vaultAddress,
       vaultAbi,
       pricePerShare: '2',
-      wrappedBalance: 100_000_000_000_000_000_000n,
       currentAllowance: 100_000_000_000_000_000_000n,
     });
     expect(calls).toHaveLength(1);

@@ -5,9 +5,9 @@ import {
   zeroAddress,
 } from 'viem';
 import type { Address, Hex } from 'viem';
-import { submitTransaction } from './tx';
 import { eas } from '../contracts/addresses';
 import { CHAIN_ID_ARBITRUM } from '../constants/chain';
+import { submitTransaction } from './tx';
 import { EAS_ABI, EAS_SCHEMA_ID } from './sharedAbis';
 
 /** Probability value constrained to 0-100 */

@@ -3,11 +3,7 @@ import type { Address } from 'viem';
 import { erc20Abi, verifyMessage } from 'viem';
 import type { Abi } from 'abitype';
 import { predictionMarketVault } from '@sapience/sdk/contracts';
-import {
-  CHAIN_ID_ETHEREAL,
-  CHAIN_ID_ETHEREAL_TESTNET,
-  DEFAULT_CHAIN_ID,
-} from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { predictionMarketVaultAbi } from '@sapience/sdk/abis';
 import {
   formatVaultAssetAmount,
@@ -20,7 +16,7 @@ import {
   computeInteractionDelayRemaining,
   buildVaultQuoteMessage,
 } from '@sapience/sdk';
-import { useReadContracts, useBalance, useReadContract } from 'wagmi';
+import { useReadContracts, useReadContract } from 'wagmi';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 import { useCurrentAddress } from '~/hooks/blockchain/useCurrentAddress';
 import { useVaultShareQuoteWs } from '~/hooks/ws/useVaultShareQuoteWs';
@@ -143,30 +139,18 @@ export function usePassiveLiquidityVault(
   // chain, including a custom one where the SDK has no collateral entry.
   const assetAddress = vaultData?.[5] as Address | undefined;
 
-  // On Ethereal the native gas token *is* the wrapped collateral; elsewhere the
-  // collateral is a standalone ERC-20 and gas is paid in ETH. This gates the
-  // payable-`deposit()` wrap step and the native-balance term below.
-  const isNativeCollateralChain =
-    TARGET_CHAIN_ID === CHAIN_ID_ETHEREAL ||
-    TARGET_CHAIN_ID === CHAIN_ID_ETHEREAL_TESTNET;
-
-  const { data: nativeBalance, refetch: refetchNativeBalance } = useBalance({
-    address: currentAddress,
-    chainId: TARGET_CHAIN_ID,
-    query: { enabled: !!currentAddress && isNativeCollateralChain },
-  });
-
-  const { data: wusdeBalance, refetch: refetchWusdeBalance } = useReadContract({
-    abi: erc20Abi,
-    address: assetAddress,
-    functionName: 'balanceOf',
-    args: currentAddress ? [currentAddress] : undefined,
-    chainId: TARGET_CHAIN_ID,
-    query: {
-      enabled: !!currentAddress && !!assetAddress,
-      refetchInterval: 5000,
-    },
-  });
+  const { data: collateralBalance, refetch: refetchCollateralBalance } =
+    useReadContract({
+      abi: erc20Abi,
+      address: assetAddress,
+      functionName: 'balanceOf',
+      args: currentAddress ? [currentAddress] : undefined,
+      chainId: TARGET_CHAIN_ID,
+      query: {
+        enabled: !!currentAddress && !!assetAddress,
+        refetchInterval: 5000,
+      },
+    });
 
   // Live collateral actually held by the vault contract. The TVL/progress bar
   // uses this for the in-vault (liquid) term instead of the periodically-indexed
@@ -190,7 +174,7 @@ export function usePassiveLiquidityVault(
       ? vaultCollateralBalanceRaw
       : undefined;
 
-  const { data: wusdeAllowance, refetch: refetchWusdeAllowance } =
+  const { data: collateralAllowance, refetch: refetchCollateralAllowance } =
     useReadContract({
       abi: erc20Abi,
       address: assetAddress,
@@ -251,9 +235,8 @@ export function usePassiveLiquidityVault(
     onSuccess: () => {
       refetchVaultData();
       refetchUserData();
-      refetchNativeBalance();
-      refetchWusdeBalance();
-      refetchWusdeAllowance();
+      refetchCollateralBalance();
+      refetchCollateralAllowance();
       refetchPendingMapping();
       refetchVaultCollateral();
     },
@@ -301,17 +284,11 @@ export function usePassiveLiquidityVault(
 
   const assetDecimals = 18;
 
-  const nativeUsdeBalance = nativeBalance?.value || 0n;
-  const wrappedUsdeBalance =
-    typeof wusdeBalance === 'bigint' ? wusdeBalance : 0n;
-  // Only fold in the native balance on chains where native == collateral
-  // (Ethereal). Elsewhere gas (ETH) is unrelated to the ERC-20 collateral.
-  const userAssetBalance = isNativeCollateralChain
-    ? nativeUsdeBalance + wrappedUsdeBalance
-    : wrappedUsdeBalance;
+  const userAssetBalance =
+    typeof collateralBalance === 'bigint' ? collateralBalance : 0n;
 
   const currentAllowance =
-    typeof wusdeAllowance === 'bigint' ? wusdeAllowance : 0n;
+    typeof collateralAllowance === 'bigint' ? collateralAllowance : 0n;
 
   const pendingRequest = useMemo(
     () => parsePendingRequest(pendingMapping?.[0]),
@@ -380,10 +357,8 @@ export function usePassiveLiquidityVault(
         vaultAddress: VAULT_ADDRESS,
         vaultAbi: VAULT_ABI,
         pricePerShare: pricePerShareDecimal,
-        wrappedBalance: wrappedUsdeBalance,
         currentAllowance,
         decimals: assetDecimals,
-        wrapNative: isNativeCollateralChain,
       });
 
       await sendCalls({ chainId, calls });
@@ -393,10 +368,8 @@ export function usePassiveLiquidityVault(
       pricePerShareDecimal,
       sendCalls,
       VAULT_ADDRESS,
-      wrappedUsdeBalance,
       currentAllowance,
       assetDecimals,
-      isNativeCollateralChain,
     ]
   );
 
@@ -489,9 +462,6 @@ export function usePassiveLiquidityVault(
     formatInteractionDelay,
     refetchVaultData,
     refetchUserData,
-    refetchNativeBalance,
-    refetchWusdeBalance,
-    nativeUsdeBalance,
-    wrappedUsdeBalance,
+    refetchCollateralBalance,
   };
 }

@@ -2,7 +2,6 @@ import {
   formatUnits,
   parseUnits,
   encodeFunctionData,
-  parseAbi,
   erc20Abi,
   zeroAddress,
 } from 'viem';
@@ -76,18 +75,8 @@ export interface BuildDepositCallsParams {
   vaultAddress: Address;
   vaultAbi: Abi;
   pricePerShare: string | undefined;
-  wrappedBalance: bigint;
   currentAllowance: bigint;
   decimals?: number;
-  /**
-   * Whether the collateral asset is the chain's native gas token wrapped via a
-   * payable `deposit()` (Ethereal's USDe model). When true (default), a wrap
-   * call is prepended if the wrapped balance is short. Set false on chains
-   * where the collateral is a standalone ERC-20 (e.g. ETH-gas chains): there is
-   * no payable `deposit()`, so wrapping would revert — the caller must already
-   * hold enough collateral.
-   */
-  wrapNative?: boolean;
 }
 
 export function buildDepositCalls(
@@ -99,10 +88,8 @@ export function buildDepositCalls(
     vaultAddress,
     vaultAbi,
     pricePerShare,
-    wrappedBalance,
     currentAllowance,
     decimals = VAULT_ASSET_DECIMALS,
-    wrapNative = true,
   } = params;
 
   const amountWei = parseUnits(amount, decimals);
@@ -128,19 +115,6 @@ export function buildDepositCalls(
   });
 
   const calls: { to: Address; data: `0x${string}`; value: bigint }[] = [];
-
-  const amountToWrap =
-    wrapNative && amountWei > wrappedBalance ? amountWei - wrappedBalance : 0n;
-  if (amountToWrap > 0n) {
-    calls.push({
-      to: assetAddress,
-      data: encodeFunctionData({
-        abi: parseAbi(['function deposit() payable']),
-        functionName: 'deposit',
-      }),
-      value: amountToWrap,
-    });
-  }
 
   if (currentAllowance < amountWei) {
     calls.push({
