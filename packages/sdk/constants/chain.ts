@@ -109,9 +109,8 @@ export function isBuiltInTradingChain(chainId: number): boolean {
 
 /**
  * Default chain ID — configurable via environment variable.
- * Set NEXT_PUBLIC_DEFAULT_CHAIN_ID (app) or DEFAULT_CHAIN_ID (api/relayer)
- * to switch environments (e.g., 13374202 for Ethereal Testnet).
- * Falls back to Ethereal mainnet (5064014).
+ * Set NEXT_PUBLIC_DEFAULT_CHAIN_ID to switch environments (e.g., 46630 for
+ * Robinhood Testnet). Falls back to Robinhood mainnet (4663).
  *
  * On the client, a custom-chain override in localStorage (see
  * `readCustomChainOverride`) takes precedence so the whole app runs against a
@@ -126,7 +125,7 @@ export function isBuiltInTradingChain(chainId: number): boolean {
 export const ENV_DEFAULT_CHAIN_ID: number =
   Number(
     process.env.NEXT_PUBLIC_DEFAULT_CHAIN_ID || process.env.DEFAULT_CHAIN_ID
-  ) || CHAIN_ID_ETHEREAL;
+  ) || CHAIN_ID_ROBINHOOD_MAINNET;
 
 export const DEFAULT_CHAIN_ID: number =
   readCustomChainOverride()?.chainId ?? ENV_DEFAULT_CHAIN_ID;

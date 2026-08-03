@@ -68,8 +68,8 @@ describe('readCustomChainOverride', () => {
 
 describe('DEFAULT_CHAIN_ID', () => {
   test('falls back to the env/default chain when no override is present', () => {
-    // Evaluated at import time with no window → env default (Ethereal mainnet).
-    expect(DEFAULT_CHAIN_ID).toBe(CHAIN_ID_ETHEREAL);
+    // Evaluated at import time with no window → env default (Robinhood mainnet).
+    expect(DEFAULT_CHAIN_ID).toBe(CHAIN_ID_ROBINHOOD_MAINNET);
   });
 });
 

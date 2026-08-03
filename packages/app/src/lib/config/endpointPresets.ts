@@ -1,18 +1,12 @@
 import {
-  CHAIN_ID_ETHEREAL,
-  CHAIN_ID_ETHEREAL_TESTNET,
   CHAIN_ID_ROBINHOOD_TESTNET,
   CHAIN_ID_ROBINHOOD_MAINNET,
 } from '@sapience/sdk/constants';
 
-// Endpoint presets applied via the buttons next to the Settings heading. Each
-// preset switches the chain and populates every endpoint field for a known
-// environment. The Robinhood/Meridian presets leave the signal and chat
-// endpoints blank, which disables the mesh and chat bubble; the Ethereal
-// (Sapience) presets keep them pointed at the matching Sapience backend.
-// The Ethereal presets double as the known-values list for the one-time
-// migration that moves returning Ethereal sessions onto the Robinhood
-// defaults (see lib/settings/migrateEtherealDefaults).
+// Endpoint presets for the Robinhood/Meridian deployment. Each preset pins the
+// chain and every endpoint field for one environment, and is applied by the
+// one-time migration that moves returning sessions onto the Robinhood defaults
+// (see lib/settings/applyRobinhoodPresetOnce).
 export type EndpointPreset = {
   // Display label shown on the preset button.
   label: string;
@@ -28,16 +22,6 @@ export type EndpointPreset = {
   chatBaseUrl: string;
 };
 
-export const ETHEREAL_MAINNET_SETTINGS: EndpointPreset = {
-  label: 'Ethereal Mainnet',
-  chainId: CHAIN_ID_ETHEREAL,
-  customRpcURL: 'https://rpc.ethereal.trade',
-  graphqlEndpoint: 'https://api.sapience.xyz/v2/graphql',
-  relayerEndpoint: 'https://relayer.sapience.xyz/auction',
-  signalEndpoint: 'https://relayer.sapience.xyz/signal',
-  chatBaseUrl: 'https://api.sapience.xyz/chat',
-} as const;
-
 export const ROBINHOOD_MAINNET_SETTINGS: EndpointPreset = {
   label: 'Robinhood Mainnet',
   chainId: CHAIN_ID_ROBINHOOD_MAINNET,
@@ -46,16 +30,6 @@ export const ROBINHOOD_MAINNET_SETTINGS: EndpointPreset = {
   relayerEndpoint: 'https://relayer.predict.meridian.xyz/auction',
   signalEndpoint: '',
   chatBaseUrl: '',
-} as const;
-
-export const ETHEREAL_TESTNET_SETTINGS: EndpointPreset = {
-  label: 'Ethereal Testnet',
-  chainId: CHAIN_ID_ETHEREAL_TESTNET,
-  customRpcURL: 'https://rpc.etherealtest.net',
-  graphqlEndpoint: 'https://api.staging.sapience.xyz/v2/graphql',
-  relayerEndpoint: 'https://relayer.staging.sapience.xyz/auction',
-  signalEndpoint: 'https://relayer.staging.sapience.xyz/signal',
-  chatBaseUrl: 'https://api.staging.sapience.xyz/chat',
 } as const;
 
 export const ROBINHOOD_TESTNET_SETTINGS: EndpointPreset = {
@@ -67,12 +41,3 @@ export const ROBINHOOD_TESTNET_SETTINGS: EndpointPreset = {
   signalEndpoint: '',
   chatBaseUrl: '',
 } as const;
-
-// Order shown next to the Settings heading. Robinhood is the default
-// environment, so its presets lead; Ethereal follows.
-export const ENDPOINT_PRESETS: EndpointPreset[] = [
-  ROBINHOOD_MAINNET_SETTINGS,
-  ETHEREAL_MAINNET_SETTINGS,
-  ROBINHOOD_TESTNET_SETTINGS,
-  ETHEREAL_TESTNET_SETTINGS,
-];

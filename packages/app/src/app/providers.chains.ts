@@ -1,19 +1,11 @@
-import { type Chain, arbitrum, base, bsc, mainnet } from 'viem/chains';
+import { type Chain } from 'viem/chains';
 import {
   buildCustomChain,
-  etherealChain,
-  etherealTestnetChain,
-  hyperEvmChain,
   robinhoodMainnetChain,
   robinhoodTestnetChain,
 } from '@sapience/sdk/constants';
 
 export type CustomChainOverride = { chainId: number; rpcUrl: string } | null;
-
-const infuraUrl = (subdomain: string, fallback: string): string =>
-  process.env.NEXT_PUBLIC_INFURA_API_KEY
-    ? `https://${subdomain}.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
-    : fallback;
 
 /**
  * Resolve the wagmi chain list and the RPC URL to use for each chain.
@@ -29,31 +21,11 @@ export function resolveChainsAndRpcUrls(override: CustomChainOverride): {
   rpcUrls: Record<number, string>;
 } {
   const rpcUrls: Record<number, string> = {
-    [arbitrum.id]: infuraUrl(
-      'arbitrum-mainnet',
-      'https://arbitrum-rpc.publicnode.com'
-    ),
-    [mainnet.id]: infuraUrl('mainnet', 'https://ethereum-rpc.publicnode.com'),
-    [base.id]: infuraUrl('base-mainnet', 'https://base-rpc.publicnode.com'),
-    [bsc.id]: 'https://bsc-rpc.publicnode.com',
-    [hyperEvmChain.id]: hyperEvmChain.rpcUrls.default.http[0],
-    [etherealChain.id]: etherealChain.rpcUrls.default.http[0],
-    [etherealTestnetChain.id]: etherealTestnetChain.rpcUrls.default.http[0],
     [robinhoodMainnetChain.id]: robinhoodMainnetChain.rpcUrls.default.http[0],
     [robinhoodTestnetChain.id]: robinhoodTestnetChain.rpcUrls.default.http[0],
   };
 
-  const chains: Chain[] = [
-    arbitrum,
-    mainnet,
-    base,
-    bsc,
-    hyperEvmChain,
-    etherealChain,
-    etherealTestnetChain,
-    robinhoodMainnetChain,
-    robinhoodTestnetChain,
-  ];
+  const chains: Chain[] = [robinhoodMainnetChain, robinhoodTestnetChain];
 
   if (override) {
     // Register a genuinely new chain so `switchChain` resolves instead of
