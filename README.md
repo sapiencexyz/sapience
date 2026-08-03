@@ -66,7 +66,7 @@ After pinning, point an ENS name at the IPFS build:
 `scripts/build-static.mjs`:
 
 1. Swaps server-dependent pages with client-only `.static.tsx` overrides
-2. Removes route handlers and dynamic route pages
+2. Removes the dynamic route page (served client-side instead)
 3. Runs `next build` with `output: 'export'` (via `next.config.static.js`)
 4. Restores all original files (guaranteed via a `finally` block)
 5. Post-processes `out/` with a `200.html` SPA fallback, `_redirects`, and `_headers`

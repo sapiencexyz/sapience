@@ -6,7 +6,7 @@
  * on IPFS, S3, Cloudflare Pages, or any static file server.
  *
  * 1. Swaps *.static.tsx overrides into place
- * 2. Removes server-only route handlers and dynamic route pages
+ * 2. Removes the dynamic route page (handled client-side instead)
  * 3. Runs `next build` with NEXT_BUILD_TARGET=static
  * 4. Restores all files (guaranteed via finally)
  * 5. Post-processes the `out/` directory for SPA hosting
@@ -87,60 +87,13 @@ try {
     console.log(`[static]   swapped ${path.relative(APP_ROOT, override)} → ${path.relative(APP_ROOT, target)}`);
   }
 
-  // ── Step 2: Remove route handlers ──────────────────────────────────
-  const routeHandlers = [
-    path.join(SRC_APP, 'api', 'permit', 'route.ts'),
-  ];
+  // ── Step 2: Remove the dynamic route page ──────────────────────────
+  // `/questions/:parts` can't be prerendered without a server; SpaFallbackRouter
+  // picks it up client-side in the static build.
+  removeWithBackup(path.join(SRC_APP, 'questions', '[...parts]', 'page.tsx'));
+  console.log('[static]   removed src/app/questions/[...parts]/page.tsx');
 
-  // OG route handlers (keep helper files like _prediction-helpers.ts)
-  const ogDir = path.join(SRC_APP, 'og');
-  if (fs.existsSync(ogDir)) {
-    for (const entry of fs.readdirSync(ogDir, { withFileTypes: true })) {
-      if (entry.isDirectory()) {
-        const routeFile = path.join(ogDir, entry.name, 'route.tsx');
-        if (fs.existsSync(routeFile)) {
-          routeHandlers.push(routeFile);
-        }
-        const routeFileTs = path.join(ogDir, entry.name, 'route.ts');
-        if (fs.existsSync(routeFileTs)) {
-          routeHandlers.push(routeFileTs);
-        }
-      }
-    }
-  }
-
-  for (const handler of routeHandlers) {
-    removeWithBackup(handler);
-    console.log(`[static]   removed ${path.relative(APP_ROOT, handler)}`);
-  }
-
-  // ── Step 3: Remove Sentry configs (not needed for static build) ────
-  const sentryFiles = [
-    path.join(APP_ROOT, 'sentry.server.config.ts'),
-    path.join(APP_ROOT, 'sentry.edge.config.ts'),
-    path.join(APP_ROOT, 'sentry.client.config.ts'),
-    path.join(SRC_APP, '..', 'instrumentation.ts'),
-    path.join(SRC_APP, 'global-error.tsx'),
-  ];
-  for (const f of sentryFiles) {
-    removeWithBackup(f);
-    console.log(`[static]   removed ${path.relative(APP_ROOT, f)}`);
-  }
-
-  // ── Step 4: Remove dynamic route pages ─────────────────────────────
-  const dynamicPages = [
-    path.join(SRC_APP, 'predictions', '[predictionId]', 'page.tsx'),
-    path.join(SRC_APP, 'forecast', '[uid]', 'page.tsx'),
-    path.join(SRC_APP, 'questions', '[...parts]', 'page.tsx'),
-    path.join(SRC_APP, 'profile', '[address]', 'page.tsx'),
-  ];
-
-  for (const page of dynamicPages) {
-    removeWithBackup(page);
-    console.log(`[static]   removed ${path.relative(APP_ROOT, page)}`);
-  }
-
-  // ── Step 5: Run next build ─────────────────────────────────────────
+  // ── Step 3: Run next build ─────────────────────────────────────────
   console.log('\n[static] Running next build...\n');
   execSync('npx next build', {
     cwd: APP_ROOT,
@@ -148,13 +101,10 @@ try {
     env: {
       ...process.env,
       NEXT_BUILD_TARGET: 'static',
-      // Disable Sentry completely for static builds
-      SENTRY_DSN: '',
-      NEXT_PUBLIC_SENTRY_DSN: '',
     },
   });
 
-  // ── Step 6: Post-process out/ (file restoration handled by finally block)
+  // ── Step 4: Post-process out/ (file restoration handled by finally block)
 
   console.log('[static] Post-processing output...');
 

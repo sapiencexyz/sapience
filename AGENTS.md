@@ -22,8 +22,9 @@ pnpm check        # lint + type-check + test
 - `src/components/` — Feature components (`markets/`, `vaults/`, `analytics/`, `positions/`, `layout/`), with shadcn primitives in `components/ui/`.
 - `src/hooks/` — `hooks/graphql/` holds every data hook; each wraps a `fetchX` from `~/lib/sdk/queries` in TanStack Query. `hooks/blockchain/` and `hooks/contract/` hold the wagmi read/write hooks.
 - `src/lib/sdk/` — Vendored SDK: chain constants, contract addresses, ABIs, GraphQL queries and generated types, and on-chain call builders. Formerly a separate package; now plain app source.
-- `src/lib/` — Cross-cutting modules: `context/` (Settings, Auth, Sapience, ConnectDialog, Theme), `ws/` (relayer socket), config, formatting, resolvers.
-- `src/app/api/permit/` — the only server route handler (geofence lookup). Everything else is client-side.
+- `src/lib/` — Cross-cutting modules: `context/` (Settings, Auth, ConnectDialog, Theme, Loading), `ws/` (relayer socket), config, formatting, resolvers.
+
+There are no route handlers — every page is static or client-rendered, and the only `ƒ` in the build output is `/questions/:parts` (dynamic params, still client-fetched).
 
 ## Environment
 
@@ -54,7 +55,7 @@ The feed and activity views poll the API on an interval; there is no subscriptio
 `scripts/build-static.mjs` produces a fully client-renderable static export for IPFS/S3/Cloudflare Pages:
 
 1. **`*.static.tsx` overrides swap in** — the script copies any `*.static.tsx` sibling over the original (e.g. `not-found.static.tsx` replaces `not-found.tsx`). Originals are restored in a `finally` block.
-2. **Server-only files are removed** — route handlers and dynamic-param pages are deleted before `next build`.
+2. **The dynamic route page is removed** — `/questions/:parts` can't be prerendered, so it's deleted before `next build` and picked up client-side instead.
 3. **`NEXT_BUILD_TARGET=static`** flips `next.config.js` over to `next.config.static.js` (`output: 'export'`, trailing slashes, no image optimisation).
 
 `/questions/:parts` is handled client-side by `SpaFallbackRouter`. If you add a page that can't work without a server, add a `.static.tsx` sibling.

@@ -6,7 +6,6 @@ import { render, screen, fireEvent } from '@testing-library/react';
 // Hoisted mocks
 // ---------------------------------------------------------------------------
 const {
-  mockUseRestrictedJurisdiction,
   mockUsePassiveLiquidityVault,
   mockUseCurrentAddress,
   mockUseVaultStats,
@@ -17,7 +16,6 @@ const {
   mockVaultPnlChart,
   mockVaultSharePriceChart,
 } = vi.hoisted(() => ({
-  mockUseRestrictedJurisdiction: vi.fn(),
   mockUsePassiveLiquidityVault: vi.fn(),
   mockUseCurrentAddress: vi.fn(),
   mockUseVaultStats: vi.fn(),
@@ -32,10 +30,6 @@ const {
 // ---------------------------------------------------------------------------
 // Module mocks
 // ---------------------------------------------------------------------------
-
-vi.mock('~/hooks/useRestrictedJurisdiction', () => ({
-  useRestrictedJurisdiction: () => mockUseRestrictedJurisdiction(),
-}));
 
 vi.mock('~/hooks/contract/usePassiveLiquidityVault', () => ({
   usePassiveLiquidityVault: (args: unknown) =>
@@ -57,14 +51,6 @@ vi.mock('~/hooks/graphql/useAnalytics', () => ({
 vi.mock('~/lib/context/ConnectDialogContext', () => ({
   useConnectDialog: () => ({ openConnectDialog: vi.fn() }),
 }));
-
-vi.mock('~/components/shared/RestrictedJurisdictionBanner', () => {
-  const Banner = (props: Record<string, unknown>) => (
-    <div data-testid="restricted-banner" data-show={String(props.show)} />
-  );
-  Banner.displayName = 'RestrictedJurisdictionBanner';
-  return { __esModule: true, default: Banner };
-});
 
 // SDK mocks
 vi.mock('~/lib/sdk/contracts', () => ({
@@ -328,58 +314,11 @@ function setDefaults() {
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
-describe('VaultsPageContent geofence', () => {
+describe('VaultsPageContent deposit & withdraw', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSearchParamsToString.mockReturnValue('');
     setDefaults();
-  });
-
-  it('shows banners and keeps deposit button disabled when restricted', () => {
-    mockUseRestrictedJurisdiction.mockReturnValue({
-      isRestricted: true,
-      isPermitLoading: false,
-      permitData: { permitted: false },
-      permitError: null,
-    });
-
-    render(<VaultsPageContent />);
-
-    // Both deposit and withdraw tabs render a banner (tabs mock renders all content)
-    const banners = screen.getAllByTestId('restricted-banner');
-    expect(banners.length).toBe(2);
-    banners.forEach((b) => expect(b.dataset.show).toBe('true'));
-
-    // Enter a valid deposit amount so the ONLY remaining disable reason is geofence
-    const inputs = screen.getAllByPlaceholderText('0.0');
-    fireEvent.change(inputs[0], { target: { value: '10' } });
-
-    // Deposit button should still be disabled due to geofence
-    const depositBtn = screen.getByRole('button', { name: /Submit Deposit/ });
-    expect(depositBtn).toBeDisabled();
-  });
-
-  it('hides banners and enables deposit button when permitted', () => {
-    mockUseRestrictedJurisdiction.mockReturnValue({
-      isRestricted: false,
-      isPermitLoading: false,
-      permitData: { permitted: true },
-      permitError: null,
-    });
-
-    render(<VaultsPageContent />);
-
-    // Banners should not be shown
-    const banners = screen.getAllByTestId('restricted-banner');
-    banners.forEach((b) => expect(b.dataset.show).toBe('false'));
-
-    // Enter a valid deposit amount
-    const inputs = screen.getAllByPlaceholderText('0.0');
-    fireEvent.change(inputs[0], { target: { value: '10' } });
-
-    // Deposit button should be enabled (all other conditions satisfied by mocks)
-    const depositBtn = screen.getByRole('button', { name: /Submit Deposit/ });
-    expect(depositBtn).not.toBeDisabled();
   });
 
   it('does not show "Waiting for Price Quote" before an amount is entered', () => {
@@ -417,13 +356,6 @@ describe('VaultsPageContent geofence', () => {
   });
 
   it('shows the singles vault tab while keeping options hidden', () => {
-    mockUseRestrictedJurisdiction.mockReturnValue({
-      isRestricted: false,
-      isPermitLoading: false,
-      permitData: { permitted: true },
-      permitError: null,
-    });
-
     render(<VaultsPageContent />);
 
     expect(
@@ -443,13 +375,6 @@ describe('VaultsPageContent geofence', () => {
   it('accepts the singles vault address from the URL without rewriting it', () => {
     const singleLegVault = '0xSingleLegVault';
     mockSearchParamsToString.mockReturnValue(`address=${singleLegVault}`);
-    mockUseRestrictedJurisdiction.mockReturnValue({
-      isRestricted: false,
-      isPermitLoading: false,
-      permitData: { permitted: true },
-      permitError: null,
-    });
-
     render(<VaultsPageContent />);
 
     expect(
@@ -466,13 +391,6 @@ describe('VaultsPageContent geofence', () => {
   });
 
   it('loads stats and contract data only for the selected vault plus protocol rewards stats', () => {
-    mockUseRestrictedJurisdiction.mockReturnValue({
-      isRestricted: false,
-      isPermitLoading: false,
-      permitData: { permitted: true },
-      permitError: null,
-    });
-
     render(<VaultsPageContent />);
 
     expect(mockUseVaultStats).toHaveBeenCalledTimes(1);
@@ -490,13 +408,6 @@ describe('VaultsPageContent geofence', () => {
   it('accepts the hidden options vault address from the URL without showing its tab', () => {
     const optionsVault = '0xOptionsVault';
     mockSearchParamsToString.mockReturnValue(`address=${optionsVault}`);
-    mockUseRestrictedJurisdiction.mockReturnValue({
-      isRestricted: false,
-      isPermitLoading: false,
-      permitData: { permitted: true },
-      permitError: null,
-    });
-
     render(<VaultsPageContent />);
 
     expect(screen.getByText('Options Vault')).toBeInTheDocument();
@@ -510,13 +421,6 @@ describe('VaultsPageContent geofence', () => {
   it('treats an unknown but valid vault address as a Custom Vault without rewriting', () => {
     const unknownVault = '0x0000000000000000000000000000000000000abc';
     mockSearchParamsToString.mockReturnValue(`address=${unknownVault}`);
-    mockUseRestrictedJurisdiction.mockReturnValue({
-      isRestricted: false,
-      isPermitLoading: false,
-      permitData: { permitted: true },
-      permitError: null,
-    });
-
     render(<VaultsPageContent />);
 
     // The address drives a synthetic "Custom Vault" rather than falling back to
@@ -527,13 +431,6 @@ describe('VaultsPageContent geofence', () => {
   });
 
   it('defaults to the first vault tab without rewriting the URL when no address query param is present', () => {
-    mockUseRestrictedJurisdiction.mockReturnValue({
-      isRestricted: false,
-      isPermitLoading: false,
-      permitData: { permitted: true },
-      permitError: null,
-    });
-
     render(<VaultsPageContent />);
 
     expect(mockRouterReplace).not.toHaveBeenCalled();
@@ -544,12 +441,6 @@ describe('VaultsPageContent vault switch reset', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setDefaults();
-    mockUseRestrictedJurisdiction.mockReturnValue({
-      isRestricted: false,
-      isPermitLoading: false,
-      permitData: { permitted: true },
-      permitError: null,
-    });
   });
 
   it('clears the deposit and withdraw amounts when the selected vault changes', () => {
@@ -578,12 +469,6 @@ describe('VaultsPageContent vault balance display', () => {
     vi.clearAllMocks();
     mockSearchParamsToString.mockReturnValue('');
     setDefaults();
-    mockUseRestrictedJurisdiction.mockReturnValue({
-      isRestricted: false,
-      isPermitLoading: false,
-      permitData: { permitted: true },
-      permitError: null,
-    });
     // Indexed collateral balance = 1,000; deployed = 500; claimable = 125 -> balance 1,625.
     mockUseVaultAccountValue.mockReturnValue({
       data: {

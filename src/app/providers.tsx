@@ -13,7 +13,6 @@ import { resolveChainsAndRpcUrls } from './providers.chains';
 import { readCustomChainOverride } from '~/lib/sdk/constants';
 import '~/lib/config/registerGraphqlResolver';
 import { httpWithRetry } from '~/lib/utils/util';
-import { SapienceProvider } from '~/lib/context/SapienceProvider';
 import ThemeProvider from '~/lib/context/ThemeProvider';
 import { SettingsProvider } from '~/lib/context/SettingsContext';
 import { ConnectDialogProvider } from '~/lib/context/ConnectDialogContext';
@@ -95,9 +94,7 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
         <SettingsProvider>
           <AuthProvider>
             <WagmiProvider config={wagmiConfig}>
-              <SapienceProvider>
-                <ConnectDialogProvider>{children}</ConnectDialogProvider>
-              </SapienceProvider>
+              <ConnectDialogProvider>{children}</ConnectDialogProvider>
             </WagmiProvider>
           </AuthProvider>
         </SettingsProvider>

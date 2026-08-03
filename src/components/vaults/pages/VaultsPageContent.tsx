@@ -28,8 +28,6 @@ import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import { usePassiveLiquidityVault } from '~/hooks/contract/usePassiveLiquidityVault';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
-import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
-import RestrictedJurisdictionBanner from '~/components/shared/RestrictedJurisdictionBanner';
 import {
   useVaultStats,
   useProtocolStats,
@@ -193,7 +191,6 @@ const VaultsPageContent = () => {
     chainId: VAULT_CHAIN_ID,
   });
 
-  const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
   // `isAnalyticsLoading` tracks the vault-stats query that feeds the PnL chart
   // and the yield/rewards block — keep it on that source so their loaders match
   // the data they render. The balance display gates on `vaultAccountValue`
@@ -400,11 +397,6 @@ const VaultsPageContent = () => {
             </div>
           )}
 
-          <RestrictedJurisdictionBanner
-            show={!isPermitLoading && isRestricted}
-            iconClassName="h-4 w-4"
-          />
-
           <Button
             size="lg"
             className="w-full text-base bg-brand-white text-brand-black hover:bg-brand-white/90"
@@ -416,8 +408,6 @@ const VaultsPageContent = () => {
               pricePerShare === '0' ||
               isInteractionDelayActive ||
               !!(pendingRequest && !pendingRequest.processed) ||
-              isPermitLoading ||
-              isRestricted ||
               // Block deposits until the indexed AUM has loaded: while it is
               // still loading `tvlWei` reads 0, so `exceedsVaultCapacity`
               // understates the true total and a near-cap vault could let an
@@ -554,11 +544,6 @@ const VaultsPageContent = () => {
             </div>
           )}
 
-          <RestrictedJurisdictionBanner
-            show={!isPermitLoading && isRestricted}
-            iconClassName="h-4 w-4"
-          />
-
           <Button
             size="lg"
             className="w-full text-base bg-brand-white text-brand-black hover:bg-brand-white/90"
@@ -570,9 +555,7 @@ const VaultsPageContent = () => {
               pricePerShare === '0' ||
               isInteractionDelayActive ||
               !!(pendingRequest && !pendingRequest.processed) ||
-              withdrawExceedsShareBalance ||
-              isPermitLoading ||
-              isRestricted
+              withdrawExceedsShareBalance
             }
             onClick={async () => {
               if (!isConnected) {
