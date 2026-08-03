@@ -56,15 +56,7 @@ After pinning, point an ENS name at the IPFS build:
 
 1. **Via the ENS app**: go to `https://app.ens.domains/<your-name>.eth?tab=records` and set the Content Hash to `ipfs://<CID>`
 
-2. **Via the pin script**:
-
-   ```bash
-   export PINATA_JWT="your-jwt-here"
-   export ENS_PRIVATE_KEY="0x..."  # ENS name owner/manager key
-   pnpm pin:ipfs -- --ens sapience.eth
-   ```
-
-3. **Via cast** (foundry):
+2. **Via cast** (foundry):
    ```bash
    cast send <resolver-address> "setContenthash(bytes32,bytes)" <namehash> <encoded-cid> --rpc-url https://eth.llamarpc.com --private-key $ENS_PRIVATE_KEY
    ```

@@ -137,9 +137,6 @@ importers:
       '@next/eslint-plugin-next':
         specifier: 15.5.15
         version: 15.5.15
-      '@playwright/test':
-        specifier: 1.55.1
-        version: 1.55.1
       '@tanstack/react-query-devtools':
         specifier: 5.84.2
         version: 5.84.2(@tanstack/react-query@5.84.2(react@19.1.0))(react@19.1.0)

@@ -11,7 +11,6 @@ pnpm dev          # http://localhost:3000 (Turbopack)
 pnpm lint         # ESLint
 pnpm type-check   # tsc --noEmit
 pnpm test         # Vitest
-pnpm test:e2e     # Playwright
 pnpm check        # lint + type-check + test
 ```
 

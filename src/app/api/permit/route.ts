@@ -12,14 +12,24 @@ const GEOFENCED_COUNTRIES = [
   'MM',
 ];
 
+// `x-forwarded-for` / `x-real-ip` are client-supplied, and the value is
+// interpolated into the ipinfo.io request path below — so anything that isn't
+// a bare IPv4/IPv6 literal is rejected rather than passed through.
+const IP_LITERAL = /^[0-9a-fA-F:.]+$/;
+
 function getClientIpFromHeaders(headers: Headers): string | null {
+  const candidates: string[] = [];
   const forwardedFor = headers.get('x-forwarded-for');
   if (forwardedFor && forwardedFor.length > 0) {
     const firstIp = forwardedFor.split(',')[0]?.trim();
-    if (firstIp) return firstIp;
+    if (firstIp) candidates.push(firstIp);
   }
   const realIp = headers.get('x-real-ip');
-  if (realIp && realIp.length > 0) return realIp;
+  if (realIp && realIp.length > 0) candidates.push(realIp.trim());
+
+  for (const candidate of candidates) {
+    if (candidate.length <= 45 && IP_LITERAL.test(candidate)) return candidate;
+  }
   return null;
 }
 

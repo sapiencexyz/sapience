@@ -3,15 +3,15 @@
  * Pin the IPFS static build to Pinata and optionally update an ENS contenthash.
  *
  * Usage:
- *   node scripts/pin-ipfs.mjs                    # Pin only
- *   node scripts/pin-ipfs.mjs --ens sapience.eth  # Pin + update ENS
+ *   node scripts/pin-ipfs.mjs                     # Pin
+ *   node scripts/pin-ipfs.mjs --ens sapience.eth  # Pin, then print ENS instructions
  *
  * Required env vars:
  *   PINATA_JWT          — Pinata API JWT token
  *
- * Optional env vars (for ENS update):
- *   ENS_PRIVATE_KEY     — Private key of the ENS name owner/manager
- *   ETH_RPC_URL         — Ethereum mainnet RPC (default: https://eth.llamarpc.com)
+ * Note: --ens does NOT send a transaction. It pins, then prints the
+ * contenthash and the commands to set it yourself. Nothing here ever reads a
+ * private key.
  */
 
 import { execFileSync } from 'node:child_process';
@@ -52,10 +52,17 @@ try {
   const now = new Date();
   const pad = (n) => String(n).padStart(2, '0');
   const ts = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  // `pinata` is pinned to a major version: `npx --yes` would otherwise run
+  // whatever the tag resolves to at that moment, with the JWT handed to it.
+  // The JWT goes through the environment, not argv, so it stays out of `ps`.
   const result = execFileSync(
     'npx',
-    ['--yes', 'pinata', 'upload', '--jwt', PINATA_JWT, '--name', `sapience-ipfs-${ts}`, OUT_DIR],
-    { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }
+    ['--yes', 'pinata@2', 'upload', '--name', `sapience-ipfs-${ts}`, OUT_DIR],
+    {
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: { ...process.env, PINATA_JWT },
+    }
   );
   const match = result.match(/Qm\w{44}|bafy\w+/);
   if (match) cid = match[0];
@@ -73,14 +80,15 @@ if (!cid) {
   const tarPath = path.join(OUT_DIR, '..', 'ipfs-build.tar.gz');
   execFileSync('tar', ['-czf', tarPath, '-C', OUT_DIR, '.'], { stdio: 'inherit' });
 
+  // -H @- reads the auth header from stdin so the JWT never lands in argv.
   const curlResult = execFileSync('curl', [
     '-s', '-X', 'POST',
     'https://api.pinata.cloud/pinning/pinFileToIPFS',
-    '-H', `Authorization: Bearer ${PINATA_JWT}`,
+    '-H', '@-',
     '-F', `file=@${tarPath};type=application/gzip`,
     '-F', 'pinataMetadata={"name":"sapience-ipfs"}',
     '-F', 'pinataOptions={"wrapWithDirectory":false}',
-  ], { encoding: 'utf-8' });
+  ], { encoding: 'utf-8', input: `Authorization: Bearer ${PINATA_JWT}\n` });
   fs.unlinkSync(tarPath);
 
   try {
@@ -104,12 +112,6 @@ console.log(`[pin] IPFS URI: ipfs://${cid}`);
 // ── Step 2: Update ENS contenthash (optional) ───────────────────────
 const ensName = values.ens;
 if (ensName) {
-  const privateKey = process.env.ENS_PRIVATE_KEY;
-  if (!privateKey) {
-    console.error('[pin] ENS_PRIVATE_KEY required for --ens flag.');
-    process.exit(1);
-  }
-
   const rpcUrl = process.env.ETH_RPC_URL || 'https://eth.llamarpc.com';
 
   console.log(`\n[pin] Updating ENS contenthash for ${ensName}...`);
