@@ -6,13 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import {
-  Activity,
-  ArrowLeftRight,
-  DollarSign,
-  Handshake,
-  Telescope,
-} from 'lucide-react';
+import { Activity, ArrowLeftRight, DollarSign, Handshake } from 'lucide-react';
 import { formatEther } from 'viem';
 import { graphqlRequest } from '~/lib/sdk/queries/client/graphqlClient';
 import { PythOracleMark } from '~/components/shared/PythOracleMark';
@@ -25,20 +19,15 @@ import { PYTH_FEEDS } from '~/lib/sdk/constants';
 import EndTimeDisplay from '~/components/shared/EndTimeDisplay';
 import SafeMarkdown from '~/components/shared/SafeMarkdown';
 import { ResolverBadge } from '~/components/shared/ResolverBadge';
-import Comments, { CommentFilters } from '~/components/shared/Comments';
 import { POLYMARKET_RESOLVER_ADDRESSES } from '~/lib/constants';
 import { inferResolverKind } from '~/lib/resolvers/conditionResolver';
 import { FocusAreaBadge } from '~/components/shared/FocusAreaBadge';
 import ActivityTable from '~/components/positions/ActivityTable';
 import PositionsTable from '~/components/positions/PositionsTable';
-import EmptyTabState from '~/components/shared/EmptyTabState';
 import { usePredictionsByConditionId } from '~/hooks/graphql/usePositions';
-import { useForecasts } from '~/hooks/graphql/useForecasts';
-import { d18ToPercentage } from '~/lib/utils/util';
 import { getQuestionHref } from '~/lib/utils/questionHref';
 import {
   type PredictionData,
-  type ForecastData,
   type CombinedPrediction,
   PredictionScatterChart,
   TechSpecBadges,
@@ -237,14 +226,6 @@ export default function QuestionPageContent({
       take: 25,
     });
 
-  // Fetch forecasts for this condition
-  const { data: forecasts, isLoading: isLoadingForecasts } = useForecasts({
-    conditionId,
-    options: {
-      enabled: Boolean(conditionId),
-    },
-  });
-
   // Transform prediction data for scatter plot
   const scatterData = useMemo((): PredictionData[] => {
     if (!predictions || predictions.length === 0) {
@@ -343,75 +324,10 @@ export default function QuestionPageContent({
     return { positionSizeMin, positionSizeMax };
   }, [scatterData]);
 
-  // Transform forecasts data for scatter plot
-  // Forecasts are user-submitted probability predictions (not positions)
-  const forecastScatterData = useMemo(() => {
-    if (!forecasts || forecasts.length === 0) {
-      return [];
-    }
-
-    const transformed = forecasts
-      .map(
-        (forecast: {
-          value: string;
-          rawTime: number;
-          attester: string;
-          comment?: string;
-        }) => {
-          try {
-            // Parse prediction value (stored in D18 format: percentage * 10^18)
-            let predictionPercent = 50; // Default fallback
-            const predictionValue = forecast.value;
-            if (predictionValue) {
-              try {
-                // Convert D18 to percentage (0-100)
-                predictionPercent = Math.round(
-                  d18ToPercentage(predictionValue)
-                );
-                // Clamp to 0-100 range
-                predictionPercent = Math.max(
-                  0,
-                  Math.min(100, predictionPercent)
-                );
-              } catch (_error) {
-                // Ignore conversion errors and fall back to default.
-              }
-            }
-
-            // Convert time (Unix timestamp in seconds) to milliseconds
-            const timestamp = forecast.rawTime * 1000;
-            const date = new Date(timestamp);
-
-            const result = {
-              x: timestamp,
-              y: predictionPercent,
-              time: date.toLocaleString(),
-              attester: forecast.attester,
-              comment: forecast.comment || '',
-            };
-
-            return result;
-          } catch (_error) {
-            return null;
-          }
-        }
-      )
-      .filter(Boolean) as ForecastData[];
-
-    return transformed;
-  }, [forecasts]);
-
-  // Positions tab is hidden when no predictions exist for this condition.
   const hasPositions = predictions.length > 0;
+  type PrimaryTab = 'predictions' | 'positions' | 'resolution';
 
-  type PrimaryTab = 'predictions' | 'positions' | 'forecasts' | 'resolution';
-
-  const TAB_VALUES: PrimaryTab[] = [
-    'predictions',
-    'positions',
-    'forecasts',
-    'resolution',
-  ];
+  const TAB_VALUES: PrimaryTab[] = ['predictions', 'positions', 'resolution'];
 
   const getTabFromHash = (): PrimaryTab | null => {
     if (typeof window === 'undefined') return null;
@@ -465,10 +381,7 @@ export default function QuestionPageContent({
 
   // Calculate X axis domain and ticks based on all chart data
   const { xDomain, xTicks, xTickLabels } = useMemo(() => {
-    const allTimes = [
-      ...scatterData.map((d) => d.x),
-      ...forecastScatterData.map((d) => d.x),
-    ];
+    const allTimes = [...scatterData.map((d) => d.x)];
 
     if (allTimes.length === 0) {
       const endTimeMs = data?.endTime ? data.endTime * 1000 : null;
@@ -507,7 +420,7 @@ export default function QuestionPageContent({
     }
 
     return { xDomain: domain, xTicks: ticks, xTickLabels: labels };
-  }, [scatterData, forecastScatterData, data?.endTime]);
+  }, [scatterData, data?.endTime]);
 
   if (isLoading) {
     return (
@@ -550,7 +463,6 @@ export default function QuestionPageContent({
     >
       <PredictionScatterChart
         scatterData={scatterData}
-        forecastScatterData={forecastScatterData}
         isLoading={isLoadingPredictions}
         positionSizeRange={positionSizeRange}
         xDomain={xDomain}
@@ -587,13 +499,6 @@ export default function QuestionPageContent({
               </TabsTrigger>
             )}
             <TabsTrigger
-              value="forecasts"
-              className="px-3 py-1.5 text-sm rounded-md bg-brand-white/[0.08] data-[state=active]:bg-brand-white/15 data-[state=active]:text-brand-white text-muted-foreground hover:text-brand-white/80 hover:bg-brand-white/[0.12] transition-colors inline-flex items-center gap-1.5 whitespace-nowrap"
-            >
-              <Telescope className="h-3.5 w-3.5" />
-              Forecasts
-            </TabsTrigger>
-            <TabsTrigger
               value="resolution"
               className="px-3 py-1.5 text-sm rounded-md bg-brand-white/[0.08] data-[state=active]:bg-brand-white/15 data-[state=active]:text-brand-white text-muted-foreground hover:text-brand-white/80 hover:bg-brand-white/[0.12] transition-colors inline-flex items-center gap-1.5 whitespace-nowrap"
             >
@@ -609,18 +514,6 @@ export default function QuestionPageContent({
         {/* Content area - Positions */}
         <TabsContent value="positions" className="m-0">
           <PositionsTable conditionId={conditionId} showHeaderText={false} />
-        </TabsContent>
-        {/* Content area - Forecasts */}
-        <TabsContent value="forecasts" className="m-0">
-          {data?.settled && !isLoadingForecasts && forecasts.length === 0 ? (
-            <EmptyTabState message="No forecasts" />
-          ) : (
-            <Comments
-              selectedCategory={CommentFilters.SelectedQuestion}
-              question={data.question}
-              conditionId={conditionId}
-            />
-          )}
         </TabsContent>
         {/* Content area - Resolution */}
         <TabsContent value="resolution" className="m-0 p-4">
@@ -714,13 +607,6 @@ export default function QuestionPageContent({
               </TabsTrigger>
             )}
             <TabsTrigger
-              value="forecasts"
-              className="px-3 py-1.5 text-sm rounded-md bg-brand-white/[0.08] data-[state=active]:bg-brand-white/15 data-[state=active]:text-brand-white text-muted-foreground hover:text-brand-white/80 hover:bg-brand-white/[0.12] transition-colors inline-flex items-center gap-1.5"
-            >
-              <Telescope className="h-3.5 w-3.5" />
-              Forecasts
-            </TabsTrigger>
-            <TabsTrigger
               value="resolution"
               className="px-3 py-1.5 text-sm rounded-md bg-brand-white/[0.08] data-[state=active]:bg-brand-white/15 data-[state=active]:text-brand-white text-muted-foreground hover:text-brand-white/80 hover:bg-brand-white/[0.12] transition-colors inline-flex items-center gap-1.5"
             >
@@ -735,17 +621,6 @@ export default function QuestionPageContent({
         </TabsContent>
         <TabsContent value="positions" className="m-0">
           <PositionsTable conditionId={conditionId} showHeaderText={false} />
-        </TabsContent>
-        <TabsContent value="forecasts" className="m-0">
-          {data?.settled && !isLoadingForecasts && forecasts.length === 0 ? (
-            <EmptyTabState message="No forecasts" />
-          ) : (
-            <Comments
-              selectedCategory={CommentFilters.SelectedQuestion}
-              question={data.question}
-              conditionId={conditionId}
-            />
-          )}
         </TabsContent>
         <TabsContent value="resolution" className="m-0 p-4">
           <div className="mb-4 flex items-center gap-3 flex-wrap">

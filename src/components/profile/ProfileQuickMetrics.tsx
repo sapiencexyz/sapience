@@ -7,7 +7,6 @@ import type { LegacyPosition as Position } from '~/lib/sdk/queries';
 import { COLLATERAL_SYMBOLS } from '~/lib/sdk/constants';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import { useUserProfitRank } from '~/hooks/graphql/useUserProfitRank';
-import { useForecasterRank } from '~/hooks/graphql/useForecasterRank';
 import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
 
 function useProfileBalance(
@@ -88,14 +87,12 @@ function useFirstActivity(positions: Position[] | undefined) {
 
 type ProfileQuickMetricsProps = {
   address: string;
-  forecastsCount: number;
   positions: Position[];
   className?: string;
 };
 
 export default function ProfileQuickMetrics({
   address,
-  forecastsCount,
   positions,
   className,
 }: ProfileQuickMetricsProps) {
@@ -104,25 +101,12 @@ export default function ProfileQuickMetrics({
   const balance = useProfileBalance(address, chainId, collateralSymbol);
   const volume = useProfileVolume(address);
   const first = useFirstActivity(positions);
-  // Fetch profit and accuracy data
   const { data: profit, isLoading: profitLoading } = useUserProfitRank(address);
-  const { data: accuracy, isLoading: accuracyLoading } =
-    useForecasterRank(address);
 
   const pnlNumber = Number(profit?.totalPnL || 0);
 
-  // Ranking.accuracy carries the SAME raw avg(twError) scale as the legacy
-  // accuracyScore (parity-verified identity; the SDL's old "0-1" doc was
-  // wrong) — render exactly as before.
-  const accValue = accuracyLoading
-    ? '—'
-    : Number.isFinite(accuracy?.accuracyScore || 0)
-      ? Math.round(accuracy?.accuracyScore || 0).toLocaleString('en-US')
-      : '—';
-
-  // Show P&L and Accuracy if they have rankings
+  // Show P&L if it has a ranking
   const showPnl = !profitLoading && profit?.rank;
-  const showAccuracy = !accuracyLoading && accuracy?.rank;
 
   type Metric = { label: string; value: React.ReactNode; sublabel?: string };
 
@@ -149,28 +133,7 @@ export default function ProfileQuickMetrics({
     });
   }
 
-  // Box 2: Forecasts + Accuracy (only if forecasts > 0)
-  const forecastMetrics: Metric[] = [];
-  if (forecastsCount > 0) {
-    if (showAccuracy) {
-      forecastMetrics.push(
-        {
-          label: 'Accuracy',
-          value: accValue,
-        },
-        {
-          label: 'Accuracy Rank',
-          value: accuracyLoading ? '—' : `#${accuracy?.rank}`,
-        }
-      );
-    }
-    forecastMetrics.push({
-      label: 'Forecasts',
-      value: forecastsCount.toLocaleString('en-US'),
-    });
-  }
-
-  // Box 3: Balance (always renders)
+  // Box 2: Balance (always renders)
   const balanceMetrics: Metric[] = [
     {
       label: 'Available Balance',
@@ -185,9 +148,7 @@ export default function ProfileQuickMetrics({
     });
   }
 
-  const boxes = [volumeMetrics, forecastMetrics, balanceMetrics].filter(
-    (b) => b.length > 0
-  );
+  const boxes = [volumeMetrics, balanceMetrics].filter((b) => b.length > 0);
 
   const MetricItem = ({ m }: { m: Metric }) => (
     <div className="flex flex-col gap-0.5">

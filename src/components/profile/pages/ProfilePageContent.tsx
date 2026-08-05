@@ -3,19 +3,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import type { Address } from 'viem';
+import { ArrowLeftRightIcon, Activity } from 'lucide-react';
 
-import { Telescope, ArrowLeftRightIcon, Activity } from 'lucide-react';
 import { Tabs, TabsContent, TabsTrigger } from '~/components/ui/tabs';
 import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
 import ProfileHeader from '~/components/profile/ProfileHeader';
-import ForecastsTable from '~/components/profile/ForecastsTable';
 import PositionsTable from '~/components/positions/PositionsTable';
 import ActivityTable from '~/components/positions/ActivityTable';
-import { useForecasts } from '~/hooks/graphql/useForecasts';
-import { SCHEMA_UID } from '~/lib/constants';
 import ProfileQuickMetrics from '~/components/profile/ProfileQuickMetrics';
 
-const TAB_VALUES = ['positions', 'forecasts', 'activity'] as const;
+const TAB_VALUES = ['positions', 'activity'] as const;
 type TabValue = (typeof TAB_VALUES)[number];
 
 const ProfilePageContent = ({
@@ -28,12 +25,8 @@ const ProfilePageContent = ({
     addressOverride || (params.address as string)
   ).toLowerCase() as Address;
 
-  const { data: attestations, isLoading: forecastsLoading } = useForecasts({
-    attesterAddress: address,
-    schemaId: SCHEMA_UID,
-  });
-
-  const allLoaded = !forecastsLoading;
+  // Nothing async gates the first paint now that forecasts are gone.
+  const allLoaded = true;
 
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
@@ -95,13 +88,6 @@ const ProfilePageContent = ({
       </TabsTrigger>
       <TabsTrigger
         className="justify-center flex-1 md:flex-none"
-        value="forecasts"
-      >
-        <Telescope className="h-4 w-4 mr-2" />
-        Forecasts
-      </TabsTrigger>
-      <TabsTrigger
-        className="justify-center flex-1 md:flex-none"
         value="activity"
       >
         <Activity className="h-4 w-4 mr-2" />
@@ -117,11 +103,7 @@ const ProfilePageContent = ({
       <div className="mb-6 flex flex-col min-[1900px]:flex-row min-[1900px]:items-center min-[1900px]:justify-between gap-4">
         <ProfileHeader address={address} className="mb-0" />
         {hasLoadedOnce ? (
-          <ProfileQuickMetrics
-            address={address}
-            forecastsCount={attestations?.length ?? 0}
-            positions={[]}
-          />
+          <ProfileQuickMetrics address={address} positions={[]} />
         ) : null}
       </div>
 
@@ -149,17 +131,6 @@ const ProfilePageContent = ({
               <PositionsTable
                 account={address}
                 showHeaderText={false}
-                leftSlot={tabSwitcher}
-                fill
-              />
-            </TabsContent>
-
-            <TabsContent
-              value="forecasts"
-              className="mt-0 data-[state=active]:flex-1 data-[state=active]:flex data-[state=active]:flex-col"
-            >
-              <ForecastsTable
-                attesterAddress={address}
                 leftSlot={tabSwitcher}
                 fill
               />

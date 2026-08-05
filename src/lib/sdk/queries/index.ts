@@ -4,7 +4,6 @@ export * from './conditions';
 export * from './conditionGroups';
 export * from './categories';
 export * from './positions';
-export * from './forecasts';
 export * from './leaderboard';
 export * from './protocol';
 export * from './vault';

@@ -18,7 +18,7 @@ import {
   CombinedPredictionsList,
   usePrefetchCombinedConditions,
 } from './CombinedPredictionsList';
-import type { PredictionData, ForecastData } from './types';
+import type { PredictionData } from './types';
 import {
   Popover,
   PopoverContent,
@@ -33,7 +33,6 @@ import {
 import { Badge } from '~/components/ui/badge';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import EnsAvatar from '~/components/shared/EnsAvatar';
-import SafeMarkdown from '~/components/shared/SafeMarkdown';
 import { formatPercentChance } from '~/lib/format/percentChance';
 
 /** Props passed by Recharts to custom scatter shape renderers */
@@ -51,7 +50,6 @@ const Loader = dynamic(() => import('~/components/shared/Loader'), {
 
 interface PredictionScatterChartProps {
   scatterData: PredictionData[];
-  forecastScatterData: ForecastData[];
   isLoading?: boolean;
   positionSizeRange: { positionSizeMin: number; positionSizeMax: number };
   xDomain: [number, number];
@@ -61,7 +59,6 @@ interface PredictionScatterChartProps {
 
 export function PredictionScatterChart({
   scatterData,
-  forecastScatterData,
   isLoading,
   positionSizeRange,
   xDomain,
@@ -72,18 +69,14 @@ export function PredictionScatterChart({
   const [hoveredPoint, setHoveredPoint] = React.useState<PredictionData | null>(
     null
   );
-  const [hoveredForecast, setHoveredForecast] =
-    React.useState<ForecastData | null>(null);
   const [isTooltipHovered, setIsTooltipHovered] = React.useState(false);
   const isTooltipHoveredRef = React.useRef(false);
   const tooltipTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   // Keep track of the last valid point to prevent flicker during re-renders
-  const lastValidPointRef = React.useRef<PredictionData | ForecastData | null>(
-    null
-  );
+  const lastValidPointRef = React.useRef<PredictionData | null>(null);
   // Update the ref whenever we have a valid point
-  if (hoveredPoint || hoveredForecast) {
-    lastValidPointRef.current = hoveredPoint || hoveredForecast;
+  if (hoveredPoint) {
+    lastValidPointRef.current = hoveredPoint;
   } else if (!isTooltipHovered) {
     lastValidPointRef.current = null;
   }
@@ -186,26 +179,15 @@ export function PredictionScatterChart({
             cursor={false}
             animationDuration={150}
             wrapperStyle={{ pointerEvents: 'auto', zIndex: 50 }}
-            active={!!(hoveredPoint || hoveredForecast || isTooltipHovered)}
-            payload={
-              hoveredPoint
-                ? [{ payload: hoveredPoint }]
-                : hoveredForecast
-                  ? [{ payload: hoveredForecast }]
-                  : undefined
-            }
+            active={!!(hoveredPoint || isTooltipHovered)}
+            payload={hoveredPoint ? [{ payload: hoveredPoint }] : undefined}
             content={({ active, payload }) => {
-              // Use hovered point/forecast state for persistent tooltip
+              // Use hovered point state for persistent tooltip
               // Fall back to lastValidPointRef to prevent flicker during re-renders
               const point =
                 hoveredPoint ||
-                hoveredForecast ||
                 (isTooltipHovered && lastValidPointRef.current) ||
-                (active &&
-                  (payload?.[0]?.payload as
-                    | PredictionData
-                    | ForecastData
-                    | undefined));
+                (active && payload?.[0]?.payload);
 
               if (!point) return null;
 
@@ -222,9 +204,6 @@ export function PredictionScatterChart({
                 second: '2-digit',
                 timeZoneName: 'short',
               });
-              // Check if this is a forecast (has attester but no predictor/counterparty)
-              const isForecast = 'attester' in point && !('predictor' in point);
-
               const {
                 predictor,
                 counterparty,
@@ -256,7 +235,6 @@ export function PredictionScatterChart({
                     setIsTooltipHovered(false);
                     tooltipTimeoutRef.current = setTimeout(() => {
                       setHoveredPoint(null);
-                      setHoveredForecast(null);
                     }, 100);
                   }}
                 >
@@ -286,15 +264,14 @@ export function PredictionScatterChart({
                         Forecast
                       </span>
                       <span className="font-mono text-sm text-ethena">
-                        {!isForecast &&
-                          combinedPredictions &&
+                        {combinedPredictions &&
                           combinedPredictions.length > 0 &&
                           `${combinedWithYes === false ? '<' : '>'}`}
                         {formatPercentChance(point.y / 100)} chance
                       </span>
                     </div>
                     {/* Position Size row - only for predictions */}
-                    {!isForecast && 'positionSize' in point && (
+                    {'positionSize' in point && (
                       <div className="flex items-center justify-between gap-6 h-5">
                         <span className="text-xs text-muted-foreground font-mono uppercase tracking-wider">
                           Position Size
@@ -304,122 +281,77 @@ export function PredictionScatterChart({
                         </span>
                       </div>
                     )}
-                    {/* Forecaster row - only for forecasts */}
-                    {isForecast && (
-                      <div className="flex items-center justify-between gap-6 h-5">
-                        <span className="text-xs text-muted-foreground font-mono uppercase tracking-wider">
-                          Forecaster
-                        </span>
-                        <div className="flex items-center gap-1.5">
-                          <EnsAvatar
-                            address={point.attester}
-                            width={16}
-                            height={16}
-                          />
-                          <AddressDisplay address={point.attester} compact />
-                        </div>
-                      </div>
-                    )}
                   </div>
 
-                  {/* Comment section - for forecasts */}
-                  {isForecast && point.comment && (
+                  <div className="border-t border-brand-white/10" />
+
+                  {/* Middle section: YES/NO predictors */}
+                  <div className="px-3 py-2.5 space-y-2">
+                    {/* YES predictor */}
+                    <div className="flex items-center justify-between gap-4">
+                      <Badge
+                        variant="outline"
+                        className="px-1.5 py-0.5 text-xs font-medium !rounded-md border-yes/40 bg-yes/10 text-yes shrink-0 font-mono"
+                      >
+                        YES
+                      </Badge>
+                      <div className="flex items-center gap-1.5">
+                        <EnsAvatar
+                          address={yesAddress}
+                          width={16}
+                          height={16}
+                        />
+                        <AddressDisplay address={yesAddress} compact />
+                      </div>
+                    </div>
+                    {/* NO predictor */}
+                    <div className="flex items-center justify-between gap-4">
+                      <Badge
+                        variant="outline"
+                        className="px-1.5 py-0.5 text-xs font-medium !rounded-md border-no/40 bg-no/10 text-no shrink-0 font-mono"
+                      >
+                        NO
+                      </Badge>
+                      <div className="flex items-center gap-1.5">
+                        <EnsAvatar address={noAddress} width={16} height={16} />
+                        <AddressDisplay address={noAddress} compact />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Combined predictions section (if multi-leg position) */}
+                  {combinedPredictions && combinedPredictions.length > 0 && (
                     <>
                       <div className="border-t border-brand-white/10" />
                       <div className="px-3 py-2.5">
-                        <div className="text-xs text-muted-foreground font-mono uppercase tracking-wider mb-2">
-                          Comment
-                        </div>
-                        <div className="text-sm text-foreground whitespace-pre-wrap break-words">
-                          <SafeMarkdown
-                            content={point.comment}
-                            className="prose prose-invert prose-sm max-w-none"
-                          />
+                        <div className="flex items-center justify-between gap-4">
+                          <span className="text-xs text-muted-foreground font-mono uppercase tracking-wider">
+                            Combined
+                          </span>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button
+                                type="button"
+                                className="text-sm text-brand-white hover:text-brand-white/80 underline decoration-dotted underline-offset-2 transition-colors whitespace-nowrap"
+                              >
+                                {combinedPredictions.length} prediction
+                                {combinedPredictions.length !== 1 ? 's' : ''}
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent
+                              className="w-auto max-w-sm p-0 bg-brand-black border-brand-white/20"
+                              align="start"
+                            >
+                              <CombinedPredictionsList
+                                combinedPredictions={combinedPredictions}
+                                combinedWithYes={!!combinedWithYes}
+                              />
+                            </PopoverContent>
+                          </Popover>
                         </div>
                       </div>
                     </>
                   )}
-
-                  {/* Divider - only for predictions */}
-                  {!isForecast && (
-                    <div className="border-t border-brand-white/10" />
-                  )}
-
-                  {/* Middle section: YES/NO predictors - only for predictions */}
-                  {!isForecast && (
-                    <div className="px-3 py-2.5 space-y-2">
-                      {/* YES predictor */}
-                      <div className="flex items-center justify-between gap-4">
-                        <Badge
-                          variant="outline"
-                          className="px-1.5 py-0.5 text-xs font-medium !rounded-md border-yes/40 bg-yes/10 text-yes shrink-0 font-mono"
-                        >
-                          YES
-                        </Badge>
-                        <div className="flex items-center gap-1.5">
-                          <EnsAvatar
-                            address={yesAddress}
-                            width={16}
-                            height={16}
-                          />
-                          <AddressDisplay address={yesAddress} compact />
-                        </div>
-                      </div>
-                      {/* NO predictor */}
-                      <div className="flex items-center justify-between gap-4">
-                        <Badge
-                          variant="outline"
-                          className="px-1.5 py-0.5 text-xs font-medium !rounded-md border-no/40 bg-no/10 text-no shrink-0 font-mono"
-                        >
-                          NO
-                        </Badge>
-                        <div className="flex items-center gap-1.5">
-                          <EnsAvatar
-                            address={noAddress}
-                            width={16}
-                            height={16}
-                          />
-                          <AddressDisplay address={noAddress} compact />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Combined predictions section (if multi-leg position) */}
-                  {!isForecast &&
-                    combinedPredictions &&
-                    combinedPredictions.length > 0 && (
-                      <>
-                        <div className="border-t border-brand-white/10" />
-                        <div className="px-3 py-2.5">
-                          <div className="flex items-center justify-between gap-4">
-                            <span className="text-xs text-muted-foreground font-mono uppercase tracking-wider">
-                              Combined
-                            </span>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <button
-                                  type="button"
-                                  className="text-sm text-brand-white hover:text-brand-white/80 underline decoration-dotted underline-offset-2 transition-colors whitespace-nowrap"
-                                >
-                                  {combinedPredictions.length} prediction
-                                  {combinedPredictions.length !== 1 ? 's' : ''}
-                                </button>
-                              </PopoverTrigger>
-                              <PopoverContent
-                                className="w-auto max-w-sm p-0 bg-brand-black border-brand-white/20"
-                                align="start"
-                              >
-                                <CombinedPredictionsList
-                                  combinedPredictions={combinedPredictions}
-                                  combinedWithYes={!!combinedWithYes}
-                                />
-                              </PopoverContent>
-                            </Popover>
-                          </div>
-                        </div>
-                      </>
-                    )}
                 </div>
               );
             }}
@@ -693,45 +625,6 @@ export function PredictionScatterChart({
                   }}
                   onMouseLeave={() => {
                     scheduleCommentTooltipHide(150);
-                  }}
-                />
-              );
-            }}
-          />
-          {/* Forecast dots - white dots for user-submitted forecasts */}
-          <Scatter
-            name="Forecasts"
-            data={forecastScatterData}
-            fill="hsl(var(--brand-white))"
-            shape={(rawProps: unknown) => {
-              const props = rawProps as ScatterShapeProps;
-              const { cx, cy, payload } = props;
-              const radius = 2;
-              const isHovered =
-                hoveredForecast?.x === payload?.x &&
-                hoveredForecast?.attester === payload?.attester;
-              return (
-                <circle
-                  cx={cx}
-                  cy={cy}
-                  r={radius}
-                  fill="hsl(var(--brand-white))"
-                  opacity={isHovered ? 0.8 : 0.6}
-                  className="cursor-pointer"
-                  onMouseEnter={() => {
-                    if (tooltipTimeoutRef.current) {
-                      clearTimeout(tooltipTimeoutRef.current);
-                      tooltipTimeoutRef.current = null;
-                    }
-                    setHoveredForecast(payload as ForecastData);
-                  }}
-                  onMouseLeave={() => {
-                    // Delay clearing to allow moving to tooltip
-                    tooltipTimeoutRef.current = setTimeout(() => {
-                      if (!isTooltipHoveredRef.current) {
-                        setHoveredForecast(null);
-                      }
-                    }, 150);
                   }}
                 />
               );
