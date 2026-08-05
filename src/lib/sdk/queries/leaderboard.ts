@@ -16,20 +16,6 @@ export interface AggregatedLeaderboardEntry {
  * `numTimeWeighted`, `sumTimeWeightedError`) do not exist on this surface.
  * `accuracyScore` carries the 0-1 lifetime Brier-derived accuracy.
  */
-export type ForecasterScore = {
-  address: string;
-  rank: number;
-  /** Lifetime Brier-derived accuracy, 0-1 (`Ranking.accuracy`). */
-  accuracyScore: number;
-};
-
-export interface ForecasterRankResult {
-  /** 0-1 accuracy; null when unranked. */
-  accuracyScore: number | null;
-  rank: number | null;
-  totalForecasters: number;
-}
-
 export interface UserProfitRankResult {
   totalPnL: string;
   rank: number | null;
@@ -52,40 +38,6 @@ export const GET_PROFIT_LEADERBOARD = /* GraphQL */ `
         hasNextPage
         endCursor
       }
-    }
-  }
-`;
-
-export const GET_ACCURACY_LEADERBOARD = /* GraphQL */ `
-  query AccuracyLeaderboard($after: String) {
-    leaderboard(metric: ACCURACY, first: 25, after: $after) {
-      edges {
-        node {
-          rank
-          accuracy
-          account {
-            address
-          }
-        }
-      }
-      pageInfo {
-        hasNextPage
-        endCursor
-      }
-    }
-  }
-`;
-
-export const GET_FORECASTER_RANK = /* GraphQL */ `
-  query ForecasterRank($address: Address!) {
-    account(address: $address) {
-      ranking(metric: ACCURACY) {
-        rank
-        accuracy
-      }
-    }
-    leaderboard(metric: ACCURACY, first: 0) {
-      totalCount
     }
   }
 `;
@@ -118,12 +70,6 @@ type PnlRankingNode = {
   account: { address: string };
 };
 
-type AccuracyRankingNode = {
-  rank: number;
-  accuracy: number | null;
-  account: { address: string };
-};
-
 function toLeaderboardEntries(
   connection: RankingEdges<PnlRankingNode> | undefined
 ): AggregatedLeaderboardEntry[] {
@@ -132,18 +78,6 @@ function toLeaderboardEntries(
   return edges.map(({ node }) => ({
     address: node.account.address,
     totalPnL: node.pnlFormatted,
-  }));
-}
-
-function toForecasterScores(
-  connection: RankingEdges<AccuracyRankingNode> | undefined
-): ForecasterScore[] {
-  const edges = connection?.edges;
-  if (!Array.isArray(edges)) return [];
-  return edges.map(({ node }) => ({
-    address: node.account.address,
-    rank: node.rank,
-    accuracyScore: node.accuracy ?? 0,
   }));
 }
 
@@ -162,44 +96,6 @@ export async function fetchLeaderboard(): Promise<
       };
     },
   });
-}
-
-export async function fetchAccuracyLeaderboard(
-  limit = 10
-): Promise<ForecasterScore[]> {
-  return paginateConnection<ForecasterScore>({
-    maxNodes: limit,
-    fetchPage: async ({ after }) => {
-      const data = await graphqlRequest<{
-        leaderboard: RankingEdges<AccuracyRankingNode>;
-      }>(GET_ACCURACY_LEADERBOARD, { after });
-      return {
-        nodes: toForecasterScores(data?.leaderboard),
-        pageInfo: data?.leaderboard?.pageInfo,
-      };
-    },
-  });
-}
-
-export async function fetchForecasterRank(
-  address: string
-): Promise<ForecasterRankResult> {
-  const a = address.toLowerCase();
-  const data = await graphqlRequest<{
-    account: {
-      ranking: { rank: number; accuracy: number | null } | null;
-    } | null;
-    leaderboard: { totalCount: number } | null;
-  }>(GET_FORECASTER_RANK, { address: a });
-
-  const ranking = data?.account?.ranking ?? null;
-  const totalForecasters = data?.leaderboard?.totalCount ?? 0;
-  if (!ranking) return { accuracyScore: null, rank: null, totalForecasters };
-  return {
-    accuracyScore: ranking.accuracy ?? 0,
-    rank: ranking.rank,
-    totalForecasters,
-  };
 }
 
 /**
