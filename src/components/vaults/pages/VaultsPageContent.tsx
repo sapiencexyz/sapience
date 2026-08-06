@@ -35,9 +35,11 @@ import {
 import VaultPnlChart from '~/components/vaults/VaultPnlChart';
 import VaultSharePriceChart from '~/components/vaults/VaultSharePriceChart';
 
+// Compared against a lowercased address, so these must be lowercase — a
+// checksummed entry here silently never matches and locks that user out.
 const DEPOSIT_WHITELIST: `0x${string}`[] = [
   '0xdb5af497a73620d881561edb508012a5f84e9ba2',
-  '0x7BB4e4E4674c625b23C550A74cfcfF9Ec50064F3',
+  '0x7bb4e4e4674c625b23c550a74cfcff9ec50064f3',
 ];
 
 const DEPOSIT_CAP = 50000;
@@ -405,7 +407,14 @@ const VaultsPageContent = () => {
                 !!depositAmount &&
                 (!isBalanceReady ||
                   exceedsVaultCapacity ||
-                  depositExceedsBalance)) ||
+                  depositExceedsBalance ||
+                  // The quote signs `pricePerShare`, which sets the slippage
+                  // floor (`expectedSharesWei`). An unsigned or wrongly-signed
+                  // quote can inflate it so the user under-requests shares —
+                  // and asking for too few always passes the manager's on-chain
+                  // check, so nothing downstream catches it. The label already
+                  // says "Waiting for Price Quote"; make it actually block.
+                  quoteSignatureValid !== true)) ||
               (isConnected && !isWhitelisted)
             }
             onClick={async () => {
@@ -530,7 +539,11 @@ const VaultsPageContent = () => {
               pricePerShare === '0' ||
               isInteractionDelayActive ||
               !!(pendingRequest && !pendingRequest.processed) ||
-              (isConnected && withdrawExceedsShareBalance)
+              (isConnected &&
+                (withdrawExceedsShareBalance ||
+                  // Same reasoning as deposit: `pricePerShare` sets
+                  // `expectedAssetsWei`, the withdrawal slippage floor.
+                  quoteSignatureValid !== true))
             }
             onClick={async () => {
               if (!isConnected) {
@@ -551,6 +564,8 @@ const VaultsPageContent = () => {
               if (!isConnected) return 'Connect Wallet';
               if (withdrawExceedsShareBalance) return 'Insufficient Balance';
               if (isInteractionDelayActive) return 'Cooldown in progress';
+              if (withdrawAmount && quoteSignatureValid !== true)
+                return 'Waiting for Price Quote';
               if (!pricePerShare || pricePerShare === '0')
                 return 'Cannot connect to vault';
               return 'Request Withdrawal';
