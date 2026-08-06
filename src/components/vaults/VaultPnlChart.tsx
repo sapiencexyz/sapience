@@ -23,6 +23,7 @@ import { Button } from '~/components/ui/button';
 import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '~/lib/sdk/constants';
 import { useVaultStats, type VaultStat } from '~/hooks/graphql/useAnalytics';
 import { toVaultStatPoint } from '~/lib/adapters/vaultStat';
+import { useStableYDomain } from '~/components/vaults/useStableYDomain';
 import Loader from '~/components/shared/Loader';
 import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
 import { type Period } from '~/components/shared/PeriodFilter';
@@ -246,13 +247,19 @@ export default function VaultPnlChart({
     [chartData, displayMode]
   );
 
-  const yDomain = useMemo(
+  const computedYDomain = useMemo(
     () =>
       computeVaultPnlYDomain(
         displayData.map((d) => d.value),
         displayMode
       ),
     [displayData, displayMode]
+  );
+  // The series streams in newest-first, so hold the domain steady while it
+  // extends leftward instead of rescaling on every partial page.
+  const yDomain = useStableYDomain(
+    computedYDomain,
+    `${period}:${displayMode}:${logScale}`
   );
 
   // Evenly time-spaced tick positions for the numeric x-axis; recharts' own

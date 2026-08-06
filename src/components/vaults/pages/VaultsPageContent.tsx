@@ -30,14 +30,11 @@ import { usePassiveLiquidityVault } from '~/hooks/contract/usePassiveLiquidityVa
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import {
   useVaultStats,
-  useProtocolStats,
   useVaultAccountValue,
 } from '~/hooks/graphql/useAnalytics';
 import RiskDisclaimer from '~/components/shared/RiskDisclaimer';
-import Loader from '~/components/shared/Loader';
 import VaultPnlChart from '~/components/vaults/VaultPnlChart';
 import VaultSharePriceChart from '~/components/vaults/VaultSharePriceChart';
-import { ETHENA_BASE_APY } from '~/components/layout/StatusIndicators';
 
 const DEPOSIT_WHITELIST: `0x${string}`[] = [
   '0xdb5af497a73620d881561edb508012a5f84e9ba2',
@@ -159,12 +156,6 @@ const VaultsPageContent = () => {
   const selectedVaultValue = selectedVault?.address ?? '';
   const collateralSymbol = COLLATERAL_SYMBOLS[VAULT_CHAIN_ID] || 'testUSDe';
 
-  // Latest protocol-wide TVL for the rewards card. Keep this independent of
-  // the selected vault tab so switching tabs doesn't preload every vault's
-  // chart/account series just to calculate rewards.
-  const { data: protocolStats, isLoading: isProtocolStatsLoading } =
-    useProtocolStats();
-
   const {
     vaultData,
     userData,
@@ -191,9 +182,8 @@ const VaultsPageContent = () => {
     chainId: VAULT_CHAIN_ID,
   });
 
-  // `isAnalyticsLoading` tracks the vault-stats query that feeds the PnL chart
-  // and the yield/rewards block — keep it on that source so their loaders match
-  // the data they render. The balance display gates on `vaultAccountValue`
+  // `isAnalyticsLoading` tracks the vault-stats query that feeds the PnL chart,
+  // so its loader matches the data it renders. The balance display gates on `vaultAccountValue`
   // separately via `isBalanceReady` below.
   const {
     data: vaultStats,
@@ -679,34 +669,6 @@ const VaultsPageContent = () => {
 
   const utilizationDisplay = `${utilizationPercent.toFixed(2)}%`;
 
-  const yieldMetrics = useMemo(() => {
-    // Rewards are paid from the protocol-wide Ethena yield and are shared among
-    // vault LPs. `protocol.stats.totalValueLocked` is already the latest
-    // server-computed total across configured vault families, so the rewards
-    // card no longer needs to fan out across every vault tab.
-    const totalTvlWei = protocolStats?.totalValueLocked
-      ? BigInt(protocolStats.totalValueLocked)
-      : 0n;
-    const totalTvlNum = Number(formatAssetAmount(totalTvlWei));
-    const annualYieldToVaults = totalTvlNum * (ETHENA_BASE_APY / 100);
-    const weeklyYield = (annualYieldToVaults / 365) * 7;
-
-    const fmt = (n: number) =>
-      Number.isFinite(n)
-        ? n.toLocaleString('en-US', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })
-        : '0.00';
-
-    return {
-      protocolTvl: fmt(totalTvlNum),
-      annualYield: fmt(annualYieldToVaults),
-      weeklyYield: fmt(weeklyYield),
-      effectiveApy: ETHENA_BASE_APY.toFixed(2),
-    };
-  }, [protocolStats, formatAssetAmount]);
-
   return (
     <div className="relative">
       <div className="container max-w-[600px] lg:max-w-[1200px] mx-auto px-4 pt-10 md:pt-14 lg:pt-10 pb-12 relative z-10">
@@ -873,7 +835,7 @@ const VaultsPageContent = () => {
                         </div>
                       </div>
 
-                      <div className="p-5 pt-4 rounded-lg bg-[hsl(var(--primary)/_0.05)] border border-brand-white/10 lg:flex-1 lg:flex lg:flex-col lg:min-h-0 lg:overflow-hidden">
+                      <div className="p-5 pt-4 rounded-lg bg-[hsl(var(--primary)/_0.05)] border border-brand-white/10 lg:flex-1 lg:flex lg:flex-col lg:min-h-[360px] lg:overflow-hidden">
                         {activeChart === 'pnl' ? (
                           <VaultPnlChart
                             vaultStats={vaultStats ?? undefined}
@@ -990,45 +952,6 @@ const VaultsPageContent = () => {
                           protocols.
                         </p>
                         {renderVaultForm()}
-                      </div>
-
-                      <div className="p-5 pt-4 rounded-lg bg-[hsl(var(--primary)/_0.05)] border border-ethena/40 shadow-[0_0_12px_rgba(136,180,245,0.3)]">
-                        <div className="flex flex-col gap-4">
-                          <div>
-                            <div className="text-base font-mono uppercase tracking-wider text-accent-gold mb-2">
-                              VAULT REWARDS
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                              Ethena rewards can be claimed by vault depositors.
-                              This is separate from profit or loss realized by
-                              the vault's participation in prediction markets.
-                            </p>
-                          </div>
-                          {isProtocolStatsLoading ? (
-                            <div className="flex justify-center py-4">
-                              <Loader className="w-6 h-6" />
-                            </div>
-                          ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              <div className="sm:pr-4 sm:border-r border-brand-white/20">
-                                <div className="text-3xl font-medium font-mono">
-                                  {yieldMetrics.effectiveApy}%
-                                </div>
-                                <div className="text-sm text-muted-foreground">
-                                  Approximate APY
-                                </div>
-                              </div>
-                              <div className="sm:pl-4">
-                                <div className="text-3xl font-medium font-mono">
-                                  {yieldMetrics.weeklyYield} {collateralSymbol}
-                                </div>
-                                <div className="text-sm text-muted-foreground">
-                                  Approximate Weekly Distribution
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
                       </div>
                     </div>
                   </div>

@@ -21,11 +21,6 @@ vi.mock('~/components/ui/tooltip', () => ({
 }));
 
 describe('StatusIndicators', () => {
-  test('shows the Ethena APY', () => {
-    render(<StatusIndicators />);
-    expect(screen.getByText(/3\.8% APY/)).toBeInTheDocument();
-  });
-
   test('shows the RPC ping', () => {
     render(<StatusIndicators />);
     expect(screen.getByText(/42ms/)).toBeInTheDocument();

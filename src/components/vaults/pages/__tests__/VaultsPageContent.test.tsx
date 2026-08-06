@@ -390,7 +390,7 @@ describe('VaultsPageContent deposit & withdraw', () => {
     expect(mockUseVaultStats).toHaveBeenCalledWith(singleLegVault);
   });
 
-  it('loads stats and contract data only for the selected vault plus protocol rewards stats', () => {
+  it('loads stats and contract data only for the selected vault', () => {
     render(<VaultsPageContent />);
 
     expect(mockUseVaultStats).toHaveBeenCalledTimes(1);
@@ -402,7 +402,7 @@ describe('VaultsPageContent deposit & withdraw', () => {
       vaultAddress: '0xVault',
       chainId: 42161,
     });
-    expect(mockUseProtocolStats).toHaveBeenCalledTimes(1);
+    expect(mockUseProtocolStats).not.toHaveBeenCalled();
   });
 
   it('accepts the hidden options vault address from the URL without showing its tab', () => {

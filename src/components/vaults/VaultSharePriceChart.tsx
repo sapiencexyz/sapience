@@ -26,6 +26,7 @@ import { CHART_SERIES_COLORS } from '~/lib/theme/chartColors';
 import Loader from '~/components/shared/Loader';
 import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
 import { type Period } from '~/components/shared/PeriodFilter';
+import { useStableYDomain } from '~/components/vaults/useStableYDomain';
 
 function formatTimestampTick(value: number): string {
   const date = new Date(value * 1000);
@@ -166,9 +167,15 @@ export default function VaultSharePriceChart({
     [vaultStats, period, chainId, livePrice]
   );
 
-  const yDomain = useMemo(
+  const computedYDomain = useMemo(
     () => computeSharePriceYDomain(chartData.map((d) => d.price)),
     [chartData]
+  );
+  // The series streams in newest-first, so hold the domain steady while it
+  // extends leftward instead of rescaling on every partial page.
+  const yDomain = useStableYDomain(
+    computedYDomain,
+    `${vaultAddress}:${period}`
   );
 
   // Evenly time-spaced tick positions for the numeric x-axis; recharts' own
