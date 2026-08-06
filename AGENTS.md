@@ -1,136 +1,67 @@
-# Agents Guide
+# Sapience App
 
-This document captures the context agents need when working in the Sapience monorepo. Keep it in sync as workflows evolve so future automation can ramp up quickly.
+The Sapience product app — Next.js 15 (App Router, Turbopack dev), pinned to the Robinhood (Meridian) deployment. Reads from the hosted GraphQL API; the vault page transacts through the connected wallet.
 
-## Project Snapshot
+This is a single package. There is no workspace, no build-order dependency, and no backend to run alongside it.
 
-- Workspace manager: `pnpm` (Node >= 22.12.0, pnpm 10.x). Install everything with `pnpm install`.
-- Use `.nvmrc` / `.node-version` to pin Node 22.12.0 exactly — Prisma 7's CLI trips over Node 22.11.x (`ERR_REQUIRE_ESM` via `@prisma/dev`), so `22` is too loose.
-- Monorepo packages:
-  - `packages/protocol` – Solidity smart contracts for the Sapience protocol (see `packages/protocol/CLAUDE.md` for a deeper contract-specific brief).
-  - `packages/api` – TypeGraphQL + Prisma application with background workers, candle cache, and auction utilities.
-  - `packages/app` – Next.js 15 product app consuming the SDK and API.
-  - `packages/sdk` – Shared TypeScript SDK (ABIs, validation, signing, GraphQL types) built via `tsup`.
-  - `packages/ui` – Shared React component library (shadcn-style primitives + a few high-level components) with Storybook.
-  - `packages/relayer` – WebSocket relayer that brokers auctions between predictors and counterparties.
-  - `packages/docs` – Documentation portal powered by Vocs.
-  - `packages/market-keeper` – Cron pipeline that ingests Polymarket markets, generates conditions, and runs settlement.
-- Backend services deploy on Railway with per-service build/start commands (see `railway.toml` and the Railway dashboard).
-
-## Core Commands
-
-Run from repo root unless noted.
+## Dev loop
 
 ```bash
-pnpm install                 # install all workspace dependencies (dev + prod)
-pnpm run dev:app             # start product app on http://localhost:3000
-pnpm run dev:api             # start GraphQL API + worker + codegen (requires Postgres)
-pnpm run dev:docs            # Vocs docs on http://localhost:3003
-pnpm run test --recursive    # run package tests (delegates to package scripts)
+pnpm dev          # http://localhost:3000 (Turbopack)
+pnpm lint         # ESLint
+pnpm type-check   # tsc --noEmit
+pnpm test         # Vitest
+pnpm check        # lint + type-check + test
 ```
 
-Package-specific highlights:
+`lint` and `type-check` catch different things — run both. Lint catches ESLint-only rules (import order, hook deps, no-explicit-any); type-check catches everything Next.js's build relies on (server/client boundary types, GraphQL field shapes from `~/lib/sdk/types/graphql`). `pnpm build` runs `lint` first, so type-check failures only surface in CI or an explicit local run.
 
-- Protocol: `pnpm --filter protocol run test` (Forge).
-- API: `pnpm --filter @sapience/api run prisma:setup` before local runs; use `vitest` (`test`/`test:watch`) and `tsx` CLIs (e.g., `start:reindex-*`).
-- SDK: build with `pnpm --filter @sapience/sdk run build:lib`. Storybook lives at `packages/ui`, not the SDK.
-- App: standard Next.js commands (`dev`, `build`, `lint`, `type-check`).
+## Anatomy
 
-## Environment Notes
+- `src/app/` — App Router routes, mirroring the URL structure: `/markets`, `/analytics`, `/feed`, `/vaults`, plus `/questions/[...parts]` for market detail. `/` redirects to `/markets`.
+- `src/components/` — Feature components (`markets/`, `vaults/`, `analytics/`, `positions/`, `layout/`), with shadcn primitives in `components/ui/`.
+- `src/hooks/` — `hooks/graphql/` holds every data hook; each wraps a `fetchX` from `~/lib/sdk/queries` in TanStack Query. `hooks/blockchain/` and `hooks/contract/` hold the wagmi read/write hooks.
+- `src/lib/sdk/` — Vendored SDK: chain constants, contract addresses, ABIs, GraphQL queries and generated types, and on-chain call builders. Formerly a separate package; now plain app source.
+- `src/lib/` — Cross-cutting modules: `context/` (Settings, Auth, ConnectDialog, Theme, Loading), `ws/` (relayer socket), config, formatting, resolvers.
 
-- Services expect a Postgres connection string in `DATABASE_URL` (see `railway.toml` and the Railway dashboard for deployment wiring).
-- Sentry is integrated across app/API; ensure auth tokens are available when building with sourcemap uploads.
-- The API relies on generated Prisma client and GraphQL types (`prisma:generate`, `generate-types`). These run automatically in most scripts but double-check when editing schemas.
+There are no route handlers — every page is static or client-rendered, and the only `ƒ` in the build output is `/questions/:parts` (dynamic params, still client-fetched).
 
-## CI Requirements
+## Environment
 
-CI uses path-filtered jobs — only packages with changed files are checked. All checks must pass before merge.
+Copy `.env.sample` to `.env`. Every value is optional — the app falls back to the Robinhood/Meridian defaults in `src/lib/config/networkDefaults.ts`. Set `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` if you need WalletConnect locally.
 
-- **API** (`packages/api`): lint, type-check, compile, vitest
-- **App** (`packages/app`): lint, type-check, vitest
-- **SDK** (`packages/sdk`): build, lint, type-check, vitest
-- **UI** (`packages/ui`): lint, type-check
-- **Relayer** (`packages/relayer`): lint, type-check, vitest
-- **Protocol** (`packages/protocol`): `forge fmt --check`, contract tests
+## Wallet & transactions
 
-SDK changes also trigger API, App, and Relayer checks (they depend on it). UI changes trigger App checks.
+Plain wagmi throughout. `useSapienceWriteContract` is the single write path — it validates/switches the chain, submits via `writeContract` or EIP-5792 `sendCalls`, resolves the settled hash, and surfaces toasts. Don't bypass it.
 
-### Dependency chain
+There are no smart accounts, session keys, or paymasters. The collateral asset is USDe as a standard ERC-20, so a deposit is at most `approve` + `requestDeposit` — there is no wrap step.
 
-```
-protocol (standalone — Foundry)
-sdk (standalone — tsup)
-  ├── api (depends on sdk)
-  ├── app (depends on sdk + ui)
-  └── relayer (depends on sdk)
-ui (standalone)
-  └── app (depends on ui)
+## Data layer
+
+Pattern across `src/hooks/graphql/`:
+
+```ts
+import { useQuery } from '@tanstack/react-query';
+import { fetchCategories } from '~/lib/sdk/queries';
+import type { Category } from '~/lib/sdk/types/graphql';
 ```
 
-## Standardized Scripts
+`~/lib/sdk/queries` exports `fetchX` functions; `~/lib/sdk/types/graphql` exports the generated GraphQL shapes. That file is generated from the API's schema, which lives in a different repo — never edit it by hand. If a query needs a new field, edit the GraphQL document in `src/lib/sdk/queries/` and update the type by hand only if the API already returns it.
 
-Every TypeScript package supports these scripts (run via `pnpm --filter <package> run <script>`):
+The feed and activity views poll the API on an interval; there is no subscription. The one live socket is the vault share-price quote (`src/hooks/ws/useVaultShareQuoteWs.ts`) talking to the relayer.
 
-| Script         | Description                   |
-| -------------- | ----------------------------- |
-| `lint`         | ESLint check                  |
-| `lint:fix`     | ESLint auto-fix + format      |
-| `type-check`   | `tsc --noEmit`                |
-| `format`       | Prettier write                |
-| `format:check` | Prettier check (CI-safe)      |
-| `test`         | Unit tests (where applicable) |
+## Static build (`pnpm build:static`)
 
-Prettier config is shared at the repo root (`.prettierrc.json`). ESLint configs are per-package (different plugins per environment).
+`scripts/build-static.mjs` produces a fully client-renderable static export for IPFS/S3/Cloudflare Pages:
 
-Quick local check (runs everything):
+1. **`*.static.tsx` overrides swap in** — the script copies any `*.static.tsx` sibling over the original (e.g. `not-found.static.tsx` replaces `not-found.tsx`). Originals are restored in a `finally` block.
+2. **The dynamic route page is removed** — `/questions/:parts` can't be prerendered, so it's deleted before `next build` and picked up client-side instead.
+3. **`NEXT_BUILD_TARGET=static`** flips `next.config.js` over to `next.config.static.js` (`output: 'export'`, trailing slashes, no image optimisation).
 
-```bash
-pnpm run check    # builds SDK, generates Prisma, lints all, typechecks all, tests all
-```
+`/questions/:parts` is handled client-side by `SpaFallbackRouter`. If you add a page that can't work without a server, add a `.static.tsx` sibling.
 
-## Regenerating GraphQL Types
+## Footguns
 
-After changing any GraphQL resolver (args, fields, types), run:
-
-```bash
-pnpm --filter @sapience/api run generate-types
-```
-
-This runs three steps in sequence: `prisma:generate` → `emit-schema` (writes `schema.graphql`) → `graphql-codegen` (writes `packages/sdk/types/graphql.ts`). No database connection is needed — config and Prisma are lazily initialized so build-time scripts can import resolvers without triggering env validation.
-
-If you also changed SDK types, rebuild the SDK afterward:
-
-```bash
-pnpm --filter @sapience/sdk run build:lib
-```
-
-## Testing & Quality
-
-### Test-Driven Development
-
-Write tests before implementation. When adding or changing behavior:
-
-1. Write a failing test that captures the expected behavior
-2. Implement the minimal code to make the test pass
-3. Refactor while keeping tests green
-
-When fixing a bug, first write a test that reproduces it, then fix the code.
-
-### General Guidelines
-
-- Prefer package-level lint/format commands (`lint`, `lint:fix`, `format`) instead of manual `eslint` invocations.
-- For contract work, use Foundry's targeted flags (`forge test --match-path …`).
-- All TypeScript packages use vitest for tests. Always build the SDK before running tests in app, api, or relayer — they import from SDK dist files and will fail with Vite transform errors otherwise.
-- Keep Storybook snapshots current when touching shared UI (`pnpm --filter @sapience/ui run build-storybook`).
-
-## Deployment & Ops
-
-- Backend services are deployed on Railway (see `railway.toml`). Two environments exist: **testing** (deploys from a WIP branch) and **production** (deploys from `main`). Each service has its own build and start commands configured in the Railway dashboard.
-- Contracts deploy via Forge scripts targeting Ethereal/Arbitrum.
-
-## Agent Tips
-
-- Check for package-local docs (e.g., `packages/protocol/CLAUDE.md`) before duplicating guidance.
-- Respect existing formatting tools (Prettier, Forge fmt, etc.) and run relevant checks before submitting changes.
-- When adding new scripts or workflows, update this file and any package-specific READMEs to keep automated collaboration smooth.
-- schema.graphql and graphql.ts files are read-only and should be generated using bash commands, never edited directly.
+- **Turbopack caching** — hot reload occasionally misses changes to module-level constants under `src/lib/sdk/`. Restart the dev server if a change isn't reflected.
+- **Static-build divergence** — `useSearchParams` without `<Suspense>` passes dev/SSR and fails the static export. Run `pnpm build:static` once before merging a new route.
+- **Generated GraphQL types** are ESLint-ignored (`src/lib/sdk/types/graphql.ts`); type errors there mean the file drifted from the API.
