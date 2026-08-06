@@ -32,7 +32,6 @@ import {
   useVaultStats,
   useVaultAccountValue,
 } from '~/hooks/graphql/useAnalytics';
-import RiskDisclaimer from '~/components/shared/RiskDisclaimer';
 import VaultPnlChart from '~/components/vaults/VaultPnlChart';
 import VaultSharePriceChart from '~/components/vaults/VaultSharePriceChart';
 
@@ -402,7 +401,8 @@ const VaultsPageContent = () => {
               // still loading `tvlWei` reads 0, so `exceedsVaultCapacity`
               // understates the true total and a near-cap vault could let an
               // over-cap deposit through the client check.
-              (!!depositAmount &&
+              (isConnected &&
+                !!depositAmount &&
                 (!isBalanceReady ||
                   exceedsVaultCapacity ||
                   depositExceedsBalance)) ||
@@ -425,7 +425,8 @@ const VaultsPageContent = () => {
               if (isVaultPending && pendingAction === 'deposit')
                 return 'Processing...';
               if (vaultData?.paused) return 'Vault Paused';
-              if (isConnected && !isWhitelisted) return 'Request Early Access';
+              if (!isConnected) return 'Connect Wallet';
+              if (!isWhitelisted) return 'Request Early Access';
               if (isInteractionDelayActive) return 'Cooldown in progress';
               if (depositAmount && depositExceedsBalance)
                 return 'Insufficient Balance';
@@ -440,34 +441,18 @@ const VaultsPageContent = () => {
             })()}
           </Button>
         </div>
-        <div className="relative h-4">
-          <div
-            className={`absolute inset-0 transition-opacity duration-300 ${
-              depositAmount ? 'opacity-0' : 'opacity-100'
-            }`}
-          >
-            <RiskDisclaimer
-              className="!text-xs"
-              message="Do not risk more than you can afford to lose"
-            />
+        {interactionDelay > 0n && depositAmount && (
+          <div className="text-xs text-muted-foreground text-center">
+            Minimum Deposit Duration:{' '}
+            {formatDuration(
+              intervalToDuration({
+                start: 0,
+                end: Number(interactionDelay) * 1000,
+              }),
+              { format: ['days', 'hours', 'minutes'] }
+            )}
           </div>
-          {interactionDelay > 0n && (
-            <div
-              className={`absolute inset-0 text-xs text-muted-foreground text-center transition-opacity duration-300 ${
-                depositAmount ? 'opacity-100' : 'opacity-0'
-              }`}
-            >
-              Minimum Deposit Duration:{' '}
-              {formatDuration(
-                intervalToDuration({
-                  start: 0,
-                  end: Number(interactionDelay) * 1000,
-                }),
-                { format: ['days', 'hours', 'minutes'] }
-              )}
-            </div>
-          )}
-        </div>
+        )}
       </TabsContent>
 
       <TabsContent value="withdraw" className="space-y-2 mt-1">
@@ -545,7 +530,7 @@ const VaultsPageContent = () => {
               pricePerShare === '0' ||
               isInteractionDelayActive ||
               !!(pendingRequest && !pendingRequest.processed) ||
-              withdrawExceedsShareBalance
+              (isConnected && withdrawExceedsShareBalance)
             }
             onClick={async () => {
               if (!isConnected) {
@@ -563,6 +548,7 @@ const VaultsPageContent = () => {
               if (isVaultPending && pendingAction === 'withdraw')
                 return 'Processing...';
               if (vaultData?.paused) return 'Vault Paused';
+              if (!isConnected) return 'Connect Wallet';
               if (withdrawExceedsShareBalance) return 'Insufficient Balance';
               if (isInteractionDelayActive) return 'Cooldown in progress';
               if (!pricePerShare || pricePerShare === '0')

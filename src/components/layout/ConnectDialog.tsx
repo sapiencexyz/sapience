@@ -258,8 +258,11 @@ export default function ConnectDialog({
             walletOptions.map((wallet) => {
               const isThisConnecting = connectingId === wallet.id;
               const isWalletConnect = wallet.id === 'walletconnect';
-              const isInstalled =
-                isWalletConnect || Boolean(wallet.eip6963Provider);
+              // WalletConnect is only usable when its connector was registered,
+              // which providers.tsx gates on NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID.
+              const isInstalled = isWalletConnect
+                ? connectors.some((c) => c.id === 'walletConnect')
+                : Boolean(wallet.eip6963Provider);
 
               return (
                 <Button

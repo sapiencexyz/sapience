@@ -255,7 +255,7 @@ const Header = () => {
                       href="https://meridian.xyz"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="ml-3 inline-flex h-7 items-center rounded-full bg-[rgb(103,201,243)] px-3 font-mono text-[11px] font-medium uppercase tracking-wider text-brand-black transition-colors hover:bg-[rgb(103,201,243)]/90 whitespace-nowrap"
+                      className="ml-3 inline-flex h-6 items-center rounded-md bg-[rgb(103,201,243)] px-2 font-mono text-[10px] font-medium uppercase tracking-wider text-brand-black transition-colors hover:bg-[rgb(103,201,243)]/90 whitespace-nowrap"
                     >
                       Trade on Meridian
                     </a>

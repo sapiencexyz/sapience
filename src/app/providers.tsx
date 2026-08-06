@@ -18,6 +18,9 @@ import { SettingsProvider } from '~/lib/context/SettingsContext';
 import { ConnectDialogProvider } from '~/lib/context/ConnectDialogContext';
 import { AuthProvider } from '~/lib/context/AuthContext';
 
+const WALLETCONNECT_PROJECT_ID =
+  process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '';
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -62,16 +65,23 @@ const wagmiConfig = createConfig({
           coinbaseWallet({
             appName: 'Sapience',
           }),
-          walletConnect({
-            projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '',
-            metadata: {
-              name: 'Sapience',
-              description: 'Prediction markets on Ethereum',
-              url: 'https://sapience.xyz',
-              icons: ['https://sapience.xyz/logo.svg'],
-            },
-            showQrModal: true,
-          }),
+          // Registered only when a project id is configured. Passing an empty
+          // one still surfaces WalletConnect in the connect dialog, where
+          // choosing it dead-ends on Reown's "Project ID Not Configured".
+          ...(WALLETCONNECT_PROJECT_ID
+            ? [
+                walletConnect({
+                  projectId: WALLETCONNECT_PROJECT_ID,
+                  metadata: {
+                    name: 'Sapience',
+                    description: 'Prediction markets on Ethereum',
+                    url: 'https://sapience.xyz',
+                    icons: ['https://sapience.xyz/logo.svg'],
+                  },
+                  showQrModal: true,
+                }),
+              ]
+            : []),
         ]
       : [],
   transports,
