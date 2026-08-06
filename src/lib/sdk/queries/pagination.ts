@@ -36,6 +36,12 @@ export async function walkConnection<TNode>(opts: {
 
     const pageInfo = connection.pageInfo;
     if (!pageInfo?.hasNextPage || !pageInfo.endCursor) return;
+    // A cursor identical to the one we just sent means the server replayed the
+    // same page, so the next request would be byte-identical and can never make
+    // progress. The Meridian API does exactly this under `OPEN_INTEREST`
+    // ordering — see the matching guard in `useCursorPagination`. Without this
+    // the walk issues `maxPages` identical requests and then throws.
+    if (pageInfo.endCursor === after) return;
     after = pageInfo.endCursor;
   }
 }

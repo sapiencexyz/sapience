@@ -16,7 +16,9 @@ export function FocusAreaBadge({ categorySlug }: FocusAreaBadgeProps) {
 
   return (
     <Link
-      href={`/markets?category=${encodeURIComponent(categorySlug)}`}
+      // The markets list is at the root; linking to /markets would bounce
+      // through the redirect page and cost a round trip.
+      href={`/?category=${encodeURIComponent(categorySlug)}`}
       className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium transition-[filter] hover:brightness-125"
       style={{
         backgroundColor: getColorWithAlpha(style.color, 0.2),

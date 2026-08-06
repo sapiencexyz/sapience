@@ -355,6 +355,61 @@ describe('VaultsPageContent deposit & withdraw', () => {
     ).toBeInTheDocument();
   });
 
+  it('disables the deposit button while the quote signature is invalid', () => {
+    // The label alone is not enough: `pricePerShare` sets the slippage floor
+    // (`expectedSharesWei`), and under-requesting shares always passes the
+    // manager's on-chain check, so an unsigned quote must actually block
+    // submission rather than just relabel the button.
+    mockUsePassiveLiquidityVault.mockReturnValue({
+      ...passiveVaultDefaults(),
+      quoteSignatureValid: false,
+    });
+
+    render(<VaultsPageContent />);
+
+    const inputs = screen.getAllByPlaceholderText('0.0');
+    fireEvent.change(inputs[0], { target: { value: '10' } });
+
+    expect(
+      screen.getByRole('button', { name: /Waiting for Price Quote/ })
+    ).toBeDisabled();
+  });
+
+  it('enables the deposit button once the quote signature is valid', () => {
+    mockUsePassiveLiquidityVault.mockReturnValue({
+      ...passiveVaultDefaults(),
+      quoteSignatureValid: true,
+    });
+
+    render(<VaultsPageContent />);
+
+    const inputs = screen.getAllByPlaceholderText('0.0');
+    fireEvent.change(inputs[0], { target: { value: '10' } });
+
+    expect(
+      screen.queryByRole('button', { name: /Waiting for Price Quote/ })
+    ).toBeNull();
+    // Exact name: a "Deposit" tab trigger also matches a looser pattern.
+    expect(
+      screen.getByRole('button', { name: 'Submit Deposit' })
+    ).not.toBeDisabled();
+  });
+
+  it('treats a checksummed whitelist address as whitelisted', () => {
+    // DEPOSIT_WHITELIST is compared against a lowercased address, so a
+    // checksummed entry silently never matches and locks that user out.
+    mockUseCurrentAddress.mockReturnValue({
+      currentAddress: '0x7BB4e4E4674c625b23C550A74cfcfF9Ec50064F3',
+      isConnected: true,
+    });
+
+    render(<VaultsPageContent />);
+
+    expect(
+      screen.queryByRole('button', { name: /Request Early Access/ })
+    ).toBeNull();
+  });
+
   it('shows the singles vault tab while keeping options hidden', () => {
     render(<VaultsPageContent />);
 

@@ -32,7 +32,9 @@ export default function PredictionDialog({
           picks={pickConfig?.picks ?? []}
           conditionsMap={conditionsMap}
           collateralSymbol={collateralSymbol}
-          positionUrl={`/predictions/${prediction.predictionId}`}
+          // No positionUrl: /predictions/[id] was removed, so passing one
+          // renders a link straight to a 404. PositionSummary omits the link
+          // when this is undefined.
         />
       </DialogContent>
     </Dialog>

@@ -95,10 +95,15 @@ describe('paginateConnection', () => {
   });
 
   test('throws when maxPages is exceeded', async () => {
-    const fetchPage = vi.fn().mockResolvedValue({
-      nodes: [{ id: 'a' }],
-      pageInfo: { hasNextPage: true, endCursor: 'next' },
-    });
+    // Cursors must advance each page, otherwise the replay guard stops the
+    // walk before maxPages is reached.
+    let n = 0;
+    const fetchPage = vi.fn().mockImplementation(() =>
+      Promise.resolve({
+        nodes: [{ id: 'a' }],
+        pageInfo: { hasNextPage: true, endCursor: `next-${(n += 1)}` },
+      })
+    );
 
     await expect(
       paginateConnection({ fetchPage, maxPages: 2 })
@@ -160,11 +165,38 @@ describe('walkConnection', () => {
     expect(fetchPage).toHaveBeenCalledTimes(1);
   });
 
-  test('throws when maxPages is exceeded', async () => {
+  test('stops when the server returns a non-advancing cursor', async () => {
+    // The Meridian API replays page one under some orderings, handing back the
+    // cursor it was given. Without a guard this walks to maxPages (500
+    // identical requests) and then throws.
     const fetchPage = vi.fn().mockResolvedValue({
       nodes: [{ id: 'a' }],
-      pageInfo: { hasNextPage: true, endCursor: 'next' },
+      pageInfo: { hasNextPage: true, endCursor: 'STUCK' },
     });
+
+    const seen: string[] = [];
+    await walkConnection({
+      fetchPage,
+      onPage: (nodes) => {
+        seen.push(...nodes.map((n) => n.id));
+      },
+    });
+
+    // First page advanced from null; the second came back under the same
+    // cursor, so the walk stops rather than requesting it forever.
+    expect(fetchPage).toHaveBeenCalledTimes(2);
+    expect(seen).toEqual(['a', 'a']);
+  });
+
+  test('throws when maxPages is exceeded', async () => {
+    // Cursors advance each page here, so only maxPages bounds the walk.
+    let n = 0;
+    const fetchPage = vi.fn().mockImplementation(() =>
+      Promise.resolve({
+        nodes: [{ id: 'a' }],
+        pageInfo: { hasNextPage: true, endCursor: `next-${(n += 1)}` },
+      })
+    );
 
     await expect(
       walkConnection({ fetchPage, maxPages: 2, onPage: () => undefined })

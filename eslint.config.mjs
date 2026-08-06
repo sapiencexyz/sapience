@@ -35,9 +35,11 @@ export default typescriptPlugin.config(
     },
   },
 
-  // Targeted overrides: allow hex in OG renderer and manifest where required
+  // Targeted override: the manifest needs literal hex colours. The OG renderer
+  // and its palette used to be listed here too; both were removed with the
+  // server routes.
   {
-    files: ['src/app/manifest.ts', 'src/app/og/**/*.{ts,tsx}', 'src/lib/theme/ogPalette.ts'],
+    files: ['src/app/manifest.ts'],
     rules: {
       'no-restricted-syntax': 'off',
     },

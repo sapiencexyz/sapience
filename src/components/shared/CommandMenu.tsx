@@ -10,6 +10,8 @@ import {
   Vault,
   User,
   FileText,
+  LineChart,
+  Settings,
   Loader2,
   AlertCircle,
 } from 'lucide-react';
@@ -43,7 +45,9 @@ const PAGES = [
   { name: 'Leaderboard', href: '/leaderboard', icon: Trophy },
   { name: 'Feed', href: '/feed', icon: Radio },
   { name: 'Vaults', href: '/vaults', icon: Vault },
-  { name: 'Profile', href: '/profile', icon: User },
+  // No bare /profile route exists — profiles are /profile/[address] only.
+  { name: 'Analytics', href: '/analytics', icon: LineChart },
+  { name: 'Settings', href: '/settings', icon: Settings },
   { name: 'Docs', href: 'https://docs.sapience.xyz', icon: FileText },
 ] as const;
 

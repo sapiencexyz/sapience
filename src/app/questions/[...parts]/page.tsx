@@ -4,10 +4,6 @@ import { buildGraphQLGetUrl } from '~/lib/data/graphql';
 
 const APP_URL = 'https://sapience.xyz';
 
-// Re-generate page metadata every 15 minutes so the OG image URL
-// cache-buster advances and social platforms fetch a fresh image.
-export const revalidate = 900;
-
 type Props = {
   params: Promise<{ parts: string[] }>;
 };
@@ -76,13 +72,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const questionTitle = await fetchQuestionTitle(conditionId, resolverAddress);
 
-  const ogParams = new URLSearchParams({ conditionId });
-  if (resolverAddress) ogParams.set('resolver', resolverAddress);
-  // Time-bucketed cache buster: advances every 15 minutes so social
-  // platforms (Twitter, Discord, Slack) re-scrape a fresh OG image.
-  const cacheBucket = Math.floor(Date.now() / (15 * 60 * 1000));
-  ogParams.set('v', String(cacheBucket));
-  const ogImageUrl = `${APP_URL}/og/question?${ogParams.toString()}`;
+  // The dynamic `/og/question` renderer was a route handler, which `output:
+  // 'export'` cannot emit — it was removed with the rest of the server routes.
+  // The static card carries no per-question text, so there is nothing left to
+  // cache-bust.
+  const ogImageUrl = `${APP_URL}/og-image.png`;
 
   return {
     title: questionTitle || 'Question',
