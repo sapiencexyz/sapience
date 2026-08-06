@@ -27,6 +27,7 @@ import Loader from '~/components/shared/Loader';
 import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
 import { type Period } from '~/components/shared/PeriodFilter';
 import { useStableYDomain } from '~/components/vaults/useStableYDomain';
+import { useSeriesRevealAnimation } from '~/components/vaults/useSeriesRevealAnimation';
 
 function formatTimestampTick(value: number): string {
   const date = new Date(value * 1000);
@@ -173,9 +174,13 @@ export default function VaultSharePriceChart({
   );
   // The series streams in newest-first, so hold the domain steady while it
   // extends leftward instead of rescaling on every partial page.
-  const yDomain = useStableYDomain(
-    computedYDomain,
-    `${vaultAddress}:${period}`
+  const seriesKey = `${vaultAddress}:${period}`;
+  const yDomain = useStableYDomain(computedYDomain, seriesKey);
+  // Reveal once, then let live quote ticks and refetched snapshots splice in
+  // without the path tweening index-by-index into a new shape.
+  const animateSeries = useSeriesRevealAnimation(
+    seriesKey,
+    chartData.length > 0
   );
 
   // Evenly time-spaced tick positions for the numeric x-axis; recharts' own
@@ -330,7 +335,7 @@ export default function VaultSharePriceChart({
                     chartData.length === 1 ? { r: 4, strokeWidth: 0 } : false
                   }
                   activeDot={{ r: 4, strokeWidth: 0 }}
-                  isAnimationActive
+                  isAnimationActive={animateSeries}
                   animationDuration={500}
                 />
               </AreaChart>

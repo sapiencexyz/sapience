@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { DEFAULT_CHAIN_ID } from '~/lib/sdk/constants';
 import {
   fetchProtocolAnalytics,
@@ -23,50 +23,37 @@ const CACHE_TIME_MS = 60 * 1000;
  * sites can read it unconditionally; `enabled` keeps the network call gated.
  */
 export function useVaultStats(vaultAddress?: string) {
-  const queryClient = useQueryClient();
   const address = vaultAddress?.toLowerCase() ?? null;
-  const queryKey = ['vaultStats', address];
   // Baseline for incremental refetches. Deliberately NOT read from the query
-  // cache: onProgress fills the cache with newest-first partials, and a
-  // partial fed back as baseline would make the fetcher treat its missing
-  // head as already-fetched — permanently truncating the series after one
-  // mid-walk failure. Only a COMPLETED walk's result is a valid baseline, so
-  // it lives in a ref set on success, keyed by address so a vault switch
-  // can't leak the previous vault's series.
+  // cache: a walk that died mid-flight covers only the newest pages, and
+  // feeding that back as baseline would make the fetcher treat its missing
+  // head as already-fetched — permanently truncating the series. Only a
+  // COMPLETED walk's result is a valid baseline, so it lives in a ref set on
+  // success, keyed by address so a vault switch can't leak the previous
+  // vault's series.
   const lastComplete = useRef<{ address: string; stats: VaultStat[] } | null>(
     null
   );
   return useQuery<VaultStat[]>({
-    queryKey,
+    queryKey: ['vaultStats', address],
     queryFn: async () => {
       if (!vaultAddress || !address) return [];
-      try {
-        const stats = await fetchVaultStats(vaultAddress, DEFAULT_CHAIN_ID, {
-          // Stream pages into the cache as they land: the fetcher loads
-          // newest-first, so the chart paints recent history immediately
-          // and grows leftward while older pages arrive.
-          onProgress: (partial) => queryClient.setQueryData(queryKey, partial),
-          // Seed interval refetches so they only pull the tail (one request)
-          // instead of re-walking every page.
-          baseline:
-            lastComplete.current?.address === address
-              ? lastComplete.current.stats
-              : undefined,
-        });
-        lastComplete.current = { address, stats };
-        return stats;
-      } catch (err) {
-        // Roll the cache back so a mid-walk failure can't leave a truncated
-        // partial rendered as complete, fresh data. With no prior complete
-        // series, an empty array keeps consumers on their no-data state.
-        queryClient.setQueryData(
-          queryKey,
+      // No `onProgress`: the fetcher walks pages newest-first, so streaming
+      // partials in would repaint the chart once per page-batch — the axis
+      // rescales, the x-domain stretches leftward and the whole path
+      // re-lays-out several times before settling. One publish of the
+      // complete series keeps the loader up a beat longer and lands the
+      // chart in its final shape.
+      const stats = await fetchVaultStats(vaultAddress, DEFAULT_CHAIN_ID, {
+        // Seed interval refetches so they only pull the tail (one request)
+        // instead of re-walking every page.
+        baseline:
           lastComplete.current?.address === address
             ? lastComplete.current.stats
-            : []
-        );
-        throw err;
-      }
+            : undefined,
+      });
+      lastComplete.current = { address, stats };
+      return stats;
     },
     enabled: !!vaultAddress,
     staleTime: CACHE_TIME_MS,

@@ -5,12 +5,12 @@ import { useRef } from 'react';
 export type YDomain = [number, number];
 
 /**
- * Keeps a chart's y-domain from rescaling while its series streams in.
+ * Keeps a chart's y-domain from rescaling as its series extends.
  *
- * `fetchVaultStats` walks pages newest-first and pushes each partial into the
- * query cache, so the series grows leftward across several renders. Recomputing
- * the domain from each partial makes every existing point jump vertically — the
- * line "bounces" into a new shape instead of simply extending.
+ * The share-price chart restamps its trailing point on every live WS quote,
+ * and both charts append snapshots on the 60s refetch. Recomputing the domain
+ * from each update makes every existing point jump vertically — the line
+ * "bounces" into a new shape instead of simply extending.
  *
  * Returning the union of the previous domain and the newly computed one fixes
  * that: points only ever move when a genuinely new extreme arrives. Because the

@@ -163,21 +163,20 @@ describe('useVaultStats', () => {
       '0xVault',
       DEFAULT_CHAIN_ID,
       expect.objectContaining({
-        onProgress: expect.any(Function),
         // First load: nothing cached yet to refetch incrementally from.
         baseline: undefined,
       })
     );
   });
 
-  it('streams progressive pages into the query cache via onProgress', async () => {
+  it('publishes nothing until the whole page walk resolves', async () => {
+    // Mid-walk partials would repaint the chart once per page-batch, which
+    // reads as choppy re-layout rather than a series loading. One publish.
     const older = { ...vaultStat, timestamp: vaultStat.timestamp - 3600 };
     let releaseFinal: (() => void) | undefined;
     mockFetchVaultStats.mockImplementation(
       (_addr: string, _chain: number, opts: Record<string, unknown>) => {
-        const onProgress = opts.onProgress as (s: unknown[]) => void;
-        // Newest page lands first; the full series resolves later.
-        onProgress([vaultStat]);
+        expect(opts.onProgress).toBeUndefined();
         return new Promise((resolve) => {
           releaseFinal = () => resolve([older, vaultStat]);
         });
@@ -189,8 +188,10 @@ describe('useVaultStats', () => {
       wrapper: createWrapper().wrapper,
     });
 
-    // The partial (newest-first) page is visible before the fetch resolves.
-    await waitFor(() => expect(result.current.data).toEqual([vaultStat]));
+    // Newest pages have landed inside the fetcher, but consumers stay on the
+    // loading state — there is no partial series to render.
+    await waitFor(() => expect(result.current.isLoading).toBe(true));
+    expect(result.current.data).toBeUndefined();
 
     releaseFinal?.();
     await waitFor(() =>
@@ -221,16 +222,13 @@ describe('useVaultStats', () => {
     await waitFor(() => expect(result.current.isError).toBe(true));
   });
 
-  it('rolls streamed partials back on failure and never baselines from them', async () => {
-    // First fetch: streams a newest-first partial into the cache, then dies
-    // mid-walk. The partial must not survive as data, and must not become
-    // the next fetch's baseline (it is not a [0, N) prefix of the series).
-    mockFetchVaultStats.mockImplementationOnce(
-      async (_addr: string, _chain: number, opts: Record<string, unknown>) => {
-        (opts.onProgress as (s: unknown[]) => void)([vaultStat]);
-        throw new Error('walk died');
-      }
-    );
+  it('never baselines from a walk that died mid-flight', async () => {
+    // A failed walk covered only the newest pages. Its coverage must not seed
+    // the next fetch's baseline — the missing head would be treated as
+    // already-fetched and the hole would persist across refetches.
+    mockFetchVaultStats.mockImplementationOnce(async () => {
+      throw new Error('walk died');
+    });
 
     const mod = await getModule();
     const { result } = renderHook(() => mod.useVaultStats('0xVault'), {
@@ -238,9 +236,9 @@ describe('useVaultStats', () => {
     });
 
     await waitFor(() => expect(result.current.isError).toBe(true));
-    // Cache rolled back: no prior complete series, so an empty array — the
-    // truncated partial is not rendered as complete data.
-    expect(result.current.data).toEqual([]);
+    // Nothing was published mid-walk, so there is no truncated series to
+    // render as complete data.
+    expect(result.current.data).toBeUndefined();
 
     // Retry (beforeEach default resolves [vaultStat]): no completed fetch
     // yet, so no baseline — a full walk re-fetches everything.

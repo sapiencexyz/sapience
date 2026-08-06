@@ -24,6 +24,7 @@ import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '~/lib/sdk/constants';
 import { useVaultStats, type VaultStat } from '~/hooks/graphql/useAnalytics';
 import { toVaultStatPoint } from '~/lib/adapters/vaultStat';
 import { useStableYDomain } from '~/components/vaults/useStableYDomain';
+import { useSeriesRevealAnimation } from '~/components/vaults/useSeriesRevealAnimation';
 import Loader from '~/components/shared/Loader';
 import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
 import { type Period } from '~/components/shared/PeriodFilter';
@@ -257,9 +258,14 @@ export default function VaultPnlChart({
   );
   // The series streams in newest-first, so hold the domain steady while it
   // extends leftward instead of rescaling on every partial page.
-  const yDomain = useStableYDomain(
-    computedYDomain,
-    `${period}:${displayMode}:${logScale}`
+  const seriesKey = `${period}:${displayMode}:${logScale}`;
+  const yDomain = useStableYDomain(computedYDomain, seriesKey);
+  // Reveal once per series, then let refetched snapshots splice in without the
+  // path tweening index-by-index into a new shape. Mode/scale swaps re-arm it,
+  // so the deliberate tween between `pct` and `pnlDelta` is preserved.
+  const animateSeries = useSeriesRevealAnimation(
+    seriesKey,
+    displayData.length > 0
   );
 
   // Evenly time-spaced tick positions for the numeric x-axis; recharts' own
@@ -452,7 +458,7 @@ export default function VaultPnlChart({
                   }
                   baseValue={yDomain[0]}
                   activeDot={{ r: 4, strokeWidth: 0 }}
-                  isAnimationActive
+                  isAnimationActive={animateSeries}
                   animationDuration={500}
                 />
               </AreaChart>
