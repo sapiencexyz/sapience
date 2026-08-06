@@ -122,10 +122,23 @@ export function useCursorPagination<TNode>(
     // `after: null` is the first page; subsequent pages thread the previous
     // page's endCursor in via getNextPageParam.
     initialPageParam: null as string | null,
-    getNextPageParam: (lastPage: RelayConnection<TNode>) =>
-      lastPage.pageInfo.hasNextPage
-        ? (lastPage.pageInfo.endCursor ?? undefined)
-        : undefined,
+    getNextPageParam: (
+      lastPage: RelayConnection<TNode>,
+      _allPages: RelayConnection<TNode>[],
+      lastPageParam: string | null
+    ) => {
+      if (!lastPage.pageInfo.hasNextPage) return undefined;
+      const next = lastPage.pageInfo.endCursor;
+      if (!next) return undefined;
+      // A cursor identical to the one we just sent means the server replayed
+      // the same page, so requesting it again would loop forever. This is not
+      // hypothetical: the API's OPEN_INTEREST ordering serializes its sort key
+      // as scientific notation ("1.23e+22") and seeks on it lexicographically,
+      // so the predicate readmits rows it already returned and every page
+      // after the first is page one. Stop instead of hammering the endpoint.
+      if (next === lastPageParam) return undefined;
+      return next;
+    },
     queryFn: async ({ pageParam }) => {
       const resp = await graphqlRequest<Record<string, RelayConnection<TNode>>>(
         query,

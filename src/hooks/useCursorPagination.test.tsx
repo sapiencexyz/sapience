@@ -222,6 +222,51 @@ describe('useCursorPagination', () => {
     expect(mockGraphqlRequest.mock.calls.length).toBe(callsAfterFirstPage);
   });
 
+  it('stops paging when the server returns a non-advancing cursor', async () => {
+    const useCursorPagination = await getHook();
+
+    // The Meridian API's OPEN_INTEREST ordering hands back the cursor it was
+    // given, so every page after the first repeats page one. Without a guard
+    // the sentinel never leaves the fold and this refetches forever.
+    mockGraphqlRequest.mockImplementation(() =>
+      Promise.resolve(conn([node('1'), node('2')], true, 'CURSOR_A'))
+    );
+
+    const { result } = renderHook(
+      () =>
+        useCursorPagination<Node>({
+          queryKey: ['stuck-cursor'],
+          query: QUERY,
+          connectionKey: 'things',
+          pageSize: 2,
+        }),
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => {
+      expect(result.current.data.map((n) => n.id)).toEqual(['1', '2']);
+    });
+    // The first page advanced from `null`, so paging is still live.
+    expect(result.current.hasNextPage).toBe(true);
+
+    await act(async () => {
+      result.current.loadMore();
+    });
+
+    // Page two came back under the same cursor we sent — treat the connection
+    // as exhausted rather than requesting that identical page again.
+    await waitFor(() => {
+      expect(result.current.hasNextPage).toBe(false);
+    });
+
+    const callsSoFar = mockGraphqlRequest.mock.calls.length;
+    await act(async () => {
+      result.current.loadMore();
+    });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(mockGraphqlRequest.mock.calls.length).toBe(callsSoFar);
+  });
+
   it('merges caller variables into each request', async () => {
     const useCursorPagination = await getHook();
 
