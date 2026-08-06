@@ -226,10 +226,21 @@ const Header = () => {
 
   return (
     <>
+      {/* Persistent Meridian CTA on mobile — the desktop header carries this
+          as a pill beside the logo instead. */}
+      <a
+        href="https://meridian.xyz"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="xl:hidden fixed top-0 left-0 right-0 z-40 flex h-8 items-center justify-center bg-[rgb(103,201,243)] font-mono text-[13px] font-medium uppercase tracking-wider text-brand-black"
+      >
+        Trade on Meridian
+      </a>
+
       {/* Top Header Bar */}
       <header
         ref={headerRef}
-        className={`w-full pt-2 pb-2 xl:py-6 z-[50] sticky top-0 left-0 right-0 pointer-events-none bg-background/30 backdrop-blur-sm border-b border-border/20 overflow-x-clip xl:bg-transparent xl:backdrop-blur-0 xl:border-b-0 xl:overflow-visible`}
+        className={`w-full pt-2 pb-2 xl:py-6 z-[50] sticky top-8 xl:top-0 left-0 right-0 pointer-events-none bg-background/30 backdrop-blur-sm border-b border-border/20 overflow-x-clip xl:bg-transparent xl:backdrop-blur-0 xl:border-b-0 xl:overflow-visible`}
       >
         <div className={`mx-auto px-4 xl:px-6 transition-all`}>
           <div
@@ -255,7 +266,7 @@ const Header = () => {
                       href="https://meridian.xyz"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="ml-3 inline-flex h-6 items-center rounded-md bg-[rgb(103,201,243)] px-2 font-mono text-[10px] font-medium uppercase tracking-wider text-brand-black transition-colors hover:bg-[rgb(103,201,243)]/90 whitespace-nowrap"
+                      className="ml-3 hidden xl:inline-flex h-6 items-center rounded-md bg-[rgb(103,201,243)] px-2 font-mono text-[10px] font-medium uppercase tracking-wider text-brand-black transition-colors hover:bg-[rgb(103,201,243)]/90 whitespace-nowrap"
                     >
                       {/* The logo, this button and the menu trigger share the
                           top row, so drop to just "Trade" on narrow phones. */}

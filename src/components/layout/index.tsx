@@ -22,7 +22,9 @@ const Layout = ({ children }: { children: ReactNode }) => {
       style={{ '--sidebar-width': '12rem' } as React.CSSProperties}
     >
       <div
-        className="min-h-[100dvh] flex flex-col w-full relative z-10"
+        // The mobile Meridian bar is fixed at the very top; reserve its height
+        // so the header (and everything under it) starts below the bar.
+        className="min-h-[100dvh] flex flex-col w-full relative z-10 pt-8 xl:pt-0"
         style={
           {
             '--page-top-offset': 'var(--header-height, 0px)',
