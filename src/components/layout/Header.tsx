@@ -257,7 +257,12 @@ const Header = () => {
                       rel="noopener noreferrer"
                       className="ml-3 inline-flex h-6 items-center rounded-md bg-[rgb(103,201,243)] px-2 font-mono text-[10px] font-medium uppercase tracking-wider text-brand-black transition-colors hover:bg-[rgb(103,201,243)]/90 whitespace-nowrap"
                     >
-                      Trade on Meridian
+                      {/* The logo, this button and the menu trigger share the
+                          top row, so drop to just "Trade" on narrow phones. */}
+                      <span className="sm:hidden">Trade</span>
+                      <span className="hidden sm:inline">
+                        Trade on Meridian
+                      </span>
                     </a>
                   </div>
                 </div>
