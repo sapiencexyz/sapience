@@ -257,7 +257,7 @@ function AnalyticsPageContent(): React.ReactElement {
 
   return (
     <div className="relative">
-      <div className="container max-w-[1200px] mx-auto px-4 pt-10 md:pt-14 lg:pt-16 pb-12 relative z-10">
+      <div className="container max-w-[1200px] mx-auto px-4 pt-10 md:pt-10 lg:pt-6 pb-12 relative z-10">
         {/* Header */}
         <div className="mb-6 md:mb-8">
           <h1 className="text-3xl md:text-5xl font-sans font-normal text-foreground">

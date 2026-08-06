@@ -3,7 +3,6 @@
 import type { ReactNode } from 'react';
 
 import Header from './Header';
-import Footer from './Footer';
 import { SidebarInset, SidebarProvider } from '~/components/ui/sidebar';
 
 const ContentArea = ({ children }: { children: ReactNode }) => {
@@ -23,11 +22,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
       style={{ '--sidebar-width': '12rem' } as React.CSSProperties}
     >
       <div
-        // The footer is `sm:fixed` (~33px tall on sm+); reserve space so
-        // page content doesn't slide underneath it. On mobile the footer
-        // is `position: relative` and flows with the page, so no padding
-        // is needed there.
-        className="min-h-[100dvh] flex flex-col w-full relative z-10 pb-[33px]"
+        className="min-h-[100dvh] flex flex-col w-full relative z-10"
         style={
           {
             '--page-top-offset': 'var(--header-height, 0px)',
@@ -37,10 +32,6 @@ const Layout = ({ children }: { children: ReactNode }) => {
         <Header />
         <div className="flex-1 flex w-full">
           <ContentArea>{children}</ContentArea>
-        </div>
-        {/* Desktop footer */}
-        <div className="hidden xl:block">
-          <Footer />
         </div>
       </div>
     </SidebarProvider>

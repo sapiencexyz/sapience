@@ -251,6 +251,14 @@ const Header = () => {
                         />
                       </div>
                     </Link>
+                    <a
+                      href="https://meridian.xyz"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="ml-3 inline-flex h-7 items-center rounded-full bg-[rgb(103,201,243)] px-3 font-mono text-[11px] font-medium uppercase tracking-wider text-brand-black transition-colors hover:bg-[rgb(103,201,243)]/90 whitespace-nowrap"
+                    >
+                      Trade on Meridian
+                    </a>
                   </div>
                 </div>
                 {/* Mobile Sidebar Trigger (outside blurred div, to the right) */}
@@ -371,7 +379,7 @@ const Header = () => {
                     onClick={openConnectDialog}
                     className="bg-primary hover:bg-primary/90 rounded-md h-10 xl:h-9 w-auto px-4 ml-1.5 xl:ml-0 gap-2"
                   >
-                    <span>Log in</span>
+                    <span>Connect</span>
                   </Button>
                 </>
               )}

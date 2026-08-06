@@ -228,21 +228,20 @@ const MarketsPage = () => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4 }}
-      className="relative w-full max-w-full overflow-visible flex flex-col items-start"
+      className="relative w-full max-w-full overflow-visible flex flex-col"
     >
       <div
-        className="flex-1 w-full min-w-0 max-w-full overflow-visible flex flex-col gap-4 pb-4 lg:pb-6"
+        className="w-full min-w-0 max-w-full overflow-visible flex flex-col gap-4 pb-4 lg:pb-6"
         style={{ minHeight: 'calc(100dvh - var(--page-top-offset, 0px))' }}
       >
-        <div className="relative w-full max-w-full overflow-x-hidden flex-1 flex flex-col min-h-0">
+        <div className="relative w-full max-w-full overflow-x-hidden flex flex-col">
           <motion.div
-            className="h-full"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
           >
-            <div className="flex flex-col gap-2 sm:gap-4 h-full pt-2">
+            <div className="flex flex-col gap-2 sm:gap-4 pt-2">
               <div>
                 <TagBar
                   searchTerm={searchTerm}

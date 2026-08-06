@@ -923,13 +923,15 @@ export default function QuestionsTable({
         filterVolume={filterVolume}
         onFilterVolumeChange={onFilterVolumeChange}
       />
+      {/* The table grows with its rows and the page scrolls; it does not own a
+          scrollport. An inner scrollport would keep the infinite-scroll
+          sentinel below its own fold, so paging would never trigger. */}
       <div
         ref={scrollContainerRef}
         className={cn(
-          'rounded-md border border-brand-white/20 overflow-hidden bg-brand-black flex-1 min-h-0',
+          'rounded-md border border-brand-white/20 overflow-hidden bg-brand-black',
           showLoading && 'flex flex-col'
         )}
-        style={{ overflowY: 'auto' }}
       >
         <Table>
           <TableHeader>

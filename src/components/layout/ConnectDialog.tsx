@@ -240,7 +240,7 @@ export default function ConnectDialog({
       <DialogContent className="top-1/2 translate-y-[-50%] sm:max-w-[420px] p-6 gap-0 border-border/50 bg-[hsl(var(--background))]">
         <DialogHeader className="pb-6">
           <DialogTitle className="text-center text-xl font-normal">
-            Log in
+            Connect
           </DialogTitle>
         </DialogHeader>
 

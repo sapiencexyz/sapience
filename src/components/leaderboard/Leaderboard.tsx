@@ -11,14 +11,7 @@ import { useMemo } from 'react';
 
 import ProfitCell from './ProfitCell';
 import { cn } from '~/lib/cn';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '~/components/ui/table';
+import { Table, TableBody, TableCell, TableRow } from '~/components/ui/table';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import { useCurrentAddress } from '~/hooks/blockchain/useCurrentAddress';
@@ -97,33 +90,6 @@ const PnLLeaderboard = () => {
   return (
     <div className="border border-border rounded-lg overflow-hidden bg-brand-black">
       <Table>
-        <TableHeader>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow
-              key={headerGroup.id}
-              className="hover:!bg-background bg-background border-b border-brand-white/20 shadow-[inset_0_1px_3px_rgba(0,0,0,0.3)]"
-            >
-              {headerGroup.headers.map((header) => (
-                <TableHead
-                  key={header.id}
-                  className={cn(
-                    'p-3 text-left text-muted-foreground font-normal text-xs md:text-sm',
-                    {
-                      'text-center': header.id === 'rank',
-                      'w-14 md:w-16': header.id === 'rank',
-                      'text-right whitespace-nowrap': header.id === 'totalPnL',
-                    }
-                  )}
-                >
-                  {flexRender(
-                    header.column.columnDef.header,
-                    header.getContext()
-                  )}
-                </TableHead>
-              ))}
-            </TableRow>
-          ))}
-        </TableHeader>
         <TableBody>
           {(() => {
             const rows = table.getRowModel().rows;
