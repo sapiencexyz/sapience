@@ -744,7 +744,31 @@ const VaultsPageContent = () => {
                   </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="flex flex-col gap-6 order-2 lg:order-1 lg:min-h-0">
+                    <div className="flex flex-col order-2 lg:order-1 lg:min-h-0">
+                      <div className="p-5 pt-4 rounded-lg bg-[hsl(var(--primary)/_0.05)] border border-brand-white/10 lg:flex-1 lg:flex lg:flex-col lg:min-h-[360px] lg:overflow-hidden">
+                        {activeChart === 'pnl' ? (
+                          <VaultPnlChart
+                            vaultStats={vaultStats ?? undefined}
+                            isLoading={isAnalyticsLoading}
+                            isError={isAnalyticsError}
+                            className="flex-1"
+                            onToggleChart={() => setActiveChart('sharePrice')}
+                          />
+                        ) : (
+                          <VaultSharePriceChart
+                            vaultStats={vaultStats ?? undefined}
+                            vaultAddress={VAULT_ADDRESS}
+                            chainId={VAULT_CHAIN_ID}
+                            isLoading={isAnalyticsLoading}
+                            isError={isAnalyticsError}
+                            className="flex-1"
+                            onToggleChart={() => setActiveChart('pnl')}
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-6 order-1 lg:order-2">
                       <div className="p-5 pt-4 rounded-lg bg-[hsl(var(--primary)/_0.05)] border border-brand-white/10">
                         <h4 className="font-mono text-base uppercase tracking-wider text-brand-white mb-3 sm:mb-2">
                           Vault Balance
@@ -835,30 +859,6 @@ const VaultsPageContent = () => {
                         </div>
                       </div>
 
-                      <div className="p-5 pt-4 rounded-lg bg-[hsl(var(--primary)/_0.05)] border border-brand-white/10 lg:flex-1 lg:flex lg:flex-col lg:min-h-[360px] lg:overflow-hidden">
-                        {activeChart === 'pnl' ? (
-                          <VaultPnlChart
-                            vaultStats={vaultStats ?? undefined}
-                            isLoading={isAnalyticsLoading}
-                            isError={isAnalyticsError}
-                            className="flex-1"
-                            onToggleChart={() => setActiveChart('sharePrice')}
-                          />
-                        ) : (
-                          <VaultSharePriceChart
-                            vaultStats={vaultStats ?? undefined}
-                            vaultAddress={VAULT_ADDRESS}
-                            chainId={VAULT_CHAIN_ID}
-                            isLoading={isAnalyticsLoading}
-                            isError={isAnalyticsError}
-                            className="flex-1"
-                            onToggleChart={() => setActiveChart('pnl')}
-                          />
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col gap-6 order-1 lg:order-2">
                       {pendingRequest &&
                         !pendingRequest.processed &&
                         (() => {

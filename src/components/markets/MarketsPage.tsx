@@ -98,7 +98,7 @@ const MarketsPage = () => {
         ...prev,
         selectedCategories: [category],
       }));
-      router.replace('/markets', { scroll: false });
+      router.replace('/', { scroll: false });
     }
   }, [searchParams, router, setFilters]);
 
@@ -244,9 +244,6 @@ const MarketsPage = () => {
           >
             <div className="flex flex-col gap-2 sm:gap-4 h-full pt-2">
               <div>
-                <h2 className="sc-heading text-foreground mb-3 px-1">
-                  Prediction Markets
-                </h2>
                 <TagBar
                   searchTerm={searchTerm}
                   onSearchChange={setSearchTerm}

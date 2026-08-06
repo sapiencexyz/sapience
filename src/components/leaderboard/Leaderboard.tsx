@@ -7,7 +7,6 @@ import {
   type ColumnDef,
 } from '@tanstack/react-table';
 import dynamic from 'next/dynamic';
-import Link from 'next/link';
 import { useMemo } from 'react';
 
 import ProfitCell from './ProfitCell';
@@ -49,16 +48,6 @@ const Leaderboard = () => {
       <h1 className="text-3xl md:text-5xl font-sans font-normal mb-6 text-foreground">
         Leaderboard
       </h1>
-      <p className="text-xl font-heading font-normal mb-6 text-muted-foreground leading-relaxed">
-        Profit ranks{' '}
-        <Link
-          href="/markets"
-          className="underline decoration-1 decoration-foreground/10 underline-offset-4 hover:decoration-foreground/60"
-        >
-          prediction market
-        </Link>{' '}
-        participants by how much they&apos;ve won.
-      </p>
       <PnLLeaderboard />
     </div>
   );

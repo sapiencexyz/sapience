@@ -318,7 +318,7 @@ const SettingsPageContent = () => {
             <Loader className="w-5 h-5" />
           </div>
         ) : (
-          <Card className="bg-background">
+          <Card className="bg-[hsl(var(--primary)/_0.05)] border border-brand-white/10">
             <CardContent className="p-8">
               <div className="space-y-6">
                 <div className="grid gap-2">

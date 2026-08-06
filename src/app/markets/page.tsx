@@ -1,18 +1,6 @@
-import type { Metadata } from 'next';
-import MarketsPageClient from './MarketsPageClient';
-import PageContainer from '~/components/layout/PageContainer';
+import { redirect } from 'next/navigation';
 
-export const metadata: Metadata = {
-  title: 'Prediction Markets',
-  description: 'Browse prediction markets across various focus areas',
-};
-
-const ForecastingPage = () => {
-  return (
-    <PageContainer>
-      <MarketsPageClient />
-    </PageContainer>
-  );
-};
-
-export default ForecastingPage;
+// The markets list lives at the root now; keep the old path working.
+export default function MarketsPage() {
+  redirect('/');
+}

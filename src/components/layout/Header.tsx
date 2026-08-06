@@ -4,7 +4,6 @@ import { LogOut, Menu, User, Users } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { SiSubstack } from 'react-icons/si';
 
 import { useEffect, useRef, useState } from 'react';
 import { useDisconnect } from 'wagmi';
@@ -12,7 +11,6 @@ import CollateralBalanceButton from './CollateralBalanceButton';
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarTrigger,
   useSidebar,
 } from '~/components/ui/sidebar';
@@ -28,7 +26,6 @@ import EnsAvatar from '~/components/shared/EnsAvatar';
 import ReferralsDialog from '~/components/shared/ReferralsDialog';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import { useAuth } from '~/lib/context/AuthContext';
-import { StatusIndicators } from '~/components/layout/StatusIndicators';
 
 const isActive = (path: string, pathname: string) => {
   if (path === '/') {
@@ -66,8 +63,8 @@ const NavLinks = ({ onClose }: NavLinksProps) => {
         className={`flex flex-col gap-3 w-full ${ready && hasConnectedWallet && connectedWallet ? 'mt-3' : 'mt-10'} pl-4`}
       >
         <Link
-          href="/markets"
-          className={`flex w-fit px-3 py-2 rounded-full ${linkClass} ${isActive('/markets', pathname) ? activeClass : ''} hover:text-accent-gold transition-colors`}
+          href="/"
+          className={`flex w-fit px-3 py-2 rounded-full ${linkClass} ${isActive('/', pathname) ? activeClass : ''} hover:text-accent-gold transition-colors`}
           onClick={handleLinkClick}
         >
           Markets
@@ -269,7 +266,7 @@ const Header = () => {
             {/* Desktop Nav (right-aligned cluster) */}
             <nav className="hidden xl:flex items-center gap-2 xl:gap-3 pointer-events-auto ml-auto mr-2 xl:mr-4">
               <Link
-                href="/markets"
+                href="/"
                 className={`sc-heading text-foreground transition-colors px-3 py-2 rounded-full hover:bg-transparent hover:text-accent-gold`}
               >
                 Markets
@@ -393,88 +390,6 @@ const Header = () => {
         <SidebarContent>
           <NavLinks />
         </SidebarContent>
-        <SidebarFooter>
-          <div className="flex items-center gap-2 p-2 pl-4 pb-2">
-            <Button size="icon" className="h-6 w-6 rounded-full" asChild>
-              <a
-                href="https://github.com/sapiencexyz/sapience"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Image
-                  className="dark:invert"
-                  src="/github.svg"
-                  alt="GitHub"
-                  width={14}
-                  height={14}
-                />
-              </a>
-            </Button>
-            <Button size="icon" className="h-6 w-6 rounded-full" asChild>
-              <a
-                href="https://x.com/sapiencemarkets"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Image
-                  className="dark:invert"
-                  src="/x.svg"
-                  alt="Twitter"
-                  width={12}
-                  height={12}
-                />
-              </a>
-            </Button>
-            <Button size="icon" className="h-6 w-6 rounded-full" asChild>
-              <a
-                href="https://discord.gg/sapience"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Image
-                  src="/discord.svg"
-                  className="dark:invert"
-                  alt="Discord"
-                  width={12}
-                  height={12}
-                />
-              </a>
-            </Button>
-            <Button size="icon" className="h-6 w-6 rounded-full" asChild>
-              <a
-                href="https://blog.sapience.xyz"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <SiSubstack
-                  className="h-3 w-3  scale-[70%]"
-                  aria-label="Substack"
-                />
-              </a>
-            </Button>
-          </div>
-          <div className="flex flex-col gap-2 text-xs w-full ml-4 rounded-lg -mt-1">
-            <StatusIndicators />
-            <div className="flex items-center gap-3 pb-3">
-              <a
-                href="https://docs.sapience.xyz/terms-of-service"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center text-xs font-normal text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Terms
-              </a>
-              <a
-                href="https://docs.sapience.xyz/privacy-policy"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center text-xs font-normal text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Privacy Policy
-              </a>
-            </div>
-          </div>
-        </SidebarFooter>
       </Sidebar>
     </>
   );

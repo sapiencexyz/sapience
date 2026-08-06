@@ -39,7 +39,7 @@ import { useSettings } from '~/lib/context/SettingsContext';
 const MAX_RESULTS = 10;
 
 const PAGES = [
-  { name: 'Markets', href: '/markets', icon: BarChart3 },
+  { name: 'Markets', href: '/', icon: BarChart3 },
   { name: 'Leaderboard', href: '/leaderboard', icon: Trophy },
   { name: 'Feed', href: '/feed', icon: Radio },
   { name: 'Vaults', href: '/vaults', icon: Vault },

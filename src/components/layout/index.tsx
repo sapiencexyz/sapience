@@ -27,7 +27,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
         // page content doesn't slide underneath it. On mobile the footer
         // is `position: relative` and flows with the page, so no padding
         // is needed there.
-        className="min-h-[100dvh] flex flex-col w-full relative z-10 sm:pb-[33px]"
+        className="min-h-[100dvh] flex flex-col w-full relative z-10 pb-[33px]"
         style={
           {
             '--page-top-offset': 'var(--header-height, 0px)',
