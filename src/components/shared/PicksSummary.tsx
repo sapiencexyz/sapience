@@ -1,0 +1,212 @@
+'use client';
+
+import Link from 'next/link';
+import { formatDistanceToNow } from 'date-fns';
+import { Info } from 'lucide-react';
+import { PredictionChoiceBadge } from '~/components/predictions/PredictionChoiceBadge';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '~/components/ui/tooltip';
+import {
+  StackedIcons,
+  type Pick,
+} from '~/components/shared/StackedPredictions';
+import { PythMarketBadge } from '~/components/shared/PythMarketBadge';
+import ResolutionBadge from '~/components/shared/ResolutionBadge';
+import { getCategoryIcon } from '~/lib/theme/categoryIcons';
+import { getCategoryStyle } from '~/lib/utils/categoryStyle';
+import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
+import { EndTimeCell } from '~/components/markets/market-helpers';
+import EstimatedPrice from '~/components/shared/EstimatedPrice';
+
+interface PicksSummaryProps {
+  picks: Pick[];
+  predictionId?: string | null;
+  onClick?: () => void;
+}
+
+export interface PicksContentProps {
+  picks: Pick[];
+  positionId: string | number;
+  createdAt?: string | number;
+  hideHeader?: boolean;
+  /** Position-level status retained for compatibility; Ends cells render from pick end time. */
+  positionStatus?: 'won' | 'lost' | 'pending' | 'claimed' | 'active';
+}
+
+function PickForecastCell({ pick }: { pick: Pick }) {
+  if (pick.settled) {
+    return (
+      <ResolutionBadge
+        settled
+        resolvedToYes={pick.resolvedToYes}
+        nonDecisive={pick.nonDecisive}
+      />
+    );
+  }
+
+  return <EstimatedPrice estimatedPrice={pick.estimatedPrice} />;
+}
+
+function PickEndsCell({ pick }: { pick: Pick }) {
+  if (!pick.endTime) {
+    return <span className="text-muted-foreground">—</span>;
+  }
+
+  return (
+    <EndTimeCell
+      endTime={pick.endTime}
+      settled={!!pick.settled}
+      resolvedToYes={pick.resolvedToYes}
+      nonDecisive={pick.nonDecisive}
+      settledDisplay="ended"
+    />
+  );
+}
+
+export function PicksContent({
+  picks,
+  positionId,
+  createdAt,
+  hideHeader,
+}: PicksContentProps) {
+  return (
+    <div>
+      {!hideHeader && (
+        <div className="flex items-baseline gap-2 text-lg font-semibold mb-4">
+          Prediction #{positionId}
+          {createdAt && (
+            <span className="text-sm font-normal text-muted-foreground">
+              created{' '}
+              {formatDistanceToNow(new Date(createdAt), {
+                addSuffix: true,
+              })}
+            </span>
+          )}
+        </div>
+      )}
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-brand-white/10 text-left text-muted-foreground">
+              <th className="pb-2 pr-4 font-medium w-full">Question</th>
+              <th className="pb-2 pr-8 font-medium whitespace-nowrap">
+                Forecast
+              </th>
+              <th className="pb-2 pr-4 font-medium text-right whitespace-nowrap">
+                Prediction
+              </th>
+              <th className="pb-2 pl-4 font-medium text-right whitespace-nowrap">
+                <span className="inline-flex items-center gap-1">
+                  Ends
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex cursor-help">
+                        <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      End times are estimates and may vary
+                    </TooltipContent>
+                  </Tooltip>
+                </span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {picks.map((pick, i) => (
+              <tr
+                key={`${pick.conditionId || i}-${i}`}
+                className="border-b border-brand-white/5"
+              >
+                <td className="py-2 pr-4 w-full max-w-[480px]">
+                  <div className="flex items-center gap-2 min-w-0">
+                    {(() => {
+                      if (pick.source === 'pyth') {
+                        return <PythMarketBadge />;
+                      }
+                      const CategoryIcon = getCategoryIcon(pick.categorySlug);
+                      const color = getCategoryStyle(pick.categorySlug).color;
+                      return (
+                        <div
+                          className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center"
+                          style={{ backgroundColor: color }}
+                        >
+                          <CategoryIcon className="h-3 w-3 text-white/80" />
+                        </div>
+                      );
+                    })()}
+                    {pick.conditionId ? (
+                      <ConditionTitleLink
+                        conditionId={pick.conditionId}
+                        resolverAddress={pick.resolverAddress ?? undefined}
+                        title={pick.question}
+                        clampLines={1}
+                        className="text-sm min-w-0"
+                      />
+                    ) : (
+                      <span className="truncate text-brand-white font-mono text-sm min-w-0">
+                        {pick.question}
+                      </span>
+                    )}
+                  </div>
+                </td>
+                <td className="py-2 pr-8 whitespace-nowrap">
+                  <PickForecastCell pick={pick} />
+                </td>
+                <td className="py-2 pr-4 text-right whitespace-nowrap">
+                  <PredictionChoiceBadge
+                    choice={String(pick.choice).toUpperCase()}
+                  />
+                </td>
+                <td className="py-2 pl-4 text-right whitespace-nowrap">
+                  <PickEndsCell pick={pick} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+export default function PicksSummary({
+  picks,
+  predictionId,
+  onClick,
+}: PicksSummaryProps) {
+  if (!picks || picks.length === 0) return null;
+
+  const href = predictionId ? `/predictions/${predictionId}` : undefined;
+
+  return (
+    <div className="flex items-center gap-2">
+      <StackedIcons picks={picks} max={4} />
+      {href ? (
+        onClick ? (
+          <button
+            type="button"
+            onClick={onClick}
+            className="text-lg font-mono font-semibold text-brand-white hover:text-brand-white/70 underline decoration-dotted underline-offset-4 transition-colors cursor-pointer whitespace-nowrap"
+          >
+            {picks.length} {picks.length === 1 ? 'PICK' : 'PICKS'}
+          </button>
+        ) : (
+          <Link
+            href={href}
+            className="text-lg font-mono font-semibold text-brand-white hover:text-brand-white/70 underline decoration-dotted underline-offset-4 transition-colors cursor-pointer whitespace-nowrap"
+          >
+            {picks.length} {picks.length === 1 ? 'PICK' : 'PICKS'}
+          </Link>
+        )
+      ) : (
+        <span className="text-lg font-mono font-semibold text-brand-white whitespace-nowrap">
+          {picks.length} {picks.length === 1 ? 'PICK' : 'PICKS'}
+        </span>
+      )}
+    </div>
+  );
+}
