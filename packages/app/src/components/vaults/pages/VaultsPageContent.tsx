@@ -51,7 +51,12 @@ const DEPOSIT_WHITELIST: `0x${string}`[] = [
   '0x7BB4e4E4674c625b23C550A74cfcfF9Ec50064F3',
 ];
 
-const DEPOSIT_CAP = 50000;
+const DEFAULT_DEPOSIT_CAP = 50000;
+
+// Core Vault on Robinhood mainnet; matches vault-manager MAX_ASSETS.
+const DEPOSIT_CAPS: Partial<Record<string, number>> = {
+  '0x79cb914f3f336426e89fab55a9488ab25770552d': 1_100_000,
+};
 
 type VaultOption = {
   address: `0x${string}`;
@@ -650,7 +655,9 @@ const VaultsPageContent = () => {
       : '0.00';
   }, [tvlWei, formatAssetAmount]);
 
-  const VAULT_CAPACITY_WEI = parseUnits(DEPOSIT_CAP.toString(), assetDecimals);
+  const depositCap =
+    DEPOSIT_CAPS[normalizeAddress(VAULT_ADDRESS)] ?? DEFAULT_DEPOSIT_CAP;
+  const VAULT_CAPACITY_WEI = parseUnits(depositCap.toString(), assetDecimals);
 
   const exceedsVaultCapacity = useMemo(() => {
     // Robinhood chains have no deposit cap.
@@ -668,7 +675,7 @@ const VaultsPageContent = () => {
     return Math.max(0, Math.min(100, pct));
   }, [tvlWei, VAULT_CAPACITY_WEI]);
 
-  const depositCapDisplay = DEPOSIT_CAP.toLocaleString('en-US');
+  const depositCapDisplay = depositCap.toLocaleString('en-US');
 
   const tvlPercentOfCap = useMemo(() => {
     if (VAULT_CAPACITY_WEI <= 0n) return 0;
